@@ -1,0 +1,4 @@
+target-practice:
+  enabled: true
+  area: "event,0,0,0,1,1,1"
+  max-targets: 30
