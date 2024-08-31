@@ -1,8 +1,14 @@
 package dev.jsinco.lumacarnival.games
 
-interface GameTask {
+import org.bukkit.event.Listener
 
-    fun initializeGame()
+abstract class GameTask : Listener {
 
-    fun tick()
+    lateinit var taskAttributes: TaskAttributes
+
+    abstract fun initializeGame()
+
+    abstract fun tick()
+
+    abstract fun enabled(): Boolean
 }

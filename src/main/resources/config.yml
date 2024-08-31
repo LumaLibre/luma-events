@@ -1,4 +1,4 @@
 target-practice:
   enabled: true
-  area: "event,0,0,0,1,1,1"
+  area: "world,615,131,411,620,136,416"
   max-targets: 30

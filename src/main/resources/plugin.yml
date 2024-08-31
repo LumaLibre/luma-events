@@ -1,0 +1,4 @@
+name: LumaCarnival
+main: dev.jsinco.lumacarnival.CarnivalMain
+version: 2024
+api-version: 1.20
