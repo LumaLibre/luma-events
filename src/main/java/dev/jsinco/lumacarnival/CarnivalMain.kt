@@ -2,6 +2,7 @@ package dev.jsinco.lumacarnival
 
 import dev.jsinco.abstractjavafilelib.FileLibSettings
 import dev.jsinco.abstractjavafilelib.schemas.SnakeYamlConfig
+import dev.jsinco.lumacarnival.games.AppleBobbingGame
 import dev.jsinco.lumacarnival.games.GameManager
 import dev.jsinco.lumacarnival.games.TargetPracticeGame
 import org.bukkit.plugin.java.JavaPlugin
@@ -22,6 +23,7 @@ class CarnivalMain : JavaPlugin() {
         CarnivalMain.config = SnakeYamlConfig("config.yml")
         gameManager = GameManager()
             .registerGame(TargetPracticeGame())
+            .registerGame(AppleBobbingGame())
             .startGameTicker()
     }
 }

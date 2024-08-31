@@ -53,9 +53,7 @@ class TargetPracticeGame : GameTask() {
             activeTargets.forEach { it.remove() }
             activeTargets.clear()
         }
-        Bukkit.getScheduler().runTask(CarnivalMain.instance, Runnable {
-            activeTargets.add(spawnTarget())
-        })
+        activeTargets.add(spawnTarget())
     }
 
     override fun tick() {
@@ -64,7 +62,9 @@ class TargetPracticeGame : GameTask() {
             if (target.isDead) {
                 activeTargets.remove(target)
             } else if (target.ticksLived > 30000) {
-                target.remove()
+                Bukkit.getScheduler().runTask(CarnivalMain.instance, Runnable {
+                    target.remove()
+                })
                 activeTargets.remove(target)
             }
         }
@@ -77,7 +77,7 @@ class TargetPracticeGame : GameTask() {
     }
 
     override fun enabled(): Boolean {
-        return configSec.getBoolean("target-practice.enabled")
+        return configSec.getBoolean("enabled")
     }
 
 

@@ -134,4 +134,14 @@ public class Cuboid {
     public World getWorld() {
         return world;
     }
+
+    public List<Player> getPlayers() {
+        List<Player> players = new ArrayList<>();
+        for (Player player : world.getPlayers()) {
+            if (isIn(player)) {
+                players.add(player);
+            }
+        }
+        return players;
+    }
 }
