@@ -56,9 +56,7 @@ class UnderwaterAnimalCatchingGame : GameTask() {
     }
 
     override fun initializeGame() {
-        for (i in 0 until maxAnimals) {
-            activeAnimals.add(spawnAnimal())
-        }
+        activeAnimals.add(spawnAnimal())
     }
 
     override fun tick() {
