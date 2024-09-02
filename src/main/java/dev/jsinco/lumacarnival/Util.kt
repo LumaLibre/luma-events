@@ -1,10 +1,33 @@
 package dev.jsinco.lumacarnival
 
 import dev.jsinco.lumacarnival.obj.Cuboid
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.minimessage.MiniMessage
 import org.bukkit.Bukkit
 import org.bukkit.Location
+import org.bukkit.command.CommandSender
 
 object Util {
+
+    val PREFIX: Component = mm("<b><#8EC4F7>C<#C7B0E1>a<#FF9CCB>r<#EBC9AC>n<#D7F58D>i<#FFFE8A>v<#FFE978>a<#FFD365>l</b> <dark_gray>»<white> ")
+
+    fun msg(player: CommandSender, msg: String) {
+        player.sendMessage(PREFIX.append(mm(msg)))
+    }
+
+    fun mm(m: String): Component {
+        return MiniMessage.miniMessage().deserialize("<!i>$m")
+    }
+
+    fun mml(m: String): List<Component> {
+        return listOf(mm(m))
+    }
+
+    fun mml(vararg m: String): List<Component> {
+        return m.map { mm(it) }
+    }
+
+
 
     fun getLocation(locationString: String): Location?  {
         val split = locationString.split(",")
