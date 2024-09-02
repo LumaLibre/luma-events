@@ -4,11 +4,11 @@ import org.bukkit.event.Listener
 
 abstract class GameTask : Listener {
 
-    lateinit var taskAttributes: TaskAttributes
+    var taskAttributes: TaskAttributes? = null
 
-    abstract fun initializeGame()
+    open fun initializeGame() {}
 
-    abstract fun tick()
+    open fun tick() {}
 
     abstract fun enabled(): Boolean
 }

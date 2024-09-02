@@ -15,7 +15,7 @@ class GameManager {
             return this
         }
 
-        val taskattr = game.javaClass.getAnnotation(TaskAttributes::class.java) ?: throw RuntimeException("GameTask must have TaskAttributes annotation")
+        val taskattr: TaskAttributes? = game.javaClass.getAnnotation(TaskAttributes::class.java)
 
         game.taskAttributes = taskattr
         game.initializeGame()
@@ -32,18 +32,20 @@ class GameManager {
 
             Bukkit.getPluginManager().registerEvents(game, CarnivalMain.instance)
 
-            val task = if (!game.taskAttributes.async) {
+            val taskAttributes = game.taskAttributes ?: continue
+
+            val task = if (!taskAttributes.async) {
                 object : BukkitRunnable() {
                     override fun run() {
                         game.tick()
                     }
-                }.runTaskTimer(CarnivalMain.instance, 0L, game.taskAttributes.taskTime)
+                }.runTaskTimer(CarnivalMain.instance, 0L, taskAttributes.taskTime)
             } else {
                 object : BukkitRunnable() {
                     override fun run() {
                         game.tick()
                     }
-                }.runTaskTimerAsynchronously(CarnivalMain.instance, 0L, game.taskAttributes.taskTime)
+                }.runTaskTimerAsynchronously(CarnivalMain.instance, 0L, taskAttributes.taskTime)
             }
             tasks.add(task)
         }
