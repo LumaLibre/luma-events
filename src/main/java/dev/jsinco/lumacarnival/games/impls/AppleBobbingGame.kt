@@ -1,8 +1,9 @@
-package dev.jsinco.lumacarnival.games
+package dev.jsinco.lumacarnival.games.impls
 
 import dev.jsinco.lumacarnival.CarnivalMain
 import dev.jsinco.lumacarnival.CarnivalToken
 import dev.jsinco.lumacarnival.Util
+import dev.jsinco.lumacarnival.games.GameTask
 import dev.jsinco.lumacarnival.games.externallistener.AppleBobbingEMFBlocker
 import dev.jsinco.lumacarnival.obj.Cuboid
 import dev.jsinco.lumaitems.api.LumaItemsAPI

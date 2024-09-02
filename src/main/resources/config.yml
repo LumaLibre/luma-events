@@ -1,10 +1,13 @@
 target-practice:
   enabled: true
   area: "world,615,131,411,620,136,416"
-  max-targets: 30
 
 apple-bobbing:
   enabled: true
   area: "world,601,131,424,595,134,432"
-  return-spot: "world,594,135,433"
-  max-apples: 30
+  max: 30
+
+underwater-animals:
+  enabled: true
+  area: "world,601,131,424,595,134,432"
+  max: 60

@@ -1,7 +1,9 @@
-package dev.jsinco.lumacarnival.games
+package dev.jsinco.lumacarnival.games.impls
 
 import dev.jsinco.lumacarnival.CarnivalMain
 import dev.jsinco.lumacarnival.Util
+import dev.jsinco.lumacarnival.games.GameTask
+import dev.jsinco.lumacarnival.games.TaskAttributes
 import dev.jsinco.lumacarnival.obj.Cuboid
 import org.bukkit.Bukkit
 import org.bukkit.Location
@@ -44,7 +46,7 @@ class TargetPracticeGame : GameTask() {
         ?: throw RuntimeException("Missing target-practice section in config")
     private val area: Cuboid = configSec.getString("area")?.let { Util.getArea(it) }
         ?: throw RuntimeException("Invalid area in config")
-    private val maxTargets: Int = configSec.getInt("max-targets")
+    private val maxTargets: Int = configSec.getInt("max")
 
     fun getSafeAreaLocation(): Location {
         var loc = area.randomLocation
