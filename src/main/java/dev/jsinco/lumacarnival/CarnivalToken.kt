@@ -14,7 +14,7 @@ object CarnivalToken {
     val CARNIVAL_TOKEN = ItemStack(Material.GOLDEN_APPLE).apply {
         itemMeta = itemMeta?.apply {
             displayName(Util.mm("<b><gradient:#8ec4f7:#ff9ccb>Can</gradient><gradient:#ff9ccb:#d7f58d>died</gradient><gradient:#d7f58d:#fffe8a> Ap</gradient><gradient:#fffe8a:#ffd365>ple</gradient></b>"))
-            //lore(Util.mml("<light_gray>A golden apple that has been candied!"))
+            //lore(Util.mml("<gray>A golden apple that has been candied!"))
             addEnchant(Enchantment.DURABILITY, 10, true)
             persistentDataContainer.set(key, PersistentDataType.BOOLEAN, true)
         }
@@ -25,14 +25,7 @@ object CarnivalToken {
     }
 
     fun give(player: Player, amt: Int) {
-        for (i in 0..35) {
-            if (player.inventory.getItem(i) == null || player.inventory.getItem(i)!!.isSimilar(CARNIVAL_TOKEN)) {
-                player.inventory.addItem(CARNIVAL_TOKEN)
-                break
-            } else if (i == 35) {
-                player.world.dropItem(player.location, CARNIVAL_TOKEN)
-            }
-        }
+        Util.giveItem(player, CARNIVAL_TOKEN.asQuantity(amt))
     }
 
     fun take(player: Player, amt: Int): Boolean {

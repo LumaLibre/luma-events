@@ -50,7 +50,7 @@ class AppleBobbingGame : GameTask() {
         if (Bukkit.getRecipe(recipeKey) != null) {
             Bukkit.removeRecipe(recipeKey)
         }
-        val recipe = ShapedRecipe(recipeKey, CarnivalToken.CARNIVAL_TOKEN.apply { amount = 8 })
+        val recipe = ShapedRecipe(recipeKey, CarnivalToken.CARNIVAL_TOKEN.asQuantity(2))
             .shape("AAA", "ABA", "AAA")
             .setIngredient('A', regularApple)
         Bukkit.addRecipe(recipe)

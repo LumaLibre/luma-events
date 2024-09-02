@@ -6,6 +6,7 @@ import dev.jsinco.lumacarnival.obj.Cuboid
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
+import org.bukkit.NamespacedKey
 import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.LivingEntity
@@ -15,6 +16,7 @@ import org.bukkit.event.entity.CreatureSpawnEvent
 import org.bukkit.event.entity.ProjectileHitEvent
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
+import org.bukkit.persistence.PersistentDataType
 import java.util.concurrent.ConcurrentLinkedQueue
 
 @TaskAttributes(taskTime = 50L, async = true)
@@ -26,7 +28,16 @@ class TargetPracticeGame : GameTask() {
                 addEnchant(Enchantment.ARROW_DAMAGE, 1, true)
             }
         }
+        val targetToken = ItemStack(Material.TARGET).apply {
+            itemMeta = itemMeta?.apply {
+                displayName(Util.mm("<b><gradient:#fdee21:#ed1e26>Flyi</gradient><gradient:#ed1e26:#22a9e1>ng Ta</gradient><gradient:#22a9e1:#ffffff>rget</gradient></b>"))
+                lore(Util.mml("<gray>A target that flies through the air"))
+                addEnchant(Enchantment.DURABILITY, 10, true)
+                persistentDataContainer.set(NamespacedKey(CarnivalMain.instance, "target-practice"), PersistentDataType.BOOLEAN, true)
+            }
+        }
         val activeTargets: ConcurrentLinkedQueue<LivingEntity> = ConcurrentLinkedQueue()
+        val queuedEarners: MutableMap<Player, Int> = mutableMapOf()
     }
 
     private val configSec = CarnivalMain.config.getConfigurationSection("target-practice")
@@ -69,7 +80,6 @@ class TargetPracticeGame : GameTask() {
     }
 
     override fun tick() {
-        // shift each target's location
         for (target in activeTargets) {
             if (target.isDead) {
                 activeTargets.remove(target)
@@ -86,6 +96,13 @@ class TargetPracticeGame : GameTask() {
                 activeTargets.add(spawnTarget())
             })
         }
+
+        for (key in queuedEarners) {
+            val player = key.key
+            val amount = key.value
+            Util.giveItem(player, targetToken.asQuantity(amount))
+            Util.msg(player, "<yellow>+${amount}</yellow> targets hit!")
+        }
     }
 
     override fun enabled(): Boolean {
@@ -95,14 +112,20 @@ class TargetPracticeGame : GameTask() {
 
     @EventHandler
     fun onProjectileHit(event: ProjectileHitEvent) {
+        val player = event.entity.shooter as? Player ?: return
         if (!activeTargets.contains(event.hitEntity ?: return)) {
             return
         }
 
-        val target = event.hitEntity as LivingEntity
-        target.remove()
-        activeTargets.remove(target)
-        (event.entity.shooter as Player).sendMessage("You hit the target!")
+        if (!event.entity.hasMetadata("carnival_target_practice_bow")) {
+            Util.msg(player, "You must use a special bow for these targets!")
+        } else {
+            val target = event.hitEntity as LivingEntity
+            target.remove()
+            activeTargets.remove(target)
+            queuedEarners[player] = queuedEarners.getOrDefault(player, 0) + 1
+        }
+
         event.entity.remove()
     }
 }

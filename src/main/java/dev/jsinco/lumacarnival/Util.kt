@@ -6,6 +6,8 @@ import net.kyori.adventure.text.minimessage.MiniMessage
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.command.CommandSender
+import org.bukkit.entity.Player
+import org.bukkit.inventory.ItemStack
 
 object Util {
 
@@ -28,6 +30,16 @@ object Util {
     }
 
 
+    fun giveItem(player: Player, item: ItemStack) {
+        for (i in 0..35) {
+            if (player.inventory.getItem(i) == null || player.inventory.getItem(i)!!.isSimilar(item)) {
+                player.inventory.addItem(item)
+                break
+            } else if (i == 35) {
+                player.world.dropItem(player.location, item)
+            }
+        }
+    }
 
     fun getLocation(locationString: String): Location?  {
         val split = locationString.split(",")

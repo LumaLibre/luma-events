@@ -1,6 +1,7 @@
 package dev.jsinco.lumacarnival.obj;
 
 import com.google.common.base.Preconditions;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
