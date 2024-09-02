@@ -48,7 +48,7 @@ class AppleBobbingGame : GameTask() {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler(priority = EventPriority.LOW)
     fun playerFishApple(event: PlayerFishEvent) {
         // Check if the player is in the apple bobbing area
         if (!area.isInWithMarge(event.hook.location, 2.0)) {

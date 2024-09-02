@@ -4,6 +4,7 @@ import dev.jsinco.lumacarnival.CarnivalMain
 import dev.jsinco.lumacarnival.Util
 import dev.jsinco.lumacarnival.obj.Cuboid
 import org.bukkit.Bukkit
+import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.ArmorStand
@@ -34,16 +35,27 @@ class TargetPracticeGame : GameTask() {
         ?: throw RuntimeException("Invalid area in config")
     private val maxTargets: Int = configSec.getInt("max-targets")
 
+    fun getSafeAreaLocation(): Location {
+        var loc = area.randomLocation
+        var tries = 0
+        while (!loc.block.isEmpty && tries < 10) {
+            loc = area.randomLocation
+            tries++
+        }
+        return loc
+    }
+
 
     fun spawnTarget(): LivingEntity {
         // I'll just use armor stands for now.
-        val armorstand = area.world.createEntity(area.randomLocation, ArmorStand::class.java)
+        val loc = getSafeAreaLocation()
+        val armorstand = area.world.createEntity(loc, ArmorStand::class.java)
         armorstand.isVisible = false
         armorstand.isPersistent = false
         armorstand.isInvulnerable = false
         armorstand.setItem(EquipmentSlot.HEAD, targetItemStack)
         armorstand.setCanTick(false)
-        armorstand.spawnAt(area.randomLocation, CreatureSpawnEvent.SpawnReason.CUSTOM)
+        armorstand.spawnAt(loc, CreatureSpawnEvent.SpawnReason.CUSTOM)
         return armorstand
     }
 
