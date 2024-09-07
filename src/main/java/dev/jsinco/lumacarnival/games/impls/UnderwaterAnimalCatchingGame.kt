@@ -59,6 +59,13 @@ class UnderwaterAnimalCatchingGame : GameTask() {
         activeAnimals.add(spawnAnimal())
     }
 
+    override fun stopGame() {
+        for (animal in activeAnimals) {
+            animal.remove()
+        }
+        activeAnimals.clear()
+    }
+
     override fun tick() {
         for (animal in activeAnimals) {
             if (animal.isDead) {

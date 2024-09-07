@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.jsinco.lumacarnival"
-version = "1.0-SNAPSHOT"
+version = "2024"
 
 repositories {
     mavenCentral()
@@ -32,9 +32,7 @@ tasks.shadowJar {
     relocate("dev.jsinco.abstractjavafilelib", "dev.jsinco.lumacarnival.abstractjavafilelib")
 }
 
-tasks.test {
-    useJUnitPlatform()
-}
+
 kotlin {
     jvmToolchain(17)
 }

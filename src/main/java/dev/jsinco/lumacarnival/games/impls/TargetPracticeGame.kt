@@ -74,11 +74,15 @@ class TargetPracticeGame : GameTask() {
 
 
     override fun initializeGame() {
+        activeTargets.add(spawnTarget())
+    }
+
+
+    override fun stopGame() {
         if (activeTargets.isNotEmpty()) {
             activeTargets.forEach { it.remove() }
             activeTargets.clear()
         }
-        activeTargets.add(spawnTarget())
     }
 
     override fun tick() {

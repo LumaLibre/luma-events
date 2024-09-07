@@ -51,4 +51,15 @@ class GameManager {
         }
         return this
     }
+
+    fun stop() {
+        for (task in tasks) {
+            task.cancel()
+        }
+        tasks.clear()
+        for (game in activeGames) {
+            game.stopGame()
+        }
+        activeGames.clear()
+    }
 }

@@ -1,19 +1,21 @@
 package dev.jsinco.lumacarnival.games.impls
 
+import com.oheers.fish.api.EMFFishEvent
 import dev.jsinco.lumacarnival.CarnivalMain
 import dev.jsinco.lumacarnival.CarnivalToken
 import dev.jsinco.lumacarnival.Util
 import dev.jsinco.lumacarnival.games.GameTask
-import dev.jsinco.lumacarnival.games.externallistener.AppleBobbingEMFBlocker
 import dev.jsinco.lumacarnival.obj.Cuboid
 import dev.jsinco.lumaitems.api.LumaItemsAPI
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
+import org.bukkit.World
 import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.Item
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
+import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerFishEvent
 import org.bukkit.event.player.PlayerItemConsumeEvent
 import org.bukkit.inventory.ItemStack
@@ -27,7 +29,6 @@ class AppleBobbingGame : GameTask() {
         private val key = NamespacedKey(CarnivalMain.instance, "apple-bobbing")
         val regularApple = ItemStack(Material.APPLE).apply {
             itemMeta = itemMeta?.apply {
-                // Util.mm: MiniMessage.miniMessage().deserialize
                 displayName(Util.mm("<b><gradient:#569BDD:#DD3535>Soaked</gradient><gradient:#DD3535:#DD3535> Apple</gradient></b>"))
                 lore(Util.mml("<light_gray>A delicious apple soaked in water"))
                 addEnchant(Enchantment.DURABILITY, 10, true)
@@ -89,12 +90,21 @@ class AppleBobbingGame : GameTask() {
             return
         }
 
-        if (!LumaItemsAPI().isCustomItem(fishingRod, "carnivalfishingrod")) {
+        if (!LumaItemsAPI.getInstance().isCustomItem(fishingRod, "carnivalfishingrod")) {
             event.isCancelled = true
             Util.msg(player, "You can only fish with the Carnival Fishing Rod!")
         }
 
         val item = event.caught as? Item ?: return
         item.itemStack = regularApple
+    }
+
+    class AppleBobbingEMFBlocker(private val world: World) : Listener {
+        @EventHandler(priority = EventPriority.LOWEST)
+        fun onEMFFish(event: EMFFishEvent) {
+            if (event.player.world == world) {
+                event.isCancelled = true
+            }
+        }
     }
 }

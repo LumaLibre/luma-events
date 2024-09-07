@@ -4,6 +4,7 @@ import dev.jsinco.abstractjavafilelib.FileLibSettings
 import dev.jsinco.abstractjavafilelib.schemas.SnakeYamlConfig
 import dev.jsinco.lumacarnival.games.impls.AppleBobbingGame
 import dev.jsinco.lumacarnival.games.GameManager
+import dev.jsinco.lumacarnival.games.impls.PrisonMineGame
 import dev.jsinco.lumacarnival.games.impls.TargetPracticeGame
 import dev.jsinco.lumacarnival.games.impls.UnderwaterAnimalCatchingGame
 import org.bukkit.plugin.java.JavaPlugin
@@ -26,6 +27,11 @@ class CarnivalMain : JavaPlugin() {
             .registerGame(TargetPracticeGame())
             .registerGame(AppleBobbingGame())
             .registerGame(UnderwaterAnimalCatchingGame())
+            .registerGame(PrisonMineGame())
             .startGameTicker()
+    }
+
+    override fun onDisable() {
+        gameManager.stop()
     }
 }

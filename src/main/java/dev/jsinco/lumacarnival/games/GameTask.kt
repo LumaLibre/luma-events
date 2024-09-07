@@ -8,6 +8,8 @@ abstract class GameTask : Listener {
 
     open fun initializeGame() {}
 
+    open fun stopGame() {}
+
     open fun tick() {}
 
     abstract fun enabled(): Boolean
