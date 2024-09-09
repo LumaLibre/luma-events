@@ -55,10 +55,22 @@ class TargetPracticeGame : GameTask() {
 
     fun getSafeAreaLocation(): CompletableFuture<Location> {
         return CompletableFuture.supplyAsync {
+            val start = System.currentTimeMillis()
+            val players = area.players
             var loc = area.randomLocation
-            while (sphere.isInSphere(loc) && !loc.block.isEmpty) {
-                loc = area.randomLocation
+
+            if (players.isNotEmpty()) {
+                while (!players.any { it.hasLineOfSight(loc) } || sphere.isInSphere(loc) || !loc.block.isEmpty) {
+                    loc = area.randomLocation
+                }
+            } else {
+                while (sphere.isInSphere(loc) || !loc.block.isEmpty) {
+                    loc = area.randomLocation
+                }
             }
+
+
+            CarnivalMain.instance.logger.info("Took ${System.currentTimeMillis() - start}ms to find a safe location for a target")
             loc
         }
     }
@@ -98,6 +110,14 @@ class TargetPracticeGame : GameTask() {
         file.save()
     }
 
+    override fun stopGame() {
+        for (target in activeTargets) {
+            target.remove()
+        }
+        activeTargets.clear()
+    }
+
+
     override fun tick() {
         for (target in activeTargets) {
             if (target.isDead) {
@@ -115,6 +135,9 @@ class TargetPracticeGame : GameTask() {
         }
 
         for (targetEarner in totalTargetEarners) {
+            if (targetEarner.queuedAmount <= 0) {
+                continue
+            }
             Util.msg(targetEarner.player, "<b><gold>+${targetEarner.queuedAmount}</gold></b> targets hit! <dark_gray>(Total: ${targetEarner.amount})")
             targetEarner.queuedAmount = 0
         }
@@ -182,7 +205,9 @@ class TargetPracticeGame : GameTask() {
             return
         }
 
-        bow.addEnchantment(Enchantment.QUICK_CHARGE, effLevel + 1)
-        Util.msg(player, "<green>Your bow has been upgraded to level ${effLevel + 1}!")
+        Bukkit.getScheduler().runTask(CarnivalMain.instance, Runnable {
+            bow.addEnchantment(Enchantment.QUICK_CHARGE, effLevel + 1)
+            Util.msg(player, "<green>Your bow has been upgraded to level ${effLevel + 1}!")
+        })
     }
 }

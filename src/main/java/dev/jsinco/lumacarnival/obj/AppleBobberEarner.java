@@ -25,7 +25,7 @@ public class AppleBobberEarner implements GameEarner {
     }
 
     public void cashIn(Player player) {
-        int tokenAmount = amount / 25;
+        int tokenAmount = amount / 15;
         amount = amount % 30;
         CarnivalToken.give(player, tokenAmount);
     }

@@ -96,16 +96,18 @@ class GameManager : TabExecutor {
     }
 
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
-        if (args.isEmpty()) {
-            return false
-        }
-        val subCommand = args[0]
-        val method = activeCommands.keys.find { it.name == subCommand } ?: return false
-        if (method.playerOnly && sender !is Player) {
-            return false
-        }
-        val methodToInvoke = activeCommands[method] ?: return false
-        methodToInvoke.invoke(activeGames.find { it.javaClass == methodToInvoke.declaringClass } ?: return false, GameCommandExecutedEvent(sender, args.drop(1).toList()))
+        Bukkit.getScheduler().runTaskAsynchronously(CarnivalMain.instance, Runnable {
+            if (args.isEmpty()) {
+                return@Runnable
+            }
+            val subCommand = args[0]
+            val method = activeCommands.keys.find { it.name == subCommand } ?: return@Runnable
+            if ((method.playerOnly && sender !is Player) || (!sender.hasPermission(method.permission))) {
+                return@Runnable
+            }
+            val methodToInvoke = activeCommands[method] ?: return@Runnable
+            methodToInvoke.invoke(activeGames.find { it.javaClass == methodToInvoke.declaringClass } ?: return@Runnable, GameCommandExecutedEvent(sender, args.drop(1).toList()))
+        })
         return true
     }
 }

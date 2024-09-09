@@ -1,5 +1,6 @@
 package dev.jsinco.lumacarnival
 
+import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.enchantments.Enchantment
@@ -27,6 +28,10 @@ object CarnivalToken {
     @JvmStatic
     fun give(player: Player?, amt: Int) {
         if (player == null) return
+        else if (!Bukkit.isPrimaryThread()) {
+            Bukkit.getScheduler().runTask(CarnivalMain.instance, Runnable { give(player, amt) })
+            return
+        }
         Util.giveItem(player, CARNIVAL_TOKEN.asQuantity(amt))
         Util.msg(player, "You have received <b><gold>$amt</gold></b> <gradient:#8ec4f7:#ff9ccb>Candied Apples</gradient>!")
     }

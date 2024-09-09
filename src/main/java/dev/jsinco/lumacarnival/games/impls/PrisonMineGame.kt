@@ -9,7 +9,10 @@ import dev.jsinco.lumacarnival.obj.Cuboid
 import dev.jsinco.lumacarnival.obj.PrisonMineEarner
 import dev.jsinco.lumaitems.api.LumaItemsAPI
 import org.bukkit.Bukkit
+import org.bukkit.Color
 import org.bukkit.Material
+import org.bukkit.Particle
+import org.bukkit.Sound
 import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -64,6 +67,16 @@ class PrisonMineGame : GameTask() {
         event.isCancelled = false
         val prisonMineEarner = prisonMineEarners.find { it.playerUUID == player.uniqueId } ?: PrisonMineEarner(player.uniqueId, 0).also { prisonMineEarners.add(it) }
         prisonMineEarner.increaseAmount(1)
+
+        // effects
+        val block = event.block
+        val colorRaw = dev.jsinco.lumaitems.util.Util.getColor(block)
+        Bukkit.getScheduler().runTaskAsynchronously(CarnivalMain.instance, Runnable {
+            player.spawnParticle(Particle.REDSTONE, block.location.toCenterLocation(), 5, 0.2, 0.2, 0.2,
+                Particle.DustOptions(Color.fromRGB(colorRaw.red, colorRaw.blue, colorRaw.green), 1.0f))
+            player.sendActionBar(Util.mm("<gradient:#8ec4f7:#ff9ccb>Blo</gradient><gradient:#ff9ccb:#d7f58d>ck</gradient><gradient:#d7f58d:#fffe8a>s: </gradient><gradient:#fffe8a:#ffd365>${prisonMineEarner.amount}</gradient>"))
+        })
+        player.playSound(block.location, Sound.ENTITY_ITEM_PICKUP, 0.3f, 1.4f)
     }
 
 
@@ -96,14 +109,16 @@ class PrisonMineGame : GameTask() {
         }
 
 
-        if (effLevel >= 3 && pickaxe.type != Material.NETHERITE_PICKAXE) {
-            pickaxe.type = Material.NETHERITE_PICKAXE
-        } else if (effLevel >= 8) {
-            Util.msg(player, "<red>Your pickaxe is already maxed out!")
-            return
-        }
+        Bukkit.getScheduler().runTask(CarnivalMain.instance, Runnable {
+            if (effLevel >= 3 && pickaxe.type != Material.NETHERITE_PICKAXE) {
+                pickaxe.type = Material.NETHERITE_PICKAXE
+            } else if (effLevel >= 8) {
+                Util.msg(player, "<red>Your pickaxe is already maxed out!")
+                return@Runnable
+            }
 
-        pickaxe.addUnsafeEnchantment(Enchantment.DIG_SPEED, effLevel + 1)
-        Util.msg(player, "<green>Your pickaxe has been upgraded to level <yellow>${effLevel + 1}</yellow>!")
+            pickaxe.addUnsafeEnchantment(Enchantment.DIG_SPEED, effLevel + 1)
+            Util.msg(player, "<green>Your pickaxe has been upgraded to level <yellow>${effLevel + 1}</yellow>!")
+        })
     }
 }

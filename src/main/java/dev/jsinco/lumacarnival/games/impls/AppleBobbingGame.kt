@@ -162,11 +162,14 @@ class AppleBobbingGame : GameTask() {
         }
 
 
-        if (effLevel >= 4) {
+        if (effLevel >= 6) {
             Util.msg(player, "Your fishing rod is already maxed out!")
             return
         }
 
-        fishingRod.addUnsafeEnchantment(Enchantment.LURE, effLevel + 1)
+        Bukkit.getScheduler().runTask(CarnivalMain.instance, Runnable {
+            fishingRod.addUnsafeEnchantment(Enchantment.LURE, effLevel + 1)
+            Util.msg(player, "<green>Your fishing rod has been upgraded to level ${effLevel + 1}!")
+        })
     }
 }

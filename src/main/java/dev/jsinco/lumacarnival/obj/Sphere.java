@@ -1,7 +1,5 @@
 package dev.jsinco.lumacarnival.obj;
 
-import dev.jsinco.lumaitems.particles.ParticleDisplay;
-import dev.jsinco.lumaitems.particles.Particles;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
@@ -10,6 +8,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class Sphere {
+
+    private static final double TAU = Math.PI * 2.0;
 
     private final Location center;
     private double radius;
@@ -35,11 +35,6 @@ public class Sphere {
         return density;
     }
 
-    /**
-     * I have no idea. This was *mostly* taken from the XSeries particle lib.
-     * @see Particles#circle(double, double, ParticleDisplay)
-     * @return Set of blocks that make up the holo sphere.
-     */
     public Set<Block> getSphere() {
         Set<Block> blockList = new HashSet<>();
 
@@ -50,11 +45,7 @@ public class Sphere {
     }
 
 
-    /**
-     * I have no idea. This was *mostly* taken from the XSeries particle lib.
-     * @see Particles#circle(double, double, ParticleDisplay)
-     * @return Set of blocks that make up the holo sphere.
-     */
+
     public Set<Block> getHollowSphere() {
         return getHollowSphere(center, radius, density);
     }
@@ -131,11 +122,7 @@ public class Sphere {
         return x * x + y * y + z * z <= (radius + marge) * (radius + marge);
     }
 
-    /**
-     * I have no idea. This was *mostly* taken from the XSeries particle lib.
-     * @see Particles#circle(double, double, ParticleDisplay)
-     * @return Set of blocks that make up the holo sphere.
-     */
+
     public static Set<Block> getHollowSphere(Location center, double radius, double density) {
         Set<Block> blockList = new HashSet<>();
 
@@ -148,7 +135,7 @@ public class Sphere {
             double y1 = radius * Math.cos(phi);
             double y2 = radius * Math.sin(phi);
 
-            for (double theta = 0; theta <= Math.TAU; theta += rateDiv) {
+            for (double theta = 0; theta <= TAU; theta += rateDiv) {
                 double x = Math.cos(theta) * y2;
                 double z = Math.sin(theta) * y2;
 

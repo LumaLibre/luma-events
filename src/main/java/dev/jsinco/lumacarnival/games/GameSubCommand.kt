@@ -6,5 +6,4 @@ annotation class GameSubCommand(
     val name: String,
     val permission: String,
     val playerOnly: Boolean = false,
-    val executeAsync: Boolean = false
 )
