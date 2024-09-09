@@ -6,11 +6,12 @@ abstract class GameTask : Listener {
 
     var taskAttributes: TaskAttributes? = null
 
+    abstract fun enabled(): Boolean
+
     open fun initializeGame() {}
 
     open fun stopGame() {}
 
     open fun tick() {}
 
-    abstract fun enabled(): Boolean
 }

@@ -5,29 +5,27 @@ import org.bukkit.entity.Player;
 
 import java.util.UUID;
 
-public class AppleBobberEarner implements GameEarner {
+public class PrisonMineEarner implements GameEarner {
 
     private final UUID playerUUID;
     private int permanentAmount;
     private int amount;
 
-
-
-    public AppleBobberEarner(UUID playerUUID, int amount) {
+    public PrisonMineEarner(UUID playerUUID, int amount) {
         this.playerUUID = playerUUID;
         this.amount = amount;
     }
 
-    public AppleBobberEarner(UUID playerUUID, int permanentAmount, int amount) {
+    public PrisonMineEarner(UUID playerUUID, int permanentAmount, int amount) {
         this.playerUUID = playerUUID;
         this.permanentAmount = permanentAmount;
         this.amount = amount;
     }
 
     public void cashIn(Player player) {
-        int tokenAmount = amount / 25;
-        amount = amount % 30;
+        int tokenAmount = amount / 500;
         CarnivalToken.give(player, tokenAmount);
+        amount = amount % 500;
     }
 
     public UUID getPlayerUUID() {
@@ -49,14 +47,15 @@ public class AppleBobberEarner implements GameEarner {
         this.permanentAmount += amount;
     }
 
+
     @Override
     public String serialize() {
         return playerUUID.toString() + ";" + permanentAmount + ";" + amount;
     }
 
 
-    public static AppleBobberEarner deserialize(String data) {
+    public static PrisonMineEarner deserialize(String data) {
         String[] parts = data.split(";");
-        return new AppleBobberEarner(UUID.fromString(parts[0]), Integer.parseInt(parts[1]), Integer.parseInt(parts[2]));
+        return new PrisonMineEarner(UUID.fromString(parts[0]), Integer.parseInt(parts[1]), Integer.parseInt(parts[2]));
     }
 }

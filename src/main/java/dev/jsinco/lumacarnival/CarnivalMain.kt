@@ -19,19 +19,34 @@ class CarnivalMain : JavaPlugin() {
         lateinit var config: SnakeYamlConfig private set
         lateinit var saves: JsonSavingSchema private set
         lateinit var gameManager: GameManager private set
+
+
+        fun reload() {
+            gameManager.stop()
+            config = SnakeYamlConfig("config.yml")
+            saves = JsonSavingSchema("saves.json")
+            gameManager = GameManager()
+                .registerGame(TargetPracticeGame())
+                .registerGame(AppleBobbingGame())
+                .registerGame(UnderwaterAnimalCatchingGame())
+                .registerGame(PrisonMineGame())
+                .startGameTicker()
+        }
     }
 
     override fun onEnable() {
         instance = this
         FileLibSettings.set(dataFolder)
         CarnivalMain.config = SnakeYamlConfig("config.yml")
-        CarnivalMain.saves = JsonSavingSchema("saves.json")
+        saves = JsonSavingSchema("saves.json")
         gameManager = GameManager()
             .registerGame(TargetPracticeGame())
             .registerGame(AppleBobbingGame())
             .registerGame(UnderwaterAnimalCatchingGame())
             .registerGame(PrisonMineGame())
             .startGameTicker()
+
+        getCommand("lumacarnival")!!.setExecutor(gameManager)
     }
 
     override fun onDisable() {

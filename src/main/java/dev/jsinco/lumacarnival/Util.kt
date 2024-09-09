@@ -13,7 +13,9 @@ object Util {
 
     val PREFIX: Component = mm("<b><#8EC4F7>C<#C7B0E1>a<#FF9CCB>r<#EBC9AC>n<#D7F58D>i<#FFFE8A>v<#FFE978>a<#FFD365>l</b> <dark_gray>»<white> ")
 
-    fun msg(player: CommandSender, msg: String) {
+    @JvmStatic
+    fun msg(player: CommandSender?, msg: String) {
+        if (player == null) return
         player.sendMessage(PREFIX.append(mm(msg)))
     }
 

@@ -24,8 +24,11 @@ object CarnivalToken {
         return itemStack.itemMeta?.persistentDataContainer?.has(key, PersistentDataType.BOOLEAN) ?: false
     }
 
-    fun give(player: Player, amt: Int) {
+    @JvmStatic
+    fun give(player: Player?, amt: Int) {
+        if (player == null) return
         Util.giveItem(player, CARNIVAL_TOKEN.asQuantity(amt))
+        Util.msg(player, "You have received <b><gold>$amt</gold></b> <gradient:#8ec4f7:#ff9ccb>Candied Apples</gradient>!")
     }
 
     fun take(player: Player, amt: Int): Boolean {

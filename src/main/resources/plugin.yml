@@ -7,3 +7,6 @@ depend:
 softdepend:
   - EvenMoreFish
   - JetsPrisonMines
+commands:
+  lumacarnival:
+    description: test

@@ -3,6 +3,8 @@ package dev.jsinco.lumacarnival.games.impls
 import com.oheers.fish.api.EMFFishEvent
 import dev.jsinco.lumacarnival.CarnivalMain
 import dev.jsinco.lumacarnival.Util
+import dev.jsinco.lumacarnival.games.GameCommandExecutedEvent
+import dev.jsinco.lumacarnival.games.GameSubCommand
 import dev.jsinco.lumacarnival.games.GameTask
 import dev.jsinco.lumacarnival.obj.AppleBobberEarner
 import dev.jsinco.lumacarnival.obj.Cuboid
@@ -13,9 +15,11 @@ import org.bukkit.NamespacedKey
 import org.bukkit.World
 import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.Item
+import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
+import org.bukkit.event.entity.EntityPickupItemEvent
 import org.bukkit.event.player.PlayerFishEvent
 import org.bukkit.event.player.PlayerItemConsumeEvent
 import org.bukkit.inventory.ItemStack
@@ -23,6 +27,15 @@ import org.bukkit.persistence.PersistentDataType
 
 
 class AppleBobbingGame : GameTask() {
+
+    class AppleBobbingEMFBlocker(private val world: World) : Listener {
+        @EventHandler(priority = EventPriority.LOWEST)
+        fun onEMFFish(event: EMFFishEvent) {
+            if (event.player.world == world) {
+                event.isCancelled = true
+            }
+        }
+    }
 
     companion object {
         private val key = NamespacedKey(CarnivalMain.instance, "apple-bobbing")
@@ -49,19 +62,22 @@ class AppleBobbingGame : GameTask() {
     }
 
     override fun initializeGame() {
-//        val recipeKey = NamespacedKey(CarnivalMain.instance, "soaked-apple-recipe")
-//        if (Bukkit.getRecipe(recipeKey) != null) {
-//            Bukkit.removeRecipe(recipeKey)
-//        }
-//        val recipe = ShapedRecipe(recipeKey, CarnivalToken.CARNIVAL_TOKEN.asQuantity(2))
-//            .shape("AAA", "ABA", "AAA")
-//            .setIngredient('A', regularApple)
-//        Bukkit.addRecipe(recipe)
+        val file = CarnivalMain.saves
+        val list = file.getStringList("AppleBobberEarner") ?: return
+        list.forEach {
+            appleBobberEarners.add(AppleBobberEarner.deserialize(it))
+        }
 
         // block emf
         if (Bukkit.getPluginManager().isPluginEnabled("EvenMoreFish")) {
             Bukkit.getPluginManager().registerEvents(AppleBobbingEMFBlocker(area.world), CarnivalMain.instance)
         }
+    }
+
+    override fun stopGame() {
+        val file = CarnivalMain.saves
+        file.set("AppleBobberEarner", appleBobberEarners.map { it.serialize() })
+        file.save()
     }
 
 
@@ -98,16 +114,58 @@ class AppleBobbingGame : GameTask() {
 
         val item = event.caught as? Item ?: return
         item.itemStack = regularApple
-        val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(player.uniqueId, 0)
+        val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(player.uniqueId, 0).also { appleBobberEarners.add(it) }
         earner.increaseAmount(1)
     }
 
-    class AppleBobbingEMFBlocker(private val world: World) : Listener {
-        @EventHandler(priority = EventPriority.LOWEST)
-        fun onEMFFish(event: EMFFishEvent) {
-            if (event.player.world == world) {
-                event.isCancelled = true
-            }
+    @EventHandler
+    fun onPlayerPickupApple(event: EntityPickupItemEvent) {
+        val player = event.entity as? Player ?: return
+        val item = event.item
+        if (item.itemStack.itemMeta?.persistentDataContainer?.has(key, PersistentDataType.BOOLEAN) == true) {
+            event.isCancelled = true
+            item.remove()
+
+            val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(player.uniqueId, 0).also { appleBobberEarners.add(it) }
+            earner.increaseAmount(1)
+            Util.msg(player, "You picked up a soaked apple!")
         }
+    }
+
+    @GameSubCommand("applebobber-cashin", "lumacarnival.applebobber", true)
+    fun appleBobberCashInCommand(event: GameCommandExecutedEvent) {
+        val player = event.commandSender as Player
+        val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: return
+        earner.cashIn(player)
+        Util.msg(player, "You have cashed in your soaked apples!")
+    }
+
+    @GameSubCommand("applebobber-upgrade", "lumacarnival.applebobber", true)
+    fun upgradeFishingRod(event: GameCommandExecutedEvent) {
+        val player = event.commandSender as Player
+
+        val fishingRod = player.inventory.itemInMainHand
+        if (!LumaItemsAPI.getInstance().isCustomItem(fishingRod, "carnivalfishingrod")) {
+            Util.msg(player, "You need a special fishing rod to upgrade!")
+            return
+        }
+
+        val effLevel = fishingRod.enchantments[Enchantment.LURE] ?: 0
+
+        val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(player.uniqueId, 0).also { appleBobberEarners.add(it) }
+        val cost = 60 * (effLevel + 1)
+
+        if (earner.permanentAmount < cost) {
+            Util.msg(player, "You need $cost soaked apples to upgrade your fishing rod to the next level! You have ${earner.permanentAmount} soaked apples.")
+            return
+        }
+
+
+        if (effLevel >= 4) {
+            Util.msg(player, "Your fishing rod is already maxed out!")
+            return
+        }
+
+        fishingRod.addUnsafeEnchantment(Enchantment.LURE, effLevel + 1)
     }
 }

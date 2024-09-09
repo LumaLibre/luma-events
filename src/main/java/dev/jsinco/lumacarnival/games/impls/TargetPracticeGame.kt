@@ -2,23 +2,27 @@ package dev.jsinco.lumacarnival.games.impls
 
 import dev.jsinco.lumacarnival.CarnivalMain
 import dev.jsinco.lumacarnival.Util
+import dev.jsinco.lumacarnival.games.GameCommandExecutedEvent
+import dev.jsinco.lumacarnival.games.GameSubCommand
 import dev.jsinco.lumacarnival.games.GameTask
 import dev.jsinco.lumacarnival.games.TaskAttributes
 import dev.jsinco.lumacarnival.obj.Cuboid
+import dev.jsinco.lumacarnival.obj.TargetPracticeEarner
+import dev.jsinco.lumaitems.api.LumaItemsAPI
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
-import org.bukkit.NamespacedKey
 import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
+import org.bukkit.event.EventPriority
 import org.bukkit.event.entity.CreatureSpawnEvent
 import org.bukkit.event.entity.ProjectileHitEvent
+import org.bukkit.event.entity.ProjectileLaunchEvent
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
-import org.bukkit.persistence.PersistentDataType
 import java.util.concurrent.ConcurrentLinkedQueue
 
 @TaskAttributes(taskTime = 50L, async = true)
@@ -30,16 +34,9 @@ class TargetPracticeGame : GameTask() {
                 addEnchant(Enchantment.ARROW_DAMAGE, 1, true)
             }
         }
-        val targetToken = ItemStack(Material.TARGET).apply {
-            itemMeta = itemMeta?.apply {
-                displayName(Util.mm("<b><gradient:#fdee21:#ed1e26>Flyi</gradient><gradient:#ed1e26:#22a9e1>ng Ta</gradient><gradient:#22a9e1:#ffffff>rget</gradient></b>"))
-                lore(Util.mml("<gray>A target that flies through the air"))
-                addEnchant(Enchantment.DURABILITY, 10, true)
-                persistentDataContainer.set(NamespacedKey(CarnivalMain.instance, "target-practice"), PersistentDataType.BOOLEAN, true)
-            }
-        }
+
         val activeTargets: ConcurrentLinkedQueue<LivingEntity> = ConcurrentLinkedQueue()
-        val queuedEarners: MutableMap<Player, Int> = mutableMapOf()
+        val totalTargetEarners: ConcurrentLinkedQueue<TargetPracticeEarner> = ConcurrentLinkedQueue()
     }
 
     private val configSec = CarnivalMain.config.getConfigurationSection("target-practice")
@@ -47,6 +44,10 @@ class TargetPracticeGame : GameTask() {
     private val area: Cuboid = configSec.getString("area")?.let { Util.getArea(it) }
         ?: throw RuntimeException("Invalid area in config")
     private val maxTargets: Int = configSec.getInt("max")
+
+    override fun enabled(): Boolean {
+        return configSec.getBoolean("enabled")
+    }
 
     fun getSafeAreaLocation(): Location {
         var loc = area.randomLocation
@@ -75,10 +76,20 @@ class TargetPracticeGame : GameTask() {
 
     override fun initializeGame() {
         activeTargets.add(spawnTarget())
+
+        val file = CarnivalMain.saves
+        val list = file.getStringList("TargetPracticeEarner") ?: return
+        list.forEach {
+            totalTargetEarners.add(TargetPracticeEarner.deserialize(it))
+        }
     }
 
 
     override fun stopGame() {
+        val file = CarnivalMain.saves
+        file.set("TargetPracticeEarner", totalTargetEarners.map { it.serialize() })
+        file.save()
+
         if (activeTargets.isNotEmpty()) {
             activeTargets.forEach { it.remove() }
             activeTargets.clear()
@@ -103,18 +114,20 @@ class TargetPracticeGame : GameTask() {
             })
         }
 
-        for (key in queuedEarners) {
-            val player = key.key
-            val amount = key.value
-            Util.giveItem(player, targetToken.asQuantity(amount))
-            Util.msg(player, "<yellow>+${amount}</yellow> targets hit!")
+        for (targetEarner in totalTargetEarners) {
+            Util.msg(targetEarner.player, "<b><gold>+${targetEarner.queuedAmount}</gold></b> targets hit! <dark_gray>(Total: ${targetEarner.amount})")
+            targetEarner.queuedAmount = 0
         }
     }
 
-    override fun enabled(): Boolean {
-        return configSec.getBoolean("enabled")
-    }
 
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    fun onProjectileLaunch(event: ProjectileLaunchEvent) {
+        if (area.isIn(event.entity.location)) {
+            event.isCancelled = false
+        }
+    }
 
     @EventHandler
     fun onProjectileHit(event: ProjectileHitEvent) {
@@ -129,9 +142,47 @@ class TargetPracticeGame : GameTask() {
             val target = event.hitEntity as LivingEntity
             target.remove()
             activeTargets.remove(target)
-            queuedEarners[player] = queuedEarners.getOrDefault(player, 0) + 1
+
+            val targetEarner = totalTargetEarners.find { it.playerUUID == player.uniqueId } ?: TargetPracticeEarner(player.uniqueId, 0).also { totalTargetEarners.add(it) }
+            targetEarner.increaseAmount(1)
+            targetEarner.increaseQueuedAmount(1)
         }
 
         event.entity.remove()
+    }
+
+    @GameSubCommand("targetpractice-cashin", "lumacarnival.targetpractice", true)
+    fun targetPracticeEarnerCashInCommand(event: GameCommandExecutedEvent) {
+        val player = event.commandSender as Player
+        val targetEarner = totalTargetEarners.find { it.playerUUID == player.uniqueId } ?: return
+        targetEarner.cashIn(player)
+        Util.msg(player, "<green>You have cashed in your targets!")
+    }
+
+    @GameSubCommand("targetpractice-upgrade", "lumacarnival.targetpractice", true)
+    fun upgradeBow(event: GameCommandExecutedEvent) {
+        val player = event.commandSender as Player
+
+        val bow = player.inventory.itemInMainHand
+        if (!LumaItemsAPI.getInstance().isCustomItem(bow, "carnivaltargetpracticebow")) {
+            Util.msg(player, "<red>You need a special bow to upgrade!")
+            return
+        }
+
+        val effLevel = bow.enchantments[Enchantment.QUICK_CHARGE] ?: 0
+
+        val targetEarner = totalTargetEarners.find { it.playerUUID == player.uniqueId } ?: TargetPracticeEarner(player.uniqueId, 0).also { totalTargetEarners.add(it) }
+        val cost = 1000 * (effLevel + 1)
+
+        if (targetEarner.permanentAmount < cost) {
+            Util.msg(player, "<red>You need $cost targets hit to upgrade your bow to the next level! <dark_gray>You have ${targetEarner.permanentAmount} targets hit.")
+            return
+        } else if (effLevel >= 4) {
+            Util.msg(player, "<red>Your bow is already maxed out!")
+            return
+        }
+
+        bow.addEnchantment(Enchantment.QUICK_CHARGE, effLevel + 1)
+        Util.msg(player, "<green>Your bow has been upgraded to level ${effLevel + 1}!")
     }
 }
