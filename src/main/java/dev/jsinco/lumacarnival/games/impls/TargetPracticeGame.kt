@@ -7,6 +7,7 @@ import dev.jsinco.lumacarnival.games.GameSubCommand
 import dev.jsinco.lumacarnival.games.GameTask
 import dev.jsinco.lumacarnival.games.TaskAttributes
 import dev.jsinco.lumacarnival.obj.Cuboid
+import dev.jsinco.lumacarnival.obj.Sphere
 import dev.jsinco.lumacarnival.obj.TargetPracticeEarner
 import dev.jsinco.lumaitems.api.LumaItemsAPI
 import org.bukkit.Bukkit
@@ -23,6 +24,7 @@ import org.bukkit.event.entity.ProjectileHitEvent
 import org.bukkit.event.entity.ProjectileLaunchEvent
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 
 @TaskAttributes(taskTime = 50L, async = true)
@@ -43,39 +45,44 @@ class TargetPracticeGame : GameTask() {
         ?: throw RuntimeException("Missing target-practice section in config")
     private val area: Cuboid = configSec.getString("area")?.let { Util.getArea(it) }
         ?: throw RuntimeException("Invalid area in config")
+    private val sphere: Sphere = configSec.getString("sphere")?.let { Sphere(Util.getLocation(it), 10.0, 50.0) }
+        ?: throw RuntimeException("Invalid sphere in config")
     private val maxTargets: Int = configSec.getInt("max")
 
     override fun enabled(): Boolean {
         return configSec.getBoolean("enabled")
     }
 
-    fun getSafeAreaLocation(): Location {
-        var loc = area.randomLocation
-        var tries = 0
-        while (!loc.block.isEmpty && tries < 10) {
-            loc = area.randomLocation
-            tries++
+    fun getSafeAreaLocation(): CompletableFuture<Location> {
+        return CompletableFuture.supplyAsync {
+            var loc = area.randomLocation
+            while (sphere.isInSphere(loc) && !loc.block.isEmpty) {
+                loc = area.randomLocation
+            }
+            loc
         }
-        return loc
     }
 
 
-    fun spawnTarget(): LivingEntity {
+    fun spawnTarget() {
         // I'll just use armor stands for now.
-        val loc = getSafeAreaLocation()
-        val armorstand = area.world.createEntity(loc, ArmorStand::class.java)
-        armorstand.isVisible = false
-        armorstand.isPersistent = false
-        armorstand.isInvulnerable = false
-        armorstand.setItem(EquipmentSlot.HEAD, targetItemStack)
-        armorstand.setCanTick(false)
-        armorstand.spawnAt(loc, CreatureSpawnEvent.SpawnReason.CUSTOM)
-        return armorstand
+        getSafeAreaLocation().thenAccept { loc ->
+            Bukkit.getScheduler().runTask(CarnivalMain.instance, Runnable {
+                val armorstand = area.world.createEntity(loc, ArmorStand::class.java)
+                armorstand.isVisible = false
+                armorstand.isPersistent = false
+                armorstand.isInvulnerable = false
+                armorstand.setItem(EquipmentSlot.HEAD, targetItemStack)
+                armorstand.setCanTick(false)
+                armorstand.spawnAt(loc, CreatureSpawnEvent.SpawnReason.CUSTOM)
+                activeTargets.add(armorstand)
+            })
+        }
     }
 
 
     override fun initializeGame() {
-        activeTargets.add(spawnTarget())
+        spawnTarget()
 
         val file = CarnivalMain.saves
         val list = file.getStringList("TargetPracticeEarner") ?: return
@@ -85,15 +92,10 @@ class TargetPracticeGame : GameTask() {
     }
 
 
-    override fun stopGame() {
+    override fun save() {
         val file = CarnivalMain.saves
         file.set("TargetPracticeEarner", totalTargetEarners.map { it.serialize() })
         file.save()
-
-        if (activeTargets.isNotEmpty()) {
-            activeTargets.forEach { it.remove() }
-            activeTargets.clear()
-        }
     }
 
     override fun tick() {
@@ -109,9 +111,7 @@ class TargetPracticeGame : GameTask() {
         }
 
         if (activeTargets.size < maxTargets) {
-            Bukkit.getScheduler().runTask(CarnivalMain.instance, Runnable {
-                activeTargets.add(spawnTarget())
-            })
+            spawnTarget()
         }
 
         for (targetEarner in totalTargetEarners) {
@@ -154,7 +154,7 @@ class TargetPracticeGame : GameTask() {
     @GameSubCommand("targetpractice-cashin", "lumacarnival.targetpractice", true)
     fun targetPracticeEarnerCashInCommand(event: GameCommandExecutedEvent) {
         val player = event.commandSender as Player
-        val targetEarner = totalTargetEarners.find { it.playerUUID == player.uniqueId } ?: return
+        val targetEarner = totalTargetEarners.find { it.playerUUID == player.uniqueId } ?: TargetPracticeEarner(player.uniqueId, 0).also { totalTargetEarners.add(it) }
         targetEarner.cashIn(player)
         Util.msg(player, "<green>You have cashed in your targets!")
     }

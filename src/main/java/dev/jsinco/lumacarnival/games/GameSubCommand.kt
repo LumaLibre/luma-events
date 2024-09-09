@@ -1,7 +1,5 @@
 package dev.jsinco.lumacarnival.games
 
-import java.lang.reflect.Method
-
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class GameSubCommand(

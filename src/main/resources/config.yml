@@ -1,6 +1,9 @@
+# screw this event
 target-practice:
   enabled: true
   area: "world,615,131,411,620,136,416"
+  sphere: "world,615,131,411"
+  max: 30
 
 apple-bobbing:
   enabled: true
@@ -8,7 +11,7 @@ apple-bobbing:
   max: 30
 
 underwater-animals:
-  enabled: true
+  enabled: false
   area: "world,601,131,424,595,134,432"
   max: 60
 

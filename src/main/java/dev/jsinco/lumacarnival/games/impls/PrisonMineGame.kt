@@ -40,7 +40,7 @@ class PrisonMineGame : GameTask() {
         }
     }
 
-    override fun stopGame() {
+    override fun save() {
         val file = CarnivalMain.saves
         file.set("PrisonMineEarner", prisonMineEarners.map { it.serialize() })
         file.save()

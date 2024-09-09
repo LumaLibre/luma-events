@@ -75,6 +75,12 @@ class GameManager : TabExecutor {
         activeGames.clear()
     }
 
+    fun saveAll() {
+        for (game in activeGames) {
+            game.save()
+        }
+    }
+
 
     private fun getAllCommands(clazz: GameTask): Map<GameSubCommand, Method> {
         val commands = mutableMapOf<GameSubCommand, Method>()

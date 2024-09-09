@@ -8,6 +8,7 @@ import dev.jsinco.lumacarnival.games.GameManager
 import dev.jsinco.lumacarnival.games.impls.PrisonMineGame
 import dev.jsinco.lumacarnival.games.impls.TargetPracticeGame
 import dev.jsinco.lumacarnival.games.impls.UnderwaterAnimalCatchingGame
+import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
 
 
@@ -22,6 +23,7 @@ class CarnivalMain : JavaPlugin() {
 
 
         fun reload() {
+            gameManager.saveAll()
             gameManager.stop()
             config = SnakeYamlConfig("config.yml")
             saves = JsonSavingSchema("saves.json")
@@ -47,9 +49,16 @@ class CarnivalMain : JavaPlugin() {
             .startGameTicker()
 
         getCommand("lumacarnival")!!.setExecutor(gameManager)
+
+
+        Bukkit.getScheduler().runTaskTimerAsynchronously(this, Runnable {
+            gameManager.saveAll()
+            logger.info("Autosaved!")
+        }, 0, 12000L)
     }
 
     override fun onDisable() {
+        gameManager.saveAll()
         gameManager.stop()
     }
 }

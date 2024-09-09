@@ -74,7 +74,8 @@ class AppleBobbingGame : GameTask() {
         }
     }
 
-    override fun stopGame() {
+
+    override fun save() {
         val file = CarnivalMain.saves
         file.set("AppleBobberEarner", appleBobberEarners.map { it.serialize() })
         file.save()
@@ -135,7 +136,7 @@ class AppleBobbingGame : GameTask() {
     @GameSubCommand("applebobber-cashin", "lumacarnival.applebobber", true)
     fun appleBobberCashInCommand(event: GameCommandExecutedEvent) {
         val player = event.commandSender as Player
-        val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: return
+        val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(player.uniqueId, 0).also { appleBobberEarners.add(it) }
         earner.cashIn(player)
         Util.msg(player, "You have cashed in your soaked apples!")
     }

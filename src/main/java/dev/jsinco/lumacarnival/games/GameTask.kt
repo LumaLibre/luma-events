@@ -14,4 +14,5 @@ abstract class GameTask : Listener {
 
     open fun tick() {}
 
+    open fun save() {}
 }
