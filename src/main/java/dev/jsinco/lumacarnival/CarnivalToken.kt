@@ -42,7 +42,7 @@ object CarnivalToken {
             if (item != null && item.isSimilar(CARNIVAL_TOKEN)) {
                 totalFound += item.amount
                 if (totalFound >= amt) {
-                    player.inventory.removeItem(CARNIVAL_TOKEN)
+                    player.inventory.removeItem(CARNIVAL_TOKEN.asQuantity(amt))
                     return true
                 }
             }

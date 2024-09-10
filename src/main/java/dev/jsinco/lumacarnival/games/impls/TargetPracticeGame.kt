@@ -27,7 +27,7 @@ import org.bukkit.inventory.ItemStack
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 
-@TaskAttributes(taskTime = 50L, async = true)
+@TaskAttributes(taskTime = 100L, async = true)
 class TargetPracticeGame : GameTask() {
 
     companion object {
@@ -130,8 +130,10 @@ class TargetPracticeGame : GameTask() {
             }
         }
 
-        if (activeTargets.size < maxTargets) {
-            spawnTarget()
+        if (activeTargets.size < maxTargets && area.players.isNotEmpty()) {
+            for (i in 0 until maxTargets - activeTargets.size) {
+                spawnTarget()
+            }
         }
 
         for (targetEarner in totalTargetEarners) {
@@ -174,7 +176,7 @@ class TargetPracticeGame : GameTask() {
         event.entity.remove()
     }
 
-    @GameSubCommand("targetpractice-cashin", "lumacarnival.targetpractice", true)
+    @GameSubCommand("targetpractice-cashin", "lumacarnival.player", true)
     fun targetPracticeEarnerCashInCommand(event: GameCommandExecutedEvent) {
         val player = event.commandSender as Player
         val targetEarner = totalTargetEarners.find { it.playerUUID == player.uniqueId } ?: TargetPracticeEarner(player.uniqueId, 0).also { totalTargetEarners.add(it) }
@@ -182,7 +184,7 @@ class TargetPracticeGame : GameTask() {
         Util.msg(player, "<green>You have cashed in your targets!")
     }
 
-    @GameSubCommand("targetpractice-upgrade", "lumacarnival.targetpractice", true)
+    @GameSubCommand("targetpractice-upgrade", "lumacarnival.player", true)
     fun upgradeBow(event: GameCommandExecutedEvent) {
         val player = event.commandSender as Player
 
@@ -195,7 +197,7 @@ class TargetPracticeGame : GameTask() {
         val effLevel = bow.enchantments[Enchantment.QUICK_CHARGE] ?: 0
 
         val targetEarner = totalTargetEarners.find { it.playerUUID == player.uniqueId } ?: TargetPracticeEarner(player.uniqueId, 0).also { totalTargetEarners.add(it) }
-        val cost = 1000 * (effLevel + 1)
+        val cost = 50 * (effLevel + 1)
 
         if (targetEarner.permanentAmount < cost) {
             Util.msg(player, "<red>You need $cost targets hit to upgrade your bow to the next level! <dark_gray>You have ${targetEarner.permanentAmount} targets hit.")

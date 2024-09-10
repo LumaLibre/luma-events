@@ -41,8 +41,8 @@ class AppleBobbingGame : GameTask() {
         private val key = NamespacedKey(CarnivalMain.instance, "apple-bobbing")
         private val regularApple = ItemStack(Material.APPLE).apply {
             itemMeta = itemMeta?.apply {
-                displayName(Util.mm("<b><gradient:#569BDD:#DD3535>Soaked</gradient><gradient:#DD3535:#DD3535> Apple</gradient></b>"))
-                lore(Util.mml("<light_gray>A delicious apple soaked in water"))
+                //displayName(Util.mm("<b><gradient:#569BDD:#DD3535>Soaked</gradient><gradient:#DD3535:#DD3535> Apple</gradient></b>"))
+                //lore(Util.mml("<light_gray>A delicious apple soaked in water"))
                 addEnchant(Enchantment.DURABILITY, 10, true)
                 persistentDataContainer.set(key, PersistentDataType.BOOLEAN, true)
             }
@@ -133,7 +133,7 @@ class AppleBobbingGame : GameTask() {
         }
     }
 
-    @GameSubCommand("applebobber-cashin", "lumacarnival.applebobber", true)
+    @GameSubCommand("applebobber-cashin", "lumacarnival.player", true)
     fun appleBobberCashInCommand(event: GameCommandExecutedEvent) {
         val player = event.commandSender as Player
         val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(player.uniqueId, 0).also { appleBobberEarners.add(it) }
@@ -141,7 +141,7 @@ class AppleBobbingGame : GameTask() {
         Util.msg(player, "You have cashed in your soaked apples!")
     }
 
-    @GameSubCommand("applebobber-upgrade", "lumacarnival.applebobber", true)
+    @GameSubCommand("applebobber-upgrade", "lumacarnival.player", true)
     fun upgradeFishingRod(event: GameCommandExecutedEvent) {
         val player = event.commandSender as Player
 
@@ -154,7 +154,7 @@ class AppleBobbingGame : GameTask() {
         val effLevel = fishingRod.enchantments[Enchantment.LURE] ?: 0
 
         val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(player.uniqueId, 0).also { appleBobberEarners.add(it) }
-        val cost = 60 * (effLevel + 1)
+        val cost = 35 * (effLevel + 1)
 
         if (earner.permanentAmount < cost) {
             Util.msg(player, "You need $cost soaked apples to upgrade your fishing rod to the next level! You have ${earner.permanentAmount} soaked apples.")

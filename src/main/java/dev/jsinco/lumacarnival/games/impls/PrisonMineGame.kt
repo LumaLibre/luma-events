@@ -80,7 +80,7 @@ class PrisonMineGame : GameTask() {
     }
 
 
-    @GameSubCommand("prisonmine-cashin", "lumacarnival.prisonmine", true)
+    @GameSubCommand("prisonmine-cashin", "lumacarnival.player", true)
     fun prisonMineEarnerCashInCommand(event: GameCommandExecutedEvent) {
         val player = event.commandSender as Player
         val prisonMineEarner = prisonMineEarners.find { it.playerUUID == player.uniqueId } ?: return
@@ -88,7 +88,7 @@ class PrisonMineGame : GameTask() {
         Util.msg(player, "<green>You have cashed in your mined blocks!")
     }
 
-    @GameSubCommand("prisonmine-upgrade", "lumacarnival.prisonmine", true)
+    @GameSubCommand("prisonmine-upgrade", "lumacarnival.player", true)
     fun upgradePickaxe(event: GameCommandExecutedEvent) {
         val player = event.commandSender as Player
 
@@ -101,7 +101,7 @@ class PrisonMineGame : GameTask() {
         val effLevel = pickaxe.enchantments[Enchantment.DIG_SPEED] ?: 0
 
         val prisonMineEarner = prisonMineEarners.find { it.playerUUID == player.uniqueId } ?: PrisonMineEarner(player.uniqueId, 0).also { prisonMineEarners.add(it) }
-        val cost = 1000 * (effLevel + 1)
+        val cost = 1300 * (effLevel + 1)
 
         if (prisonMineEarner.permanentAmount < cost) {
             Util.msg(player, "<red>You need $cost mined blocks to upgrade your pickaxe to the next level! <dark_gray>You have ${prisonMineEarner.permanentAmount} mined blocks.")

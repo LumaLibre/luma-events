@@ -38,12 +38,15 @@ public class TargetPracticeEarner implements GameEarner {
 
     @Nullable
     public Player getPlayer() {
+        if (player == null) {
+            player = Bukkit.getPlayer(playerUUID);
+        }
         return player;
     }
 
 
     public void cashIn(Player player) {
-        int tokenAmount = totalAmount / 80;
+        int tokenAmount = totalAmount / 60;
         Util.msg(getPlayer(), "Cashing in targets for <b><gold>$tokenAmount</gold></b> tokens!");
         CarnivalToken.give(player, tokenAmount);
     }

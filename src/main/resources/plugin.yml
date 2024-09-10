@@ -8,5 +8,7 @@ softdepend:
   - EvenMoreFish
   - JetsPrisonMines
 commands:
+  lumacarnival-gamemanager:
+    description: desc
   lumacarnival:
-    description: test
+    description: desc

@@ -31,6 +31,10 @@ object Util {
         return m.map { mm(it) }
     }
 
+    fun mml(m: List<String>): List<Component> {
+        return m.map { mm(it) }
+    }
+
 
     fun giveItem(player: Player, item: ItemStack) {
         for (i in 0..35) {
