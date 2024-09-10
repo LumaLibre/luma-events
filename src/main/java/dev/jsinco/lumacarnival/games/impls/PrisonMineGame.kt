@@ -6,7 +6,7 @@ import dev.jsinco.lumacarnival.games.GameCommandExecutedEvent
 import dev.jsinco.lumacarnival.games.GameSubCommand
 import dev.jsinco.lumacarnival.games.GameTask
 import dev.jsinco.lumacarnival.obj.Cuboid
-import dev.jsinco.lumacarnival.obj.PrisonMineEarner
+import dev.jsinco.lumacarnival.obj.earners.PrisonMineEarner
 import dev.jsinco.lumaitems.api.LumaItemsAPI
 import org.bukkit.Bukkit
 import org.bukkit.Color
@@ -65,7 +65,10 @@ class PrisonMineGame : GameTask() {
         }
 
         event.isCancelled = false
-        val prisonMineEarner = prisonMineEarners.find { it.playerUUID == player.uniqueId } ?: PrisonMineEarner(player.uniqueId, 0).also { prisonMineEarners.add(it) }
+        val prisonMineEarner = prisonMineEarners.find { it.playerUUID == player.uniqueId } ?: PrisonMineEarner(
+            player.uniqueId,
+            0
+        ).also { prisonMineEarners.add(it) }
         prisonMineEarner.increaseAmount(1)
 
         // effects
@@ -100,7 +103,10 @@ class PrisonMineGame : GameTask() {
 
         val effLevel = pickaxe.enchantments[Enchantment.DIG_SPEED] ?: 0
 
-        val prisonMineEarner = prisonMineEarners.find { it.playerUUID == player.uniqueId } ?: PrisonMineEarner(player.uniqueId, 0).also { prisonMineEarners.add(it) }
+        val prisonMineEarner = prisonMineEarners.find { it.playerUUID == player.uniqueId } ?: PrisonMineEarner(
+            player.uniqueId,
+            0
+        ).also { prisonMineEarners.add(it) }
         val cost = 1300 * (effLevel + 1)
 
         if (prisonMineEarner.permanentAmount < cost) {

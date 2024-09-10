@@ -8,7 +8,7 @@ import dev.jsinco.lumacarnival.games.GameTask
 import dev.jsinco.lumacarnival.games.TaskAttributes
 import dev.jsinco.lumacarnival.obj.Cuboid
 import dev.jsinco.lumacarnival.obj.Sphere
-import dev.jsinco.lumacarnival.obj.TargetPracticeEarner
+import dev.jsinco.lumacarnival.obj.earners.TargetPracticeEarner
 import dev.jsinco.lumaitems.api.LumaItemsAPI
 import org.bukkit.Bukkit
 import org.bukkit.Location
@@ -168,7 +168,10 @@ class TargetPracticeGame : GameTask() {
             target.remove()
             activeTargets.remove(target)
 
-            val targetEarner = totalTargetEarners.find { it.playerUUID == player.uniqueId } ?: TargetPracticeEarner(player.uniqueId, 0).also { totalTargetEarners.add(it) }
+            val targetEarner = totalTargetEarners.find { it.playerUUID == player.uniqueId } ?: TargetPracticeEarner(
+                player.uniqueId,
+                0
+            ).also { totalTargetEarners.add(it) }
             targetEarner.increaseAmount(1)
             targetEarner.increaseQueuedAmount(1)
         }
@@ -179,7 +182,10 @@ class TargetPracticeGame : GameTask() {
     @GameSubCommand("targetpractice-cashin", "lumacarnival.player", true)
     fun targetPracticeEarnerCashInCommand(event: GameCommandExecutedEvent) {
         val player = event.commandSender as Player
-        val targetEarner = totalTargetEarners.find { it.playerUUID == player.uniqueId } ?: TargetPracticeEarner(player.uniqueId, 0).also { totalTargetEarners.add(it) }
+        val targetEarner = totalTargetEarners.find { it.playerUUID == player.uniqueId } ?: TargetPracticeEarner(
+            player.uniqueId,
+            0
+        ).also { totalTargetEarners.add(it) }
         targetEarner.cashIn(player)
         Util.msg(player, "<green>You have cashed in your targets!")
     }
@@ -196,7 +202,10 @@ class TargetPracticeGame : GameTask() {
 
         val effLevel = bow.enchantments[Enchantment.QUICK_CHARGE] ?: 0
 
-        val targetEarner = totalTargetEarners.find { it.playerUUID == player.uniqueId } ?: TargetPracticeEarner(player.uniqueId, 0).also { totalTargetEarners.add(it) }
+        val targetEarner = totalTargetEarners.find { it.playerUUID == player.uniqueId } ?: TargetPracticeEarner(
+            player.uniqueId,
+            0
+        ).also { totalTargetEarners.add(it) }
         val cost = 50 * (effLevel + 1)
 
         if (targetEarner.permanentAmount < cost) {

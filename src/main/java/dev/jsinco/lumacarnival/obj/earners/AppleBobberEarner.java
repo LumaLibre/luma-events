@@ -1,4 +1,4 @@
-package dev.jsinco.lumacarnival.obj;
+package dev.jsinco.lumacarnival.obj.earners;
 
 import dev.jsinco.lumacarnival.CarnivalToken;
 import org.bukkit.entity.Player;
@@ -24,9 +24,10 @@ public class AppleBobberEarner implements GameEarner {
         this.amount = amount;
     }
 
+    @Override
     public void cashIn(Player player) {
         int tokenAmount = amount / 15;
-        amount = amount % 30;
+        amount = amount % 15;
         CarnivalToken.give(player, tokenAmount);
     }
 

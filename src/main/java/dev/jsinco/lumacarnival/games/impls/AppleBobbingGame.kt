@@ -6,7 +6,7 @@ import dev.jsinco.lumacarnival.Util
 import dev.jsinco.lumacarnival.games.GameCommandExecutedEvent
 import dev.jsinco.lumacarnival.games.GameSubCommand
 import dev.jsinco.lumacarnival.games.GameTask
-import dev.jsinco.lumacarnival.obj.AppleBobberEarner
+import dev.jsinco.lumacarnival.obj.earners.AppleBobberEarner
 import dev.jsinco.lumacarnival.obj.Cuboid
 import dev.jsinco.lumaitems.api.LumaItemsAPI
 import org.bukkit.Bukkit
@@ -115,7 +115,10 @@ class AppleBobbingGame : GameTask() {
 
         val item = event.caught as? Item ?: return
         item.itemStack = regularApple
-        val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(player.uniqueId, 0).also { appleBobberEarners.add(it) }
+        val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(
+            player.uniqueId,
+            0
+        ).also { appleBobberEarners.add(it) }
         earner.increaseAmount(1)
     }
 
@@ -127,7 +130,10 @@ class AppleBobbingGame : GameTask() {
             event.isCancelled = true
             item.remove()
 
-            val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(player.uniqueId, 0).also { appleBobberEarners.add(it) }
+            val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(
+                player.uniqueId,
+                0
+            ).also { appleBobberEarners.add(it) }
             earner.increaseAmount(1)
             Util.msg(player, "You picked up a soaked apple!")
         }
@@ -136,7 +142,10 @@ class AppleBobbingGame : GameTask() {
     @GameSubCommand("applebobber-cashin", "lumacarnival.player", true)
     fun appleBobberCashInCommand(event: GameCommandExecutedEvent) {
         val player = event.commandSender as Player
-        val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(player.uniqueId, 0).also { appleBobberEarners.add(it) }
+        val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(
+            player.uniqueId,
+            0
+        ).also { appleBobberEarners.add(it) }
         earner.cashIn(player)
         Util.msg(player, "You have cashed in your soaked apples!")
     }
@@ -153,7 +162,10 @@ class AppleBobbingGame : GameTask() {
 
         val effLevel = fishingRod.enchantments[Enchantment.LURE] ?: 0
 
-        val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(player.uniqueId, 0).also { appleBobberEarners.add(it) }
+        val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(
+            player.uniqueId,
+            0
+        ).also { appleBobberEarners.add(it) }
         val cost = 35 * (effLevel + 1)
 
         if (earner.permanentAmount < cost) {

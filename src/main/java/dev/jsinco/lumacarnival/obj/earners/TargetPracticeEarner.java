@@ -1,4 +1,4 @@
-package dev.jsinco.lumacarnival.obj;
+package dev.jsinco.lumacarnival.obj.earners;
 
 import dev.jsinco.lumacarnival.CarnivalToken;
 import dev.jsinco.lumacarnival.Util;
@@ -44,7 +44,7 @@ public class TargetPracticeEarner implements GameEarner {
         return player;
     }
 
-
+    @Override
     public void cashIn(Player player) {
         int tokenAmount = totalAmount / 60;
         Util.msg(getPlayer(), "Cashing in targets for <b><gold>$tokenAmount</gold></b> tokens!");

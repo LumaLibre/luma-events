@@ -1,4 +1,4 @@
-package dev.jsinco.lumacarnival.obj;
+package dev.jsinco.lumacarnival.obj.earners;
 
 import dev.jsinco.lumacarnival.CarnivalToken;
 import org.bukkit.entity.Player;
@@ -22,10 +22,11 @@ public class PrisonMineEarner implements GameEarner {
         this.amount = amount;
     }
 
+    @Override
     public void cashIn(Player player) {
-        int tokenAmount = amount / 500;
+        int tokenAmount = amount / 600;
+        amount = amount % 600;
         CarnivalToken.give(player, tokenAmount);
-        amount = amount % 500;
     }
 
     public UUID getPlayerUUID() {

@@ -5,18 +5,27 @@ import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.Player
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import org.bukkit.event.player.PlayerItemConsumeEvent
+import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
 
-object CarnivalToken {
+object CarnivalToken : Listener {
 
     private val key = NamespacedKey(CarnivalMain.instance, "carnival-token")
 
     val CARNIVAL_TOKEN = ItemStack(Material.GOLDEN_APPLE).apply {
         itemMeta = itemMeta?.apply {
             displayName(Util.mm("<b><gradient:#8ec4f7:#ff9ccb>Can</gradient><gradient:#ff9ccb:#d7f58d>died</gradient><gradient:#d7f58d:#fffe8a> Ap</gradient><gradient:#fffe8a:#ffd365>ple</gradient></b>"))
-            //lore(Util.mml("<gray>A golden apple that has been candied!"))
+            lore(Util.mml("<gray>Sweetness X", "", "<white>A glistening caramel apple,", "<white>covered in a golden wrap, just", "<white>waiting to be eaten!", "", "<dark_gray>Use at the carnival shop.",
+                "",
+                "<#EEE1D5><st>       </st>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>       </st>",
+                "<#EEE1D5>Tier • <b><#8EC4F7>C<#C7B0E1>a<#FF9CCB>r<#EBC9AC>n<#D7F58D>i<#FFFE8A>v<#FFE978>a<#FFD365>l</b>",
+                "<#EEE1D5><st>       </st>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>       </st>"))
             addEnchant(Enchantment.DURABILITY, 10, true)
+            addItemFlags(ItemFlag.HIDE_ENCHANTS)
             persistentDataContainer.set(key, PersistentDataType.BOOLEAN, true)
         }
     }
@@ -33,7 +42,7 @@ object CarnivalToken {
             return
         }
         Util.giveItem(player, CARNIVAL_TOKEN.asQuantity(amt))
-        Util.msg(player, "You have received <b><gold>$amt</gold></b> <gradient:#8ec4f7:#ff9ccb>Candied Apples</gradient>!")
+        Util.msg(player, "You have received <b><gold>$amt</gold></b> <b><gradient:#8ec4f7:#ff9ccb>Can</gradient><gradient:#ff9ccb:#d7f58d>died</gradient><gradient:#d7f58d:#fffe8a> Ap</gradient><gradient:#fffe8a:#ffd365>ples</gradient></b>!")
     }
 
     fun take(player: Player, amt: Int): Boolean {
@@ -48,5 +57,14 @@ object CarnivalToken {
             }
         }
         return false
+    }
+
+    // prevent people from eating the token
+    @EventHandler
+    fun onConsume(event: PlayerItemConsumeEvent) {
+        if (isToken(event.item)) {
+            event.isCancelled = true
+            event.player.sendMessage(Util.mm("<yellow>Bleh, too sweet!"))
+        }
     }
 }

@@ -14,7 +14,6 @@ import dev.jsinco.lumacarnival.shop.ShopManager
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
 
-
 class CarnivalMain : JavaPlugin() {
 
     companion object {
@@ -54,6 +53,8 @@ class CarnivalMain : JavaPlugin() {
 
         server.pluginManager.registerEvents(ShopListener(), this)
         shopManager = ShopManager()
+
+        server.pluginManager.registerEvents(CarnivalToken, this)
 
         getCommand("lumacarnival-gamemanager")!!.setExecutor(gameManager)
         getCommand("lumacarnival")!!.setExecutor(CommandManager(this))
