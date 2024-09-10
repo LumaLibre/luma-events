@@ -52,7 +52,7 @@ class CarnivalMain : JavaPlugin() {
             .registerGame(PrisonMineGame())
             .startGameTicker()
 
-        server.pluginManager.registerEvents(ShopListener(this), this)
+        server.pluginManager.registerEvents(ShopListener(), this)
         shopManager = ShopManager()
 
         getCommand("lumacarnival-gamemanager")!!.setExecutor(gameManager)

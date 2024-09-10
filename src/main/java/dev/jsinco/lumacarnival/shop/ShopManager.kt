@@ -28,8 +28,7 @@ class ShopManager : InventoryHolder {
         }
 
         fun addShopItem(item: ItemStack, command: String, price: Int, slot: Int) {
-            val sectionName = item.itemMeta.displayName()
-                ?.let { PlainTextComponentSerializer.plainText().serialize(it).replace(" ", "_") } ?: item.type.name
+            val sectionName = getSectionName(item)
             yaml.set("$sectionName.item", item)
             yaml.set("$sectionName.command", command)
             yaml.set("$sectionName.price", price)
@@ -45,6 +44,9 @@ class ShopManager : InventoryHolder {
         fun openShop(player: Player) {
             player.openInventory(shopPages.getPage(0))
         }
+
+        fun getSectionName(item: ItemStack) = item.itemMeta.displayName()
+            ?.let { PlainTextComponentSerializer.plainText().serialize(it).replace(" ", "_") } ?: item.type.name
     }
 
     override fun getInventory(): Inventory {
@@ -118,6 +120,16 @@ class ShopManager : InventoryHolder {
         }
 
         return shopPages.pages[indexOfPage - 1]
+    }
+
+
+    fun getPurchaseAmount(player: Player, shopItem: ShopItem): Int {
+        return yaml.getInt("purchases.${getSectionName(shopItem.item)}.${player.uniqueId}")
+    }
+
+    fun setItemPurchased(player: Player, shopItem: ShopItem, amount: Int) {
+        yaml.set("purchases.${getSectionName(shopItem.item)}.${player.uniqueId}", amount)
+        file.saveFileYaml()
     }
 
 }

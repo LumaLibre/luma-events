@@ -10,7 +10,7 @@ import org.bukkit.event.Listener
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.inventory.ItemStack
 
-class ShopListener(val plugin: CarnivalMain) : Listener {
+class ShopListener : Listener {
 
     @EventHandler
     fun onInventoryClick(event : InventoryClickEvent) {
@@ -41,12 +41,18 @@ class ShopListener(val plugin: CarnivalMain) : Listener {
 
 
         val shopItem: ShopItem = ShopManager.getShopItemFromDisplayItem(item) ?: return
+        val purchaseAmount = CarnivalMain.shopManager.getPurchaseAmount(player, shopItem)
+        if (purchaseAmount >= 2) {
+            Util.msg(player, "You have already purchased this item!")
+            return
+        }
 
         val command = shopItem.command
         val tokenPrice = shopItem.tokenPrice
 
         if (CarnivalToken.take(player, tokenPrice)) {
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command.replace("%player%", player.name))
+            CarnivalMain.shopManager.setItemPurchased(player, shopItem, purchaseAmount + 1)
         } else {
             Util.msg(player, "You don't have enough tokens!")
         }
