@@ -22,7 +22,7 @@ object CarnivalToken : Listener {
             lore(Util.mml( "<white>A glistening caramel apple,", "<white>covered in a golden wrap, just", "<white>waiting to be eaten!", "", "<dark_gray>Use at the carnival shop.",
                 "",
                 "<#EEE1D5><st>       </st>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>       </st>",
-                "<#EEE1D5>Tier • <b><#8EC4F7>C<#C7B0E1>a<#FF9CCB>r<#EBC9AC>n<#D7F58D>i<#FFFE8A>v<#FFE978>a<#FFD365>l</b>",
+                "<#EEE1D5>Tier • <b><#8EC4F7>C<#B4B7E8>a<#D9A9DA>r<#FF9CCB>n<#F2BAB6>i<#E4D7A2>v<#D7F58D>a<#E4F88C>l <#FFFE8A>2<#FFF07E>0<#FFE171>2<#FFD365>4</b>",
                 "<#EEE1D5><st>       </st>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>       </st>"))
             addEnchant(Enchantment.DURABILITY, 10, true)
             addItemFlags(ItemFlag.HIDE_ENCHANTS)
