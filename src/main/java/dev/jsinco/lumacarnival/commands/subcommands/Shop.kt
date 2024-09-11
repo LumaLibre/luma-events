@@ -46,7 +46,7 @@ class Shop : SubCommand {
             2 -> listOf("add", "remove")
             3 -> {
                 if (args[1] == "remove") {
-                    ShopManager.yaml.getKeys(false).toList()
+                    ShopManager.file.keys.toList()
                 } else {
                     listOf("<command>")
                 }

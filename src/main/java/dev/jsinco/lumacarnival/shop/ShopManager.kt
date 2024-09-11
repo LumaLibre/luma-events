@@ -1,5 +1,7 @@
 package dev.jsinco.lumacarnival.shop
 
+import dev.jsinco.abstractjavafilelib.schemas.JsonSavingSchema
+import dev.jsinco.lumacarnival.BukkitSerialization
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.bukkit.Bukkit
@@ -12,8 +14,7 @@ import org.bukkit.inventory.ItemStack
 class ShopManager : InventoryHolder {
 
     companion object {
-        val file  = FileManager("shop.yml")
-        val yaml = file.generateYamlFile()
+        val file = JsonSavingSchema("shop.json")
         lateinit var shopPages: PaginatedGui
         lateinit var shopItems: MutableList<ShopItem>
 
@@ -29,16 +30,16 @@ class ShopManager : InventoryHolder {
 
         fun addShopItem(item: ItemStack, command: String, price: Int, slot: Int) {
             val sectionName = getSectionName(item)
-            yaml.set("$sectionName.item", item)
-            yaml.set("$sectionName.command", command)
-            yaml.set("$sectionName.price", price)
-            yaml.set("$sectionName.slot", slot)
-            file.saveFileYaml()
+            file.set("$sectionName.item", BukkitSerialization.itemStackToBase64(item))
+            file.set("$sectionName.command", command)
+            file.set("$sectionName.price", price)
+            file.set("$sectionName.slot", slot)
+            file.save()
         }
 
         fun removeShopItem(sectionName: String) {
-            yaml.set(sectionName, null)
-            file.saveFileYaml()
+            file.set(sectionName, null)
+            file.save()
         }
 
         fun openShop(player: Player) {
@@ -59,16 +60,16 @@ class ShopManager : InventoryHolder {
 
 
     fun getShopItem(sectionName: String): ShopItem {
-        val item = yaml.getItemStack("$sectionName.item") ?: throw NullPointerException("Item not found")
-        val command = yaml.getString("$sectionName.command") ?: throw NullPointerException("Command not found")
-        val tokenPrice = yaml.getInt("$sectionName.price")
-        val slot = yaml.getInt("$sectionName.slot")
+        val item = BukkitSerialization.itemStackFromBase64(file.getString("$sectionName.item")) ?: throw NullPointerException("Item not found")
+        val command = file.getString("$sectionName.command") ?: throw NullPointerException("Command not found")
+        val tokenPrice = file.getInt("$sectionName.price")
+        val slot = file.getInt("$sectionName.slot")
         return ShopItem(item, command, tokenPrice, slot)
     }
 
     fun getAllShopItems(): MutableList<ShopItem> {
         val list: MutableList<ShopItem> = mutableListOf()
-        for (key in yaml.getKeys(false)) {
+        for (key in file.keys) {
             list.add(getShopItem(key))
         }
         return list
@@ -124,12 +125,12 @@ class ShopManager : InventoryHolder {
 
 
     fun getPurchaseAmount(player: Player, shopItem: ShopItem): Int {
-        return yaml.getInt("purchases.${getSectionName(shopItem.item)}.${player.uniqueId}")
+        return file.getInt("purchases.${getSectionName(shopItem.item)}.${player.uniqueId}")
     }
 
     fun setItemPurchased(player: Player, shopItem: ShopItem, amount: Int) {
-        yaml.set("purchases.${getSectionName(shopItem.item)}.${player.uniqueId}", amount)
-        file.saveFileYaml()
+        file.set("purchases.${getSectionName(shopItem.item)}.${player.uniqueId}", amount)
+        file.save()
     }
 
 }

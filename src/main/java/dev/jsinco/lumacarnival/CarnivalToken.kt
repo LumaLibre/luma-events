@@ -16,10 +16,10 @@ object CarnivalToken : Listener {
 
     private val key = NamespacedKey(CarnivalMain.instance, "carnival-token")
 
-    val CARNIVAL_TOKEN = ItemStack(Material.GOLDEN_APPLE).apply {
+    val CARNIVAL_TOKEN = ItemStack(Material.GOLDEN_APPLE).apply {//"<gray>Sweetness X", "",
         itemMeta = itemMeta?.apply {
             displayName(Util.mm("<b><gradient:#8ec4f7:#ff9ccb>Can</gradient><gradient:#ff9ccb:#d7f58d>died</gradient><gradient:#d7f58d:#fffe8a> Ap</gradient><gradient:#fffe8a:#ffd365>ple</gradient></b>"))
-            lore(Util.mml("<gray>Sweetness X", "", "<white>A glistening caramel apple,", "<white>covered in a golden wrap, just", "<white>waiting to be eaten!", "", "<dark_gray>Use at the carnival shop.",
+            lore(Util.mml( "<white>A glistening caramel apple,", "<white>covered in a golden wrap, just", "<white>waiting to be eaten!", "", "<dark_gray>Use at the carnival shop.",
                 "",
                 "<#EEE1D5><st>       </st>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>       </st>",
                 "<#EEE1D5>Tier • <b><#8EC4F7>C<#C7B0E1>a<#FF9CCB>r<#EBC9AC>n<#D7F58D>i<#FFFE8A>v<#FFE978>a<#FFD365>l</b>",

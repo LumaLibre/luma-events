@@ -24,8 +24,8 @@ public class PrisonMineEarner implements GameEarner {
 
     @Override
     public void cashIn(Player player) {
-        int tokenAmount = amount / 600;
-        amount = amount % 600;
+        int tokenAmount = amount / 25;
+        amount = amount % 25;
         CarnivalToken.give(player, tokenAmount);
     }
 

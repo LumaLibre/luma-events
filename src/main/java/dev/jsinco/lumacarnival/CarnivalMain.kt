@@ -63,7 +63,7 @@ class CarnivalMain : JavaPlugin() {
         Bukkit.getScheduler().runTaskTimerAsynchronously(this, Runnable {
             gameManager.saveAll()
             logger.info("Autosaved!")
-        }, 0, 24000L)
+        }, 0, 12000L)
     }
 
     override fun onDisable() {

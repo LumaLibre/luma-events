@@ -55,7 +55,7 @@ class TargetPracticeGame : GameTask() {
 
     fun getSafeAreaLocation(): CompletableFuture<Location> {
         return CompletableFuture.supplyAsync {
-            val start = System.currentTimeMillis()
+            //val start = System.currentTimeMillis()
             val players = area.players
             var loc = area.randomLocation
 
@@ -68,9 +68,7 @@ class TargetPracticeGame : GameTask() {
                     loc = area.randomLocation
                 }
             }
-
-
-            CarnivalMain.instance.logger.info("Took ${System.currentTimeMillis() - start}ms to find a safe location for a target")
+            //CarnivalMain.instance.logger.info("Took ${System.currentTimeMillis() - start}ms to find a safe location for a target")
             loc
         }
     }

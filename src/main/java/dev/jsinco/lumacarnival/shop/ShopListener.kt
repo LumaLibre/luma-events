@@ -51,7 +51,11 @@ class ShopListener : Listener {
         val tokenPrice = shopItem.tokenPrice
 
         if (CarnivalToken.take(player, tokenPrice)) {
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command.replace("%player%", player.name))
+            if (command.equals("empty", true)) {
+                Util.giveItem(player, shopItem.item)
+            } else {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command.replace("%player%", player.name))
+            }
             CarnivalMain.shopManager.setItemPurchased(player, shopItem, purchaseAmount + 1)
         } else {
             Util.msg(player, "You don't have enough tokens!")
