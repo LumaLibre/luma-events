@@ -1,13 +1,13 @@
 # screw this event
 target-practice:
   enabled: true
-  area: "world,136,-47,342,67,-42,3802"
-  sphere: "world,99,-47,346"
-  max: 30
+  area: "event_new,257,61,65,184,68,113"
+  sphere: "event_new,220,62,65"
+  max: 80
 
 apple-bobbing:
   enabled: true
-  area: "world,175,-44,261,195,-51,281"
+  area: "event_new,297,64,-15,316,58,5"
   max: 30
 
 underwater-animals:
@@ -16,4 +16,4 @@ underwater-animals:
   max: 60
 
 prison-mine:
-  area: "world,-39,-60,204,-3,-50,163"
+  area: "event_new,82,48,-114,118,57,-73"

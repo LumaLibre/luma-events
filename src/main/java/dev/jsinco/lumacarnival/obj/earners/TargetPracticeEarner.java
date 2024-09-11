@@ -46,7 +46,7 @@ public class TargetPracticeEarner implements GameEarner {
 
     @Override
     public void cashIn(Player player) {
-        int tokenAmount = totalAmount / 60;
+        int tokenAmount = totalAmount / 50;
         Util.msg(getPlayer(), "Cashing in targets for <b><gold>$tokenAmount</gold></b> tokens!");
         CarnivalToken.give(player, tokenAmount);
     }
