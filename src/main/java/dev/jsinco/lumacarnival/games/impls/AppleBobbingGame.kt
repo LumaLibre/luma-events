@@ -166,7 +166,7 @@ class AppleBobbingGame : GameTask() {
             player.uniqueId,
             0
         ).also { appleBobberEarners.add(it) }
-        val cost = 35 * (effLevel + 1)
+        val cost = 50 * (effLevel + 1)
 
         if (earner.permanentAmount < cost) {
             Util.msg(player, "You need $cost soaked apples to upgrade your fishing rod to the next level! You have ${earner.permanentAmount} soaked apples.")

@@ -45,7 +45,7 @@ class TargetPracticeGame : GameTask() {
         ?: throw RuntimeException("Missing target-practice section in config")
     private val area: Cuboid = configSec.getString("area")?.let { Util.getArea(it) }
         ?: throw RuntimeException("Invalid area in config")
-    private val sphere: Sphere = configSec.getString("sphere")?.let { Sphere(Util.getLocation(it), 10.0, 50.0) }
+    private val sphere: Sphere = configSec.getString("sphere")?.let { Sphere(Util.getLocation(it), 14.0, 60.0) }
         ?: throw RuntimeException("Invalid sphere in config")
     private val maxTargets: Int = configSec.getInt("max")
 
@@ -162,6 +162,12 @@ class TargetPracticeGame : GameTask() {
         if (!event.entity.hasMetadata("carnival_target_practice_bow")) {
             Util.msg(player, "You must use a special bow for these targets!")
         } else {
+
+            if (!sphere.isInSphere(player)) {
+                Util.msg(player, "<red>Invalid hit! You must be inside the target practice area to hit targets!")
+                return
+            }
+
             val target = event.hitEntity as LivingEntity
             target.remove()
             activeTargets.remove(target)
@@ -204,7 +210,7 @@ class TargetPracticeGame : GameTask() {
             player.uniqueId,
             0
         ).also { totalTargetEarners.add(it) }
-        val cost = 50 * (effLevel + 1)
+        val cost = 400 * (effLevel + 1)
 
         if (targetEarner.permanentAmount < cost) {
             Util.msg(player, "<red>You need $cost targets hit to upgrade your bow to the next level! <dark_gray>You have ${targetEarner.permanentAmount} targets hit.")
@@ -215,7 +221,7 @@ class TargetPracticeGame : GameTask() {
         }
 
         Bukkit.getScheduler().runTask(CarnivalMain.instance, Runnable {
-            bow.addEnchantment(Enchantment.QUICK_CHARGE, effLevel + 1)
+            bow.addUnsafeEnchantment(Enchantment.QUICK_CHARGE, effLevel + 1)
             Util.msg(player, "<green>Your bow has been upgraded to level ${effLevel + 1}!")
         })
     }

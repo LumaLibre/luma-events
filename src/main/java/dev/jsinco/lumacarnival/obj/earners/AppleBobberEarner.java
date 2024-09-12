@@ -26,7 +26,7 @@ public class AppleBobberEarner implements GameEarner {
 
     @Override
     public void cashIn(Player player) {
-        int tokenAmount = amount * 2;
+        int tokenAmount = amount;
         amount = 0;
         CarnivalToken.give(player, tokenAmount);
     }

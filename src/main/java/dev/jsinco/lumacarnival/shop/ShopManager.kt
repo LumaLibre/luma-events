@@ -62,7 +62,12 @@ class ShopManager : InventoryHolder {
     fun getShopItem(sectionName: String): ShopItem {
         val item = BukkitSerialization.itemStackFromBase64(file.getString("$sectionName.item")) ?: throw NullPointerException("Item not found")
         val command = file.getString("$sectionName.command") ?: throw NullPointerException("Command not found")
-        val tokenPrice = file.getInt("$sectionName.price")
+        val tokenPriceRaw = file.get("$sectionName.price")
+        val tokenPrice: Int = if (tokenPriceRaw !is Int) {
+            (tokenPriceRaw as Double).toInt()
+        } else {
+            tokenPriceRaw
+        }
         val slot = file.getInt("$sectionName.slot")
         return ShopItem(item, command, tokenPrice, slot)
     }
@@ -70,6 +75,7 @@ class ShopManager : InventoryHolder {
     fun getAllShopItems(): MutableList<ShopItem> {
         val list: MutableList<ShopItem> = mutableListOf()
         for (key in file.keys) {
+            if (key == "purchases") continue
             list.add(getShopItem(key))
         }
         return list
