@@ -131,7 +131,13 @@ class ShopManager : InventoryHolder {
 
 
     fun getPurchaseAmount(player: Player, shopItem: ShopItem): Int {
-        return file.getInt("purchases.${getSectionName(shopItem.item)}.${player.uniqueId}")
+        val value = file.get("purchases.${getSectionName(shopItem.item)}.${player.uniqueId}")
+        if (value is Int) {
+            return value
+        } else if (value is Double) {
+            return value.toInt()
+        }
+        return 0
     }
 
     fun setItemPurchased(player: Player, shopItem: ShopItem, amount: Int) {
