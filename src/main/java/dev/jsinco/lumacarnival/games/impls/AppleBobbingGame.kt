@@ -96,6 +96,8 @@ class AppleBobbingGame : GameTask() {
         // Check if the player is in the apple bobbing area
         if (!area.isInWithMarge(event.hook.location, 2.0)) {
             return
+        } else if (event.state != PlayerFishEvent.State.CAUGHT_FISH) {
+            return
         }
 
         val player = event.player
@@ -114,7 +116,7 @@ class AppleBobbingGame : GameTask() {
         }
 
         val item = event.caught as? Item ?: return
-        item.itemStack = regularApple
+        item.itemStack.amount = 0
         val earner = appleBobberEarners.find { it.playerUUID == player.uniqueId } ?: AppleBobberEarner(
             player.uniqueId,
             0
@@ -122,7 +124,7 @@ class AppleBobbingGame : GameTask() {
         earner.increaseAmount(1)
     }
 
-    @EventHandler
+
     fun onPlayerPickupApple(event: EntityPickupItemEvent) {
         val player = event.entity as? Player ?: return
         val item = event.item
