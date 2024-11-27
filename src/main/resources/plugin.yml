@@ -1,0 +1,8 @@
+name: ThanksgivingEvent
+main: dev.jsinco.luma.ThanksgivingEvent
+version: 2024
+api-version: 1.21
+author: jsinco
+commands:
+  event:
+    description: Thanksgiving Event Command
