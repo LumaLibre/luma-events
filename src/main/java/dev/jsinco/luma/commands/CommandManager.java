@@ -2,7 +2,11 @@ package dev.jsinco.luma.commands;
 
 import dev.jsinco.luma.ThanksgivingEvent;
 import dev.jsinco.luma.commands.subcommands.MineUpgrade;
+import dev.jsinco.luma.commands.subcommands.PointsModify;
+import dev.jsinco.luma.commands.subcommands.ReloadConfig;
+import dev.jsinco.luma.commands.subcommands.Shop;
 import dev.jsinco.luma.commands.subcommands.ViewTokens;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
@@ -10,6 +14,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +31,9 @@ public class CommandManager implements TabExecutor {
     static {
         registerSubcommand("viewtokens", new ViewTokens());
         registerSubcommand("mineupgrade", new MineUpgrade());
+        registerSubcommand("reloadconfig", new ReloadConfig());
+        registerSubcommand("shop", new Shop());
+        registerSubcommand("pointsmodify", new PointsModify());
     }
 
 
@@ -33,7 +41,8 @@ public class CommandManager implements TabExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (args.length == 0) {
-            return false;
+            Bukkit.dispatchCommand(sender, "warp thanksgiving");
+            return true;
         }
 
         Subcommand subcommand = SUBCOMMAND_MAP.get(args[0]);
@@ -54,7 +63,13 @@ public class CommandManager implements TabExecutor {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (args.length == 1) {
-            return List.copyOf(SUBCOMMAND_MAP.keySet());
+            List<String> subcommands = new ArrayList<>();
+            for (var subcommand : SUBCOMMAND_MAP.entrySet()) {
+                if (sender.hasPermission(subcommand.getValue().permission())) {
+                    subcommands.add(subcommand.getKey());
+                }
+            }
+            return subcommands;
         }
 
         Subcommand subcommand = SUBCOMMAND_MAP.get(args[0]);

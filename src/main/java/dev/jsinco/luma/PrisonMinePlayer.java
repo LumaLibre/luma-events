@@ -21,7 +21,7 @@ public class PrisonMinePlayer {
         this.uuid = uuid;
         this.totalBlocksMined = totalBlocksMined;
         this.points = points;
-        this.currentMine = ThanksgivingEvent.getOkaeriConfig().getMines().keySet().iterator().next();
+        this.currentMine = ThanksgivingEvent.getOkaeriConfig().mines.keySet().iterator().next();
     }
 
     public PrisonMinePlayer(UUID uuid, int totalBlocksMined, int points, String currentMine) {

@@ -2,6 +2,7 @@ package dev.jsinco.luma;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.FileReader;
@@ -66,6 +67,7 @@ public final class PrisonMinePlayerManager {
         ThanksgivingEvent.getInstance().getLogger().info("Saved " + PRISON_MINE_PLAYERS.size() + " PrisonMinePlayers");
     }
 
+    @NotNull
     public static PrisonMinePlayer getByUUID(UUID uuid) {
         for (PrisonMinePlayer prisonMinePlayer : PRISON_MINE_PLAYERS) {
             if (prisonMinePlayer.getUuid().equals(uuid)) {

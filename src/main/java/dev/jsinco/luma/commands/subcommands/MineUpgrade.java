@@ -17,7 +17,7 @@ public class MineUpgrade implements Subcommand {
     public void execute(CommandSender sender, String[] args, ThanksgivingEvent plugin) {
         Player player = (Player) sender;
         PrisonMinePlayer prisonMinePlayer = PrisonMinePlayerManager.getByUUID(player.getUniqueId());
-        Map<String, Integer> mines = ThanksgivingEvent.getOkaeriConfig().getMines();
+        Map<String, Integer> mines = ThanksgivingEvent.getOkaeriConfig().mines;
 
         List<String> mineList = List.copyOf(mines.keySet());
         int currentIndex = mineList.indexOf(prisonMinePlayer.getCurrentMine());
@@ -38,8 +38,8 @@ public class MineUpgrade implements Subcommand {
                         String newMine = mineList.get(currentIndex + 1);
                         prisonMinePlayer.setCurrentMine(newMine);
                         // TODO: ADD PERMISSION
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lp user " + player.getName() + " permission set jetsprisonmines.break." + newMine);
-                        Util.sendMsg(player, "You have upgraded your mine to <gold>" + mine + "<reset>.");
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lp user " + player.getName() + " permission set jetsprisonmines.blockbreak." + newMine);
+                        Util.sendMsg(player, "You have upgraded your mine to <gold>" + newMine + "<reset>.");
                     }
                 } else {
                     Util.sendMsg(player,"You do not have enough tokens to upgrade your mine to <gold>" + mine + "<reset>. <gray>(" + cost + " tokens required)");

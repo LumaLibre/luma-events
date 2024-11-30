@@ -1,8 +1,11 @@
 name: ThanksgivingEvent
 main: dev.jsinco.luma.ThanksgivingEvent
-version: 2024
+version: '1.0-SNAPSHOT'
 api-version: 1.21
 author: jsinco
 commands:
   event:
     description: Thanksgiving Event Command
+softdepend:
+  - LumaItems
+  - JetsPrisonMines
