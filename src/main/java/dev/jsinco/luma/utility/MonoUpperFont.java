@@ -1,4 +1,4 @@
-package dev.jsinco.luma;
+package dev.jsinco.luma.utility;
 
 public class MonoUpperFont {
 

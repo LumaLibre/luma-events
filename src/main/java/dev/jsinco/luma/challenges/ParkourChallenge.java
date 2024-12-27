@@ -1,7 +1,5 @@
 package dev.jsinco.luma.challenges;
 
-import dev.jsinco.luma.ChallengeType;
-
 public class ParkourChallenge extends Challenge {
 
     public ParkourChallenge(int currentStage) {

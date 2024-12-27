@@ -1,6 +1,5 @@
 package dev.jsinco.luma.challenges;
 
-import dev.jsinco.luma.ChallengeType;
 import lombok.Getter;
 import lombok.Setter;
 

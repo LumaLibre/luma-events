@@ -1,8 +1,7 @@
 package dev.jsinco.luma.obj;
 
-import dev.jsinco.luma.ChallengeType;
-import dev.jsinco.luma.Util;
-import dev.jsinco.luma.api.LumaItemsAPI;
+import dev.jsinco.luma.challenges.ChallengeType;
+import dev.jsinco.luma.utility.Util;
 import dev.jsinco.luma.challenges.Challenge;
 import dev.jsinco.luma.items.CustomItemsManager;
 import dev.jsinco.luma.items.PresentItem;

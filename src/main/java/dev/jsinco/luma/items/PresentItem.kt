@@ -1,7 +1,7 @@
 package dev.jsinco.luma.items
 
-import dev.jsinco.luma.MonoUpperFont
-import dev.jsinco.luma.Util
+import dev.jsinco.luma.utility.MonoUpperFont
+import dev.jsinco.luma.utility.Util
 import dev.jsinco.luma.api.LumaItemsAPI
 import dev.jsinco.luma.manager.CustomItemFunctions
 import org.bukkit.Material

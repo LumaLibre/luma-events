@@ -1,11 +1,7 @@
-package dev.jsinco.luma;
+package dev.jsinco.luma.challenges;
 
-import dev.jsinco.luma.challenges.BringItemsChallenge;
-import dev.jsinco.luma.challenges.Challenge;
-import dev.jsinco.luma.challenges.FindHeadsChallenge;
-import dev.jsinco.luma.challenges.MazeChallenge;
-import dev.jsinco.luma.challenges.ParkourChallenge;
 import dev.jsinco.luma.obj.EventPlayer;
+import dev.jsinco.luma.utility.Util;
 import lombok.Getter;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;

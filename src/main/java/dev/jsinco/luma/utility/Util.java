@@ -1,5 +1,6 @@
-package dev.jsinco.luma;
+package dev.jsinco.luma.utility;
 
+import dev.jsinco.luma.EventMain;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;

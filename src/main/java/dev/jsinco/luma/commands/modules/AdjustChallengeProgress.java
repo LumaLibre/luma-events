@@ -1,6 +1,6 @@
 package dev.jsinco.luma.commands.modules;
 
-import dev.jsinco.luma.ChallengeType;
+import dev.jsinco.luma.challenges.ChallengeType;
 import dev.jsinco.luma.EventMain;
 import dev.jsinco.luma.challenges.Challenge;
 import dev.jsinco.luma.commands.CommandManager;
