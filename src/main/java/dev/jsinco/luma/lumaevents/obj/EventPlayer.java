@@ -54,14 +54,20 @@ public class EventPlayer {
     }
 
     public int getCompletedChallenges() {
+        if (challenges.isEmpty()) {
+            return 0;
+        }
         return (int) challenges.stream().filter(Challenge::isCompleted).count();
     }
 
     public boolean completedAllChallenges() {
-        return challenges.stream().allMatch(Challenge::isCompleted);
+        return !challenges.isEmpty() && challenges.stream().allMatch(Challenge::isCompleted);
     }
 
     public boolean hasCompleted(ChallengeType challengeType) {
+        if (challenges.isEmpty()) {
+            return false;
+        }
         return challenges.stream().anyMatch(
                 c -> c.getType() == challengeType && c.isCompleted()
         );

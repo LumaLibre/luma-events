@@ -9,7 +9,7 @@ import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
 @AutoRegister(RegisterType.COMMAND)
 @CommandInfo(name = "event")
 public class CommandManager extends AbstractCommandManager<EventMain, CommandModule> {
-    public CommandManager(EventMain plugin) {
-        super(plugin);
+    public CommandManager() {
+        super(EventMain.getInstance());
     }
 }
