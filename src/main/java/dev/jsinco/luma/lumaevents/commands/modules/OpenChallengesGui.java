@@ -1,14 +1,14 @@
-package dev.jsinco.luma.commands.modules;
+package dev.jsinco.luma.lumaevents.commands.modules;
 
-import dev.jsinco.luma.EventMain;
-import dev.jsinco.luma.commands.CommandManager;
-import dev.jsinco.luma.commands.CommandModule;
-import dev.jsinco.luma.guis.ChallengesGui;
+import dev.jsinco.luma.lumaevents.EventMain;
+import dev.jsinco.luma.lumaevents.commands.CommandManager;
+import dev.jsinco.luma.lumaevents.commands.CommandModule;
+import dev.jsinco.luma.lumaevents.guis.ChallengesGui;
 import dev.jsinco.luma.manager.commands.CommandInfo;
 import dev.jsinco.luma.manager.modules.AutoRegister;
 import dev.jsinco.luma.manager.modules.RegisterType;
-import dev.jsinco.luma.obj.EventPlayer;
-import dev.jsinco.luma.obj.EventPlayerManager;
+import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import dev.jsinco.luma.lumaevents.obj.EventPlayerManager;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 

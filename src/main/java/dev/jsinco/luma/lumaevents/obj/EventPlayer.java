@@ -1,10 +1,10 @@
-package dev.jsinco.luma.obj;
+package dev.jsinco.luma.lumaevents.obj;
 
-import dev.jsinco.luma.challenges.ChallengeType;
-import dev.jsinco.luma.utility.Util;
-import dev.jsinco.luma.challenges.Challenge;
-import dev.jsinco.luma.items.CustomItemsManager;
-import dev.jsinco.luma.items.PresentItem;
+import dev.jsinco.luma.lumaevents.challenges.ChallengeType;
+import dev.jsinco.luma.lumaevents.utility.Util;
+import dev.jsinco.luma.lumaevents.challenges.Challenge;
+import dev.jsinco.luma.lumaevents.items.CustomItemsManager;
+import dev.jsinco.luma.lumaevents.items.PresentItem;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;

@@ -1,9 +1,9 @@
-package dev.jsinco.luma.guis;
+package dev.jsinco.luma.lumaevents.guis;
 
-import dev.jsinco.luma.challenges.ChallengeType;
-import dev.jsinco.luma.utility.Util;
+import dev.jsinco.luma.lumaevents.challenges.ChallengeType;
+import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.manager.guis.AbstractGui;
-import dev.jsinco.luma.obj.EventPlayer;
+import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.HumanEntity;

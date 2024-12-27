@@ -1,4 +1,4 @@
-package dev.jsinco.luma.items
+package dev.jsinco.luma.lumaevents.items
 
 import dev.jsinco.luma.api.LumaItemsAPI
 import dev.jsinco.luma.manager.CustomItemFunctions

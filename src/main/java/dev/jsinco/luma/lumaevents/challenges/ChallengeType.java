@@ -1,7 +1,7 @@
-package dev.jsinco.luma.challenges;
+package dev.jsinco.luma.lumaevents.challenges;
 
-import dev.jsinco.luma.obj.EventPlayer;
-import dev.jsinco.luma.utility.Util;
+import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;

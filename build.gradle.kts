@@ -4,7 +4,7 @@ plugins {
     kotlin("jvm")
 }
 
-group = "dev.jsinco.luma"
+group = "dev.jsinco.luma.lumaevents"
 version = "1.0-SNAPSHOT"
 
 repositories {

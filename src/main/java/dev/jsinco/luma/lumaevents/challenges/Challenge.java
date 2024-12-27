@@ -1,4 +1,4 @@
-package dev.jsinco.luma.challenges;
+package dev.jsinco.luma.lumaevents.challenges;
 
 import lombok.Getter;
 import lombok.Setter;

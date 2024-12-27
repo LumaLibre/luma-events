@@ -1,4 +1,4 @@
-package dev.jsinco.luma.challenges;
+package dev.jsinco.luma.lumaevents.challenges;
 
 public class BringItemsChallenge extends Challenge {
     public BringItemsChallenge(int currentStage) {

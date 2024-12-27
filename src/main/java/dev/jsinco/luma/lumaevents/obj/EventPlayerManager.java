@@ -1,8 +1,8 @@
-package dev.jsinco.luma.obj;
+package dev.jsinco.luma.lumaevents.obj;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import dev.jsinco.luma.EventMain;
+import dev.jsinco.luma.lumaevents.EventMain;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;

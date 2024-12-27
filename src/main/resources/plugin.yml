@@ -1,5 +1,5 @@
-name: ThanksgivingEvent
-main: dev.jsinco.luma.ThanksgivingEvent
+name: WinterEvent
+main: dev.jsinco.luma.lumaevents.EventMain
 version: '1.0-SNAPSHOT'
 api-version: 1.21
 author: jsinco
