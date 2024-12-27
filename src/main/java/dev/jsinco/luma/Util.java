@@ -2,21 +2,25 @@ package dev.jsinco.luma;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.World;
 import org.bukkit.command.CommandSender;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.util.Collection;
 import java.util.List;
 
 public final class Util {
 
+    // TODO: I want to use small font
     public static void sendMsg(CommandSender receiver, String message) {
-        receiver.sendMessage(color(ThanksgivingEvent.getOkaeriConfig().prefix + message));
+        receiver.sendMessage(color("Event >> " + message));
     }
 
     public static Component color(String string) {
@@ -28,22 +32,22 @@ public final class Util {
     }
 
     public static <P, C> C getPersistentKey(ItemStack item, String strKey, PersistentDataType<P, C> dataType) {
-        return item.getItemMeta().getPersistentDataContainer().get(new NamespacedKey(ThanksgivingEvent.getInstance(), strKey), dataType);
+        return item.getItemMeta().getPersistentDataContainer().get(new NamespacedKey(EventMain.getInstance(), strKey), dataType);
     }
 
     public static <P, C> void setPersistentKey(ItemStack item, String strKey, PersistentDataType<P, C> dataType, C value) {
         ItemMeta meta = item.getItemMeta();
-        meta.getPersistentDataContainer().set(new NamespacedKey(ThanksgivingEvent.getInstance(), strKey), dataType, value);
+        meta.getPersistentDataContainer().set(new NamespacedKey(EventMain.getInstance(), strKey), dataType, value);
         item.setItemMeta(meta);
     }
     
     
     public static boolean hasPersistentKey(ItemStack item, String strKey) {
-        return hasPersistentKey(item, new NamespacedKey(ThanksgivingEvent.getInstance(), strKey));
+        return hasPersistentKey(item, new NamespacedKey(EventMain.getInstance(), strKey));
     }
     
     public static boolean hasPersistentKey(ItemStack item, String strKey, PersistentDataType<?, ?> dataType) {
-        return hasPersistentKey(item, new NamespacedKey(ThanksgivingEvent.getInstance(), strKey), dataType);
+        return hasPersistentKey(item, new NamespacedKey(EventMain.getInstance(), strKey), dataType);
     }
     
     public static boolean hasPersistentKey(ItemStack item, NamespacedKey key) {
@@ -71,5 +75,29 @@ public final class Util {
         if (!itemAdded) {
             player.getWorld().dropItem(player.getLocation(), item);
         }
+    }
+
+    public static ItemStack createBasicItem(Material material, String name, boolean glint, List<String> lore, List<String> datas) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return item;
+        }
+        meta.displayName(color(name));
+        meta.lore(lore.stream().map(Util::color).toList());
+        for (String data : datas) {
+            meta.getPersistentDataContainer().set(new NamespacedKey(EventMain.getInstance(), data), PersistentDataType.SHORT, (short) 1);
+        }
+        if (glint) {
+            meta.addEnchant(Enchantment.UNBREAKING, 10, true);
+            meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+        }
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public static <T> T getRandom(Collection<T> collection) {
+        int index = (int) (Math.random() * collection.size());
+        return collection.stream().skip(index).findFirst().orElse(null);
     }
 }

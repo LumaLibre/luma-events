@@ -11,22 +11,23 @@ repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://storehouse.okaeri.eu/repository/maven-public/")
-    maven("https://jitpack.io")
+    maven("https://repo.jsinco.dev/releases")
 }
 
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
-    compileOnly(files("libs/JetsPrisonMines-4.6.8-rebuild.jar"))
-    compileOnly(files("libs/LumaItems.jar"))
+    compileOnly("dev.jsinco.luma:LumaCore:3751a2f")
+    compileOnly("dev.jsinco.luma:LumaItems:c41b8d5")
+    compileOnly("org.projectlombok:lombok:1.18.30")
+    annotationProcessor("org.projectlombok:lombok:1.18.30")
 
     implementation("eu.okaeri:okaeri-configs-yaml-bukkit:5.0.5")
     implementation("eu.okaeri:okaeri-configs-serdes-bukkit:5.0.5")
-    implementation("com.github.Jsinco:AbstractJavaFileLib:2.2")
-    implementation(kotlin("stdlib-jdk8"))
 }
 
 java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
 }
 
 tasks {
@@ -36,9 +37,6 @@ tasks {
     }
 
     shadowJar {
-        dependencies {
-
-        }
         archiveClassifier.set("")
     }
 

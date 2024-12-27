@@ -1,0 +1,10 @@
+package dev.jsinco.luma.challenges;
+
+import dev.jsinco.luma.ChallengeType;
+
+public class FindHeadsChallenge extends Challenge {
+    public FindHeadsChallenge(int currentStage) {
+        super(ChallengeType.FIND_HEADS, 15);
+        this.currentStage = currentStage;
+    }
+}
