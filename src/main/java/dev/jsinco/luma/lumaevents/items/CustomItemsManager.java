@@ -1,6 +1,6 @@
 package dev.jsinco.luma.lumaevents.items;
 
-import dev.jsinco.luma.api.LumaItemsAPI;
+import dev.jsinco.luma.lumaitems.api.LumaItemsAPI;
 
 public class CustomItemsManager {
 

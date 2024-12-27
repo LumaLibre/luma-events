@@ -2,8 +2,8 @@ package dev.jsinco.luma.lumaevents.items
 
 import dev.jsinco.luma.lumaevents.utility.MonoUpperFont
 import dev.jsinco.luma.lumaevents.utility.Util
-import dev.jsinco.luma.api.LumaItemsAPI
-import dev.jsinco.luma.manager.CustomItemFunctions
+import dev.jsinco.luma.lumaitems.api.LumaItemsAPI
+import dev.jsinco.luma.lumaitems.manager.CustomItemFunctions
 import org.bukkit.Material
 import org.bukkit.Sound
 import org.bukkit.entity.Player

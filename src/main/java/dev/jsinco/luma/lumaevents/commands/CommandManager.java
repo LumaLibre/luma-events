@@ -1,10 +1,10 @@
 package dev.jsinco.luma.lumaevents.commands;
 
 import dev.jsinco.luma.lumaevents.EventMain;
-import dev.jsinco.luma.manager.commands.AbstractCommandManager;
-import dev.jsinco.luma.manager.commands.CommandInfo;
-import dev.jsinco.luma.manager.modules.AutoRegister;
-import dev.jsinco.luma.manager.modules.RegisterType;
+import dev.jsinco.luma.lumacore.manager.commands.AbstractCommandManager;
+import dev.jsinco.luma.lumacore.manager.commands.CommandInfo;
+import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
+import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
 
 @AutoRegister(RegisterType.COMMAND)
 @CommandInfo(name = "event")
