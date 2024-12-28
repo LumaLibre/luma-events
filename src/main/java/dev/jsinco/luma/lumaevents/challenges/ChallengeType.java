@@ -11,31 +11,35 @@ import java.util.List;
 @Getter
 public enum ChallengeType {
     MAZE(MazeChallenge.class, List.of(
-            "Locate the Winter maze and",
-            "speak to the NPC at the end",
-            "to complete this Winter Event",
-            "challenge!",
-            "Progress: %s/%s"
-    ), 11, "Complete the Maze"),
+            "<gray>Locate the Winter maze and",
+            "<gray>speak to the NPC at the end",
+            "<gray>to complete this Winter Event",
+            "<gray>challenge!",
+            "",
+            "<red>Progress: %s/%s"
+    ), 11, "<gold><b>Complete the Maze"),
     PARKOUR(ParkourChallenge.class, List.of(
-            "Locate the Winter parkour and",
-            "reach the end to complete this",
-            "Winter Event challenge!",
-            "Progress: %s/%s"
-    ), 12, "Complete the Parkour"),
+            "<gray>Locate the Winter parkour and",
+            "<gray>reach the end to complete this",
+            "<gray>Winter Event challenge!",
+            "",
+            "<red>Progress: %s/%s"
+    ), 12, "<gold><b>Complete the Parkour"),
     FIND_HEADS(FindHeadsChallenge.class, List.of(
-            "Find every head located",
-            "on the Winter Event map and",
-            "right-click them to complete",
-            "this Winter Event challenge!",
-            "Progress: %s/%s"
-    ), 13, "Locate all the Winter Crystals"),
+            "<gray>Find every head located",
+            "<gray>on the Winter Event map and",
+            "<gray>right-click them to complete",
+            "<gray>this Winter Event challenge!",
+            "",
+            "<red>Progress: %s/%s"
+    ), 13, "<gold><b>Locate all the Winter Crystals"),
     BRING_ITEMS(BringItemsChallenge.class, List.of(
-            "Speak to frosty and bring him",
-            "the items he requests to",
-            "complete this Winter Event",
-            "Progress: %s/%s"
-    ), 14, "Bring Frosty the Items");
+            "<gray>Speak to frosty and bring him",
+            "<gray>the items he requests to",
+            "<gray>complete this Winter Event",
+            "",
+            "<red>Progress: %s/%s"
+    ), 14, "<gold><b>Bring Frosty the Items");
 
     private final Class<? extends Challenge> challengeClass;
     private final List<String> description;

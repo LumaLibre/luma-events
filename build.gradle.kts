@@ -12,6 +12,8 @@ repositories {
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://storehouse.okaeri.eu/repository/maven-public/")
     maven("https://repo.jsinco.dev/releases")
+    maven("https://jitpack.io")
+    maven("https://maven.enginehub.org/repo/")
 }
 
 
@@ -21,6 +23,7 @@ dependencies {
     compileOnly("dev.jsinco.luma.lumaitems:LumaItems:4c81a03")
     compileOnly("org.projectlombok:lombok:1.18.30")
     annotationProcessor("org.projectlombok:lombok:1.18.30")
+    compileOnly("com.github.Zrips:jobs:v4.17.2")
 
     implementation("eu.okaeri:okaeri-configs-yaml-bukkit:5.0.5")
     implementation("eu.okaeri:okaeri-configs-serdes-bukkit:5.0.5")

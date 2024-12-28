@@ -13,6 +13,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.List;
@@ -100,5 +101,14 @@ public final class Util {
     public static <T> T getRandom(Collection<T> collection) {
         int index = (int) (Math.random() * collection.size());
         return collection.stream().skip(index).findFirst().orElse(null);
+    }
+
+    @Nullable
+    public static <E extends Enum<E>> E getEnumFromString(Class<E> enumClass, String value) {
+        try {
+            return Enum.valueOf(enumClass, value.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 }

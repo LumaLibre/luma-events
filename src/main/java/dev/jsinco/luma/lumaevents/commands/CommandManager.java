@@ -7,7 +7,7 @@ import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
 import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
 
 @AutoRegister(RegisterType.COMMAND)
-@CommandInfo(name = "event")
+@CommandInfo(name = "event", aliases = {"winter"})
 public class CommandManager extends AbstractCommandManager<EventMain, CommandModule> {
     public CommandManager() {
         super(EventMain.getInstance());

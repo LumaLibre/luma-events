@@ -26,8 +26,8 @@ class PresentItem: CustomItemFunctions() {
     override fun createItem(): Pair<String, ItemStack> {
         return builder
             .lore(
-                "A pretty little wrapped",
-                "present for someone special.",
+                "<gray>A pretty little present",
+                "<gray>for someone special.",
                 "",
                 "<dark_gray>ꜰʀᴏᴍ: ʟᴜᴍᴀ",
                 "<dark_gray>ᴛᴏ: ꜱᴏᴍᴇᴏɴᴇ ꜱᴘᴇᴄɪᴀʟ")

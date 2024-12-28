@@ -24,6 +24,8 @@ public class EventMain extends JavaPlugin {
         CustomItemsManager.register();
         EventPlayerManager.loadAll();
         Bukkit.getScheduler().runTaskTimerAsynchronously(this, EventPlayerManager::saveAll, 0, 12000);
+
+
         getServer().getPluginManager().registerEvents(new HookedListeners(), this);
     }
 
