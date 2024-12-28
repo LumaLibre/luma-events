@@ -50,7 +50,7 @@ public class EventPlayer {
     }
 
     public int getTotalChallenges() {
-        return challenges.size();
+        return ChallengeType.values().length;
     }
 
     public int getCompletedChallenges() {
@@ -61,7 +61,7 @@ public class EventPlayer {
     }
 
     public boolean completedAllChallenges() {
-        return !challenges.isEmpty() && challenges.stream().allMatch(Challenge::isCompleted);
+        return !challenges.isEmpty() && (getCompletedChallenges() >= getTotalChallenges());
     }
 
     public boolean hasCompleted(ChallengeType challengeType) {

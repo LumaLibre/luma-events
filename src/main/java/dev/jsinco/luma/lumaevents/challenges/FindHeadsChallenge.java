@@ -5,4 +5,10 @@ public class FindHeadsChallenge extends Challenge {
         super(ChallengeType.FIND_HEADS, 15);
         this.currentStage = currentStage;
     }
+
+    public FindHeadsChallenge(int currentStage, boolean assigned) {
+        super(ChallengeType.FIND_HEADS, 15);
+        this.currentStage = currentStage;
+        this.assigned = assigned;
+    }
 }

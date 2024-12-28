@@ -9,4 +9,10 @@ public class MazeChallenge extends Challenge implements Serializable {
         this.currentStage = currentStage;
     }
 
+
+    public MazeChallenge(int currentStage, boolean assigned) {
+        super(ChallengeType.MAZE, 1);
+        this.currentStage = currentStage;
+        this.assigned = assigned;
+    }
 }

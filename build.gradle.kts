@@ -18,7 +18,7 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
     compileOnly("dev.jsinco.luma.lumacore:LumaCore:456435f")
-    compileOnly("dev.jsinco.luma.lumaitems:LumaItems:fba0c5a")
+    compileOnly("dev.jsinco.luma.lumaitems:LumaItems:4c81a03")
     compileOnly("org.projectlombok:lombok:1.18.30")
     annotationProcessor("org.projectlombok:lombok:1.18.30")
 
@@ -36,16 +36,10 @@ tasks {
         options.encoding = "UTF-8"
     }
 
-    shadowJar {
-        archiveClassifier.set("")
-    }
 
-    jar {
-        enabled = false
-    }
 
     build {
-        dependsOn(shadowJar)
+
     }
 }
 kotlin {

@@ -8,8 +8,10 @@ public class CustomItemsManager {
     public static HolidayCandleItem holidayCandleItem = new HolidayCandleItem();
 
 
+
     public static void register() {
         LumaItemsAPI.getInstance().registerCustomItem(presentItem);
         LumaItemsAPI.getInstance().registerCustomItem(holidayCandleItem);
     }
+
 }

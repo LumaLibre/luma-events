@@ -6,4 +6,10 @@ public class ParkourChallenge extends Challenge {
         super(ChallengeType.PARKOUR, 1);
         this.currentStage = currentStage;
     }
+
+    public ParkourChallenge(int currentStage, boolean assigned) {
+        super(ChallengeType.PARKOUR, 1);
+        this.currentStage = currentStage;
+        this.assigned = assigned;
+    }
 }

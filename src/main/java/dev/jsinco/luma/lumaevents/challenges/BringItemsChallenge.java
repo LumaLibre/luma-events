@@ -5,4 +5,10 @@ public class BringItemsChallenge extends Challenge {
         super(ChallengeType.BRING_ITEMS, 4);
         this.currentStage = currentStage;
     }
+
+    public BringItemsChallenge(int currentStage, boolean assigned) {
+        super(ChallengeType.BRING_ITEMS, 4);
+        this.currentStage = currentStage;
+        this.assigned = assigned;
+    }
 }

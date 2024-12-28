@@ -1,5 +1,6 @@
 package dev.jsinco.luma.lumaevents.items
 
+import dev.jsinco.luma.lumaitems.LumaItems
 import dev.jsinco.luma.lumaitems.api.LumaItemsAPI
 import dev.jsinco.luma.lumaitems.manager.CustomItemFunctions
 import org.bukkit.Material

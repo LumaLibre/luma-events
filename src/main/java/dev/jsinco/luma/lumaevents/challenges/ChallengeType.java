@@ -57,6 +57,14 @@ public enum ChallengeType {
         }
     }
 
+    public Challenge newInstance(int currentStage, boolean assigned) {
+        try { // Don't need to use reflection, could use switch statement
+            return challengeClass.getConstructor(int.class, boolean.class).newInstance(currentStage, assigned);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public ItemStack icon(EventPlayer eventPlayer) {
         Challenge challenge = eventPlayer.getChallenge(this, false);
         Material material = challenge.isCompleted() ? Material.LIME_DYE : Material.RED_DYE;
