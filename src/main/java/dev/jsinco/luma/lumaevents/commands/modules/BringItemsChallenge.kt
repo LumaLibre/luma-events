@@ -27,7 +27,6 @@ import dev.jsinco.luma.lumaitems.util.Util as LumaItemsUtil
     usage = "/<command> bringItemsChallenge <player!>"
 )
 class BringItemsChallenge : CommandModule {
-    // fuck this
 
     override fun execute(eventMain: EventMain, sender: CommandSender, s: String, strings: Array<String>): Boolean {
         val player = Bukkit.getPlayerExact(strings[0]) ?: return false
@@ -45,6 +44,8 @@ class BringItemsChallenge : CommandModule {
             challenge.currentStage = (challenge.currentStage + 1).coerceAtMost(challenge.stages)
             if (!challenge.isCompleted){
                 StageNarrative.fromStageNumber(challenge.currentStage).playDialogue(player)
+            } else {
+                Util.sendMsg(player, "You have completed this challenge!")
             }
         }
         return true
@@ -107,10 +108,16 @@ class BringItemsChallenge : CommandModule {
             "Bring me: \n• 48 Emeralds\n• 48 Diamond\n• 38 Gold Ingots\n• 38 Iron Ingots\n• 24 Lapis Lazuli\n• 12 Redstone\n• 12 Coal",
             setOf(ItemStack(Material.EMERALD, 48), ItemStack(Material.DIAMOND, 48), ItemStack(Material.GOLD_INGOT, 38), ItemStack(Material.IRON_INGOT, 38), ItemStack(Material.LAPIS_LAZULI, 24), ItemStack(Material.REDSTONE, 12), ItemStack(Material.COAL, 12))),
         STAGE_4(
-            listOf( // TODO: Finish me
-                "Dialogue"),
+            listOf(
+                "Lastly, I have to make the final touches on my snowman.",
+                "Here's what I'll need...",
+                "• <gold>64x Ender Pearls</gold>",
+                "• <gold>192x Leather</gold>",
+                "• <gold>128x Wheat</gold>",
+                "• <gold>256x Carrots</gold>",
+                "• <gold>128x Golden Carrots</gold>"),
             "Bring me X item!",
-            setOf(ItemStack(Material.BARRIER, 128))),;
+            setOf(ItemStack(Material.ENDER_PEARL, 64), ItemStack(Material.LEATHER, 192), ItemStack(Material.WHEAT, 128), ItemStack(Material.CARROT, 256), ItemStack(Material.GOLDEN_CARROT, 128)));
 
 
         private val storedInteraction: MutableList<UUID> = mutableListOf()
@@ -134,7 +141,8 @@ class BringItemsChallenge : CommandModule {
             } // check if inventory contains all itemStacks
             for (itemStack in itemStacks) {
                 if (!player.inventory.containsAtLeast(itemStack, itemStack.amount)) {
-                    Util.sendMsg(player, "<reset>You don't have enough</reset> <gold>${LumaItemsUtil.formatMaterialName(itemStack.type.name)}</gold> <reset>for</reset> <aqua><b>Frosty</b></aqua>'s <reset>request.")
+                    Util.sendMsg(player,
+                        "<reset>You don't have enough</reset> <gold>${LumaItemsUtil.formatMaterialName(itemStack.type.name)}</gold> <reset>for</reset> <aqua><b>Frosty</b></aqua>'s <reset>request. <dark_gray>(Missing <gold>${itemStack.amount - player.inventory.all(itemStack.type).values.sumOf { it.amount }}</gold>)</dark_gray>")
                     return false
                 }
             }

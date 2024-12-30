@@ -18,10 +18,9 @@ import java.util.UUID;
 @Getter
 public class EventPlayer {
 
-    private final List<Challenge> challenges;
     private final UUID uuid;
-
     private boolean claimedReward;
+    private final List<Challenge> challenges;
 
     public EventPlayer(UUID uuid) {
         this.uuid = uuid;
