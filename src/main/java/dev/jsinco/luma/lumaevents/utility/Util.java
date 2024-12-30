@@ -30,7 +30,6 @@ public final class Util {
 
     private static final String PREFIX = "<b><#9b8aac>❄</#9b8aac> <#CCD8E9>Event</#CCD8E9></b> <dark_gray>»</dark_gray> ";
 
-    // TODO: I want to use small font
     public static void sendMsg(CommandSender receiver, String message) {
         receiver.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString("#C0D6F0")));
     }
