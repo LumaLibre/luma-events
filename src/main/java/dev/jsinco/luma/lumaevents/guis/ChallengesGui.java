@@ -1,6 +1,7 @@
 package dev.jsinco.luma.lumaevents.guis;
 
 import dev.jsinco.luma.lumaevents.challenges.ChallengeType;
+import dev.jsinco.luma.lumaevents.items.PresentItem;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumacore.manager.guis.AbstractGui;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
@@ -14,38 +15,44 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class ChallengesGui implements AbstractGui {
 
-    private final static Map<Material, List<Integer>> borderItems = Map.of(
-            Material.CORNFLOWER, List.of(0,8),
-            Material.TORCHFLOWER, List.of(1,7)
-    );
+    private final static Map<Material, List<Integer>> borderItems = new HashMap<>();
+
+    static {
+        borderItems.put(Material.LIGHT_BLUE_STAINED_GLASS_PANE, List.of(0, 8, 18, 26));
+        borderItems.put(Material.BLUE_ICE, List.of(1, 7, 19, 25));
+        borderItems.put(Material.SNOWBALL, List.of(2, 6, 9, 17, 20, 24));
+        borderItems.put(Material.CORNFLOWER, List.of(3, 5, 10, 16, 21, 23));
+        borderItems.put(Material.TORCHFLOWER, List.of(4, 22));
+    }
 
     private final Inventory inventory;
     private final EventPlayer eventPlayer;
 
     public ChallengesGui(EventPlayer eventPlayer) {
         this.eventPlayer = eventPlayer;
-        this.inventory = Bukkit.createInventory(this, 27, Util.color("<blue>Winter Challenges"));
+        this.inventory = Bukkit.createInventory(this, 27, Util.color("<b><blue>Winter Challenges"));
         init();
     }
 
     private void init() {
-        // TODO: Borders I guess
         for (ChallengeType challengeEnum : ChallengeType.values()) {
             inventory.setItem(challengeEnum.getInvLoc(), challengeEnum.icon(eventPlayer));
         }
 
-        inventory.setItem(15, Util.createBasicItem(
-                Material.CHEST,
+        ItemStack complete = Util.createBasicItem(
+                Material.PLAYER_HEAD,
                 "<b><gold>Claim Reward",
                 false,
                 List.of("<gray>Click to claim your reward!"),
-                List.of("reward_claim"))
-        );
+                List.of("reward_claim"));
+        Util.setPlayerHead(complete, PresentItem.Companion.getBASE_64_TEXTURE());
+        inventory.setItem(15, complete);
 
         for (Material material : borderItems.keySet()) {
             List<Integer> slots = borderItems.get(material);
@@ -73,7 +80,7 @@ public class ChallengesGui implements AbstractGui {
             Util.sendMsg(onlinePlayer, "<green>You have claimed your reward!");
             onlinePlayer.closeInventory();
         } else {
-            Util.sendMsg(onlinePlayer, "<red>You cannot claim this reward.");
+            Util.sendMsg(onlinePlayer, "<red>You cannot claim this");
         }
     }
 

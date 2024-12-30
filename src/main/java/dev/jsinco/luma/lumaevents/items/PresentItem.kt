@@ -15,11 +15,15 @@ import org.bukkit.inventory.ItemStack
 
 class PresentItem: CustomItemFunctions() {
 
+    companion object {
+        val BASE_64_TEXTURE: String = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMTYyMzRhZTdkNTU5MDNlYThiYzM0NDEzY2Q1MmRlZDNiMzdjOTJlZWU1YWU1MzNmYzUxMjZhNjU0NjFmMTFmIn19fQ=="
+    }
+
     private val builder = LumaItemsAPI.getInstance()
         .factory()
         .name("<b><gold>Wrapped Present")
         .material(Material.PLAYER_HEAD)
-        .b64PHead("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMTYyMzRhZTdkNTU5MDNlYThiYzM0NDEzY2Q1MmRlZDNiMzdjOTJlZWU1YWU1MzNmYzUxMjZhNjU0NjFmMTFmIn19fQ==")
+        .b64PHead(BASE_64_TEXTURE)
         .persistentData("present")
         .tier(Tier.WINTER_2024)
 

@@ -18,6 +18,7 @@ class HolidayCandleItem : CustomItemFunctions() {
             .persistentData("holiday_candle")
             .vanillaEnchants(Enchantment.UNBREAKING to 10)
             .hideEnchants(true)
+            .addSpace(false)
             .tier(Tier.WINTER_2024)
             .buildPair()
     }

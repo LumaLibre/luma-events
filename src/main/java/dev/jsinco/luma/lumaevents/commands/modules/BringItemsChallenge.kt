@@ -85,14 +85,17 @@ class BringItemsChallenge : CommandModule {
             setOf(ItemStack(Material.WATER_BUCKET, 36))),
         STAGE_2(
             listOf(
-                "Next, I'll need lots of blue flowers.",
+                "Next, I'll need lots of <blue>blue</blue> and <red>red</red> flowers so that my snowman can be pretty!",
                 "Bring me about... <gold>24</gold> of all the <blue>blue</blue> and <red>red</red> flowers you can find!",
                 "<dark_gray>(Cornflowers, Blue Orchids, Poppies, Red Tulips, and Rose Bushes)</dark_gray>"),
             "Bring me <blue>Cornflowers</blue>, <blue>Blue Orchids</blue>, <red>Poppies</red>, <red>Red Tulips</red>, and <red>Rose Bushes</red>",
             setOf(ItemStack(Material.CORNFLOWER, 24), ItemStack(Material.BLUE_ORCHID, 24), ItemStack(Material.POPPY, 24), ItemStack(Material.RED_TULIP, 24), ItemStack(Material.ROSE_BUSH, 24))),
         STAGE_3(
             listOf(
-                "I'm also going to need some expensive gemstones. Bring me...",
+                "I'm also going to need some expensive gemstones...",
+                "Why?",
+                "So my snowman can be um... <gray>fabulous..?</gray>",
+                "I'll need...",
                 "• <green>48 Emeralds</green>",
                 "• <aqua>48 Diamond</aqua>",
                 "• <gold>38 Gold Ingots</gold>",
@@ -104,7 +107,7 @@ class BringItemsChallenge : CommandModule {
             "Bring me: \n• 48 Emeralds\n• 48 Diamond\n• 38 Gold Ingots\n• 38 Iron Ingots\n• 24 Lapis Lazuli\n• 12 Redstone\n• 12 Coal",
             setOf(ItemStack(Material.EMERALD, 48), ItemStack(Material.DIAMOND, 48), ItemStack(Material.GOLD_INGOT, 38), ItemStack(Material.IRON_INGOT, 38), ItemStack(Material.LAPIS_LAZULI, 24), ItemStack(Material.REDSTONE, 12), ItemStack(Material.COAL, 12))),
         STAGE_4(
-            listOf(
+            listOf( // TODO: Finish me
                 "Dialogue"),
             "Bring me X item!",
             setOf(ItemStack(Material.BARRIER, 128))),;

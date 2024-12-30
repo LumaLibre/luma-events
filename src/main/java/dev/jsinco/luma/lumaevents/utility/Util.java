@@ -1,11 +1,16 @@
 package dev.jsinco.luma.lumaevents.utility;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
+import com.destroystokyo.paper.profile.ProfileProperty;
 import dev.jsinco.luma.lumaevents.EventMain;
+import lombok.val;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.block.Skull;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -13,11 +18,13 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 public final class Util {
 
@@ -99,6 +106,18 @@ public final class Util {
         }
         item.setItemMeta(meta);
         return item;
+    }
+
+    public static void setPlayerHead(ItemStack item, String b64) {
+        if (item.getType() != Material.PLAYER_HEAD) {
+            return;
+        }
+
+        PlayerProfile profile = Bukkit.createProfile(UUID.randomUUID());
+        profile.getProperties().add(new ProfileProperty("textures", b64));
+        SkullMeta meta = (SkullMeta) item.getItemMeta();
+        meta.setPlayerProfile(profile);
+        item.setItemMeta(meta);
     }
 
     public static <T> T getRandom(Collection<T> collection) {

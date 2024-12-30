@@ -74,6 +74,6 @@ public enum ChallengeType {
         Material material = challenge.isCompleted() ? Material.LIME_DYE : Material.RED_DYE;
         List<String> fullDescription = description.stream().map(s ->
                 String.format(s, challenge.getCurrentStage(), challenge.getStages())).toList();
-        return Util.createBasicItem(material, iconName, challenge.isCompleted(), fullDescription, List.of());
+        return Util.createBasicItem(material, iconName, true, fullDescription, List.of());
     }
 }
