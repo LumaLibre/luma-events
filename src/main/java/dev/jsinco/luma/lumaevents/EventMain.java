@@ -4,15 +4,12 @@ import dev.jsinco.luma.lumaevents.guis.ChallengesGui;
 import dev.jsinco.luma.lumaevents.items.CustomItemsManager;
 import dev.jsinco.luma.lumacore.manager.modules.ModuleManager;
 import dev.jsinco.luma.lumaevents.obj.EventPlayerManager;
-import dev.jsinco.luma.lumaitems.LumaItems;
-import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class EventMain extends JavaPlugin {
 
-    @Getter
     private static EventMain instance;
     private static ModuleManager moduleManager;
 
@@ -42,5 +39,9 @@ public class EventMain extends JavaPlugin {
                 player.closeInventory();
             }
         }
+    }
+
+    public static EventMain getInstance() {
+        return instance;
     }
 }

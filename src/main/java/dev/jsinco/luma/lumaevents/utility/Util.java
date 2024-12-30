@@ -2,6 +2,7 @@ package dev.jsinco.luma.lumaevents.utility;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -20,9 +21,11 @@ import java.util.List;
 
 public final class Util {
 
+    private static final String PREFIX = "<b><#9b8aac>❄</#9b8aac> <#CCD8E9>Event</#CCD8E9></b> <dark_gray>»</dark_gray> ";
+
     // TODO: I want to use small font
     public static void sendMsg(CommandSender receiver, String message) {
-        receiver.sendMessage(color("Event >> " + message));
+        receiver.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString("#C0D6F0")));
     }
 
     public static Component color(String string) {

@@ -5,7 +5,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum JobConstants {
+public enum EventJobConstants {
 
     ALCHEMIST(50000, 10),
     BLACKSMITH(50000, 10),

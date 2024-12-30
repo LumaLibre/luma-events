@@ -15,8 +15,14 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.Map;
 
 public class ChallengesGui implements AbstractGui {
+
+    private final static Map<Material, List<Integer>> borderItems = Map.of(
+            Material.CORNFLOWER, List.of(0,8),
+            Material.TORCHFLOWER, List.of(1,7)
+    );
 
     private final Inventory inventory;
     private final EventPlayer eventPlayer;
@@ -40,6 +46,13 @@ public class ChallengesGui implements AbstractGui {
                 List.of("<gray>Click to claim your reward!"),
                 List.of("reward_claim"))
         );
+
+        for (Material material : borderItems.keySet()) {
+            List<Integer> slots = borderItems.get(material);
+            for (int slot : slots) {
+                inventory.setItem(slot, Util.createBasicItem(material, "", false, List.of(), List.of()));
+            }
+        }
     }
 
     @Override
