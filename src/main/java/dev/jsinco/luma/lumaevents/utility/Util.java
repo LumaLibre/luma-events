@@ -31,7 +31,7 @@ public final class Util {
     private static final String PREFIX = "<b><#9b8aac>❄</#9b8aac> <#CCD8E9>Event</#CCD8E9></b> <dark_gray>»</dark_gray> ";
 
     public static void sendMsg(CommandSender receiver, String message) {
-        receiver.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString("#C0D6F0")));
+        receiver.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString("#CBB6E9")));
     }
 
     public static Component color(String string) {

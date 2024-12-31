@@ -36,7 +36,7 @@ public class ChallengesGui implements AbstractGui {
 
     public ChallengesGui(EventPlayer eventPlayer) {
         this.eventPlayer = eventPlayer;
-        this.inventory = Bukkit.createInventory(this, 27, Util.color("<b><blue>Winter Challenges"));
+        this.inventory = Bukkit.createInventory(this, 27, Util.color("<b><#CCD8E9>W<#BCBED5>i<#ACA4C0>n<#9C8AAC>t<#BBA1B6>e<#D9B7C0>r <#F6D5C9>C<#F4DCC7>h<#F2E2C6>a<#F0E9C4>l<#E5E4B8>l<#D9DFAC>e<#CEDAA0>n<#BBD7AE>g<#A7D5BB>e<#94D2C9>s"));
         init();
     }
 

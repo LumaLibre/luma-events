@@ -59,7 +59,7 @@ class BringItemsChallenge : CommandModule {
     enum class StageNarrative(val dialogue: List<String>, val simpleDialogue: String, val itemStacks: Set<ItemStack>) {
         STAGE_0(
             listOf(
-                "Hi, I'm <aqua><b>Frosty</b></aqua>! It's a pleasure to meet you.",
+                "Hi, I'm <#B9DDFF><b>Frosty</b></#B9DDFF>! It's a pleasure to meet you.",
                 "My dream this winter is to build the biggest snowman possible!",
                 "Though, I can't exactly do it on my own. I'll probably need help from someone",
                 "...",
@@ -127,7 +127,7 @@ class BringItemsChallenge : CommandModule {
                 val spacing = 3
                 dialogue.forEachIndexed { index, s ->
                     Bukkit.getAsyncScheduler().runDelayed(EventMain.getInstance(), {
-                        player.sendMessage(Util.color(s).colorIfAbsent(TextColor.fromHexString("#C0D6F0")))
+                        player.sendMessage(Util.color(s).colorIfAbsent(TextColor.fromHexString("#CBB6E9")))
                     }, spacing * index.toLong(), TimeUnit.SECONDS)
                 }
                 storedInteraction.add(player.uniqueId)
@@ -142,7 +142,7 @@ class BringItemsChallenge : CommandModule {
             for (itemStack in itemStacks) {
                 if (!player.inventory.containsAtLeast(itemStack, itemStack.amount)) {
                     Util.sendMsg(player,
-                        "<reset>You don't have enough</reset> <gold>${LumaItemsUtil.formatMaterialName(itemStack.type.name)}</gold> <reset>for</reset> <aqua><b>Frosty</b></aqua>'s <reset>request. <dark_gray>(Missing <gold>${itemStack.amount - player.inventory.all(itemStack.type).values.sumOf { it.amount }}</gold>)</dark_gray>")
+                        "<reset>You don't have enough</reset> <gold>${LumaItemsUtil.formatMaterialName(itemStack.type.name)}</gold> <reset>for</reset> <#B9DDFF><b>Frosty</b></#B9DDFF>'s <reset>request. <dark_gray>(Missing <gold>${itemStack.amount - player.inventory.all(itemStack.type).values.sumOf { it.amount }}</gold>)</dark_gray>")
                     return false
                 }
             }

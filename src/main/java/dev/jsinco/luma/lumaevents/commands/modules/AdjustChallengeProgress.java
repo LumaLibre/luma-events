@@ -10,6 +10,7 @@ import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
 import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.EventPlayerManager;
+import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -50,6 +51,10 @@ public class AdjustChallengeProgress implements CommandModule {
             case "set" -> challenge.setCurrentStage(amount);
             case "remove" -> challenge.setCurrentStage(challenge.getCurrentStage() - amount);
         }
+
+        onlinePlayer.sendActionBar(Util.color(
+                "<dark_gray>(" + challengeType.name().toLowerCase() + ": " + challenge.getCurrentStage() + "/" + challenge.getStages() + ")</dark_gray>"
+        ));
 
         EventMain.getInstance().getLogger().info("Set " + challengeType + " to " + amount + " for " + onlinePlayer.getName());
         return true;
