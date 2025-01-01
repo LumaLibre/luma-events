@@ -18,10 +18,6 @@ public class HookedListeners implements Listener {
 
     @EventHandler
     public void onJobsPrePayment(JobsPrePaymentEvent event) {
-//        if (true) { // TODO: Enable
-//            return;
-//        }
-
         EventJobConstants jobConstant = Util.getEnumFromString(EventJobConstants.class, event.getJob().getName().toUpperCase());
         if (jobConstant == null) {
             return;
