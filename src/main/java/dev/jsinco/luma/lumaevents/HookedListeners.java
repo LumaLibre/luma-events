@@ -29,7 +29,7 @@ public class HookedListeners implements Listener {
                 return;
             }
             Util.giveItem(player, holidayCandle);
-            Util.sendMsg(player, "You have been given <gold>1x <b><#F14452>H<#E95257>o<#E2605C>l<#DA6E61>i<#D27D66>d<#CB8B6B>a<#C39970>y <#B3B57B>C<#ACC380>a<#A4D285>n<#9CE08A>d<#95EE8F>l<#8DFC94>e");
+            Util.sendMsg(player, "You have been given a holiday candle!");
         }
     }
 
