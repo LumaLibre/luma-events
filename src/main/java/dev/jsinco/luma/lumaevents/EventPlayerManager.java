@@ -1,9 +1,9 @@
-package dev.jsinco.luma.lumaevents.obj;
+package dev.jsinco.luma.lumaevents;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.challenges.Challenge;
+import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -18,7 +18,7 @@ import java.util.UUID;
 
 public final class EventPlayerManager {
 
-    private static final List<EventPlayer> EVENT_PLAYERS = new ArrayList<>();
+    public static final List<EventPlayer> EVENT_PLAYERS = new ArrayList<>();
 
     private static final Gson gson = new GsonBuilder()
             .setPrettyPrinting()

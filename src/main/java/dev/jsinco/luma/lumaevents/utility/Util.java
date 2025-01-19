@@ -30,6 +30,10 @@ public final class Util {
 
     private static final String PREFIX = "<b><#9b8aac>❄</#9b8aac> <#CCD8E9>Event</#CCD8E9></b> <dark_gray>»</dark_gray> ";
 
+    public static void log(String msg) {
+        sendMsg(Bukkit.getConsoleSender(), msg);
+    }
+
     public static void sendMsg(CommandSender receiver, String message) {
         receiver.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString("#CBB6E9")));
     }
@@ -131,5 +135,13 @@ public final class Util {
         } catch (IllegalArgumentException e) {
             return null;
         }
+    }
+
+    public static <T> T getRandFromList(List<T> list) {
+        return list.get((int) (Math.random() * list.size()));
+    }
+
+    public static <T> T getRandFromList(T[] array) {
+        return array[(int) (Math.random() * array.length)];
     }
 }
