@@ -14,7 +14,7 @@ import org.bukkit.entity.Player;
 
 import java.util.List;
 
-@AutoRegister(RegisterType.SUBCOMMAND)
+//@AutoRegister(RegisterType.SUBCOMMAND)
 @CommandInfo(
         parent = CommandManager.class,
         name = "challenges",

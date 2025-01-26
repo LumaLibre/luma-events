@@ -19,7 +19,7 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import dev.jsinco.luma.lumaitems.util.Util as LumaItemsUtil
 
-@AutoRegister(RegisterType.SUBCOMMAND)
+//@AutoRegister(RegisterType.SUBCOMMAND)
 @CommandInfo(
     parent = CommandManager::class,
     permission = "lumaevent.admin",

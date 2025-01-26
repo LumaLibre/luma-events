@@ -7,6 +7,7 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.Random;
@@ -16,7 +17,7 @@ public class HookedListeners implements Listener {
     private static final Random RANDOM = new Random();
     private final ItemStack holidayCandle = CustomItemsManager.holidayCandleItem.createItem().component2();
 
-    @EventHandler
+    //@EventHandler
     public void onJobsPrePayment(JobsPrePaymentEvent event) {
         EventJobConstants jobConstant = Util.getEnumFromString(EventJobConstants.class, event.getJob().getName().toUpperCase());
         if (jobConstant == null) {
