@@ -42,7 +42,7 @@ public class PresentCommand implements CommandModule {
         }
 
         String randomPlayerName = Util.getRandom(Bukkit.getOnlinePlayers()).getName();
-        ItemStack item = customItem.getItemFormatted(randomPlayerName, receiver.getName());
+        ItemStack item = customItem.getItemFormatted(randomPlayerName, "A Parkour Pro");
         Util.giveItem(receiver, item);
         Util.sendMsg(commandSender, "&aSuccessfully gave present to &e" + receiver.getName() + "&a.");
         return true;
