@@ -21,7 +21,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
-    compileOnly("dev.jsinco.luma.lumacore:LumaCore:456435f")
+    compileOnly("dev.jsinco.luma.lumacore:LumaCore:1a54b7d")
     compileOnly("dev.jsinco.luma.lumaitems:LumaItems:7a3405c")
 //    compileOnly("org.projectlombok:lombok:1.18.30")
 //    annotationProcessor("org.projectlombok:lombok:1.18.30")
