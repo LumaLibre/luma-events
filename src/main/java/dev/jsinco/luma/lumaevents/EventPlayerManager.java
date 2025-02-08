@@ -2,7 +2,6 @@ package dev.jsinco.luma.lumaevents;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import dev.jsinco.luma.lumaevents.challenges.Challenge;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import org.jetbrains.annotations.NotNull;
 
@@ -23,7 +22,6 @@ public final class EventPlayerManager {
     private static final Gson gson = new GsonBuilder()
             .setPrettyPrinting()
             .excludeFieldsWithModifiers(Modifier.STATIC)
-            .registerTypeAdapter(Challenge.class, new Challenge.TypeAdapter())
             .create();
     private static final Path FOLDER = EventMain.getInstance()
             .getDataPath()

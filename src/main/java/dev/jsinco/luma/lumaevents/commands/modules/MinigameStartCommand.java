@@ -7,9 +7,10 @@ import dev.jsinco.luma.lumacore.utility.Text;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
-import dev.jsinco.luma.lumaevents.games.Envoys;
-import dev.jsinco.luma.lumaevents.games.Minigame;
-import dev.jsinco.luma.lumaevents.games.Paintball;
+import dev.jsinco.luma.lumaevents.games.logic.Envoys;
+import dev.jsinco.luma.lumaevents.games.logic.Minigame;
+import dev.jsinco.luma.lumaevents.games.MinigameManager;
+import dev.jsinco.luma.lumaevents.games.logic.Paintball;
 import org.bukkit.command.CommandSender;
 
 import java.util.List;
@@ -37,11 +38,16 @@ public class MinigameStartCommand implements CommandModule {
         };
 
         if (minigame == null) {
-            //Text.
+            Text.msg(commandSender, "Invalid minigame");
             return false;
         }
 
-        return false;
+        if (MinigameManager.getInstance().tryNewMinigameSafely(minigame, true)){
+            Text.msg(commandSender, "Minigame started");
+        } else {
+            Text.msg(commandSender, "Failed to start minigame. Is there another minigame active?");
+        }
+        return true;
     }
 
     @Override

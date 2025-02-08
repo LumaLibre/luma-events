@@ -1,6 +1,5 @@
-package dev.jsinco.luma.lumaevents.games;
+package dev.jsinco.luma.lumaevents.games.logic;
 
-import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
@@ -14,7 +13,6 @@ import org.bukkit.entity.FallingBlock;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.metadata.FixedMetadataValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +28,7 @@ public non-sealed class Envoys extends Minigame {
 
 
     public Envoys(Location loc1, Location loc2) {
-        super("Envoys", MinigameConstants.ENVOYS_DESC, 30000L, 40);
+        super("Envoys", MinigameConstants.ENVOYS_DESC, 30000L, 40, false);
         this.boundingBox = WorldTiedBoundingBox.of(loc1, loc2);
         this.cachedNonFallingEnvoys = new ArrayList<>();
     }
@@ -60,6 +58,11 @@ public non-sealed class Envoys extends Minigame {
         for (Location loc : this.cachedNonFallingEnvoys) {
             loc.getBlock().setType(Material.AIR);
         }
+    }
+
+    @Override
+    protected void handleParticipantJoin(EventPlayer player) {
+
     }
 
     @EventHandler

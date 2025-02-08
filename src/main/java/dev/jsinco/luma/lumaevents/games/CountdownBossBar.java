@@ -5,6 +5,7 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 // TODO:
@@ -12,28 +13,32 @@ import org.bukkit.scheduler.BukkitRunnable;
 //  the countdown bosbar was created. Should probably fix
 public class CountdownBossBar extends BukkitRunnable {
 
-    private final Audience audience = Audience.audience(Bukkit.getOnlinePlayers());
 
     private final BossBar bossBar;
     private final String title;
     private final float seconds;
     private final Runnable callback;
     private float secondsRemaining;
+    private Audience audience;
 
 
-    public CountdownBossBar(String title, BossBar.Color barColor, float seconds, Runnable callback) {
+    public CountdownBossBar(String title, BossBar.Color barColor, float seconds, Audience audience, Runnable callback) {
         this.bossBar = BossBar.bossBar(Util.color(title), 1.0f, barColor, BossBar.Overlay.NOTCHED_12);
         this.title = title;
         this.seconds = seconds;
         this.secondsRemaining = seconds;
         this.callback = callback;
-
+        this.audience = audience;
         bossBar.addViewer(audience);
+    }
+
+    public CountdownBossBar(String title, BossBar.Color barColor, float seconds, Audience audience) {
+        this(title, barColor, seconds, audience, null);
     }
 
 
     public void start() {
-        this.runTaskTimer(EventMain.getInstance(), 0, 2);
+        this.runTaskTimerAsynchronously(EventMain.getInstance(), 0, 2);
     }
 
 
@@ -41,7 +46,7 @@ public class CountdownBossBar extends BukkitRunnable {
         bossBar.removeViewer(audience);
         this.cancel();
         if (callback) {
-            this.callback.run();
+            if (this.callback != null) this.callback.run();
         }
     }
 
@@ -60,7 +65,7 @@ public class CountdownBossBar extends BukkitRunnable {
         if (secondsRemaining <= 0) {
             bossBar.removeViewer(audience);
             this.cancel();
-            this.callback.run();
+            if (this.callback != null) this.callback.run();
         }
     }
 
@@ -74,7 +79,8 @@ public class CountdownBossBar extends BukkitRunnable {
         private String title;
         private BossBar.Color color;
         private float seconds;
-        private Runnable callback;
+        private Runnable callback = null;
+        private Audience audience;
 
 
         public Builder title(String title) {
@@ -92,13 +98,23 @@ public class CountdownBossBar extends BukkitRunnable {
             return this;
         }
 
+        public Builder miliseconds(long miliseconds) {
+            this.seconds = (float) miliseconds / 1000;
+            return this;
+        }
+
         public Builder callback(Runnable callback) {
             this.callback = callback;
             return this;
         }
 
+        public Builder audience(Audience audience) {
+            this.audience = audience;
+            return this;
+        }
+
         public CountdownBossBar build() {
-            return new CountdownBossBar(title, color, seconds, callback);
+            return new CountdownBossBar(title, color, seconds, audience, callback);
         }
     }
 }

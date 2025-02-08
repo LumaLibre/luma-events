@@ -9,7 +9,7 @@ import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
 
 @AutoRegister(RegisterType.COMMAND)
-@CommandInfo(name = "event", aliases = {"winter"})
+@CommandInfo(name = "event", aliases = {"valentide", "valentines"})
 public class CommandManager extends AbstractCommandManager<EventMain, CommandModule> {
 
     public CommandManager() {

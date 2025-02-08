@@ -1,9 +1,11 @@
-package dev.jsinco.luma.lumaevents.games;
+package dev.jsinco.luma.lumaevents.games.logic;
 
 import dev.jsinco.luma.lumaevents.EventMain;
+import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import lombok.Getter;
 import lombok.Setter;
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
 import org.bukkit.event.HandlerList;
@@ -22,6 +24,7 @@ public sealed abstract class Minigame
 
     protected final List<EventPlayer> participants = new ArrayList<>();
 
+    protected Audience audience;
     private final String name;
     private final String description;
     private final long duration;
@@ -32,7 +35,7 @@ public sealed abstract class Minigame
     protected boolean open = false;
     protected boolean active = false;
 
-    protected Minigame(String name, String description, long duration, long tickInterval) {
+    protected Minigame(String name, String description, long duration, long tickInterval, boolean async) {
         this.name = name;
         this.description = description;
         this.duration = duration;
@@ -40,7 +43,7 @@ public sealed abstract class Minigame
     }
 
 
-    protected boolean start() {
+    public boolean start() {
         if (this.active) {
             return false;
         }
@@ -50,11 +53,15 @@ public sealed abstract class Minigame
         return true;
     }
 
-    protected boolean stop() {
+    public boolean stop() {
         if (!this.active) {
             return false;
         }
-        this.handleStop();
+        try {
+            this.handleStop();
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+        }
         HandlerList.unregisterAll(this);
         this.cancel();
         this.active = false;
@@ -67,6 +74,11 @@ public sealed abstract class Minigame
             return false;
         }
         this.participants.add(player);
+        try {
+            this.handleParticipantJoin(player);
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+        }
         return true;
     }
 
@@ -76,11 +88,18 @@ public sealed abstract class Minigame
                 .seconds(30)
                 .color(BossBar.Color.BLUE)
                 .callback(() -> {
-                    this.handleStart();
                     Bukkit.getPluginManager().registerEvents(this, EventMain.getInstance());
                     this.open = false;
                     this.startTime = System.currentTimeMillis();
+                    this.runTaskTimer(EventMain.getInstance(), 0, this.tickInterval);
+                    this.audience = Audience.audience(participants.stream().map(EventPlayer::getPlayer).toList());
+                    try {
+                        this.handleStart();
+                    } catch (Throwable throwable) {
+                        throwable.printStackTrace();
+                    }
                 })
+                .audience(Audience.audience(Bukkit.getOnlinePlayers()))
                 .build()
                 .start();
     }
@@ -92,7 +111,11 @@ public sealed abstract class Minigame
             this.stop();
             return;
         }
-        this.onRunnable(timeLeft);
+        try {
+            this.onRunnable(timeLeft);
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+        }
     }
 
     // Minigame starts, returns true if successful
@@ -101,4 +124,6 @@ public sealed abstract class Minigame
     protected abstract void onRunnable(long timeLeft);
     // Minigame stops, returns true if successful
     protected abstract void handleStop();
+
+    protected abstract void handleParticipantJoin(EventPlayer player);
 }

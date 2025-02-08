@@ -5,18 +5,20 @@ import eu.okaeri.configs.serdes.standard.StandardSerdes;
 import eu.okaeri.configs.yaml.bukkit.YamlBukkitConfigurer;
 import lombok.Getter;
 
+import java.nio.file.Path;
+
+@Getter
 public class ConfigManager {
 
-    @Getter
     private final Config config;
-    @Getter
-    private static final ConfigManager instance = new ConfigManager();
 
     public ConfigManager() {
+        Path configPath = EventMain.getInstance().getDataPath().resolve("config.yml");
+
         this.config = eu.okaeri.configs.ConfigManager.create(Config.class, (it) -> {
             it.withConfigurer(new YamlBukkitConfigurer(), new StandardSerdes());
             it.withRemoveOrphans(true);
-            it.withBindFile(EventMain.getInstance().getDataPath().resolve("config.yml"));
+            it.withBindFile(configPath);
 
             it.withSerdesPack(registry -> {
                 registry.register(new LocationTransformer());
@@ -24,5 +26,7 @@ public class ConfigManager {
             it.saveDefaults();
             it.load(true);
         });
+
+        System.out.println("Config loaded");
     }
 }

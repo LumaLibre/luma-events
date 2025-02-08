@@ -3,14 +3,13 @@ package dev.jsinco.luma.lumaevents.utility;
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
 import dev.jsinco.luma.lumaevents.EventMain;
-import lombok.val;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.block.Skull;
+import org.bukkit.Sound;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -28,7 +27,7 @@ import java.util.UUID;
 
 public final class Util {
 
-    private static final String PREFIX = "<b><#9b8aac>❄</#9b8aac> <#CCD8E9>Event</#CCD8E9></b> <dark_gray>»</dark_gray> ";
+    private static final String PREFIX = "<b><#954381>E<#EC60B0>v<#EE80C6>e<#C262A4>n<#954381>t</b> <dark_gray>»</dark_gray> ";
 
     public static void log(String msg) {
         sendMsg(Bukkit.getConsoleSender(), msg);
@@ -38,12 +37,26 @@ public final class Util {
         receiver.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString("#CBB6E9")));
     }
 
+    public static void broadcast(String message) {
+        Bukkit.broadcast(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString("#CBB6E9")));
+    }
+
+    public static void broadcastSound(Sound sound, float volume, float pitch) {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.playSound(player.getLocation(), sound, volume, pitch);
+        }
+    }
+
     public static Component color(String string) {
         return MiniMessage.miniMessage().deserialize("<!i>" + string);
     }
 
     public static List<Component> color(List<String> strings) {
         return strings.stream().map(Util::color).toList();
+    }
+
+    public static void giveTokens(String name, int amount) {
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lumaitems give valentine_token " + name + " " + amount);
     }
 
     public static <P, C> C getPersistentKey(ItemStack item, String strKey, PersistentDataType<P, C> dataType) {

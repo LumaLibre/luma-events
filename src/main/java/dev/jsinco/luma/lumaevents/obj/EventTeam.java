@@ -1,9 +1,19 @@
 package dev.jsinco.luma.lumaevents.obj;
 
+import dev.jsinco.chatheads.Handler;
+import dev.jsinco.chatheads.integration.ChatHeadsAPI;
+import dev.jsinco.chatheads.obj.CachedPlayer;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
+import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.title.Title;
+import net.kyori.adventure.title.TitlePart;
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 import java.util.HashSet;
 import java.util.List;
@@ -18,10 +28,13 @@ import java.util.concurrent.CompletableFuture;
 @AllArgsConstructor
 public class EventTeam {
 
+    private static final Component SPACE_TEXT_COMPONENT = Component.text(" ");
+
     private final EventTeamType type;
     private int teamPoints;
     private final Set<EventPlayer> teamPlayers;
 
+    // Constructing
     public void addPoints(int points) {
         teamPoints += points;
     }
@@ -30,6 +43,61 @@ public class EventTeam {
         teamPlayers.add(player);
     }
 
+    // Operations on all players
+    public void addTeamReward(EventReward reward) {
+        for (EventPlayer player : teamPlayers) {
+            player.addReward(reward);
+        }
+    }
+
+    public void title(String title, String subtitle) {
+        for (EventPlayer player : teamPlayers) {
+            player.getPlayer().showTitle(Title.title(
+                    Util.color(title),
+                    Util.color(subtitle)
+            ));
+        }
+    }
+
+    public void msg(CommandSender player, String msg) {
+        player.sendMessage(Util.color(type.getColor() + msg));
+    }
+
+
+    public void teamMsg(Player sender, Component msg) {
+        Component chathead = ChatHeadsAPI.getChatHead(sender);
+        for (EventPlayer player : teamPlayers) {
+            CachedPlayer cachedPlayer = Handler.getCachedPlayer(sender);
+
+            if (cachedPlayer.isDisabledChatHead()) {
+                player.sendNoPrefixedMessage(Util.color(getFormattedSender(sender.getName())).append(msg));
+                continue;
+            }
+
+            Component finalComponent;
+            if (cachedPlayer.doNotReverseOrientation()) {
+                finalComponent = chathead
+                        .append(SPACE_TEXT_COMPONENT)
+                        .append(Util.color(getFormattedSender(sender.getName()))
+                        .append(msg));
+            } else {
+                finalComponent = Util.color(getFormattedSender(sender.getName()))
+                        .append(msg)
+                        .append(SPACE_TEXT_COMPONENT)
+                        .append(chathead);
+            }
+
+            player.sendNoPrefixedMessage(finalComponent);
+        }
+        Bukkit.getConsoleSender().sendMessage(
+                Util.color(getFormattedSender(sender.getName()))
+                        .append(msg)
+        );
+    }
+
+    public String getFormattedSender(String sender) {
+        return "<b>"+type.getColor()+"Team <reset><gray>| "+type.getColor()+sender+"<gray>: "+type.getColor();
+    }
 
     public static CompletableFuture<Set<EventTeam>> ofAsync() {
         return CompletableFuture.supplyAsync(() -> of(EventPlayerManager.EVENT_PLAYERS));
@@ -54,6 +122,28 @@ public class EventTeam {
             team.addPoints(eventPlayer.getPoints());
             team.addPlayer(eventPlayer);
         }
+
+        for (EventTeamType type : EventTeamType.values()) {
+            if (createdTeamObjects.stream().noneMatch(team -> team.getType().equals(type))) {
+                createdTeamObjects.add(ofEmptyTeam(type));
+            }
+        }
         return createdTeamObjects;
+    }
+
+    public static EventTeam ofEmptyTeam(EventTeamType type) {
+        return new EventTeam(type, 0, new HashSet<>());
+    }
+
+    public static EventTeam ofOnlinePlayers(EventTeamType type) {
+        EventTeam team = new EventTeam(type, 0, new HashSet<>());
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
+            if (eventPlayer.getTeamType() != null && eventPlayer.getTeamType() == type) {
+                team.addPlayer(eventPlayer);
+                team.addPoints(eventPlayer.getPoints());
+            }
+        }
+        return team;
     }
 }

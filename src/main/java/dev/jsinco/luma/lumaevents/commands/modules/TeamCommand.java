@@ -26,28 +26,37 @@ import java.util.List;
 )
 public class TeamCommand implements CommandModule {
     @Override
-    public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
+    public boolean execute(EventMain eventMain, CommandSender sender, String s, String[] strings) {
         EventTeam.ofAsync().thenAcceptAsync(eventTeams -> {
-            EventTeamType teamTypeToLookup;
-            if (strings.length == 0 && commandSender instanceof Player player) {
-                teamTypeToLookup = EventPlayerManager.getByUUID(player.getUniqueId()).getTeamType();
+            EventTeamType type;
+            if (strings.length == 0 && sender instanceof Player player) {
+                type = EventPlayerManager.getByUUID(player.getUniqueId()).getTeamType();
             } else {
-                teamTypeToLookup = Util.getEnumFromString(EventTeamType.class, strings[0]);
+                type = Util.getEnumFromString(EventTeamType.class, strings[0]);
             }
 
-            if (teamTypeToLookup == null) {
-                Util.sendMsg(commandSender, "Invalid team type");
+            if (type == null) {
+                Util.sendMsg(sender, "Invalid team type");
                 return;
             }
 
             EventTeam team = eventTeams.stream()
-                    .filter(eventTeam -> eventTeam.getType().equals(teamTypeToLookup))
+                    .filter(eventTeam -> eventTeam.getType().equals(type))
                     .findFirst()
                     .orElse(null);
 
-            commandSender.sendMessage("Team: " + teamTypeToLookup.name());
-            commandSender.sendMessage("Points: " + team.getTeamPoints());
-            commandSender.sendMessage("Players: " + team.getTeamPlayers().size());
+            if (team == null) {
+                Util.sendMsg(sender, "Team not found");
+                return;
+            }
+
+            team.msg(sender, "<#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     ");
+            team.msg(sender, "Team info for<gray>: " +
+                    type.getGradient() +
+                    type.getFormatted());
+            team.msg(sender, "Total accumulated points<gray>: " + team.getTeamPoints());
+            team.msg(sender, "Total members<gray>: " + team.getTeamPlayers().size());
+            team.msg(sender, "<#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     ");
         });
         return true;
     }
