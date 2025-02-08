@@ -6,6 +6,7 @@ import dev.jsinco.luma.lumaevents.EventMain;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -156,5 +157,9 @@ public final class Util {
 
     public static <T> T getRandFromList(T[] array) {
         return array[(int) (Math.random() * array.length)];
+    }
+
+    public static String formatInt(int num) {
+        return String.format("%,d", num);
     }
 }

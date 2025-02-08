@@ -10,15 +10,16 @@ import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
-import net.kyori.adventure.title.TitlePart;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 /**
  * Utility class which represents a team and all of it's points players, etc.
@@ -100,14 +101,30 @@ public class EventTeam {
     }
 
     public static CompletableFuture<Set<EventTeam>> ofAsync() {
-        return CompletableFuture.supplyAsync(() -> of(EventPlayerManager.EVENT_PLAYERS));
+        return CompletableFuture.supplyAsync(() -> of(EventPlayerManager.EVENT_PLAYERS, false));
+    }
+
+    public static CompletableFuture<Set<EventTeam>> ofAsync(boolean sorted) {
+        return CompletableFuture.supplyAsync(() -> of(EventPlayerManager.EVENT_PLAYERS, sorted));
     }
 
     public static CompletableFuture<Set<EventTeam>> ofAsync(List<EventPlayer> playerList) {
-        return CompletableFuture.supplyAsync(() -> of(playerList));
+        return CompletableFuture.supplyAsync(() -> of(playerList, false));
     }
 
-    public static Set<EventTeam> of(List<EventPlayer> playerList) {
+    public static CompletableFuture<Set<EventTeam>> ofAsync(List<EventPlayer> playerList, boolean sorted) {
+        return CompletableFuture.supplyAsync(() -> of(playerList, sorted));
+    }
+
+    public static Set<EventTeam> of() {
+        return of(EventPlayerManager.EVENT_PLAYERS, false);
+    }
+
+    public static Set<EventTeam> of(boolean sorted) {
+        return of(EventPlayerManager.EVENT_PLAYERS, sorted);
+    }
+
+    public static Set<EventTeam> of(List<EventPlayer> playerList, boolean sorted) {
         Set<EventTeam> createdTeamObjects = new HashSet<>();
         for (EventPlayer eventPlayer : playerList) {
             EventTeamType teamType = eventPlayer.getTeamType();
@@ -127,6 +144,13 @@ public class EventTeam {
             if (createdTeamObjects.stream().noneMatch(team -> team.getType().equals(type))) {
                 createdTeamObjects.add(ofEmptyTeam(type));
             }
+        }
+
+        // Sorted by points
+        if (sorted) {
+            return createdTeamObjects.stream()
+                    .sorted((team1, team2) -> Integer.compare(team2.getTeamPoints(), team1.getTeamPoints()))
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
         }
         return createdTeamObjects;
     }
