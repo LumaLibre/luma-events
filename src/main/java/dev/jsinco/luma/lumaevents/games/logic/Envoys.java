@@ -1,11 +1,15 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
+import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
+import dev.jsinco.luma.lumaevents.games.MinigameScoreboard;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.MinigameConstants;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
@@ -24,13 +28,15 @@ public non-sealed class Envoys extends Minigame {
     private static final String METADATA_KEY = "envoy";
 
     private final WorldTiedBoundingBox boundingBox;
-    private final List<Location> cachedNonFallingEnvoys;
+    private final List<BlockState> cachedEnvoys;
+    private final MinigameScoreboard scoreboard;
 
 
     public Envoys(Location loc1, Location loc2) {
-        super("Envoys", MinigameConstants.ENVOYS_DESC, 30000L, 40, false);
+        super("Envoys", MinigameConstants.ENVOYS_DESC, 30000L, 20, false);
         this.boundingBox = WorldTiedBoundingBox.of(loc1, loc2);
-        this.cachedNonFallingEnvoys = new ArrayList<>();
+        this.cachedEnvoys = new ArrayList<>();
+        this.scoreboard = new MinigameScoreboard();
     }
 
 
@@ -50,13 +56,23 @@ public non-sealed class Envoys extends Minigame {
         state.setType(Material.BARREL);
         //state.setMetadata(METADATA_KEY, new FixedMetadataValue(EventMain.getInstance(), true));
         state.update(true);
+        cachedEnvoys.add(state);
+        System.out.println(cachedEnvoys);
+
+        // Particles
+        Bukkit.getAsyncScheduler().runNow(EventMain.getInstance(), (task) -> {
+            for (BlockState blockState : this.cachedEnvoys) {
+                blockState.getWorld().spawnParticle(Particle.FIREWORK, blockState.getLocation(), 10, 0.5, 0.5, 0.5, 0.1);
+            }
+        });
     }
 
 
     @Override
     protected void handleStop() {
-        for (Location loc : this.cachedNonFallingEnvoys) {
-            loc.getBlock().setType(Material.AIR);
+        for (BlockState state : this.cachedEnvoys) {
+            state.setType(Material.AIR);
+            state.update(true);
         }
     }
 
@@ -71,7 +87,7 @@ public non-sealed class Envoys extends Minigame {
             return;
         }
 
-        this.cachedNonFallingEnvoys.add(event.getBlock().getLocation());
+        this.cachedEnvoys.add(event.getBlock().getState(true));
         event.getBlock().getWorld().playSound(event.getBlock().getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0F, 1.0F);
     }
 
@@ -83,7 +99,7 @@ public non-sealed class Envoys extends Minigame {
         }
 
         block.setType(Material.AIR);
-        this.cachedNonFallingEnvoys.remove(block.getLocation());
+        this.cachedEnvoys.remove(block.getState(true));
         EventPlayer player = EventPlayerManager.getByUUID(event.getPlayer().getUniqueId());
         player.sendMessage("You have found an envoy!");
         player.addPoints(1);
@@ -102,6 +118,6 @@ public non-sealed class Envoys extends Minigame {
     }
 
     private boolean isEnvoy(BlockState state) {
-        return cachedNonFallingEnvoys.contains(state.getLocation())  || state.hasMetadata(METADATA_KEY);
+        return cachedEnvoys.contains(state); //|| state.hasMetadata(METADATA_KEY);
     }
 }
