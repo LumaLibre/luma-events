@@ -2,6 +2,7 @@ package dev.jsinco.luma.lumaevents.games.logic;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
+import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
 import dev.jsinco.luma.lumaevents.games.MinigameScoreboard;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
@@ -25,16 +26,17 @@ public non-sealed class Envoys extends Minigame {
 
     //private static final List<Material> BLACKLISTED_MATERIALS = List.of(Material.BARRIER);
 
-    private static final String METADATA_KEY = "envoy";
+    //private static final String METADATA_KEY = "envoy";
 
-    private final WorldTiedBoundingBox boundingBox;
     private final List<BlockState> cachedEnvoys;
+    private final Location spawnPoint;
     private final MinigameScoreboard scoreboard;
 
 
-    public Envoys(Location loc1, Location loc2) {
+    public Envoys(MinigameDefinition def) {
         super("Envoys", MinigameConstants.ENVOYS_DESC, 30000L, 20, false);
-        this.boundingBox = WorldTiedBoundingBox.of(loc1, loc2);
+        this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
+        this.spawnPoint = def.getSpawnLocation();
         this.cachedEnvoys = new ArrayList<>();
         this.scoreboard = new MinigameScoreboard();
     }
@@ -103,6 +105,7 @@ public non-sealed class Envoys extends Minigame {
         EventPlayer player = EventPlayerManager.getByUUID(event.getPlayer().getUniqueId());
         player.sendMessage("You have found an envoy!");
         player.addPoints(1);
+        this.scoreboard.addPoints(player, 1);
     }
 
     private Location findValidSpawnLocation() {

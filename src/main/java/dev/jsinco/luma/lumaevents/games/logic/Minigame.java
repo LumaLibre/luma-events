@@ -1,8 +1,10 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
 import dev.jsinco.luma.lumaevents.EventMain;
+import dev.jsinco.luma.lumaevents.events.MinigameExitPrevention;
 import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.audience.Audience;
@@ -20,26 +22,44 @@ import java.util.List;
 public sealed abstract class Minigame
         extends BukkitRunnable
         implements Listener
-        permits Envoys, NonActiveMinigame, Paintball {
+        permits BoatRace, Envoys, NonActiveMinigame, Paintball {
 
     protected final List<EventPlayer> participants = new ArrayList<>();
+    private final MinigameExitPrevention exitPrevention;
 
     protected Audience audience;
     private final String name;
     private final String description;
     private final long duration;
     private final long tickInterval;
+    private final boolean async;
 
 
     protected long startTime = -1;
     protected boolean open = false;
     protected boolean active = false;
+    protected WorldTiedBoundingBox boundingBox;
 
     protected Minigame(String name, String description, long duration, long tickInterval, boolean async) {
         this.name = name;
         this.description = description;
         this.duration = duration;
         this.tickInterval = tickInterval;
+        this.async = async;
+        this.exitPrevention = new MinigameExitPrevention(this);
+    }
+
+    protected Minigame(String name, String description, long duration, long tickInterval, boolean async, boolean preventExit) {
+        this.name = name;
+        this.description = description;
+        this.duration = duration;
+        this.tickInterval = tickInterval;
+        this.async = async;
+        if (preventExit) {
+            this.exitPrevention = new MinigameExitPrevention(this);
+        } else {
+            this.exitPrevention = null;
+        }
     }
 
 
@@ -62,7 +82,10 @@ public sealed abstract class Minigame
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }
-        HandlerList.unregisterAll(this);
+        unregisterEvents(this);
+        if (this.exitPrevention != null) {
+            unregisterEvents(this.exitPrevention);
+        }
         this.cancel();
         this.active = false;
         this.open = false; // Should be false by now anyway :P
@@ -88,15 +111,22 @@ public sealed abstract class Minigame
                 .seconds(30)
                 .color(BossBar.Color.BLUE)
                 .callback(() -> {
-                    Bukkit.getPluginManager().registerEvents(this, EventMain.getInstance());
+                    registerEvents(this);
+                    this.audience = Audience.audience(participants.stream().map(EventPlayer::getPlayer).toList());
                     this.open = false;
                     this.startTime = System.currentTimeMillis();
-                    this.runTaskTimer(EventMain.getInstance(), 0, this.tickInterval);
-                    this.audience = Audience.audience(participants.stream().map(EventPlayer::getPlayer).toList());
+                    if (this.exitPrevention != null) {
+                        registerEvents(this.exitPrevention);
+                    }
                     try {
                         this.handleStart();
                     } catch (Throwable throwable) {
                         throwable.printStackTrace();
+                    }
+                    if (async) {
+                        this.runTaskTimerAsynchronously(EventMain.getInstance(), 0, this.tickInterval);
+                    } else {
+                        this.runTaskTimer(EventMain.getInstance(), 0, this.tickInterval);
                     }
                 })
                 .audience(Audience.audience(Bukkit.getOnlinePlayers()))
@@ -116,6 +146,14 @@ public sealed abstract class Minigame
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }
+    }
+
+    private void registerEvents(Listener listener) {
+        Bukkit.getPluginManager().registerEvents(listener, EventMain.getInstance());
+    }
+
+    private void unregisterEvents(Listener listener) {
+        HandlerList.unregisterAll(listener);
     }
 
     // Minigame starts, returns true if successful

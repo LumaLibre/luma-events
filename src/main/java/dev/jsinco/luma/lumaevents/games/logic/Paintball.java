@@ -2,6 +2,7 @@ package dev.jsinco.luma.lumaevents.games.logic;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
+import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
 import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.MinigameScoreboard;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameComponentIllegallyActive;
@@ -33,7 +34,6 @@ public non-sealed class Paintball extends Minigame {
 
     private static final List<Material> BLACKLISTED_MATERIALS = List.of(Material.BARRIER, Material.AIR, Material.CAVE_AIR);
 
-    private final WorldTiedBoundingBox boundingBox;
     private final Location spawnPoint;
     private final MinigameScoreboard scoreboard;
     private CountdownBossBar countdownBossBar;
@@ -44,10 +44,10 @@ public non-sealed class Paintball extends Minigame {
             new EncapsulatedPaintballTeam(EventTeamType.HEARTBREAKERS, Material.CYAN_WOOL)
     );
 
-    public Paintball(Location loc1, Location loc2, Location spawnPoint) {
+    public Paintball(MinigameDefinition def) {
         super("Paintball", MinigameConstants.PAINTBALL_DESC, 30000L, 30, true);
-        this.boundingBox = WorldTiedBoundingBox.of(loc1, loc2);
-        this.spawnPoint = spawnPoint;
+        this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
+        this.spawnPoint = def.getSpawnLocation();
         this.scoreboard = new MinigameScoreboard();
     }
 

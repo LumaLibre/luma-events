@@ -30,8 +30,8 @@ public final class MinigameManager extends BukkitRunnable {
     private final Config cfg = EventMain.getOkaeriConfig();
 
     private final Map<Class<? extends Minigame>, Supplier<Minigame>> minigameSupplier = Map.of(
-            Envoys.class, () -> new Envoys(cfg.getEnvoys().getLoc1(), cfg.getEnvoys().getLoc2()),
-            Paintball.class, () -> new Paintball(cfg.getPaintball().getRegion().getLoc1(), cfg.getPaintball().getRegion().getLoc2(), cfg.getPaintball().getSpawnPoint())
+            Envoys.class, () -> new Envoys(cfg.getEnvoys()),
+            Paintball.class, () -> new Paintball(cfg.getPaintball())
     );
 
 
