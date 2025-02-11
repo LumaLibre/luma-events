@@ -1,29 +1,34 @@
-package dev.jsinco.luma.lumaevents.commands.modules;
+package dev.jsinco.luma.lumaevents.commands.modules.team;
 
 import dev.jsinco.luma.lumacore.manager.commands.CommandInfo;
 import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
 import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
 import dev.jsinco.luma.lumaevents.EventMain;
+import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
-import dev.jsinco.luma.lumaevents.utility.Util;
+import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 import java.util.List;
 
 @AutoRegister(RegisterType.SUBCOMMAND)
 @CommandInfo(
-        name = "reload",
-        permission = "lumaevents.admin",
-        description = "Reload okaeri config",
         parent = CommandManager.class,
-        usage = "/<command> reload"
+        name = "tc",
+        description = "Enable/disable team chat",
+        usage = "/<command> tc",
+        permission = "lumaevents.default",
+        playerOnly = true
 )
-public class ReloadCommand implements CommandModule {
+public class TeamChatCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
-        EventMain.getOkaeriConfig().load(true);
-        Util.sendMsg(commandSender, "Reloaded config");
+        Player player = (Player) commandSender;
+        EventPlayer eplayer = EventPlayerManager.getByUUID(player.getUniqueId());
+        eplayer.setTeamChat(!eplayer.isTeamChat());
+        eplayer.sendTeamStyleMessage("Team chat " + (eplayer.isTeamChat() ? "enabled" : "disabled"));
         return true;
     }
 

@@ -1,4 +1,4 @@
-package dev.jsinco.luma.lumaevents.commands.modules;
+package dev.jsinco.luma.lumaevents.commands.modules.team;
 
 import dev.jsinco.luma.lumacore.manager.commands.CommandInfo;
 import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
@@ -8,7 +8,7 @@ import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
-import dev.jsinco.luma.lumaevents.obj.EventTeamType;
+import dev.jsinco.luma.lumaevents.enums.EventTeamType;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;

@@ -3,8 +3,8 @@ package dev.jsinco.luma.lumaevents.utility;
 public class MonoUpperFont {
 
     // Mapping of normal letters to their 'monoupper' equivalents
-    private static final String NORMAL_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    private static final String MONO_UPPER_ALPHABET = "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘQʀꜱᴛᴜᴠᴡxʏᴢᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘQʀꜱᴛᴜᴠᴡxʏᴢ";
+    private static final String NORMAL_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    private static final String MONO_UPPER_ALPHABET = "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘQʀꜱᴛᴜᴠᴡxʏᴢ";
 
     /**
      * Converts a string to 'monoupper' text, where each letter is replaced
@@ -17,6 +17,7 @@ public class MonoUpperFont {
         if (input == null) {
             return null; // Handle null input
         }
+        input = input.toUpperCase();
 
         StringBuilder result = new StringBuilder();
 

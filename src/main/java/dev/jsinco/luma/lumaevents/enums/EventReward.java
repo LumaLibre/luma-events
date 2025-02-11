@@ -1,4 +1,4 @@
-package dev.jsinco.luma.lumaevents.obj;
+package dev.jsinco.luma.lumaevents.enums;
 
 import lombok.Getter;
 

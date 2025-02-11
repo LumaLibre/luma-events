@@ -1,4 +1,4 @@
-package dev.jsinco.luma.lumaevents.commands.modules;
+package dev.jsinco.luma.lumaevents.commands.modules.team;
 
 import dev.jsinco.luma.lumacore.manager.commands.CommandInfo;
 import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
@@ -8,7 +8,7 @@ import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
 import dev.jsinco.luma.lumaevents.obj.EventTeam;
-import dev.jsinco.luma.lumaevents.obj.EventTeamType;
+import dev.jsinco.luma.lumaevents.enums.EventTeamType;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -22,7 +22,8 @@ import java.util.List;
         name = "team",
         description = "Get information about a team",
         usage = "/<command> team <team>",
-        permission = "lumaevents.default"
+        permission = "lumaevents.default",
+        playerOnly = true
 )
 public class TeamCommand implements CommandModule {
     @Override

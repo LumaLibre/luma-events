@@ -5,19 +5,21 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
-// TODO:
-//  Right now, bossbars will only show to players which have been on the server when
-//  the countdown bosbar was created. Should probably fix
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+// TODO: cleanup
 public class CountdownBossBar extends BukkitRunnable {
 
+    private static final ConcurrentLinkedQueue<CountdownBossBar> activeCountdowns = new ConcurrentLinkedQueue<>();
 
     private final BossBar bossBar;
     private final String title;
     private final float seconds;
     private final Runnable callback;
+    private final boolean global;
+
     private float secondsRemaining;
     private Audience audience;
 
@@ -29,6 +31,18 @@ public class CountdownBossBar extends BukkitRunnable {
         this.secondsRemaining = seconds;
         this.callback = callback;
         this.audience = audience;
+        this.global = false;
+        bossBar.addViewer(audience);
+    }
+
+    public CountdownBossBar(String title, BossBar.Color barColor, float seconds, boolean global, Runnable callback) {
+        this.bossBar = BossBar.bossBar(Util.color(title), 1.0f, barColor, BossBar.Overlay.NOTCHED_12);
+        this.title = title;
+        this.seconds = seconds;
+        this.secondsRemaining = seconds;
+        this.callback = callback;
+        if (global) this.audience = Audience.audience(Bukkit.getOnlinePlayers());
+        this.global = global;
         bossBar.addViewer(audience);
     }
 
@@ -38,11 +52,13 @@ public class CountdownBossBar extends BukkitRunnable {
 
 
     public void start() {
+        activeCountdowns.add(this);
         this.runTaskTimerAsynchronously(EventMain.getInstance(), 0, 2);
     }
 
 
     public void stop(boolean callback) {
+        activeCountdowns.remove(this);
         bossBar.removeViewer(audience);
         this.cancel();
         if (callback) {
@@ -53,6 +69,14 @@ public class CountdownBossBar extends BukkitRunnable {
 
     @Override
     public void run() {
+        if (global) {
+            Audience newAudience = Audience.audience(Bukkit.getOnlinePlayers());
+            if (!audience.equals(newAudience)) {
+                bossBar.addViewer(newAudience);
+                this.audience = newAudience;
+            }
+        }
+
         float newProgress = secondsRemaining / seconds;
         if (newProgress  < 1.0 && newProgress > 0.0) {
             bossBar.progress(newProgress);
@@ -69,6 +93,10 @@ public class CountdownBossBar extends BukkitRunnable {
         }
     }
 
+    public static void stopAll(boolean callback) {
+        activeCountdowns.forEach(countdown -> countdown.stop(callback));
+    }
+
 
     public static Builder builder() {
         return new Builder();
@@ -81,6 +109,7 @@ public class CountdownBossBar extends BukkitRunnable {
         private float seconds;
         private Runnable callback = null;
         private Audience audience;
+        private boolean global;
 
 
         public Builder title(String title) {
@@ -99,7 +128,7 @@ public class CountdownBossBar extends BukkitRunnable {
         }
 
         public Builder miliseconds(long miliseconds) {
-            this.seconds = (float) miliseconds / 1000;
+            this.seconds = (float) Util.millisToSecs(miliseconds);
             return this;
         }
 
@@ -113,7 +142,13 @@ public class CountdownBossBar extends BukkitRunnable {
             return this;
         }
 
+        public Builder global(boolean global) {
+            this.global = global;
+            return this;
+        }
+
         public CountdownBossBar build() {
+            if (global) return new CountdownBossBar(title, color, seconds, true, callback);
             return new CountdownBossBar(title, color, seconds, audience, callback);
         }
     }

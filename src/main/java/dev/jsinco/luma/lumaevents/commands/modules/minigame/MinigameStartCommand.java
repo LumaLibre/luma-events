@@ -1,16 +1,17 @@
-package dev.jsinco.luma.lumaevents.commands.modules;
+package dev.jsinco.luma.lumaevents.commands.modules.minigame;
 
 import dev.jsinco.luma.lumacore.manager.commands.CommandInfo;
 import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
 import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
-import dev.jsinco.luma.lumacore.utility.Text;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
+import dev.jsinco.luma.lumaevents.games.logic.BoatRace;
 import dev.jsinco.luma.lumaevents.games.logic.Envoys;
 import dev.jsinco.luma.lumaevents.games.logic.Minigame;
 import dev.jsinco.luma.lumaevents.games.MinigameManager;
 import dev.jsinco.luma.lumaevents.games.logic.Paintball;
+import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.command.CommandSender;
 
 import java.util.List;
@@ -34,24 +35,25 @@ public class MinigameStartCommand implements CommandModule {
         switch (strings[0]) {
             case "envoys" -> Envoys.class;
             case "paintball" -> Paintball.class;
+            case "boatrace" -> BoatRace.class;
             default -> null;
         };
 
         if (minigame == null) {
-            Text.msg(commandSender, "Invalid minigame");
+            Util.sendMsg(commandSender, "Invalid minigame");
             return false;
         }
 
         if (MinigameManager.getInstance().tryNewMinigameSafely(minigame, true)){
-            Text.msg(commandSender, "Minigame started");
+            Util.sendMsg(commandSender, "Minigame started");
         } else {
-            Text.msg(commandSender, "Failed to start minigame. Is there another minigame active?");
+            Util.sendMsg(commandSender, "Failed to start minigame. Is there another minigame active?");
         }
         return true;
     }
 
     @Override
     public List<String> tabComplete(EventMain eventMain, CommandSender commandSender, String[] strings) {
-        return List.of("envoys", "paintball");
+        return List.of("envoys", "paintball", "boatrace");
     }
 }

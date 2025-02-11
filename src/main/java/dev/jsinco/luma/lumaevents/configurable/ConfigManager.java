@@ -17,7 +17,7 @@ public class ConfigManager {
 
         this.config = eu.okaeri.configs.ConfigManager.create(Config.class, (it) -> {
             it.withConfigurer(new YamlBukkitConfigurer(), new StandardSerdes());
-            it.withRemoveOrphans(true);
+            it.withRemoveOrphans(false);
             it.withBindFile(configPath);
 
             it.withSerdesPack(registry -> {
@@ -26,7 +26,5 @@ public class ConfigManager {
             it.saveDefaults();
             it.load(true);
         });
-
-        System.out.println("Config loaded");
     }
 }

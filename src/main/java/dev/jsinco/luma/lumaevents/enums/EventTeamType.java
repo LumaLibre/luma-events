@@ -1,9 +1,10 @@
-package dev.jsinco.luma.lumaevents.obj;
+package dev.jsinco.luma.lumaevents.enums;
 
 import lombok.Getter;
 
 @Getter
 public enum EventTeamType {
+
     ROSETHORN("Rosethorn", "<#FB124F>", "<gradient:#FB124F:#F97BA2:#E34949>"),
     SWEETHEARTS("SweetHearts", "<#ffa0bc>", "<gradient:#ffa0bc:#ffdaee:#ff9b9a:#ffe9e9>"),
     HEARTBREAKERS("HeartBreakers", "<gradient:#F33A71:#50B6FC>", "<gradient:#F33A71:#F8A5BE:#ABD9F8:#50B6FC>")

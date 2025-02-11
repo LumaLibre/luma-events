@@ -5,9 +5,8 @@ import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
 import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.MinigameScoreboard;
-import dev.jsinco.luma.lumaevents.games.exceptions.GameComponentIllegallyActive;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
-import dev.jsinco.luma.lumaevents.obj.EventTeamType;
+import dev.jsinco.luma.lumaevents.enums.EventTeamType;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.MinigameConstants;
 import dev.jsinco.luma.lumaevents.utility.Util;
@@ -36,7 +35,6 @@ public non-sealed class Paintball extends Minigame {
 
     private final Location spawnPoint;
     private final MinigameScoreboard scoreboard;
-    private CountdownBossBar countdownBossBar;
 
     private final List<EncapsulatedPaintballTeam> encapsulatedPaintballTeams = List.of(
             new EncapsulatedPaintballTeam(EventTeamType.ROSETHORN, Material.RED_WOOL),
@@ -48,24 +46,18 @@ public non-sealed class Paintball extends Minigame {
         super("Paintball", MinigameConstants.PAINTBALL_DESC, 30000L, 30, true);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.spawnPoint = def.getSpawnLocation();
-        this.scoreboard = new MinigameScoreboard();
+        this.scoreboard = new MinigameScoreboard(1);
     }
 
     @Override
     protected void handleStart() {
-        audience.showTitle(Title.title(
-                Util.color("<yellow>Paintball"),
-                Util.color("<red>Cover as much area as possible!")
-        ));
-        this.audience.sendMessage(Util.color("Game has started"));
-
-        countdownBossBar = CountdownBossBar.builder()
-                .title("Time Remaining: %s")
+        CountdownBossBar.builder()
+                .title("<yellow><b>Time Remaining</b><gray>:</gray> <b>%s</b></yellow>")
                 .color(BossBar.Color.YELLOW)
-                .miliseconds(30000L)
+                .miliseconds(this.getDuration())
                 .audience(this.audience)
-                .build();
-        countdownBossBar.start();
+                .build()
+                .start();
     }
 
     @Override
@@ -92,17 +84,13 @@ public non-sealed class Paintball extends Minigame {
             List<EventPlayer> teamParticipants = this.participants.stream()
                     .filter(player -> player.getTeamType().equals(team))
                     .toList();
-            scoreboard.distributePoints(teamParticipants, team);
-        }
-
-        if (!countdownBossBar.isCancelled()) {
-            countdownBossBar.stop(false);
+            scoreboard.distributeAdditionalPoints(teamParticipants, team);
         }
     }
 
     @Override
     protected void onRunnable(long timeLeft) {
-        // Double check if audience member is in bounding box...
+        // TODO: Double check if audience member is in bounding box...
         audience.sendActionBar(Util.color("<yellow>Click to shoot!"));
     }
 
@@ -114,10 +102,9 @@ public non-sealed class Paintball extends Minigame {
 
     @EventHandler
     public void onPlayerClickInBoundingBox(PlayerInteractEvent event) {
+        this.ensureNotIllegal();
         if (!boundingBox.contains(event.getPlayer())) {
             return;
-        } else if (!this.active) {
-            throw new GameComponentIllegallyActive("Still listening for player clicks when game is not active. @" + this.hashCode());
         }
 
         Player player = event.getPlayer();
@@ -126,10 +113,9 @@ public non-sealed class Paintball extends Minigame {
 
     @EventHandler
     public void onProjectileHitInBoundingBox(ProjectileHitEvent event) {
+        this.ensureNotIllegal();
         if (!boundingBox.contains(event.getEntity()) || event.getHitBlock() == null) {
             return;
-        } else if (!this.active) {
-            throw new GameComponentIllegallyActive("Still listening for projectile hits when game is not active. @" + this.hashCode());
         }
         if (!(event.getEntity().getShooter() instanceof Player shooter)) {
             return;
@@ -158,8 +144,7 @@ public non-sealed class Paintball extends Minigame {
                 .findFirst()
                 .orElseThrow();
         //encapsulatedPaintballTeam.addAreaCovered();
-        shooter.addPoints(1);
-        scoreboard.addPoints(shooter, 1);
+        scoreboard.addScore(shooter, 1);
 
         Sphere sphere = new Sphere(blockHit.getLocation(), 3, 5);
 
@@ -170,9 +155,9 @@ public non-sealed class Paintball extends Minigame {
             }
         }
 
-        // tokens
+        // TODO: Tokens
         String name = shooter.getPlayer().getName();
-        if (scoreboard.getPoints(shooter) % 200 == 0) {
+        if (scoreboard.getScore(shooter) % 200 == 0) {
             Util.giveTokens(name, 1);
         }
     }

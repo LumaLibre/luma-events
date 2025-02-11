@@ -2,11 +2,14 @@ package dev.jsinco.luma.lumaevents.obj;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
+import dev.jsinco.luma.lumaevents.enums.EventReward;
+import dev.jsinco.luma.lumaevents.enums.EventTeamType;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
@@ -23,6 +26,7 @@ public class EventPlayer implements Serializable {
 
     private final UUID uuid;
     private final List<EventReward> unclaimedRewards;
+
     private EventTeamType teamType;
     private int points;
     private boolean disabledTeamChat;
@@ -48,6 +52,14 @@ public class EventPlayer implements Serializable {
         this.sendNoPrefixedMessage(
                 "<b>"+teamType.getGradient()+teamType.getFormatted()+" <reset><dark_gray>» <white>"+m
         );
+    }
+
+    public void sendActionBar(String m) {
+        this.getPlayer().sendActionBar(Util.color(m));
+    }
+
+    public void sendTitle(String title, String subtitle) {
+        this.getPlayer().showTitle(Title.title(Util.color(title), Util.color(subtitle)));
     }
 
     public void addPoints(int points) {

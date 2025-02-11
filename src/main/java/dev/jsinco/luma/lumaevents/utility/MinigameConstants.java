@@ -1,7 +1,7 @@
 package dev.jsinco.luma.lumaevents.utility;
 
-public class MinigameConstants {
-    public static final String ENVOYS_DESC = "TODO";
-    public static final String PAINTBALL_DESC = "TODO";
-    public static final String BOATRACE_DESC = "TODO";
+public final class MinigameConstants {
+    public static final String ENVOYS_DESC = "Break as many envoys as possible!";
+    public static final String PAINTBALL_DESC = "Cover as much area as possible!";
+    public static final String BOATRACE_DESC = "Reach all checkpoints as fast as possible!";
 }

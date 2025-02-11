@@ -18,6 +18,9 @@ public class LocationTransformer extends BidirectionalTransformer<String, Locati
     @Override
     public Location leftToRight(@NonNull String data, @NonNull SerdesContext serdesContext) {
         String[] parts = data.split(",");
+        if (parts.length != 4) {
+            throw new IllegalArgumentException("Invalid location format: " + data);
+        }
         World world = Bukkit.getWorld(parts[0]);
         int x = Integer.parseInt(parts[1]);
         int y = Integer.parseInt(parts[2]);

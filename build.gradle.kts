@@ -22,11 +22,9 @@ repositories {
 
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     compileOnly("dev.jsinco.luma.lumacore:LumaCore:d5c4530")
     compileOnly("dev.jsinco.luma.lumaitems:LumaItems:7a3405c")
-//    compileOnly("org.projectlombok:lombok:1.18.30")
-//    annotationProcessor("org.projectlombok:lombok:1.18.30")
     compileOnly("com.github.Zrips:jobs:v4.17.2")
     compileOnly("dev.jsinco.chatheads:ChatHeads:1.6")
     compileOnly("me.clip:placeholderapi:2.11.6")

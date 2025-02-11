@@ -1,9 +1,8 @@
-package dev.jsinco.luma.lumaevents.commands.modules;
+package dev.jsinco.luma.lumaevents.commands.modules.minigame;
 
 import dev.jsinco.luma.lumacore.manager.commands.CommandInfo;
 import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
 import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
-import dev.jsinco.luma.lumacore.utility.Text;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
@@ -11,6 +10,7 @@ import dev.jsinco.luma.lumaevents.commands.CommandModule;
 import dev.jsinco.luma.lumaevents.games.MinigameManager;
 import dev.jsinco.luma.lumaevents.games.logic.Minigame;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -22,7 +22,8 @@ import java.util.List;
         permission = "lumaevents.default",
         description = "Join a minigame",
         parent = CommandManager.class,
-        usage = "/<command> join"
+        usage = "/<command> join",
+        playerOnly = true
 )
 public class MinigameJoinCommand implements CommandModule {
     @Override
@@ -30,19 +31,19 @@ public class MinigameJoinCommand implements CommandModule {
         Minigame minigame = MinigameManager.getInstance().getCurrent();
         Player player = (Player) commandSender;
         if (!minigame.isActive()) {
-            Text.msg(commandSender, "No active minigame");
+            Util.sendMsg(commandSender, "No active minigame");
         } else if (!minigame.isOpen()) {
-            Text.msg(commandSender, "The minigame is locked!");
+            Util.sendMsg(commandSender, "The active minigame is locked!");
         }
 
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
         if (eventPlayer.getTeamType() == null) {
-            Text.msg(commandSender, "You must be on a team to join a minigame!");
+            Util.sendMsg(commandSender, "You must be on a team to join a minigame!");
             return false;
         }
 
         minigame.addParticipant(eventPlayer);
-        Text.msg(commandSender, "Joined!");
+        Util.sendMsg(commandSender, "Joined!");
         return true;
     }
 

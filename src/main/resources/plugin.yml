@@ -10,3 +10,4 @@ depend:
   - ChatHeads
 softdepend:
   - LumaItems
+  - PlaceholderAPI

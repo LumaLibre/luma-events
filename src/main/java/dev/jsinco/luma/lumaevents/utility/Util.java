@@ -2,7 +2,9 @@ package dev.jsinco.luma.lumaevents.utility;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
+import com.gamingmesh.jobs.commands.list.log;
 import dev.jsinco.luma.lumaevents.EventMain;
+import dev.jsinco.luma.lumaitems.api.LumaItemsAPI;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -161,5 +163,13 @@ public final class Util {
 
     public static String formatInt(int num) {
         return String.format("%,d", num);
+    }
+
+    public static long secsToMillis(long seconds) {
+        return seconds * 1000;
+    }
+
+    public static int millisToSecs(long millis) {
+        return (int) (millis / 1000);
     }
 }

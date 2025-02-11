@@ -4,6 +4,8 @@ import dev.jsinco.chatheads.Handler;
 import dev.jsinco.chatheads.integration.ChatHeadsAPI;
 import dev.jsinco.chatheads.obj.CachedPlayer;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
+import dev.jsinco.luma.lumaevents.enums.EventReward;
+import dev.jsinco.luma.lumaevents.enums.EventTeamType;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -48,9 +48,9 @@ public class WorldTiedBoundingBox extends BoundingBox {
 
     public Location getRandomLocation() {
         final Random rand = new Random();
-        final int x = rand.nextInt((int) (Math.abs(this.getMaxX() - this.getMinX() + 1) + this.getMinX()));
-        final int y = rand.nextInt((int) (Math.abs(this.getMaxY() - this.getMinY() + 1) + this.getMinY()));
-        final int z = rand.nextInt((int) (Math.abs(this.getMaxZ() - this.getMinZ() + 1) + this.getMinZ()));
+        final double x = rand.nextDouble(Math.abs(this.getMaxX() - this.getMinX()) + 1) + this.getMinX();
+        final double y = rand.nextDouble(Math.abs(this.getMaxY() - this.getMinY()) + 1) + this.getMinY();
+        final double z = rand.nextDouble(Math.abs(this.getMaxZ() - this.getMinZ()) + 1) + this.getMinZ();
         return new Location(this.world, x, y, z);
     }
 

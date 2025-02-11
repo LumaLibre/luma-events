@@ -1,4 +1,4 @@
-package dev.jsinco.luma.lumaevents.commands.modules;
+package dev.jsinco.luma.lumaevents.commands.modules.team;
 
 import dev.jsinco.luma.lumacore.manager.commands.CommandInfo;
 import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
@@ -16,18 +16,20 @@ import java.util.List;
 @AutoRegister(RegisterType.SUBCOMMAND)
 @CommandInfo(
         parent = CommandManager.class,
-        name = "tc",
-        description = "Enable/disable team chat",
-        usage = "/<command> tc",
-        permission = "lumaevents.default"
+        name = "disabletc",
+        description = "Disable Team Chat",
+        usage = "/<command> disabletc",
+        permission = "lumaevents.default",
+        playerOnly = true
 )
-public class TeamChatCommand implements CommandModule {
+public class DisableTeamChatCommand implements CommandModule {
+
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
         Player player = (Player) commandSender;
         EventPlayer eplayer = EventPlayerManager.getByUUID(player.getUniqueId());
-        eplayer.setTeamChat(!eplayer.isTeamChat());
-        eplayer.sendTeamStyleMessage("Team chat " + (eplayer.isTeamChat() ? "enabled" : "disabled"));
+        eplayer.setDisabledTeamChat(!eplayer.isDisabledTeamChat());
+        eplayer.sendMessage("Team chat is now " + (eplayer.isDisabledTeamChat() ? "disabled" : "enabled"));
         return true;
     }
 

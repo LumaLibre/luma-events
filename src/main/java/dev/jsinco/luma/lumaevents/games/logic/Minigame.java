@@ -1,14 +1,17 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
 import dev.jsinco.luma.lumaevents.EventMain;
-import dev.jsinco.luma.lumaevents.events.MinigameExitPrevention;
+import dev.jsinco.luma.lumaevents.events.MinigameExitPreventionListener;
 import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
+import dev.jsinco.luma.lumaevents.games.exceptions.GameComponentIllegallyActive;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
+import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
@@ -25,9 +28,8 @@ public sealed abstract class Minigame
         permits BoatRace, Envoys, NonActiveMinigame, Paintball {
 
     protected final List<EventPlayer> participants = new ArrayList<>();
-    private final MinigameExitPrevention exitPrevention;
+    private final MinigameExitPreventionListener exitPrevention;
 
-    protected Audience audience;
     private final String name;
     private final String description;
     private final long duration;
@@ -38,6 +40,7 @@ public sealed abstract class Minigame
     protected long startTime = -1;
     protected boolean open = false;
     protected boolean active = false;
+    protected Audience audience;
     protected WorldTiedBoundingBox boundingBox;
 
     protected Minigame(String name, String description, long duration, long tickInterval, boolean async) {
@@ -46,7 +49,7 @@ public sealed abstract class Minigame
         this.duration = duration;
         this.tickInterval = tickInterval;
         this.async = async;
-        this.exitPrevention = new MinigameExitPrevention(this);
+        this.exitPrevention = new MinigameExitPreventionListener(this);
     }
 
     protected Minigame(String name, String description, long duration, long tickInterval, boolean async, boolean preventExit) {
@@ -56,7 +59,7 @@ public sealed abstract class Minigame
         this.tickInterval = tickInterval;
         this.async = async;
         if (preventExit) {
-            this.exitPrevention = new MinigameExitPrevention(this);
+            this.exitPrevention = new MinigameExitPreventionListener(this);
         } else {
             this.exitPrevention = null;
         }
@@ -95,8 +98,9 @@ public sealed abstract class Minigame
     public boolean addParticipant(EventPlayer player) {
         if (!this.active || !this.open) {
             return false;
+        } else if (!this.participants.contains(player)) {
+            this.participants.add(player);
         }
-        this.participants.add(player);
         try {
             this.handleParticipantJoin(player);
         } catch (Throwable throwable) {
@@ -107,7 +111,7 @@ public sealed abstract class Minigame
 
     private void openQueue() {
         CountdownBossBar.builder()
-                .title(name + " Starting in: %s")
+                .title("<aqua><b>" + name + " Starting in</b><gray>:</gray> <b>%s</b></aqua>")
                 .seconds(30)
                 .color(BossBar.Color.BLUE)
                 .callback(() -> {
@@ -118,6 +122,12 @@ public sealed abstract class Minigame
                     if (this.exitPrevention != null) {
                         registerEvents(this.exitPrevention);
                     }
+
+                    this.audience.showTitle(Title.title(
+                            Util.color("<yellow>" + this.name),
+                            Util.color("<red>" + this.description)
+                    ));
+
                     try {
                         this.handleStart();
                     } catch (Throwable throwable) {
@@ -129,7 +139,7 @@ public sealed abstract class Minigame
                         this.runTaskTimer(EventMain.getInstance(), 0, this.tickInterval);
                     }
                 })
-                .audience(Audience.audience(Bukkit.getOnlinePlayers()))
+                .global(true)
                 .build()
                 .start();
     }
@@ -148,11 +158,17 @@ public sealed abstract class Minigame
         }
     }
 
-    private void registerEvents(Listener listener) {
+    public void ensureNotIllegal() {
+        if (!this.isActive()) {
+            throw new GameComponentIllegallyActive("Minigame is not active");
+        }
+    }
+
+    protected void registerEvents(Listener listener) {
         Bukkit.getPluginManager().registerEvents(listener, EventMain.getInstance());
     }
 
-    private void unregisterEvents(Listener listener) {
+    protected void unregisterEvents(Listener listener) {
         HandlerList.unregisterAll(listener);
     }
 

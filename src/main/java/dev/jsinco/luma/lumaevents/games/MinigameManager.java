@@ -2,8 +2,8 @@ package dev.jsinco.luma.lumaevents.games;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.Config;
-import dev.jsinco.luma.lumaevents.configurable.ConfigManager;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameAlreadyStartedException;
+import dev.jsinco.luma.lumaevents.games.logic.BoatRace;
 import dev.jsinco.luma.lumaevents.games.logic.Envoys;
 import dev.jsinco.luma.lumaevents.games.logic.Minigame;
 import dev.jsinco.luma.lumaevents.games.logic.NonActiveMinigame;
@@ -22,16 +22,14 @@ import java.util.function.Supplier;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class MinigameManager extends BukkitRunnable {
 
-    private static final long MINIGAME_COOLDOWN = 30000L;
-
-    @Getter
-    private static final MinigameManager instance = new MinigameManager();
+    private static MinigameManager instance;
 
     private final Config cfg = EventMain.getOkaeriConfig();
-
+    // TODO: Pass in config instead of methods
     private final Map<Class<? extends Minigame>, Supplier<Minigame>> minigameSupplier = Map.of(
             Envoys.class, () -> new Envoys(cfg.getEnvoys()),
-            Paintball.class, () -> new Paintball(cfg.getPaintball())
+            Paintball.class, () -> new Paintball(cfg.getPaintball()),
+            BoatRace.class, () -> new BoatRace(cfg.getBoatRace())
     );
 
 
@@ -77,13 +75,20 @@ public final class MinigameManager extends BukkitRunnable {
 
         // We can't start another minigame if the cooldown hasn't passed!
         long timeSinceLast = System.currentTimeMillis() - this.current.getStartTime();
-        return timeSinceLast >= MINIGAME_COOLDOWN; // Passed all checks, we can start a new minigame!
+        return timeSinceLast >= cfg.getAutomaticMinigameCooldown(); // Passed all checks, we can start a new minigame!
     }
 
     @Override
     public void run() {
-        if (this.canSafelyStartMinigame(false)) {
+        if (cfg.isAutomaticMinigames() && this.canSafelyStartMinigame(false)) {
             this.newMinigame(Util.getRandom(this.minigameSupplier.keySet()), false);
         }
+    }
+
+    public static MinigameManager getInstance() {
+        if (instance == null) {
+            instance = new MinigameManager();
+        }
+        return instance;
     }
 }
