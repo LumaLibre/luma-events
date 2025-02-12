@@ -101,6 +101,11 @@ public sealed abstract class Minigame
         } else if (!this.participants.contains(player)) {
             this.participants.add(player);
         }
+
+        player.sendTitle(
+                "<yellow>" + this.name,
+                "<red>" + this.description
+        );
         try {
             this.handleParticipantJoin(player);
         } catch (Throwable throwable) {
@@ -122,11 +127,6 @@ public sealed abstract class Minigame
                     if (this.exitPrevention != null) {
                         registerEvents(this.exitPrevention);
                     }
-
-                    this.audience.showTitle(Title.title(
-                            Util.color("<yellow>" + this.name),
-                            Util.color("<red>" + this.description)
-                    ));
 
                     try {
                         this.handleStart();

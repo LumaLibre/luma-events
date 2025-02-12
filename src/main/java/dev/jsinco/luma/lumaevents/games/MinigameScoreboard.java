@@ -78,6 +78,11 @@ public class MinigameScoreboard {
         return teamsByScore.indexOf(team) + 1;
     }
 
+    public int getPosition(EventPlayer player) {
+        List<EventTeamType> teamsByScore = getTeamsByScore();
+        return teamsByScore.indexOf(player.getTeamType()) + 1;
+    }
+
     public int getFinalPositionAdditionalPoints(EventTeamType team) {
         return switch (this.getPosition(team)) {
             case 1 -> 1000;

@@ -2,6 +2,7 @@ package dev.jsinco.luma.lumaevents.games;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.utility.Util;
+import lombok.Getter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
@@ -14,6 +15,7 @@ public class CountdownBossBar extends BukkitRunnable {
 
     private static final ConcurrentLinkedQueue<CountdownBossBar> activeCountdowns = new ConcurrentLinkedQueue<>();
 
+    @Getter
     private final BossBar bossBar;
     private final String title;
     private final float seconds;

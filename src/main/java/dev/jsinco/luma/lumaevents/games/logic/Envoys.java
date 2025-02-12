@@ -96,7 +96,7 @@ public non-sealed class Envoys extends Minigame {
 
         scoreboard.handleGameEnd(this.participants, this.audience, () -> {
             // TODO: Teleport players to spawn
-            this.audience.sendMessage(Component.text("game has ended"));
+            this.audience.sendMessage(Component.text("game has concluded"));
         });
     }
 

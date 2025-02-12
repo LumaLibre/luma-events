@@ -32,14 +32,18 @@ public class MinigameJoinCommand implements CommandModule {
         Player player = (Player) commandSender;
         if (!minigame.isActive()) {
             Util.sendMsg(commandSender, "No active minigame");
+            return true;
         } else if (!minigame.isOpen()) {
             Util.sendMsg(commandSender, "The active minigame is locked!");
+            return true;
         }
 
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
         if (eventPlayer.getTeamType() == null) {
             Util.sendMsg(commandSender, "You must be on a team to join a minigame!");
-            return false;
+            // TODO: Make this clickable
+            Util.sendMsg(commandSender, "Use <gold>/valentide jointeam</gold> to join an available team.");
+            return true;
         }
 
         minigame.addParticipant(eventPlayer);

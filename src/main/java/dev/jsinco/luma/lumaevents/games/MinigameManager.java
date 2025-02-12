@@ -12,6 +12,7 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.bukkit.Bukkit;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
@@ -46,6 +47,7 @@ public final class MinigameManager extends BukkitRunnable {
             this.current.stop();
         }
 
+        Util.broadcast("A minigame is starting! Use <gold>/valentide join</gold> to participate!");
         this.current = this.minigameSupplier.get(game).get();
         return this.current.start();
     }

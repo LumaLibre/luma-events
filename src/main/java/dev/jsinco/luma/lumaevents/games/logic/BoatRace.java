@@ -11,27 +11,22 @@ import dev.jsinco.luma.lumaevents.obj.minigame.BoatRaceCheckpoint;
 import dev.jsinco.luma.lumaevents.obj.minigame.BoatRacePlayer;
 import dev.jsinco.luma.lumaevents.utility.MinigameConstants;
 import dev.jsinco.luma.lumaevents.utility.Util;
-import io.papermc.paper.event.entity.EntityMoveEvent;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Boat;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.boat.OakBoat;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
-import org.bukkit.event.vehicle.VehicleMoveEvent;
-import org.bukkit.util.Vector;
 
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
-import java.util.UUID;
 
 public non-sealed class BoatRace extends Minigame {
 
@@ -42,9 +37,10 @@ public non-sealed class BoatRace extends Minigame {
     private final Location spawnLocation;
     private final Location startLocation;
     private final MinigameScoreboard scoreboard;
+    private CountdownBossBar countdownBossBar;
 
     public BoatRace(BoatRaceDefinition def) {
-        super("BoatRace", MinigameConstants.BOATRACE_DESC, 30000L, 30, true, false);
+        super("BoatRace", MinigameConstants.BOATRACE_DESC, 90000L, 30, true, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.checkpoints = new HashSet<>();
         this.racers = new HashSet<>();
@@ -54,7 +50,7 @@ public non-sealed class BoatRace extends Minigame {
 
         def.getCheckpoints().stream()
                 .map(region -> WorldTiedBoundingBox.of(region.getLoc1(), region.getLoc2()))
-                .forEach(box -> this.checkpoints.add(new BoatRaceCheckpoint(box, UUID.randomUUID().toString())));
+                .forEach(box -> this.checkpoints.add(new BoatRaceCheckpoint(box, checkpoints.size())));
     }
 
     @Override
@@ -75,21 +71,18 @@ public non-sealed class BoatRace extends Minigame {
         }
 
         this.audience.showTitle(Title.title(
-                Util.color("<green>Go!"),
-                Component.empty()
+                Util.color("<gold>↑"),
+                Util.color("<green>Go!")
         ));
 
         // Start countdown
-        CountdownBossBar.builder()
+        countdownBossBar = CountdownBossBar.builder()
                 .audience(this.audience)
-                .seconds(5)
-                .color(BossBar.Color.GREEN)
-                .title("<green>Get Ready...")
-                .callback(() -> {
-
-                })
-                .build()
-                .start();
+                .miliseconds(this.getDuration())
+                .color(BossBar.Color.PINK)
+                .title("<light_purple><b>Time Remaining</b><gray>:</gray> <b>%s</b></light_purple>")
+                .build();
+        countdownBossBar.start();
     }
 
     @Override
@@ -108,7 +101,24 @@ public non-sealed class BoatRace extends Minigame {
 
     @Override
     protected void handleStop() {
-        this.audience.sendMessage(Component.text("game has ended"));
+        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+            this.boundingBox.getEntities(Boat.class).forEach(Boat::remove);
+        });
+        scoreboard.handleGameEnd(this.participants, this.audience, () -> {
+            this.participants.forEach(p -> p.getPlayer().teleportAsync(this.spawnLocation));
+            // TODO: make this shared across all minigames
+            CountdownBossBar.builder()
+                    .audience(this.audience)
+                    .color(BossBar.Color.RED)
+                    .title("<red><b>Race Over</b></red>")
+                    .seconds(15)
+                    .callback(() -> {
+                        // TODO: Teleport players to spawn
+                        this.audience.sendMessage(Component.text("game has concluded"));
+                    })
+                    .build()
+                    .start();
+        });
     }
 
     @Override
@@ -137,8 +147,6 @@ public non-sealed class BoatRace extends Minigame {
         if (!racer.isFinished()) {
             event.setCancelled(true);
             racer.getEventPlayer().sendMessage("Don't leave your boat!");
-        } else {
-            racer.getBoat().remove();
         }
     }
 
@@ -158,7 +166,14 @@ public non-sealed class BoatRace extends Minigame {
                 .filter(r -> r.is(player))
                 .findFirst()
                 .orElse(null);
-        if (racer != null && !racer.isFinished()) {
+
+        if (racer == null) {
+            return;
+        }
+
+        if (racer.isReturningToCheckpoint()) {
+            racer.setReturningToCheckpoint(false);
+        } else if (!racer.isFinished()) {
             event.setCancelled(true);
             racer.getEventPlayer().sendMessage("You can't teleport while you're still racing!");
         }
@@ -198,12 +213,35 @@ public non-sealed class BoatRace extends Minigame {
 
             if (!racer.hasAchievedCheckpoint(checkpoint)) {
                 racer.addCheckpoint(checkpoint);
-                racer.finish(this.checkpoints.size()); // Ehh
                 EventPlayer eplayer = racer.getEventPlayer();
-                eplayer.sendMessage("Checkpoint achieved! <gold>(+100 <gray>points<gold>)");
+                eplayer.sendMessage("Checkpoint reached! <gold>+100 <gray>points");
                 scoreboard.addScore(eplayer, 1);
+
+                if (racer.finish(this.checkpoints.size())) { // ehh
+                    countdownBossBar.getBossBar().removeViewer(event.getPlayer());
+                    eplayer.sendTitle("<green>Finished!", "<gray>You placed <gold>#" + scoreboard.getPosition(eplayer));
+                    event.getPlayer().teleportAsync(this.spawnLocation);
+                }
             }
         });
+    }
+
+    @EventHandler
+    public void onPlayerSwapHands(PlayerSwapHandItemsEvent event) {
+        if (!this.boundingBox.contains(event.getPlayer().getLocation()) || !event.getPlayer().isInsideVehicle()) {
+            return;
+        }
+
+        BoatRacePlayer racer = this.racers.stream()
+                .filter(r -> r.is(event.getPlayer()))
+                .findFirst()
+                .orElse(null);
+        if (racer == null) {
+            return;
+        }
+
+        event.setCancelled(true);
+        racer.teleportToLastCheckpoint();
     }
 
 }

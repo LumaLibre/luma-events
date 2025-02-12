@@ -14,6 +14,7 @@ import dev.jsinco.luma.lumaitems.shapes.Sphere;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -62,35 +63,14 @@ public non-sealed class Paintball extends Minigame {
 
     @Override
     protected void handleStop() {
-        EventTeamType winner = scoreboard.getLeadingTeam();
-        audience.showTitle(Title.title(
-                Util.color("<yellow>Game over"),
-                Util.color(winner.getColor() + winner.getFormatted() + " <red>team has won!")
-        ));
-        for (EventPlayer player : this.participants) {
-            player.sendNoPrefixedMessage("<#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     ");
-            player.sendMessage("The " + winner.getTeamWithGradient() + " team <white>has won!");
-            player.sendMessage("Total scores<gray>:");
-            for (EventTeamType team : scoreboard.getTeamsByScore()) {
-                player.sendMessage(
-                        team.getTeamWithGradient() + "<gray>: <gold>" + scoreboard.getPoints(team) + " +"
-                                + scoreboard.getFinalPositionAdditionalPoints(team) + " additional <gray>points"
-                );
-            }
+        scoreboard.handleGameEnd(this.participants, this.audience, () -> {
             // TODO: Teleport players to spawn
-        }
-
-        for (EventTeamType team : scoreboard.getTeamsByScore()) {
-            List<EventPlayer> teamParticipants = this.participants.stream()
-                    .filter(player -> player.getTeamType().equals(team))
-                    .toList();
-            scoreboard.distributeAdditionalPoints(teamParticipants, team);
-        }
+            this.audience.sendMessage(Component.text("game has concluded"));
+        });
     }
 
     @Override
     protected void onRunnable(long timeLeft) {
-        // TODO: Double check if audience member is in bounding box...
         audience.sendActionBar(Util.color("<yellow>Click to shoot!"));
     }
 

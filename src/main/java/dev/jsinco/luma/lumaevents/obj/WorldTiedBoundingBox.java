@@ -7,7 +7,9 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
+import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.LinkedList;
@@ -52,6 +54,34 @@ public class WorldTiedBoundingBox extends BoundingBox {
         final double y = rand.nextDouble(Math.abs(this.getMaxY() - this.getMinY()) + 1) + this.getMinY();
         final double z = rand.nextDouble(Math.abs(this.getMaxZ() - this.getMinZ()) + 1) + this.getMinZ();
         return new Location(this.world, x, y, z);
+    }
+
+    public Location getCenterLocation() {
+        return new Location(this.getWorld(), this.getCenterX(), this.getCenterY(), this.getCenterZ());
+    }
+
+    public Location getCenterLocation(float pitch, float yaw) {
+        return new Location(this.getWorld(), this.getCenterX(), this.getCenterY(), this.getCenterZ(), yaw, pitch);
+    }
+
+    public List<Player> getPlayers() {
+        List<Player> players = new LinkedList<>();
+        for (Player player : this.world.getPlayers()) {
+            if (this.contains(player)) {
+                players.add(player);
+            }
+        }
+        return players;
+    }
+
+    public <T extends Entity> List<T> getEntities(Class<T> clazz) {
+        List<T> entities = new LinkedList<>();
+        for (Entity entity : this.world.getEntitiesByClass(clazz)) {
+            if (this.contains(entity)) {
+                entities.add(clazz.cast(entity));
+            }
+        }
+        return entities;
     }
 
     @NotNull
