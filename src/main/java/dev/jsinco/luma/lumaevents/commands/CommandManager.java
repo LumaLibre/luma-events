@@ -9,7 +9,11 @@ import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
 
 @AutoRegister(RegisterType.COMMAND)
-@CommandInfo(name = "event", aliases = {"valentide"})
+@CommandInfo(
+        name = "event",
+        aliases = {"valentide"},
+        permission = "lumaevents.default"
+)
 public class CommandManager extends AbstractCommandManager<EventMain, CommandModule> {
 
     public CommandManager() {

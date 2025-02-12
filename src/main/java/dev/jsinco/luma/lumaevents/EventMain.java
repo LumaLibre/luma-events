@@ -22,7 +22,6 @@ public final class EventMain extends JavaPlugin {
     public void onEnable() {
         instance = this;
         okaeriConfig = new ConfigManager().getConfig();
-        System.out.println(okaeriConfig.getBoatRace());
         moduleManager = new ModuleManager(this);
         moduleManager.reflectivelyRegisterModules();
         EventPlayerManager.loadAll();

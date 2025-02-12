@@ -8,11 +8,11 @@ import lombok.ToString;
 @Getter
 public class BoatRaceCheckpoint extends WorldTiedBoundingBox {
 
-    private final int index;
+    private final String identifier;
 
-    public BoatRaceCheckpoint(WorldTiedBoundingBox boundingBox, int index) {
+    public BoatRaceCheckpoint(WorldTiedBoundingBox boundingBox, String identifier) {
         super(boundingBox.getWorld(), boundingBox.getMinX(), boundingBox.getMinY(), boundingBox.getMinZ(), boundingBox.getMaxX(), boundingBox.getMaxY(), boundingBox.getMaxZ());
-        this.index = index;
+        this.identifier = identifier;
     }
 
 
@@ -25,6 +25,6 @@ public class BoatRaceCheckpoint extends WorldTiedBoundingBox {
             return false;
         }
         BoatRaceCheckpoint that = (BoatRaceCheckpoint) obj;
-        return index == that.index;
+        return this.identifier.equals(that.identifier);
     }
 }

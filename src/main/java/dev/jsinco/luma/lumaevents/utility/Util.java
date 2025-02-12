@@ -59,7 +59,7 @@ public final class Util {
     }
 
     public static void giveTokens(String name, int amount) {
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lumaitems give valentine_token " + name + " " + amount);
+        //Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lumaitems give valentine_token " + name + " " + amount);
     }
 
     public static <P, C> C getPersistentKey(ItemStack item, String strKey, PersistentDataType<P, C> dataType) {

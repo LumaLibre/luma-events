@@ -35,12 +35,12 @@ public class BoatRacePlayer {
             return true;
         }
         // We need to make sure the racer is going in order
-        if (!checkpointsAchieved.isEmpty()) {
-            BoatRaceCheckpoint lastCheckpoint = checkpointsAchieved.getLast();
-            if (lastCheckpoint.getIndex() >= checkpoint.getIndex()) {
-                return false;
-            }
-        }
+//        if (!checkpointsAchieved.isEmpty()) {
+//            BoatRaceCheckpoint lastCheckpoint = checkpointsAchieved.getLast();
+//            if (lastCheckpoint.getIndex() >= checkpoint.getIndex()) {
+//                return false;
+//            }
+//        }
         return checkpointsAchieved.contains(checkpoint);
     }
 
@@ -73,7 +73,6 @@ public class BoatRacePlayer {
         Player player = eventPlayer.getPlayer();
         this.returningToCheckpoint = true;
         Location loc = lastCheckpoint.getCenterLocation(player.getPitch(), player.getYaw());
-        System.out.println(loc);
         // FIXME: Figure out why this doesn't work
         player.teleportAsync(
                 loc,

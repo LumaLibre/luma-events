@@ -15,7 +15,6 @@ import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -36,6 +35,7 @@ public non-sealed class Paintball extends Minigame {
 
     private final Location spawnPoint;
     private final MinigameScoreboard scoreboard;
+    private CountdownBossBar countdownBossBar;
 
     private final List<EncapsulatedPaintballTeam> encapsulatedPaintballTeams = List.of(
             new EncapsulatedPaintballTeam(EventTeamType.ROSETHORN, Material.RED_WOOL),
@@ -44,7 +44,7 @@ public non-sealed class Paintball extends Minigame {
     );
 
     public Paintball(MinigameDefinition def) {
-        super("Paintball", MinigameConstants.PAINTBALL_DESC, 30000L, 30, true);
+        super("Paintball", MinigameConstants.PAINTBALL_DESC, 90000L, 30, true);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.spawnPoint = def.getSpawnLocation();
         this.scoreboard = new MinigameScoreboard(1);
@@ -52,17 +52,20 @@ public non-sealed class Paintball extends Minigame {
 
     @Override
     protected void handleStart() {
-        CountdownBossBar.builder()
+        countdownBossBar = CountdownBossBar.builder()
                 .title("<yellow><b>Time Remaining</b><gray>:</gray> <b>%s</b></yellow>")
                 .color(BossBar.Color.YELLOW)
                 .miliseconds(this.getDuration())
                 .audience(this.audience)
-                .build()
-                .start();
+                .build();
+        countdownBossBar.start();
     }
 
     @Override
     protected void handleStop() {
+        if (this.countdownBossBar != null) {
+            this.countdownBossBar.stop(false);
+        }
         scoreboard.handleGameEnd(this.participants, this.audience, () -> {
             // TODO: Teleport players to spawn
             this.audience.sendMessage(Component.text("game has concluded"));
@@ -138,7 +141,8 @@ public non-sealed class Paintball extends Minigame {
         // TODO: Tokens
         String name = shooter.getPlayer().getName();
         if (scoreboard.getScore(shooter) % 200 == 0) {
-            Util.giveTokens(name, 1);
+            shooter.sendMessage("TODO: imaginary token/reward");
+            //Util.giveTokens(name, 1);
         }
     }
 

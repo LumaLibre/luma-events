@@ -15,7 +15,6 @@ import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
@@ -33,6 +32,7 @@ public non-sealed class Envoys extends Minigame {
     private final ConcurrentLinkedQueue<EnvoyBlock> cachedEnvoys;
     private final Location spawnPoint;
     private final MinigameScoreboard scoreboard;
+    private CountdownBossBar countdownBossBar;
 
 
     public Envoys(MinigameDefinition def) {
@@ -46,13 +46,13 @@ public non-sealed class Envoys extends Minigame {
 
     @Override
     protected void handleStart() {
-        CountdownBossBar.builder()
+        countdownBossBar = CountdownBossBar.builder()
                 .title("<green><b>Time Remaining</b><gray>:</gray> <b>%s</b></green>")
                 .color(BossBar.Color.GREEN)
                 .miliseconds(this.getDuration())
                 .audience(this.audience)
-                .build()
-                .start();
+                .build();
+        countdownBossBar.start();
     }
 
     @Override
@@ -92,7 +92,9 @@ public non-sealed class Envoys extends Minigame {
         for (EnvoyBlock envoyBlock : this.cachedEnvoys) {
             envoyBlock.remove();
         }
-
+        if (countdownBossBar != null) {
+            countdownBossBar.stop(false);
+        }
 
         scoreboard.handleGameEnd(this.participants, this.audience, () -> {
             // TODO: Teleport players to spawn
@@ -115,9 +117,6 @@ public non-sealed class Envoys extends Minigame {
         }
 
         Block block = event.getBlock();
-        if (block.getBlockData().getMaterial() != Material.AIR) {
-            System.out.println(block.getBlockData().getMaterial());
-        }
 
         if (!block.isEmpty()) {
             block = block.getRelative(0, 1, 0);
@@ -150,7 +149,8 @@ public non-sealed class Envoys extends Minigame {
         // TODO: Tokens
         String name = event.getPlayer().getName();
         if (scoreboard.getScore(player) % 75 == 0) {
-            Util.giveTokens(name, 1);
+            player.sendMessage("TODO: imaginary token/reward");
+            //Util.giveTokens(name, 1);
         }
     }
 

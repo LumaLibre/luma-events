@@ -27,7 +27,9 @@ import org.bukkit.event.vehicle.VehicleExitEvent;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.UUID;
 
+// TODO: Tokens
 public non-sealed class BoatRace extends Minigame {
 
     private static final Random RANDOM = new Random();
@@ -40,7 +42,7 @@ public non-sealed class BoatRace extends Minigame {
     private CountdownBossBar countdownBossBar;
 
     public BoatRace(BoatRaceDefinition def) {
-        super("BoatRace", MinigameConstants.BOATRACE_DESC, 90000L, 30, true, false);
+        super("BoatRace", MinigameConstants.BOATRACE_DESC, 900000L, 30, true, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.checkpoints = new HashSet<>();
         this.racers = new HashSet<>();
@@ -50,7 +52,7 @@ public non-sealed class BoatRace extends Minigame {
 
         def.getCheckpoints().stream()
                 .map(region -> WorldTiedBoundingBox.of(region.getLoc1(), region.getLoc2()))
-                .forEach(box -> this.checkpoints.add(new BoatRaceCheckpoint(box, checkpoints.size())));
+                .forEach(box -> this.checkpoints.add(new BoatRaceCheckpoint(box, UUID.randomUUID().toString())));
     }
 
     @Override
@@ -104,6 +106,9 @@ public non-sealed class BoatRace extends Minigame {
         Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
             this.boundingBox.getEntities(Boat.class).forEach(Boat::remove);
         });
+        if (countdownBossBar != null) {
+            countdownBossBar.stop(false);
+        }
         scoreboard.handleGameEnd(this.participants, this.audience, () -> {
             this.participants.forEach(p -> p.getPlayer().teleportAsync(this.spawnLocation));
             // TODO: make this shared across all minigames
