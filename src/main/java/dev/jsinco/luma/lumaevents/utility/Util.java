@@ -58,8 +58,8 @@ public final class Util {
         return strings.stream().map(Util::color).toList();
     }
 
-    public static void giveTokens(String name, int amount) {
-        //Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lumaitems give valentine_token " + name + " " + amount);
+    public static void giveTokens(Player player, int amount) {
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lumaitems give valentide_token " + player.getName() + " " + amount);
     }
 
     public static <P, C> C getPersistentKey(ItemStack item, String strKey, PersistentDataType<P, C> dataType) {

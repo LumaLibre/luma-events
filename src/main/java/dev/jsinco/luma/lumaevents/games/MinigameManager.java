@@ -18,14 +18,13 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Map;
 import java.util.function.Supplier;
 
-// TODO: start runnable for this class from main class
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class MinigameManager extends BukkitRunnable {
 
     private static MinigameManager instance;
 
     private final Config cfg = EventMain.getOkaeriConfig();
-    // TODO: Pass in config instead of methods
+
     private final Map<Class<? extends Minigame>, Supplier<Minigame>> minigameSupplier = Map.of(
             Envoys.class, () -> new Envoys(cfg.getEnvoys()),
             Paintball.class, () -> new Paintball(cfg.getPaintball()),
@@ -46,7 +45,8 @@ public final class MinigameManager extends BukkitRunnable {
             this.current.stop();
         }
 
-        Util.broadcast("A minigame is starting! Use <gold>/valentide join</gold> to participate!");
+        Util.broadcast("<hover:show_text:'Click me!'><click:run_command:/event join>A minigame is starting! Use <gold>/valentide join</gold> to participate!");
+        this.cfg.setLastGameLaunchTime(System.currentTimeMillis());
         this.current = this.minigameSupplier.get(game).get();
         return this.current.start();
     }
@@ -75,7 +75,7 @@ public final class MinigameManager extends BukkitRunnable {
         }
 
         // We can't start another minigame if the cooldown hasn't passed!
-        long timeSinceLast = System.currentTimeMillis() - this.current.getStartTime();
+        long timeSinceLast = System.currentTimeMillis() - this.cfg.getLastGameLaunchTime();
         return timeSinceLast >= cfg.getAutomaticMinigameCooldown(); // Passed all checks, we can start a new minigame!
     }
 

@@ -24,7 +24,7 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     compileOnly("dev.jsinco.luma.lumacore:LumaCore:d5c4530")
-    compileOnly("dev.jsinco.luma.lumaitems:LumaItems:7a3405c")
+    compileOnly("dev.jsinco.luma.lumaitems:LumaItems:a7ea609")
     compileOnly("com.github.Zrips:jobs:v4.17.2")
     compileOnly("dev.jsinco.chatheads:ChatHeads:1.6")
     compileOnly("me.clip:placeholderapi:2.11.6")
@@ -48,6 +48,9 @@ tasks {
     }
 
     shadowJar {
+        dependencies {
+            exclude(dependency("org.jetbrains.kotlin:kotlin-stdlib"))
+        }
         relocate("eu.okaeri", "dev.jsinco.luma.lumaevents.okaeri")
         archiveClassifier.set("")
     }

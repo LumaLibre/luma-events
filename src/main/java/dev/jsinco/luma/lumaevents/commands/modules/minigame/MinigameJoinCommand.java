@@ -41,8 +41,7 @@ public class MinigameJoinCommand implements CommandModule {
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
         if (eventPlayer.getTeamType() == null) {
             Util.sendMsg(commandSender, "You must be on a team to join a minigame!");
-            // TODO: Make this clickable
-            Util.sendMsg(commandSender, "Use <gold>/valentide jointeam</gold> to join an available team.");
+            Util.sendMsg(commandSender, "<hover:show_text:'Click me!'><click:run_command:/event jointeam>Use <gold>/valentide jointeam</gold> to join an available team.");
             return true;
         }
 

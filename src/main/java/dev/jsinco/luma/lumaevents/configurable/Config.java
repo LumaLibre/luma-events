@@ -7,6 +7,7 @@ import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.annotation.Comment;
 import lombok.Getter;
 import lombok.Setter;
+import org.bukkit.Location;
 
 @Getter
 @Setter
@@ -18,6 +19,9 @@ public class Config extends OkaeriConfig {
     @Comment("Automatic minigame cooldown in milliseconds")
     private long automaticMinigameCooldown = 30000L;
 
+    @Comment("Would be /spawn location")
+    private Location gameDropOffLocation;
+
     @Comment("Paintball")
     private MinigameDefinition paintball = new MinigameDefinition();
     @Comment("Envoys")
@@ -28,4 +32,6 @@ public class Config extends OkaeriConfig {
 
     @Comment("Don't touch me")
     private EventTeamType lastChosenTeam = EventTeamType.ROSETHORN;
+    @Comment("Don't touch me")
+    private long lastGameLaunchTime = System.currentTimeMillis();
 }

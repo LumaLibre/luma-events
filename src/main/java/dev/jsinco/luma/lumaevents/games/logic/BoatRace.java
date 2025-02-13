@@ -29,7 +29,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
-// TODO: Tokens
 public non-sealed class BoatRace extends Minigame {
 
     private static final Random RANDOM = new Random();
@@ -120,15 +119,16 @@ public non-sealed class BoatRace extends Minigame {
         }
         scoreboard.handleGameEnd(this.participants, this.audience, () -> {
             this.participants.forEach(p -> p.getPlayer().teleportAsync(this.spawnLocation));
-            // TODO: make this shared across all minigames
             CountdownBossBar.builder()
                     .audience(this.audience)
                     .color(BossBar.Color.RED)
-                    .title("<red><b>Race Over</b></red>")
+                    .title("<red><b>Game Over</b></red>")
                     .seconds(15)
                     .callback(() -> {
-                        // TODO: Teleport players to spawn
-                        this.audience.sendMessage(Component.text("game has concluded"));
+                        this.boundingBox.getPlayers().stream().forEach(player -> {
+                            player.teleportAsync(this.getGameDropOffLocation());
+                            Util.sendMsg(player, "This minigame has concluded.");
+                        });
                     })
                     .build()
                     .start();
@@ -236,10 +236,9 @@ public non-sealed class BoatRace extends Minigame {
                 eplayer.sendMessage("Checkpoint reached! <gold>+"+checkpointWorth*POINT_MULTIPLIER+" <gray>points");
                 eplayer.sendMessage("You are in <gold>#" + scoreboard.getPosition(eplayer) + "<gray> place");
 
-                // TODO: Tokens
                 if (RANDOM.nextBoolean()) {
-                    eplayer.sendMessage("TODO: imaginary token/reward");
-                    //Util.giveTokens(name, 1);
+                    Util.giveTokens(event.getPlayer(), 1);
+                    eplayer.sendMessage("You've been awarded <gold>1 <gray>token(s)");
                 }
 
                 if (racer.finish(this.checkpoints.size())) { // ehh

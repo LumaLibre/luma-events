@@ -11,6 +11,7 @@ import lombok.Setter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -115,7 +116,7 @@ public sealed abstract class Minigame
     private void openQueue() {
         CountdownBossBar.builder()
                 .title("<aqua><b>" + name + " Starting in</b><gray>:</gray> <b>%s</b></aqua>")
-                .seconds(30)
+                .seconds(90)
                 .color(BossBar.Color.BLUE)
                 .callback(() -> {
                     registerEvents(this);
@@ -168,6 +169,10 @@ public sealed abstract class Minigame
 
     protected void unregisterEvents(Listener listener) {
         HandlerList.unregisterAll(listener);
+    }
+
+    protected Location getGameDropOffLocation() {
+        return EventMain.getOkaeriConfig().getGameDropOffLocation();
     }
 
     // Minigame starts, returns true if successful

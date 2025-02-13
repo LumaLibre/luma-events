@@ -67,8 +67,20 @@ public non-sealed class Paintball extends Minigame {
             this.countdownBossBar.stop(false);
         }
         scoreboard.handleGameEnd(this.participants, this.audience, () -> {
-            // TODO: Teleport players to spawn
-            this.audience.sendMessage(Component.text("game has concluded"));
+            this.participants.forEach(p -> p.getPlayer().teleportAsync(this.spawnPoint));
+            CountdownBossBar.builder()
+                    .audience(this.audience)
+                    .color(BossBar.Color.PURPLE)
+                    .title("<light_purple><b>Game Over</b></light_purple>")
+                    .seconds(15)
+                    .callback(() -> {
+                        this.boundingBox.getPlayers().stream().forEach(player -> {
+                            player.teleportAsync(this.getGameDropOffLocation());
+                            Util.sendMsg(player, "This minigame has concluded.");
+                        });
+                    })
+                    .build()
+                    .start();
         });
     }
 
@@ -138,11 +150,10 @@ public non-sealed class Paintball extends Minigame {
             }
         }
 
-        // TODO: Tokens
-        String name = shooter.getPlayer().getName();
+
         if (scoreboard.getScore(shooter) % 200 == 0) {
-            shooter.sendMessage("TODO: imaginary token/reward");
-            //Util.giveTokens(name, 1);
+            Util.giveTokens(shooter.getPlayer(), 1);
+            shooter.sendMessage("You've been awarded <gold>1 <gray>token(s)");
         }
     }
 

@@ -26,7 +26,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-// TODO: Listeners need checks to make sure player is participating
+// FIXME: Listeners need checks to make sure player is participating
 public non-sealed class Envoys extends Minigame {
 
     private final ConcurrentLinkedQueue<EnvoyBlock> cachedEnvoys;
@@ -57,7 +57,7 @@ public non-sealed class Envoys extends Minigame {
 
     @Override
     protected void onRunnable(long timeLeft) {
-        // TODO: Adjust envoy spawn rates
+        // FIXME: Adjust envoy spawn rates?
         for (int i = 0; i < Math.max(this.participants.size() * 1.5, 2); i++) {
             Location loc1 = this.boundingBox.getRandomLocation();
             EnvoyBlockType envoyBlockType = Util.getRandFromList(EnvoyBlockType.values());
@@ -105,8 +105,20 @@ public non-sealed class Envoys extends Minigame {
         }
 
         scoreboard.handleGameEnd(this.participants, this.audience, () -> {
-            // TODO: Teleport players to spawn
-            this.audience.sendMessage(Component.text("game has concluded"));
+            this.participants.forEach(p -> p.getPlayer().teleportAsync(this.spawnPoint));
+            CountdownBossBar.builder()
+                    .audience(this.audience)
+                    .color(BossBar.Color.YELLOW)
+                    .title("<yellow><b>Game Over</b></yellow>")
+                    .seconds(15)
+                    .callback(() -> {
+                        this.boundingBox.getPlayers().stream().forEach(player -> {
+                            player.teleportAsync(this.getGameDropOffLocation());
+                            Util.sendMsg(player, "This minigame has concluded.");
+                        });
+                    })
+                    .build()
+                    .start();
         });
     }
 
@@ -154,12 +166,11 @@ public non-sealed class Envoys extends Minigame {
         }
         this.scoreboard.addScore(player, 1);
 
-        // TODO: Tokens
-        String name = event.getPlayer().getName();
         if (scoreboard.getScore(player) % 75 == 0) {
-            player.sendMessage("TODO: imaginary token/reward");
+            Util.giveTokens(event.getPlayer(), 1);
+            player.sendMessage("You've been awarded <gold>1 <gray>token(s)");
+            // FIXME: Add random potion effect buffs
             player.sendMessage("TODO: imaginary jumpboost/speed");
-            //Util.giveTokens(name, 1);
         }
     }
 
