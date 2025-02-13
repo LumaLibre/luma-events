@@ -56,6 +56,11 @@ public class WorldTiedBoundingBox extends BoundingBox {
         return new Location(this.world, x, y, z);
     }
 
+    public boolean isInWithMarge(final Location loc, final double marge) {
+        return loc.getWorld() == this.world && loc.getX() >= this.getMinX() - marge && loc.getX() <= this.getMaxX() + marge && loc.getY() >= this.getMinY() - marge && loc
+                .getY() <= this.getMaxY() + marge && loc.getZ() >= this.getMinZ() - marge && loc.getZ() <= this.getMaxZ() + marge;
+    }
+
     public Location getCenterLocation() {
         return new Location(this.getWorld(), this.getCenterX(), this.getCenterY(), this.getCenterZ());
     }

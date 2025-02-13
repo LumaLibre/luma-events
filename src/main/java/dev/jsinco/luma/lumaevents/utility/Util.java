@@ -59,7 +59,11 @@ public final class Util {
     }
 
     public static void giveTokens(Player player, int amount) {
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lumaitems give valentide_token " + player.getName() + " " + amount);
+        if (Bukkit.isPrimaryThread()) {
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lumaitems give valentide_stamp " + player.getName() + " " + amount);
+        } else {
+            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lumaitems give valentide_stamp " + player.getName() + " " + amount));
+        }
     }
 
     public static <P, C> C getPersistentKey(ItemStack item, String strKey, PersistentDataType<P, C> dataType) {

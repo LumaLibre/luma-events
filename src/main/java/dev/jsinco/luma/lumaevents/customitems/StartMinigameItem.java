@@ -54,6 +54,8 @@ public class StartMinigameItem extends CustomItemFunctions {
 
 
         if (MinigameManager.getInstance().tryNewMinigameSafely(Util.getRandFromList(MINIGAMES), true)){
+            ItemStack item = event.getItem();
+            item.setAmount(item.getAmount() - 1);
             QuickTasks.addCooldown(this, player.getUniqueId(), 72000L);
             Util.broadcast(player.getName() + " has started a minigame!");
         } else {

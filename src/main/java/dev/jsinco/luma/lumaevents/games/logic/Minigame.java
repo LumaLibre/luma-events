@@ -6,6 +6,7 @@ import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameComponentIllegallyActive;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
+import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.audience.Audience;
@@ -116,9 +117,18 @@ public sealed abstract class Minigame
     private void openQueue() {
         CountdownBossBar.builder()
                 .title("<aqua><b>" + name + " Starting in</b><gray>:</gray> <b>%s</b></aqua>")
-                .seconds(90)
+                .seconds(10)
                 .color(BossBar.Color.BLUE)
                 .callback(() -> {
+                    if (this.participants.isEmpty()) {
+                        // Nothing has happened at this point other than these values
+                        // being changed to true, so we can just set them to false and return
+                        this.active = false;
+                        this.open = false;
+                        Util.broadcast("Not enough players joined to start " + this.name);
+                        return;
+                    }
+
                     registerEvents(this);
                     this.audience = Audience.audience(participants.stream().map(EventPlayer::getPlayer).toList());
                     this.open = false;

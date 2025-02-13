@@ -15,19 +15,29 @@ import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.FallingBlock;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 // FIXME: Listeners need checks to make sure player is participating
 public non-sealed class Envoys extends Minigame {
+
+    private static final List<Material> PROTECTED_BLOCKS = List.of(
+            Material.DIRT_PATH, Material.RED_TULIP, Material.WHITE_TULIP, Material.ROSE_BUSH,
+            Material.ALLIUM, Material.CORNFLOWER, Material.ORANGE_TULIP,
+            Material.SPRUCE_SLAB, Material.SPRUCE_TRAPDOOR, Material.SPRUCE_FENCE,
+            Material.SPRUCE_STAIRS
+    );
 
     private final ConcurrentLinkedQueue<EnvoyBlock> cachedEnvoys;
     private final Location spawnPoint;
@@ -36,7 +46,7 @@ public non-sealed class Envoys extends Minigame {
 
 
     public Envoys(MinigameDefinition def) {
-        super("Envoys", MinigameConstants.ENVOYS_DESC, MinigameConstants.ENVOYS_DURATION, 20, false);
+        super("Envoys", MinigameConstants.ENVOYS_DESC, MinigameConstants.ENVOYS_DURATION, 30, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.spawnPoint = def.getSpawnLocation();
         this.cachedEnvoys = new ConcurrentLinkedQueue<>();
@@ -58,8 +68,8 @@ public non-sealed class Envoys extends Minigame {
     @Override
     protected void onRunnable(long timeLeft) {
         // FIXME: Adjust envoy spawn rates?
-        for (int i = 0; i < Math.max(this.participants.size() * 1.5, 2); i++) {
-            Location loc1 = this.boundingBox.getRandomLocation();
+        for (int i = 0; i < this.participants.size(); i++) {
+            Location loc1 = this.boundingBox.getRandomLocation().toCenterLocation();
             EnvoyBlockType envoyBlockType = Util.getRandFromList(EnvoyBlockType.values());
             FallingBlock fallingBlock = this.boundingBox.getWorld()
                     .spawnFallingBlock(loc1, envoyBlockType.getFallingBlock().createBlockData());
@@ -73,7 +83,13 @@ public non-sealed class Envoys extends Minigame {
         Bukkit.getAsyncScheduler().runNow(EventMain.getInstance(), (task) -> {
             for (EnvoyBlock envoyBlock : this.cachedEnvoys) {
                 Location loc = envoyBlock.getLocation().toCenterLocation();
+                if (envoyBlock.isSolid() && loc.getBlock().isEmpty()) {
+                    Bukkit.getScheduler().runTask(EventMain.getInstance(), envoyBlock::remove);
+                    this.cachedEnvoys.remove(envoyBlock);
+                    continue;
+                }
 
+                System.out.println(loc.getBlock().getType());
                 this.boundingBox.getWorld()
                         .spawnParticle(Particle.FIREWORK, loc, 10, 0.5, 0.5, 0.5, 0.1);
             }
@@ -138,8 +154,8 @@ public non-sealed class Envoys extends Minigame {
 
         Block block = event.getBlock();
 
-        if (!block.isEmpty()) {
-            block = block.getRelative(0, 1, 0);
+        if (!block.isEmpty() || PROTECTED_BLOCKS.contains(block.getRelative(BlockFace.DOWN).getType())) {
+            block = block.getRelative(0, 2, 0);
         }
 
         block.setType(envoyBlock.getEnvoyBlockType().getSolidBlock());
@@ -147,6 +163,7 @@ public non-sealed class Envoys extends Minigame {
 
         envoyBlock.updateToBlock(block);
         block.getWorld().playSound(block.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.2F, 1.0F);
+        System.out.println("Finalized envoy on:" + block.getType());
     }
 
     @EventHandler
@@ -166,9 +183,8 @@ public non-sealed class Envoys extends Minigame {
         }
         this.scoreboard.addScore(player, 1);
 
-        if (scoreboard.getScore(player) % 75 == 0) {
+        if (scoreboard.getScore(player) % 12 == 0) {
             Util.giveTokens(event.getPlayer(), 1);
-            player.sendMessage("You've been awarded <gold>1 <gray>token(s)");
             // FIXME: Add random potion effect buffs
             player.sendMessage("TODO: imaginary jumpboost/speed");
         }

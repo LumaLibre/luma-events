@@ -14,6 +14,7 @@ public class EnvoyBlock {
 
     private Object value;
     private EnvoyBlockType envoyBlockType;
+    private boolean isSolid = false;
 
     public EnvoyBlock(FallingBlock fallingBlock, EnvoyBlockType envoyBlockType) {
         this.value = fallingBlock;
@@ -21,6 +22,7 @@ public class EnvoyBlock {
     }
 
     public void updateToBlock(Block newBlock) {
+        this.isSolid = true;
         this.value = newBlock;
     }
 

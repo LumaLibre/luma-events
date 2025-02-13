@@ -29,6 +29,10 @@ public class MinigameScoreboard {
         this.pointMultiplier = pointMultiplier;
     }
 
+    public boolean hasScore(EventPlayer player) {
+        return individualScores.containsKey(player);
+    }
+
     public void addScore(EventPlayer player, int points) {
         individualScores.putIfAbsent(player, 0);
         teamScores.putIfAbsent(player.getTeamType(), 0);

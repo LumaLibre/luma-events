@@ -35,6 +35,9 @@ public class LocationTransformer extends BidirectionalTransformer<String, Locati
 
     @Override
     public String rightToLeft(@NonNull Location data, @NonNull SerdesContext serdesContext) {
+        if (data.getYaw() == 0 && data.getPitch() == 0) {
+            return data.getWorld().getName() + "," + data.getBlockX() + "," + data.getBlockY() + "," + data.getBlockZ();
+        }
         return data.getWorld().getName() + "," + data.getBlockX() + "," + data.getBlockY() + "," + data.getBlockZ() + "," + data.getYaw() + "," + data.getPitch();
     }
 }

@@ -3,6 +3,7 @@ package dev.jsinco.luma.lumaevents.games.logic;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
+import dev.jsinco.luma.lumaevents.enums.minigame.PaintballColorKit;
 import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.MinigameScoreboard;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
@@ -14,7 +15,6 @@ import dev.jsinco.luma.lumaitems.shapes.Sphere;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
-import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -37,17 +37,20 @@ public non-sealed class Paintball extends Minigame {
     private final MinigameScoreboard scoreboard;
     private CountdownBossBar countdownBossBar;
 
-    private final List<EncapsulatedPaintballTeam> encapsulatedPaintballTeams = List.of(
-            new EncapsulatedPaintballTeam(EventTeamType.ROSETHORN, Material.RED_WOOL),
-            new EncapsulatedPaintballTeam(EventTeamType.SWEETHEARTS, Material.LIME_WOOL),
-            new EncapsulatedPaintballTeam(EventTeamType.HEARTBREAKERS, Material.CYAN_WOOL)
-    );
+    private final List<EncapsulatedPaintballTeam> encapsulatedPaintballTeams;
 
     public Paintball(MinigameDefinition def) {
         super("Paintball", MinigameConstants.PAINTBALL_DESC, 90000L, 30, true);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.spawnPoint = def.getSpawnLocation();
         this.scoreboard = new MinigameScoreboard(1);
+
+        PaintballColorKit colorKit = Util.getRandFromList(PaintballColorKit.values());
+        this.encapsulatedPaintballTeams = List.of(
+                new EncapsulatedPaintballTeam(EventTeamType.ROSETHORN, colorKit.getRosethorn()),
+                new EncapsulatedPaintballTeam(EventTeamType.SWEETHEARTS, colorKit.getSweethearts()),
+                new EncapsulatedPaintballTeam(EventTeamType.HEARTBREAKERS, colorKit.getHeartbreakers())
+        );
     }
 
     @Override
@@ -153,7 +156,6 @@ public non-sealed class Paintball extends Minigame {
 
         if (scoreboard.getScore(shooter) % 200 == 0) {
             Util.giveTokens(shooter.getPlayer(), 1);
-            shooter.sendMessage("You've been awarded <gold>1 <gray>token(s)");
         }
     }
 

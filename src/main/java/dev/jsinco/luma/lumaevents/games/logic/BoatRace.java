@@ -12,7 +12,6 @@ import dev.jsinco.luma.lumaevents.obj.minigame.BoatRacePlayer;
 import dev.jsinco.luma.lumaevents.utility.MinigameConstants;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import net.kyori.adventure.bossbar.BossBar;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -98,10 +97,17 @@ public non-sealed class BoatRace extends Minigame {
                 continue;
             }
 
-            Player player = racer.getEventPlayer().getPlayer();
-            player.sendActionBar(Util.color(
-                    "<green>Checkpoint: <gold>" + racer.getCheckpointsAchieved().size() + "<green> / <gold>" + this.checkpoints.size()
-            ));
+            EventPlayer player = racer.getEventPlayer();
+            if (!scoreboard.hasScore(player)) {
+                player.sendActionBar(
+                        "<green>Checkpoint: <gold>" + racer.getCheckpointsAchieved().size() + "<green> / <gold>" + this.checkpoints.size()
+                );
+            } else {
+                player.sendActionBar(
+                        "<green>Checkpoint: <gold>" + racer.getCheckpointsAchieved().size() + "<green> / <gold>" + this.checkpoints.size() +
+                                " <gray>| <green>#<gold>" + scoreboard.getPosition(player) + " <gray>(<gold>" + scoreboard.getPoints(player) + "<gray>)"
+                );
+            }
         }
     }
 
@@ -208,7 +214,7 @@ public non-sealed class BoatRace extends Minigame {
             this.ensureNotIllegal();
 
             BoatRaceCheckpoint checkpoint = this.checkpoints.stream()
-                    .filter(cp -> cp.contains(loc))
+                    .filter(cp -> cp.isInWithMarge(loc, 2.5))
                     .findFirst()
                     .orElse(null);
 
@@ -234,16 +240,15 @@ public non-sealed class BoatRace extends Minigame {
 
                 scoreboard.addScore(eplayer, checkpointWorth);
                 eplayer.sendMessage("Checkpoint reached! <gold>+"+checkpointWorth*POINT_MULTIPLIER+" <gray>points");
-                eplayer.sendMessage("You are in <gold>#" + scoreboard.getPosition(eplayer) + "<gray> place");
+                eplayer.sendMessage("You are in <gold>#" + this.getPositionFromCheckpointWorth(checkpointWorth) + "<gray> place");
 
                 if (RANDOM.nextBoolean()) {
                     Util.giveTokens(event.getPlayer(), 1);
-                    eplayer.sendMessage("You've been awarded <gold>1 <gray>token(s)");
                 }
 
                 if (racer.finish(this.checkpoints.size())) { // ehh
                     countdownBossBar.getBossBar().removeViewer(event.getPlayer());
-                    eplayer.sendTitle("<green>Finished!", "<gray>You placed <gold>#" + scoreboard.getPosition(eplayer));
+                    eplayer.sendTitle("<green>Finished!", "<gray>You placed <gold>#" + this.getPositionFromCheckpointWorth(checkpointWorth));
                     event.getPlayer().teleportAsync(this.spawnLocation);
                 }
             }
@@ -269,8 +274,8 @@ public non-sealed class BoatRace extends Minigame {
     }
 
 
-//    private int getPositionFromCheckpointWorth(int worth) {
-//        return (this.participants.size() - worth) + 1;
-//    }
+    private int getPositionFromCheckpointWorth(int worth) {
+        return (this.participants.size() - worth) + 1;
+    }
 
 }
