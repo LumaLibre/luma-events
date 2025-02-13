@@ -1,10 +1,12 @@
 package dev.jsinco.luma.lumaevents.obj.minigame;
 
+import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import io.papermc.paper.entity.TeleportFlag;
 import lombok.Getter;
 import lombok.Setter;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Player;
@@ -51,7 +53,7 @@ public class BoatRacePlayer {
     public boolean finish(int checkpointCount) {
         if (checkpointsAchieved.size() >= checkpointCount) {
             this.finished = true;
-            this.boat.remove();
+            Bukkit.getScheduler().runTask(EventMain.getInstance(), this.boat::remove);
             return true;
         }
         return false;

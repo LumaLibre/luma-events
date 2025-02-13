@@ -36,7 +36,7 @@ public non-sealed class Envoys extends Minigame {
 
 
     public Envoys(MinigameDefinition def) {
-        super("Envoys", MinigameConstants.ENVOYS_DESC, 60000L, 20, false);
+        super("Envoys", MinigameConstants.ENVOYS_DESC, MinigameConstants.ENVOYS_DURATION, 20, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.spawnPoint = def.getSpawnLocation();
         this.cachedEnvoys = new ConcurrentLinkedQueue<>();
@@ -57,8 +57,8 @@ public non-sealed class Envoys extends Minigame {
 
     @Override
     protected void onRunnable(long timeLeft) {
-
-        for (int i = 0; i < 8; i++) {
+        // TODO: Adjust envoy spawn rates
+        for (int i = 0; i < Math.max(this.participants.size() * 1.5, 2); i++) {
             Location loc1 = this.boundingBox.getRandomLocation();
             EnvoyBlockType envoyBlockType = Util.getRandFromList(EnvoyBlockType.values());
             FallingBlock fallingBlock = this.boundingBox.getWorld()
@@ -89,8 +89,16 @@ public non-sealed class Envoys extends Minigame {
 
     @Override
     protected void handleStop() {
-        for (EnvoyBlock envoyBlock : this.cachedEnvoys) {
-            envoyBlock.remove();
+        if (Bukkit.isPrimaryThread()) {
+            for (EnvoyBlock envoyBlock : this.cachedEnvoys) {
+                envoyBlock.remove();
+            }
+        } else {
+            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+                for (EnvoyBlock envoyBlock : this.cachedEnvoys) {
+                    envoyBlock.remove();
+                }
+            });
         }
         if (countdownBossBar != null) {
             countdownBossBar.stop(false);
@@ -150,6 +158,7 @@ public non-sealed class Envoys extends Minigame {
         String name = event.getPlayer().getName();
         if (scoreboard.getScore(player) % 75 == 0) {
             player.sendMessage("TODO: imaginary token/reward");
+            player.sendMessage("TODO: imaginary jumpboost/speed");
             //Util.giveTokens(name, 1);
         }
     }

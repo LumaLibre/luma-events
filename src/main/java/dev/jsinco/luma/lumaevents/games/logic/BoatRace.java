@@ -33,6 +33,7 @@ import java.util.UUID;
 public non-sealed class BoatRace extends Minigame {
 
     private static final Random RANDOM = new Random();
+    private static final int POINT_MULTIPLIER = 50;
 
     private final Set<BoatRaceCheckpoint> checkpoints;
     private final Set<BoatRacePlayer> racers;
@@ -48,7 +49,7 @@ public non-sealed class BoatRace extends Minigame {
         this.racers = new HashSet<>();
         this.spawnLocation = def.getSpawnLocation();
         this.startLocation = def.getStartLocation();
-        this.scoreboard = new MinigameScoreboard(100);
+        this.scoreboard = new MinigameScoreboard(POINT_MULTIPLIER);
 
         def.getCheckpoints().stream()
                 .map(region -> WorldTiedBoundingBox.of(region.getLoc1(), region.getLoc2()))
@@ -57,6 +58,10 @@ public non-sealed class BoatRace extends Minigame {
 
     @Override
     protected void handleStart() {
+        this.checkpoints.forEach(boatRaceCheckpoint -> {
+            boatRaceCheckpoint.setWorth(this.participants.size());
+        });
+
         for (EventPlayer participant : this.getParticipants()) {
             Player player = participant.getPlayer();
             Location loc = this.startLocation.clone().add(RANDOM.nextInt(4), 0, RANDOM.nextInt(4));
@@ -103,9 +108,13 @@ public non-sealed class BoatRace extends Minigame {
 
     @Override
     protected void handleStop() {
-        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+        if (Bukkit.isPrimaryThread()) {
             this.boundingBox.getEntities(Boat.class).forEach(Boat::remove);
-        });
+        } else {
+            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+                this.boundingBox.getEntities(Boat.class).forEach(Boat::remove);
+            });
+        }
         if (countdownBossBar != null) {
             countdownBossBar.stop(false);
         }
@@ -219,8 +228,19 @@ public non-sealed class BoatRace extends Minigame {
             if (!racer.hasAchievedCheckpoint(checkpoint)) {
                 racer.addCheckpoint(checkpoint);
                 EventPlayer eplayer = racer.getEventPlayer();
-                eplayer.sendMessage("Checkpoint reached! <gold>+100 <gray>points");
-                scoreboard.addScore(eplayer, 1);
+
+                final int checkpointWorth = checkpoint.getWorth();
+                checkpoint.setWorth(checkpointWorth - 1);
+
+                scoreboard.addScore(eplayer, checkpointWorth);
+                eplayer.sendMessage("Checkpoint reached! <gold>+"+checkpointWorth*POINT_MULTIPLIER+" <gray>points");
+                eplayer.sendMessage("You are in <gold>#" + scoreboard.getPosition(eplayer) + "<gray> place");
+
+                // TODO: Tokens
+                if (RANDOM.nextBoolean()) {
+                    eplayer.sendMessage("TODO: imaginary token/reward");
+                    //Util.giveTokens(name, 1);
+                }
 
                 if (racer.finish(this.checkpoints.size())) { // ehh
                     countdownBossBar.getBossBar().removeViewer(event.getPlayer());
@@ -248,5 +268,10 @@ public non-sealed class BoatRace extends Minigame {
         event.setCancelled(true);
         racer.teleportToLastCheckpoint();
     }
+
+
+//    private int getPositionFromCheckpointWorth(int worth) {
+//        return (this.participants.size() - worth) + 1;
+//    }
 
 }

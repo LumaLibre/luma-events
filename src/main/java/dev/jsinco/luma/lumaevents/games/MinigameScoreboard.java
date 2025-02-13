@@ -3,11 +3,14 @@ package dev.jsinco.luma.lumaevents.games;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.enums.EventTeamType;
 import dev.jsinco.luma.lumaevents.utility.Util;
+import lombok.Getter;
+import lombok.Setter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.title.Title;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -16,6 +19,7 @@ public class MinigameScoreboard {
     private final Map<EventTeamType, Integer> teamScores = new HashMap<>();
     private final Map<EventPlayer, Integer> individualScores = new HashMap<>();
 
+    @Getter @Setter
     private int pointMultiplier;
 
     public MinigameScoreboard(int pointMultiplier) {
@@ -32,17 +36,16 @@ public class MinigameScoreboard {
         teamScores.put(player.getTeamType(), teamScores.get(player.getTeamType()) + points);
     }
 
-    public void removeScore(EventPlayer player, int points) {
-        individualScores.put(player, individualScores.get(player) - points);
-        teamScores.put(player.getTeamType(), teamScores.get(player.getTeamType()) - points);
+    public void removeScore(EventPlayer player) {
+        individualScores.remove(player);
     }
 
     public void addScore(EventTeamType team, int points) {
         teamScores.put(team, teamScores.get(team) + points);
     }
 
-    public void removeScore(EventTeamType team, int points) {
-        teamScores.put(team, teamScores.get(team) - points);
+    public void removeScore(EventTeamType team) {
+        teamScores.remove(team);
     }
 
     public int getPoints(EventTeamType team) {
@@ -79,8 +82,9 @@ public class MinigameScoreboard {
     }
 
     public int getPosition(EventPlayer player) {
-        List<EventTeamType> teamsByScore = getTeamsByScore();
-        return teamsByScore.indexOf(player.getTeamType()) + 1;
+        List<EventPlayer> playersByScore = new ArrayList<>(individualScores.keySet());
+        playersByScore.sort((player1, player2) -> individualScores.get(player2) - individualScores.get(player1));
+        return playersByScore.indexOf(player) + 1;
     }
 
     public int getFinalPositionAdditionalPoints(EventTeamType team) {
