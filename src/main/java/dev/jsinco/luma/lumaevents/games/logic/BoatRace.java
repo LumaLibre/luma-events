@@ -24,13 +24,12 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
 
 import java.util.HashSet;
-import java.util.Random;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 public non-sealed class BoatRace extends Minigame {
 
-    private static final Random RANDOM = new Random();
     private static final int POINT_MULTIPLIER = 50;
 
     private final Set<BoatRaceCheckpoint> checkpoints;
@@ -41,7 +40,7 @@ public non-sealed class BoatRace extends Minigame {
     private CountdownBossBar countdownBossBar;
 
     public BoatRace(BoatRaceDefinition def) {
-        super("BoatRace", MinigameConstants.BOATRACE_DESC, 900000L, 30, true, false);
+        super("Boat Race", MinigameConstants.BOATRACE_DESC, MinigameConstants.BOATRACE_DURATION, 30, true, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.checkpoints = new HashSet<>();
         this.racers = new HashSet<>();
@@ -109,6 +108,7 @@ public non-sealed class BoatRace extends Minigame {
                 );
             }
         }
+        this.tryEndIfNoMoreRacers();
     }
 
     @Override
@@ -161,9 +161,10 @@ public non-sealed class BoatRace extends Minigame {
                 .filter(r -> r.is(player))
                 .findFirst()
                 .orElse(null);
-        if (racer == null) {
+        if (racer == null || racer.isReturningToCheckpoint()) {
             return;
         }
+
         if (!racer.isFinished()) {
             event.setCancelled(true);
             racer.getEventPlayer().sendMessage("Don't leave your boat!");
@@ -187,13 +188,11 @@ public non-sealed class BoatRace extends Minigame {
                 .findFirst()
                 .orElse(null);
 
-        if (racer == null) {
+        if (racer == null || racer.isReturningToCheckpoint()) {
             return;
         }
 
-        if (racer.isReturningToCheckpoint()) {
-            racer.setReturningToCheckpoint(false);
-        } else if (!racer.isFinished()) {
+        if (!racer.isFinished()) {
             event.setCancelled(true);
             racer.getEventPlayer().sendMessage("You can't teleport while you're still racing!");
         }
@@ -242,7 +241,7 @@ public non-sealed class BoatRace extends Minigame {
                 eplayer.sendMessage("Checkpoint reached! <gold>+"+checkpointWorth*POINT_MULTIPLIER+" <gray>points");
                 eplayer.sendMessage("You are in <gold>#" + this.getPositionFromCheckpointWorth(checkpointWorth) + "<gray> place");
 
-                if (RANDOM.nextBoolean()) {
+                if (RANDOM.nextInt(100) <= 30) {
                     Util.giveTokens(event.getPlayer(), 1);
                 }
 
@@ -250,12 +249,13 @@ public non-sealed class BoatRace extends Minigame {
                     countdownBossBar.getBossBar().removeViewer(event.getPlayer());
                     eplayer.sendTitle("<green>Finished!", "<gray>You placed <gold>#" + this.getPositionFromCheckpointWorth(checkpointWorth));
                     event.getPlayer().teleportAsync(this.spawnLocation);
+                    this.tryEndIfNoMoreRacers();
                 }
             }
         });
     }
 
-    @EventHandler
+    //@EventHandler //Disabled.
     public void onPlayerSwapHands(PlayerSwapHandItemsEvent event) {
         if (!this.boundingBox.contains(event.getPlayer().getLocation()) || !event.getPlayer().isInsideVehicle()) {
             return;
@@ -276,6 +276,21 @@ public non-sealed class BoatRace extends Minigame {
 
     private int getPositionFromCheckpointWorth(int worth) {
         return (this.participants.size() - worth) + 1;
+    }
+
+    private void tryEndIfNoMoreRacers() {
+        if (this.racers.isEmpty()) {
+            return;
+        }
+
+        List<BoatRacePlayer> stillRacing = this.racers.stream()
+                .filter(r -> r.isOnline())
+                .filter(r -> !r.isFinished())
+                .toList();
+        if (stillRacing.isEmpty()) {
+            this.stop();
+        }
+
     }
 
 }

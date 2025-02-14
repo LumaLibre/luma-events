@@ -70,7 +70,6 @@ public class CountdownBossBar extends BukkitRunnable {
 
     @Override
     public void run() {
-        // FIXME: testme
         if (global) {
             Audience newAudience = Audience.audience(Bukkit.getOnlinePlayers());
             if (!audience.equals(newAudience)) {

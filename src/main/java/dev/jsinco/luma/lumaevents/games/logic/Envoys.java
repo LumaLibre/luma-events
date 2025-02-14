@@ -12,7 +12,6 @@ import dev.jsinco.luma.lumaevents.obj.minigame.EnvoyBlock;
 import dev.jsinco.luma.lumaevents.utility.MinigameConstants;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import net.kyori.adventure.bossbar.BossBar;
-import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -21,15 +20,18 @@ import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.FallingBlock;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-// FIXME: Listeners need checks to make sure player is participating
+// FIXME: Envoys becoming bad blocks such as dirt_path or flowers
 public non-sealed class Envoys extends Minigame {
 
     private static final List<Material> PROTECTED_BLOCKS = List.of(
@@ -67,7 +69,6 @@ public non-sealed class Envoys extends Minigame {
 
     @Override
     protected void onRunnable(long timeLeft) {
-        // FIXME: Adjust envoy spawn rates?
         for (int i = 0; i < this.participants.size(); i++) {
             Location loc1 = this.boundingBox.getRandomLocation().toCenterLocation();
             EnvoyBlockType envoyBlockType = Util.getRandFromList(EnvoyBlockType.values());
@@ -83,13 +84,12 @@ public non-sealed class Envoys extends Minigame {
         Bukkit.getAsyncScheduler().runNow(EventMain.getInstance(), (task) -> {
             for (EnvoyBlock envoyBlock : this.cachedEnvoys) {
                 Location loc = envoyBlock.getLocation().toCenterLocation();
-                if (envoyBlock.isSolid() && loc.getBlock().isEmpty()) {
+                if (envoyBlock.isSolid() && !EnvoyBlockType.getSolidBlocks().contains(loc.getBlock().getType())) {
                     Bukkit.getScheduler().runTask(EventMain.getInstance(), envoyBlock::remove);
                     this.cachedEnvoys.remove(envoyBlock);
                     continue;
                 }
 
-                System.out.println(loc.getBlock().getType());
                 this.boundingBox.getWorld()
                         .spawnParticle(Particle.FIREWORK, loc, 10, 0.5, 0.5, 0.5, 0.1);
             }
@@ -159,11 +159,10 @@ public non-sealed class Envoys extends Minigame {
         }
 
         block.setType(envoyBlock.getEnvoyBlockType().getSolidBlock());
-        event.setCancelled(true);
 
         envoyBlock.updateToBlock(block);
         block.getWorld().playSound(block.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.2F, 1.0F);
-        System.out.println("Finalized envoy on:" + block.getType());
+        event.setCancelled(true);
     }
 
     @EventHandler
@@ -183,10 +182,9 @@ public non-sealed class Envoys extends Minigame {
         }
         this.scoreboard.addScore(player, 1);
 
-        if (scoreboard.getScore(player) % 12 == 0) {
+        if (scoreboard.getScore(player) % 15 == 0) {
             Util.giveTokens(event.getPlayer(), 1);
-            // FIXME: Add random potion effect buffs
-            player.sendMessage("TODO: imaginary jumpboost/speed");
+            this.tryRandomPotionEffectBuff(event.getPlayer());
         }
     }
 
@@ -213,5 +211,13 @@ public non-sealed class Envoys extends Minigame {
                 .filter(envoyBlock -> envoyBlock.is(thing))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private void tryRandomPotionEffectBuff(Player player) {
+        if (RANDOM.nextInt(100) > 30) {
+            return;
+        }
+        player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, 250, 6));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 250, 3));
     }
 }

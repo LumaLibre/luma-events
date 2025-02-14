@@ -3,14 +3,12 @@ package dev.jsinco.luma.lumaevents.obj.minigame;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.utility.Util;
-import io.papermc.paper.entity.TeleportFlag;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.PlayerTeleportEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -75,13 +73,15 @@ public class BoatRacePlayer {
         Player player = eventPlayer.getPlayer();
         this.returningToCheckpoint = true;
         Location loc = lastCheckpoint.getCenterLocation(player.getPitch(), player.getYaw());
-        // FIXME: Figure out why this doesn't work
-        player.teleportAsync(
-                loc,
-                PlayerTeleportEvent.TeleportCause.PLUGIN,
-                TeleportFlag.EntityState.RETAIN_VEHICLE
-        );
+        player.teleport(loc);
+        boat.teleport(loc);
+        boat.addPassenger(player);
         Util.sendMsg(player, "Teleporting to last checkpoint!");
+        this.returningToCheckpoint = false;
+    }
+
+    public boolean isOnline() {
+        return eventPlayer.getPlayer().isOnline();
     }
 
     public static BoatRacePlayer of(EventPlayer eventPlayer, Boat boat) {

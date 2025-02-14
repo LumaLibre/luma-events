@@ -40,7 +40,7 @@ public non-sealed class Paintball extends Minigame {
     private final List<EncapsulatedPaintballTeam> encapsulatedPaintballTeams;
 
     public Paintball(MinigameDefinition def) {
-        super("Paintball", MinigameConstants.PAINTBALL_DESC, 90000L, 30, true);
+        super("Paintball", MinigameConstants.PAINTBALL_DESC, MinigameConstants.PAINTBALL_DURATION, 30, true);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.spawnPoint = def.getSpawnLocation();
         this.scoreboard = new MinigameScoreboard(1);

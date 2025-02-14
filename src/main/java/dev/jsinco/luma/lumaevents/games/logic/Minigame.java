@@ -19,6 +19,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 @Getter
 @Setter
@@ -26,6 +27,8 @@ public sealed abstract class Minigame
         extends BukkitRunnable
         implements Listener
         permits BoatRace, Envoys, NonActiveMinigame, Paintball {
+
+    protected static final Random RANDOM = new Random();
 
     protected final List<EventPlayer> participants = new ArrayList<>();
     private final MinigameExitPreventionListener exitPrevention;
