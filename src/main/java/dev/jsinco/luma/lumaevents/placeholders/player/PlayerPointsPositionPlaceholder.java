@@ -29,7 +29,9 @@ public class PlayerPointsPositionPlaceholder implements PlaceholderModule {
 
         List<EventPlayer> players = new java.util.ArrayList<>(List.copyOf(EventPlayerManager.EVENT_PLAYERS));
         players.sort((p1, p2) -> Integer.compare(p2.getPoints(), p1.getPoints()));
-
+        if (players.size() < Util.getInt(args.getFirst(), 1)) {
+            return "Unfilled position";
+        }
 
         EventPlayer player = players.get(Util.getInt(args.getFirst(), 1) - 1);
         if (player == null) {

@@ -22,7 +22,6 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.potion.PotionEffect;
@@ -50,7 +49,7 @@ public non-sealed class Envoys extends Minigame {
     public Envoys(MinigameDefinition def) {
         super("Envoys", MinigameConstants.ENVOYS_DESC, MinigameConstants.ENVOYS_DURATION, 30, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
-        this.spawnPoint = def.getSpawnLocation();
+        this.spawnPoint = def.getSpawnLocation().toCenterLocation();
         this.cachedEnvoys = new ConcurrentLinkedQueue<>();
         this.scoreboard = new MinigameScoreboard(30);
     }
@@ -175,9 +174,14 @@ public non-sealed class Envoys extends Minigame {
     }
 
     @EventHandler
-    public void onEnvoyBreak(BlockBreakEvent event) {
+    public void onEnvoyInteract(PlayerInteractEvent event) {
         this.ensureNotIllegal();
-        EnvoyBlock envoyBlock = this.getEnvoyBlock(event.getBlock());
+        Block block = event.getClickedBlock();
+        if (event.getAction().isRightClick() || block == null) {
+            return;
+        }
+
+        EnvoyBlock envoyBlock = this.getEnvoyBlock(block);
         if (envoyBlock == null) {
             return;
         }
@@ -194,23 +198,6 @@ public non-sealed class Envoys extends Minigame {
         if (scoreboard.getScore(player) % 15 == 0) {
             Util.giveTokens(event.getPlayer(), 1);
         }
-    }
-
-    @EventHandler
-    public void onEnvoyInteract(PlayerInteractEvent event) {
-        this.ensureNotIllegal();
-        Block block = event.getClickedBlock();
-        if (event.getAction().isLeftClick() || block == null) {
-            return;
-        }
-
-        EnvoyBlock envoyBlock = this.getEnvoyBlock(block);
-        if (envoyBlock == null) {
-            return;
-        }
-
-        event.setCancelled(true);
-        Util.sendMsg(event.getPlayer(), "Break me!");
     }
 
 

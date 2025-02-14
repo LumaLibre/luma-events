@@ -13,6 +13,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @AutoRegister(RegisterType.PLACEHOLDER)
@@ -27,9 +28,11 @@ public class PlayerNamePositionPlaceholder implements PlaceholderModule {
             return null;
         }
 
-        List<EventPlayer> players = new java.util.ArrayList<>(List.copyOf(EventPlayerManager.EVENT_PLAYERS));
+        List<EventPlayer> players = new ArrayList<>(List.copyOf(EventPlayerManager.EVENT_PLAYERS));
         players.sort((p1, p2) -> Integer.compare(p2.getPoints(), p1.getPoints()));
-
+        if (players.size() < Util.getInt(args.getFirst(), 1)) {
+            return "Unfilled position";
+        }
 
         EventPlayer player = players.get(Util.getInt(args.getFirst(), 1) - 1);
         if (player == null) {

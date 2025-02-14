@@ -44,8 +44,8 @@ public non-sealed class BoatRace extends Minigame {
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.checkpoints = new HashSet<>();
         this.racers = new HashSet<>();
-        this.spawnLocation = def.getSpawnLocation();
-        this.startLocation = def.getStartLocation();
+        this.spawnLocation = def.getSpawnLocation().toCenterLocation();
+        this.startLocation = def.getStartLocation().toCenterLocation();
         this.scoreboard = new MinigameScoreboard(POINT_MULTIPLIER);
 
         def.getCheckpoints().stream()

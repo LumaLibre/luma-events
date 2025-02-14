@@ -18,7 +18,7 @@ import java.util.List;
         identifier = "teampoints",
         parent = PlaceholderManager.class
 )
-public class TeamPointsPlaceholder implements PlaceholderModule {
+public class TeamPointsPositionPlaceholder implements PlaceholderModule {
     @Override
     public @Nullable String onRequest(EventMain eventMain, @Nullable OfflinePlayer offlinePlayer, List<String> args) {
         if (args.isEmpty()) {

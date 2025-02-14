@@ -25,6 +25,9 @@ public class PlayerTeamPlaceholder implements PlaceholderModule {
             return null;
         }
         EventPlayer eplayer = EventPlayerManager.getByUUID(offlinePlayer.getUniqueId());
+        if (eplayer.getTeamType() == null) {
+            return "No team";
+        }
         return eplayer.getTeamType().getFormatted();
     }
 }

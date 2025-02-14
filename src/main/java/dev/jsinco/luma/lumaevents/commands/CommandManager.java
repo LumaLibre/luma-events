@@ -13,7 +13,7 @@ import org.jetbrains.annotations.NotNull;
 @AutoRegister(RegisterType.COMMAND)
 @CommandInfo(
         name = "event",
-        aliases = {"valentide"},
+        aliases = {"valentide", "valentines"},
         permission = "lumaevents.default"
 )
 public class CommandManager extends AbstractCommandManager<EventMain, CommandModule> {
@@ -32,7 +32,7 @@ public class CommandManager extends AbstractCommandManager<EventMain, CommandMod
         }
         Location loc = EventMain.getOkaeriConfig().getEventSpawnLocation();
         if (loc != null) {
-            player.teleportAsync(loc);
+            player.teleportAsync(loc.toCenterLocation());
         }
         return true;
     }

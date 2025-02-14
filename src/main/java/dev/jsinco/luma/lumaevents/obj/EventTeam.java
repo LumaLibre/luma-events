@@ -130,6 +130,9 @@ public class EventTeam {
         Set<EventTeam> createdTeamObjects = new HashSet<>();
         for (EventPlayer eventPlayer : playerList) {
             EventTeamType teamType = eventPlayer.getTeamType();
+            if (teamType == null) {
+                continue;
+            }
             EventTeam team = createdTeamObjects.stream()
                     .filter(eventTeam -> eventTeam.getType().equals(teamType))
                     .findFirst()
@@ -149,9 +152,16 @@ public class EventTeam {
         }
 
         // Sorted by points
+        // If all points are empty: rosethorn, sweethearts, heartbreakers
         if (sorted) {
             return createdTeamObjects.stream()
-                    .sorted((team1, team2) -> Integer.compare(team2.getTeamPoints(), team1.getTeamPoints()))
+                    .sorted((team1, team2) -> {
+                        int pointComparison = Integer.compare(team2.getTeamPoints(), team1.getTeamPoints());
+                        if (pointComparison == 0) {
+                            return team1.getType().compareTo(team2.getType());
+                        }
+                        return pointComparison;
+                    })
                     .collect(Collectors.toCollection(LinkedHashSet::new));
         }
         return createdTeamObjects;

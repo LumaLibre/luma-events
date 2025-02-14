@@ -42,7 +42,7 @@ public non-sealed class Paintball extends Minigame {
     public Paintball(MinigameDefinition def) {
         super("Paintball", MinigameConstants.PAINTBALL_DESC, MinigameConstants.PAINTBALL_DURATION, 30, true);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
-        this.spawnPoint = def.getSpawnLocation();
+        this.spawnPoint = def.getSpawnLocation().toCenterLocation();
         this.scoreboard = new MinigameScoreboard(2);
 
         PaintballColorKit colorKit = Util.getRandFromList(PaintballColorKit.values());

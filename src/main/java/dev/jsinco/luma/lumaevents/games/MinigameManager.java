@@ -12,6 +12,7 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.bukkit.Bukkit;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
@@ -89,8 +90,13 @@ public final class MinigameManager extends BukkitRunnable {
 
     @Override
     public void run() {
-        if (cfg.isAutomaticMinigames() && this.canSafelyStartMinigame(false)) {
-            this.newMinigame(Util.getRandom(this.minigameSupplier.keySet()), false);
+        if (this.canSafelyStartMinigame(false)) {
+            if (cfg.isAutomaticMinigames()) {
+                this.newMinigame(Util.getRandom(this.minigameSupplier.keySet()), false);
+            } else {
+                Util.sendMsg(Bukkit.getConsoleSender(), "Tried to start an automatic minigame, but it's disabled in the config!");
+            }
+
         }
     }
 
