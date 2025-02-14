@@ -52,7 +52,7 @@ public non-sealed class Envoys extends Minigame {
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.spawnPoint = def.getSpawnLocation();
         this.cachedEnvoys = new ConcurrentLinkedQueue<>();
-        this.scoreboard = new MinigameScoreboard(5);
+        this.scoreboard = new MinigameScoreboard(30);
     }
 
 
@@ -78,6 +78,12 @@ public non-sealed class Envoys extends Minigame {
             fallingBlock.setHurtEntities(false);
 
             cachedEnvoys.add(EnvoyBlock.fromFallingBlock(fallingBlock, envoyBlockType));
+        }
+
+        for (EventPlayer participant : this.participants) {
+            Player player = participant.getPlayer();
+            player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, 250, 7));
+            player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 250, 3));
         }
 
 
@@ -128,9 +134,12 @@ public non-sealed class Envoys extends Minigame {
                     .title("<yellow><b>Game Over</b></yellow>")
                     .seconds(15)
                     .callback(() -> {
-                        this.boundingBox.getPlayers().stream().forEach(player -> {
-                            player.teleportAsync(this.getGameDropOffLocation());
-                            Util.sendMsg(player, "This minigame has concluded.");
+                        this.participants.stream().forEach(player -> {
+                            Player bukkitPlayer = player.getPlayer();
+                            if (this.boundingBox.isInWithMarge(bukkitPlayer.getLocation(), 400)) {
+                                bukkitPlayer.teleportAsync(this.getGameDropOffLocation());
+                            }
+                            player.sendMessage("This minigame has concluded.");
                         });
                     })
                     .build()
@@ -184,7 +193,6 @@ public non-sealed class Envoys extends Minigame {
 
         if (scoreboard.getScore(player) % 15 == 0) {
             Util.giveTokens(event.getPlayer(), 1);
-            this.tryRandomPotionEffectBuff(event.getPlayer());
         }
     }
 
@@ -211,13 +219,5 @@ public non-sealed class Envoys extends Minigame {
                 .filter(envoyBlock -> envoyBlock.is(thing))
                 .findFirst()
                 .orElse(null);
-    }
-
-    private void tryRandomPotionEffectBuff(Player player) {
-        if (RANDOM.nextInt(100) > 30) {
-            return;
-        }
-        player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, 250, 6));
-        player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 250, 3));
     }
 }

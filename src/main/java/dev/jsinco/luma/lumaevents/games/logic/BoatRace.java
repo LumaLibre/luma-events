@@ -30,7 +30,7 @@ import java.util.UUID;
 
 public non-sealed class BoatRace extends Minigame {
 
-    private static final int POINT_MULTIPLIER = 50;
+    private static final int POINT_MULTIPLIER = 20;
 
     private final Set<BoatRaceCheckpoint> checkpoints;
     private final Set<BoatRacePlayer> racers;
