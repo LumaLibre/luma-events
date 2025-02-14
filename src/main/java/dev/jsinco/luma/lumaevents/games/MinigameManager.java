@@ -48,6 +48,7 @@ public final class MinigameManager extends BukkitRunnable {
 
         Util.broadcast("<hover:show_text:'Click me!'><click:run_command:/event join>A minigame is starting! Use <gold>/valentide join</gold> to participate!");
         this.cfg.setLastGameLaunchTime(System.currentTimeMillis());
+        this.cfg.save();
         this.current = this.minigameSupplier.get(game).get();
         return this.current.start(seconds);
     }

@@ -7,6 +7,7 @@ import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
+import dev.jsinco.luma.lumaevents.configurable.Config;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.enums.EventTeamType;
 import dev.jsinco.luma.lumaevents.utility.Util;
@@ -35,11 +36,14 @@ public class JoinTeamCommand implements CommandModule {
             return true;
         }
 
-        EventTeamType lastChosenTeam = EventMain.getOkaeriConfig().getLastChosenTeam();
+        Config config = EventMain.getOkaeriConfig();
+
+        EventTeamType lastChosenTeam = config.getLastChosenTeam();
         // Cycle through the teams
         EventTeamType nextTeam = getNextTeam(lastChosenTeam);
         eplayer.setTeamType(nextTeam);
-        EventMain.getOkaeriConfig().setLastChosenTeam(nextTeam);
+        config.setLastChosenTeam(nextTeam);
+        config.save();
 
         Util.broadcast(player.getName() + " has joined the " + nextTeam.getTeamWithGradient() + " <reset>team!");
         //Util.broadcastSound(Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 0.3f, 1.0f);

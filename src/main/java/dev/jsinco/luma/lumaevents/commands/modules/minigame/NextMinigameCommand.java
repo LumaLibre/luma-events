@@ -7,6 +7,7 @@ import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
 import dev.jsinco.luma.lumaevents.configurable.Config;
+import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.command.CommandSender;
 
 import java.util.List;
@@ -28,7 +29,7 @@ public class NextMinigameCommand implements CommandModule {
 
         long timeCombined = config.getLastGameLaunchTime() - config.getAutomaticMinigameCooldown();
         // print how long until the next minigame
-        commandSender.sendMessage("The next minigame will be in <gold>" + convertMillisToReadable(timeCombined - System.currentTimeMillis()));
+        Util.sendMsg(commandSender, "The next minigame will be in <gold>" + convertMillisToReadable(timeCombined - System.currentTimeMillis()));
         return true;
     }
 

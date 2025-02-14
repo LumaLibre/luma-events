@@ -149,6 +149,9 @@ public non-sealed class Paintball extends Minigame {
         for (EventPlayer player : this.participants) {
             for (Block block : sphere.getSphere().stream().filter(b -> !BLACKLISTED_MATERIALS.contains(b.getType())).toList()) {
                 Player bukkitPlayer = player.getPlayer();
+                if (bukkitPlayer == null) {
+                    continue;
+                }
                 bukkitPlayer.sendBlockChange(block.getLocation(), encapsulatedPaintballTeam.getBlockData());
             }
         }
