@@ -5,7 +5,9 @@ import dev.jsinco.luma.lumacore.manager.commands.AbstractCommandManager;
 import dev.jsinco.luma.lumacore.manager.commands.CommandInfo;
 import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
 import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
+import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 @AutoRegister(RegisterType.COMMAND)
@@ -22,6 +24,16 @@ public class CommandManager extends AbstractCommandManager<EventMain, CommandMod
 
     @Override
     public boolean handle(@NotNull CommandSender sender, @NotNull String label, String[] args) {
-        return super.handle(sender, label, args);
+        if (args.length > 0) {
+            return super.handle(sender, label, args);
+        }
+        if (!(sender instanceof Player player)) {
+            return false;
+        }
+        Location loc = EventMain.getOkaeriConfig().getEventSpawnLocation();
+        if (loc != null) {
+            player.teleportAsync(loc);
+        }
+        return true;
     }
 }

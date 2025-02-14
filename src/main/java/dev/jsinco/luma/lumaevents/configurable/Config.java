@@ -20,7 +20,10 @@ public class Config extends OkaeriConfig {
     private boolean automaticMinigames = false;
 
     @Comment("Automatic minigame cooldown in milliseconds")
-    private long automaticMinigameCooldown = 30000L;
+    private long automaticMinigameCooldown = 7200000L;
+
+    @Comment("Default location for /valentide")
+    private Location eventSpawnLocation;
 
     @Comment("Would be /spawn location")
     private Location gameDropOffLocation;

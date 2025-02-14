@@ -37,7 +37,7 @@ public final class MinigameManager extends BukkitRunnable {
     private Minigame current = new NonActiveMinigame();
 
 
-    public boolean newMinigame(Class<? extends Minigame> game, boolean force) throws GameAlreadyStartedException {
+    public boolean newMinigame(Class<? extends Minigame> game, boolean force, int seconds) throws GameAlreadyStartedException {
         if (this.current.isActive()) {
             if (!force) {
                 throw new GameAlreadyStartedException("Minigame: " + this.current.getName() + " is already active!");
@@ -48,21 +48,29 @@ public final class MinigameManager extends BukkitRunnable {
         Util.broadcast("<hover:show_text:'Click me!'><click:run_command:/event join>A minigame is starting! Use <gold>/valentide join</gold> to participate!");
         this.cfg.setLastGameLaunchTime(System.currentTimeMillis());
         this.current = this.minigameSupplier.get(game).get();
-        return this.current.start();
+        return this.current.start(seconds);
     }
 
-    public boolean tryNewMinigameSafely(Class<? extends Minigame> game, boolean ignoreCooldown) {
+    public boolean newMinigame(Class<? extends Minigame> game, boolean force) throws GameAlreadyStartedException {
+        return this.newMinigame(game, force, 90);
+    }
+
+    public boolean tryNewMinigameSafely(Class<? extends Minigame> game, boolean ignoreCooldown, int seconds) {
         if (!this.canSafelyStartMinigame(ignoreCooldown)) {
             return false;
         }
 
         try {
-            this.newMinigame(game, false);
+            this.newMinigame(game, false, seconds);
             return true;
         } catch (GameAlreadyStartedException oopsie) {
             oopsie.printStackTrace();
             return false;
         }
+    }
+
+    public boolean tryNewMinigameSafely(Class<? extends Minigame> game, boolean ignoreCooldown) {
+        return this.tryNewMinigameSafely(game, false, 90);
     }
 
     public boolean canSafelyStartMinigame(boolean ignoreCooldown) {

@@ -44,7 +44,17 @@ public class MinigameStartCommand implements CommandModule {
             return false;
         }
 
-        if (MinigameManager.getInstance().tryNewMinigameSafely(minigame, true)){
+        int seconds = 90;
+        if (strings.length >= 2) {
+            try {
+                seconds = Integer.parseInt(strings[1]);
+            } catch (NumberFormatException e) {
+                Util.sendMsg(commandSender, "Invalid number of seconds");
+                return false;
+            }
+        }
+
+        if (MinigameManager.getInstance().tryNewMinigameSafely(minigame, true, seconds)){
             Util.sendMsg(commandSender, "Minigame started");
         } else {
             Util.sendMsg(commandSender, "Failed to start minigame. Is there another minigame active?");

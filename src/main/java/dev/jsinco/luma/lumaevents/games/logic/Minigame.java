@@ -70,12 +70,16 @@ public sealed abstract class Minigame
 
 
     public boolean start() {
+        return this.start(90);
+    }
+
+    public boolean start(int seconds) {
         if (this.active) {
             return false;
         }
         this.active = true;
         this.open = true;
-        this.openQueue();
+        this.openQueue(seconds);
         return true;
     }
 
@@ -117,10 +121,10 @@ public sealed abstract class Minigame
         return true;
     }
 
-    private void openQueue() {
+    private void openQueue(int seconds) {
         CountdownBossBar.builder()
                 .title("<aqua><b>" + name + " Starting in</b><gray>:</gray> <b>%s</b></aqua>")
-                .seconds(10)
+                .seconds(seconds)
                 .color(BossBar.Color.BLUE)
                 .callback(() -> {
                     if (this.participants.isEmpty()) {
