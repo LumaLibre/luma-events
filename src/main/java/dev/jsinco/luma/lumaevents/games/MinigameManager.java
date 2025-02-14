@@ -47,8 +47,6 @@ public final class MinigameManager extends BukkitRunnable {
         }
 
         Util.broadcast("<hover:show_text:'Click me!'><click:run_command:/event join>A minigame is starting! Use <gold>/valentide join</gold> to participate!");
-        this.cfg.setLastGameLaunchTime(System.currentTimeMillis());
-        this.cfg.save();
         this.current = this.minigameSupplier.get(game).get();
         return this.current.start(seconds);
     }
@@ -96,6 +94,8 @@ public final class MinigameManager extends BukkitRunnable {
     public void run() {
         if (this.canSafelyStartMinigame(false)) {
             if (cfg.isAutomaticMinigames()) {
+                this.cfg.setLastGameLaunchTime(System.currentTimeMillis());
+                this.cfg.save();
                 this.newMinigame(Util.getRandom(this.minigameSupplier.keySet()), false);
             } else {
                 Util.sendMsg(Bukkit.getConsoleSender(), "Tried to start an automatic minigame, but it's disabled in the config!");
