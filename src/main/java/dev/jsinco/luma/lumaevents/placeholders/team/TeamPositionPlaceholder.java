@@ -27,7 +27,7 @@ public class TeamPositionPlaceholder implements PlaceholderModule {
             return null;
         }
 
-        EventTeam team = this.getFromPosition(Integer.parseInt(args.getFirst()));
+        EventTeam team = this.getFromPosition(Integer.parseInt(args.getFirst()) - 1);
         if (team == null) {
             return "Unknown position";
         }
