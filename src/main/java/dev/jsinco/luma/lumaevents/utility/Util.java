@@ -176,4 +176,12 @@ public final class Util {
     public static int millisToSecs(long millis) {
         return (int) (millis / 1000);
     }
+
+    public static int getInt(String str, int def) {
+        try {
+            return Integer.parseInt(str);
+        } catch (NumberFormatException e) {
+            return def;
+        }
+    }
 }
