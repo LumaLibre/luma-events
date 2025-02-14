@@ -42,7 +42,7 @@ public class JoinTeamCommand implements CommandModule {
         EventMain.getOkaeriConfig().setLastChosenTeam(nextTeam);
 
         Util.broadcast(player.getName() + " has joined the " + nextTeam.getTeamWithGradient() + " <reset>team!");
-        Util.broadcastSound(Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 0.3f, 1.0f);
+        //Util.broadcastSound(Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 0.3f, 1.0f);
         return true;
     }
 
