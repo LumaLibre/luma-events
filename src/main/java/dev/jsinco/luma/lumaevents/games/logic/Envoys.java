@@ -81,6 +81,9 @@ public non-sealed class Envoys extends Minigame {
 
         for (EventPlayer participant : this.participants) {
             Player player = participant.getPlayer();
+            if (player == null) {
+                continue;
+            }
             player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, 250, 7));
             player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 250, 3));
         }
@@ -126,7 +129,9 @@ public non-sealed class Envoys extends Minigame {
         }
 
         scoreboard.handleGameEnd(this.participants, this.audience, () -> {
-            this.participants.forEach(p -> p.getPlayer().teleportAsync(this.spawnPoint));
+            this.participants.stream().filter(
+                    p -> p.getPlayer() != null
+            ).forEach(p -> p.getPlayer().teleportAsync(this.spawnPoint));
             CountdownBossBar.builder()
                     .audience(this.audience)
                     .color(BossBar.Color.YELLOW)
@@ -135,7 +140,7 @@ public non-sealed class Envoys extends Minigame {
                     .callback(() -> {
                         this.participants.stream().forEach(player -> {
                             Player bukkitPlayer = player.getPlayer();
-                            if (this.boundingBox.isInWithMarge(bukkitPlayer.getLocation(), 400)) {
+                            if (bukkitPlayer != null && this.boundingBox.isInWithMarge(bukkitPlayer.getLocation(), 400)) {
                                 bukkitPlayer.teleportAsync(this.getGameDropOffLocation());
                             }
                             player.sendMessage("This minigame has concluded.");

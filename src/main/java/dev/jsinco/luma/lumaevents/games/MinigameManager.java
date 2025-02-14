@@ -85,8 +85,11 @@ public final class MinigameManager extends BukkitRunnable {
         }
 
         // We can't start another minigame if the cooldown hasn't passed!
-        long timeSinceLast = System.currentTimeMillis() - this.cfg.getLastGameLaunchTime();
-        return timeSinceLast >= cfg.getAutomaticMinigameCooldown(); // Passed all checks, we can start a new minigame!
+        long currentTime = System.currentTimeMillis();
+        long lastMinigameTime = this.cfg.getLastGameLaunchTime();
+
+
+        return (currentTime - lastMinigameTime) >= this.cfg.getAutomaticMinigameCooldown();
     }
 
     @Override

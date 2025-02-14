@@ -13,6 +13,7 @@ import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -70,6 +71,7 @@ public class EventPlayer implements Serializable {
         this.points -= points;
     }
 
+    @Nullable
     public Player getPlayer() {
         return Bukkit.getPlayer(this.uuid);
     }

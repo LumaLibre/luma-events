@@ -55,6 +55,9 @@ public class EventTeam {
 
     public void title(String title, String subtitle) {
         for (EventPlayer player : teamPlayers) {
+            if (player.getPlayer() == null) {
+                continue;
+            }
             player.getPlayer().showTitle(Title.title(
                     Util.color(title),
                     Util.color(subtitle)

@@ -61,6 +61,9 @@ public non-sealed class BoatRace extends Minigame {
 
         for (EventPlayer participant : this.getParticipants()) {
             Player player = participant.getPlayer();
+            if (player == null) {
+                continue;
+            }
             Location loc = this.startLocation.clone().add(RANDOM.nextInt(4), 0, RANDOM.nextInt(4));
             player.teleportAsync(loc);
 
@@ -124,7 +127,8 @@ public non-sealed class BoatRace extends Minigame {
             countdownBossBar.stop(false);
         }
         scoreboard.handleGameEnd(this.participants, this.audience, () -> {
-            this.participants.forEach(p -> p.getPlayer().teleportAsync(this.spawnLocation));
+            this.participants.stream().filter(player -> player.getPlayer() != null
+            ).forEach(p -> p.getPlayer().teleportAsync(this.spawnLocation));
             CountdownBossBar.builder()
                     .audience(this.audience)
                     .color(BossBar.Color.RED)

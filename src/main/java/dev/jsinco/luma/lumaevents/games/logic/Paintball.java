@@ -70,7 +70,9 @@ public non-sealed class Paintball extends Minigame {
             this.countdownBossBar.stop(false);
         }
         scoreboard.handleGameEnd(this.participants, this.audience, () -> {
-            this.participants.forEach(p -> p.getPlayer().teleportAsync(this.spawnPoint));
+            this.participants.stream().filter(
+                    p -> p.getPlayer() != null
+            ).forEach(p -> p.getPlayer().teleportAsync(this.spawnPoint));
             CountdownBossBar.builder()
                     .audience(this.audience)
                     .color(BossBar.Color.PURPLE)
