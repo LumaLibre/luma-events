@@ -72,7 +72,7 @@ public final class MinigameManager extends BukkitRunnable {
     }
 
     public boolean tryNewMinigameSafely(Class<? extends Minigame> game, boolean ignoreCooldown) {
-        return this.tryNewMinigameSafely(game, false, 90);
+        return this.tryNewMinigameSafely(game, ignoreCooldown, 90);
     }
 
     public boolean canSafelyStartMinigame(boolean ignoreCooldown) {

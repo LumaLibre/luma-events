@@ -25,11 +25,12 @@ import java.util.concurrent.TimeUnit;
 public class NextMinigameCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
-        Config config = EventMain.getOkaeriConfig();
+        Config cfg = EventMain.getOkaeriConfig();
 
-        long timeCombined = config.getLastGameLaunchTime() - config.getAutomaticMinigameCooldown();
+        long timeSinceLast = System.currentTimeMillis() - cfg.getLastGameLaunchTime();
+        long timeCombined = cfg.getAutomaticMinigameCooldown() - timeSinceLast;
         // print how long until the next minigame
-        Util.sendMsg(commandSender, "The next minigame will be in <gold>" + convertMillisToReadable(timeCombined - System.currentTimeMillis()));
+        Util.sendMsg(commandSender, "The next minigame will be in <gold>" + millisToMins(timeCombined) + "</gold>.");
         return true;
     }
 
@@ -38,12 +39,11 @@ public class NextMinigameCommand implements CommandModule {
         return List.of();
     }
 
-    private String convertMillisToReadable(long millis) {
-        long hours = TimeUnit.MILLISECONDS.toHours(millis);
-        long minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % 60;
-        long seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60;
-
-        // Format the result in HH:mm:ss
-        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+    private String millisToMins(long millis) {
+        return String.format("%d min, %d sec",
+                TimeUnit.MILLISECONDS.toMinutes(millis),
+                TimeUnit.MILLISECONDS.toSeconds(millis) -
+                        TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(millis))
+        );
     }
 }
