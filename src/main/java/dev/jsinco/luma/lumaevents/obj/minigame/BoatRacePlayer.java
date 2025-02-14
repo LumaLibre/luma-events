@@ -34,13 +34,6 @@ public class BoatRacePlayer {
         if (this.finished) {
             return true;
         }
-        // We need to make sure the racer is going in order
-//        if (!checkpointsAchieved.isEmpty()) {
-//            BoatRaceCheckpoint lastCheckpoint = checkpointsAchieved.getLast();
-//            if (lastCheckpoint.getIndex() >= checkpoint.getIndex()) {
-//                return false;
-//            }
-//        }
         return checkpointsAchieved.contains(checkpoint);
     }
 
@@ -62,7 +55,11 @@ public class BoatRacePlayer {
     }
 
     public boolean is(Player player) {
-        return this.eventPlayer.getPlayer().equals(player);
+        Player bukkitPlayer = this.eventPlayer.getPlayer();
+        if (bukkitPlayer == null) {
+            return false;
+        }
+        return bukkitPlayer.equals(player);
     }
 
     public void teleportToLastCheckpoint() {
@@ -71,6 +68,9 @@ public class BoatRacePlayer {
         }
         BoatRaceCheckpoint lastCheckpoint = checkpointsAchieved.getLast();
         Player player = eventPlayer.getPlayer();
+        if (player == null) {
+            return;
+        }
         this.returningToCheckpoint = true;
         Location loc = lastCheckpoint.getCenterLocation(player.getPitch(), player.getYaw());
         player.teleport(loc);
@@ -81,7 +81,11 @@ public class BoatRacePlayer {
     }
 
     public boolean isOnline() {
-        return eventPlayer.getPlayer().isOnline();
+        Player player = eventPlayer.getPlayer();
+        if (player == null) {
+            return false;
+        }
+        return player.isOnline();
     }
 
     public static BoatRacePlayer of(EventPlayer eventPlayer, Boat boat) {

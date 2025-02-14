@@ -13,7 +13,7 @@ import org.bukkit.entity.FallingBlock;
 public class EnvoyBlock {
 
     private Object value;
-    private EnvoyBlockType envoyBlockType;
+    private final EnvoyBlockType envoyBlockType;
     private boolean isSolid = false;
 
     public EnvoyBlock(FallingBlock fallingBlock, EnvoyBlockType envoyBlockType) {

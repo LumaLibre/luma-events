@@ -137,15 +137,13 @@ public non-sealed class Envoys extends Minigame {
                     .color(BossBar.Color.YELLOW)
                     .title("<yellow><b>Game Over</b></yellow>")
                     .seconds(15)
-                    .callback(() -> {
-                        this.participants.stream().forEach(player -> {
-                            Player bukkitPlayer = player.getPlayer();
-                            if (bukkitPlayer != null && this.boundingBox.isInWithMarge(bukkitPlayer.getLocation(), 400)) {
-                                bukkitPlayer.teleportAsync(this.getGameDropOffLocation());
-                            }
-                            player.sendMessage("This minigame has concluded.");
-                        });
-                    })
+                    .callback(() -> this.participants.forEach(player -> {
+                        Player bukkitPlayer = player.getPlayer();
+                        if (bukkitPlayer != null && this.boundingBox.isInWithMarge(bukkitPlayer.getLocation(), 400)) {
+                            bukkitPlayer.teleportAsync(this.getGameDropOffLocation());
+                        }
+                        player.sendMessage("This minigame has concluded.");
+                    }))
                     .build()
                     .start();
         });
@@ -153,7 +151,7 @@ public non-sealed class Envoys extends Minigame {
 
     @Override
     protected void handleParticipantJoin(EventPlayer player) {
-        player.getPlayer().teleportAsync(this.spawnPoint);
+        player.teleportAsync(this.spawnPoint);
     }
 
     @EventHandler
