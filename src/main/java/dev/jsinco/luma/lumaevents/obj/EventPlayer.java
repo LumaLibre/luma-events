@@ -11,8 +11,10 @@ import lombok.Setter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -37,15 +39,27 @@ public class EventPlayer implements Serializable {
     }
 
     public void sendMessage(String m) {
-        Util.sendMsg(this.getPlayer(), m);
+        Player player = this.getPlayer();
+        if (player == null) {
+            return;
+        }
+        Util.sendMsg(player, m);
     }
 
     public void sendNoPrefixedMessage(String m) {
-        this.getPlayer().sendMessage(Util.color(m));
+        Player player = this.getPlayer();
+        if (player == null) {
+            return;
+        }
+        player.sendMessage(Util.color(m));
     }
 
     public void sendNoPrefixedMessage(Component m) {
-        this.getPlayer().sendMessage(m);
+        Player player = this.getPlayer();
+        if (player == null) {
+            return;
+        }
+        player.sendMessage(m);
     }
 
     public void sendTeamStyleMessage(String m) {
@@ -55,11 +69,27 @@ public class EventPlayer implements Serializable {
     }
 
     public void sendActionBar(String m) {
-        this.getPlayer().sendActionBar(Util.color(m));
+        Player player = this.getPlayer();
+        if (player == null) {
+            return;
+        }
+        player.sendActionBar(Util.color(m));
     }
 
     public void sendTitle(String title, String subtitle) {
-        this.getPlayer().showTitle(Title.title(Util.color(title), Util.color(subtitle)));
+        Player player = this.getPlayer();
+        if (player == null) {
+            return;
+        }
+        player.showTitle(Title.title(Util.color(title), Util.color(subtitle)));
+    }
+
+    public void teleportAsync(Location location) {
+        Player player = this.getPlayer();
+        if (player == null) {
+            return;
+        }
+        player.teleportAsync(location);
     }
 
     public void addPoints(int points) {
@@ -70,6 +100,7 @@ public class EventPlayer implements Serializable {
         this.points -= points;
     }
 
+    @Nullable
     public Player getPlayer() {
         return Bukkit.getPlayer(this.uuid);
     }
@@ -120,9 +151,13 @@ public class EventPlayer implements Serializable {
         if (this.unclaimedRewards.isEmpty()) {
             return false;
         }
+        Player player = this.getPlayer();
+        if (player == null) {
+            return false;
+        }
         for (EventReward reward : this.unclaimedRewards) {
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), reward.getCommand()
-                    .replace("%player%", this.getPlayer().getName()));
+                    .replace("%player%", player.getName()));
         }
         this.unclaimedRewards.clear();
         EventPlayerManager.save(this);

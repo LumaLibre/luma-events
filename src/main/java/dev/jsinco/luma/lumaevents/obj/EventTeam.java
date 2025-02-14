@@ -24,7 +24,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
- * Utility class which represents a team and all of it's points players, etc.
+ * Utility class which represents a team and all of its points players, etc.
  */
 @Setter
 @Getter
@@ -55,6 +55,9 @@ public class EventTeam {
 
     public void title(String title, String subtitle) {
         for (EventPlayer player : teamPlayers) {
+            if (player.getPlayer() == null) {
+                continue;
+            }
             player.getPlayer().showTitle(Title.title(
                     Util.color(title),
                     Util.color(subtitle)

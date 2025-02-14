@@ -70,18 +70,18 @@ public non-sealed class Paintball extends Minigame {
             this.countdownBossBar.stop(false);
         }
         scoreboard.handleGameEnd(this.participants, this.audience, () -> {
-            this.participants.forEach(p -> p.getPlayer().teleportAsync(this.spawnPoint));
+            this.participants.stream().filter(
+                    p -> p.getPlayer() != null
+            ).forEach(p -> p.getPlayer().teleportAsync(this.spawnPoint));
             CountdownBossBar.builder()
                     .audience(this.audience)
                     .color(BossBar.Color.PURPLE)
                     .title("<light_purple><b>Game Over</b></light_purple>")
                     .seconds(15)
-                    .callback(() -> {
-                        this.boundingBox.getPlayers().stream().forEach(player -> {
-                            player.teleportAsync(this.getGameDropOffLocation());
-                            Util.sendMsg(player, "This minigame has concluded.");
-                        });
-                    })
+                    .callback(() -> this.boundingBox.getPlayers().forEach(player -> {
+                        player.teleportAsync(this.getGameDropOffLocation());
+                        Util.sendMsg(player, "This minigame has concluded.");
+                    }))
                     .build()
                     .start();
         });
@@ -94,8 +94,7 @@ public non-sealed class Paintball extends Minigame {
 
     @Override
     protected void handleParticipantJoin(EventPlayer player) {
-        Player bukkitPlayer = player.getPlayer();
-        bukkitPlayer.teleportAsync(this.spawnPoint);
+        player.teleportAsync(this.spawnPoint);
     }
 
     @EventHandler
@@ -126,9 +125,7 @@ public non-sealed class Paintball extends Minigame {
         }
 
         shooter.playSound(event.getHitBlock().getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
-        Bukkit.getAsyncScheduler().runNow(EventMain.getInstance(), (task) -> {
-            handleProjectileHitBlock(event.getHitBlock(), eventPlayer);
-        });
+        Bukkit.getAsyncScheduler().runNow(EventMain.getInstance(), (task) -> handleProjectileHitBlock(event.getHitBlock(), eventPlayer));
     }
 
 

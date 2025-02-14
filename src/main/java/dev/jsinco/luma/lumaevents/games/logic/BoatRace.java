@@ -55,12 +55,13 @@ public non-sealed class BoatRace extends Minigame {
 
     @Override
     protected void handleStart() {
-        this.checkpoints.forEach(boatRaceCheckpoint -> {
-            boatRaceCheckpoint.setWorth(this.participants.size());
-        });
+        this.checkpoints.forEach(boatRaceCheckpoint -> boatRaceCheckpoint.setWorth(this.participants.size()));
 
         for (EventPlayer participant : this.getParticipants()) {
             Player player = participant.getPlayer();
+            if (player == null) {
+                continue;
+            }
             Location loc = this.startLocation.clone().add(RANDOM.nextInt(4), 0, RANDOM.nextInt(4));
             player.teleportAsync(loc);
 
@@ -116,26 +117,24 @@ public non-sealed class BoatRace extends Minigame {
         if (Bukkit.isPrimaryThread()) {
             this.boundingBox.getEntities(Boat.class).forEach(Boat::remove);
         } else {
-            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
-                this.boundingBox.getEntities(Boat.class).forEach(Boat::remove);
-            });
+            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> this.boundingBox.getEntities(Boat.class).forEach(Boat::remove));
         }
         if (countdownBossBar != null) {
             countdownBossBar.stop(false);
         }
         scoreboard.handleGameEnd(this.participants, this.audience, () -> {
-            this.participants.forEach(p -> p.getPlayer().teleportAsync(this.spawnLocation));
+            this.participants.stream().filter(player -> player.getPlayer() != null
+            ).forEach(p -> p.getPlayer().teleportAsync(this.spawnLocation));
             CountdownBossBar.builder()
                     .audience(this.audience)
                     .color(BossBar.Color.RED)
                     .title("<red><b>Game Over</b></red>")
                     .seconds(15)
-                    .callback(() -> {
-                        this.boundingBox.getPlayers().stream().forEach(player -> {
-                            player.teleportAsync(this.getGameDropOffLocation());
-                            Util.sendMsg(player, "This minigame has concluded.");
-                        });
-                    })
+                    .callback(() -> this.boundingBox.getPlayers().forEach(player -> {
+                                player.teleportAsync(this.getGameDropOffLocation());
+                                Util.sendMsg(player, "This minigame has concluded.");
+                            }
+                    ))
                     .build()
                     .start();
         });
@@ -143,7 +142,7 @@ public non-sealed class BoatRace extends Minigame {
 
     @Override
     protected void handleParticipantJoin(EventPlayer player) {
-        player.getPlayer().teleportAsync(this.spawnLocation);
+        player.teleportAsync(this.spawnLocation);
     }
 
     @EventHandler
@@ -284,7 +283,7 @@ public non-sealed class BoatRace extends Minigame {
         }
 
         List<BoatRacePlayer> stillRacing = this.racers.stream()
-                .filter(r -> r.isOnline())
+                .filter(BoatRacePlayer::isOnline)
                 .filter(r -> !r.isFinished())
                 .toList();
         if (stillRacing.isEmpty()) {
