@@ -53,7 +53,7 @@ public class StartMinigameItem extends CustomItemFunctions {
         }
 
 
-        if (MinigameManager.getInstance().tryNewMinigameSafely(Util.getRandFromList(MINIGAMES), true)){
+        if (MinigameManager.getInstance().tryNewMinigameSafely(true)){
             ItemStack item = event.getItem();
             item.setAmount(item.getAmount() - 1);
             QuickTasks.addCooldown(this, player.getUniqueId(), 72000L);

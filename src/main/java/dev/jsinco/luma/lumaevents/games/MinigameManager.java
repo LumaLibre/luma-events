@@ -2,6 +2,7 @@ package dev.jsinco.luma.lumaevents.games;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.Config;
+import dev.jsinco.luma.lumaevents.enums.SerializableMinigame;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameAlreadyStartedException;
 import dev.jsinco.luma.lumaevents.games.logic.BoatRace;
 import dev.jsinco.luma.lumaevents.games.logic.Envoys;
@@ -55,6 +56,20 @@ public final class MinigameManager extends BukkitRunnable {
         return this.newMinigame(game, force, 90);
     }
 
+    public boolean newMinigame(boolean force) throws GameAlreadyStartedException {
+        SerializableMinigame sMinigame = Util.getNextEnum(this.cfg.getLastMinigame());
+        this.cfg.setLastMinigame(sMinigame);
+        this.cfg.save();
+        return this.newMinigame(sMinigame.getMinigame(), force, 90);
+    }
+
+    public boolean newMinigame(boolean force, int seconds) throws GameAlreadyStartedException {
+        SerializableMinigame sMinigame = Util.getNextEnum(this.cfg.getLastMinigame());
+        this.cfg.setLastMinigame(sMinigame);
+        this.cfg.save();
+        return this.newMinigame(sMinigame.getMinigame(), force, seconds);
+    }
+
     public boolean tryNewMinigameSafely(Class<? extends Minigame> game, boolean ignoreCooldown, int seconds) {
         if (!this.canSafelyStartMinigame(ignoreCooldown)) {
             return false;
@@ -69,8 +84,26 @@ public final class MinigameManager extends BukkitRunnable {
         }
     }
 
+    public boolean tryNewMinigameSafely(boolean ignoreCooldown, int seconds) {
+        if (!this.canSafelyStartMinigame(ignoreCooldown)) {
+            return false;
+        }
+
+        try {
+            this.newMinigame(false, seconds);
+            return true;
+        } catch (GameAlreadyStartedException oopsie) {
+            oopsie.printStackTrace();
+            return false;
+        }
+    }
+
     public boolean tryNewMinigameSafely(Class<? extends Minigame> game, boolean ignoreCooldown) {
         return this.tryNewMinigameSafely(game, ignoreCooldown, 90);
+    }
+
+    public boolean tryNewMinigameSafely(boolean ignoreCooldown) {
+        return this.tryNewMinigameSafely(ignoreCooldown, 90);
     }
 
     public boolean canSafelyStartMinigame(boolean ignoreCooldown) {
@@ -96,7 +129,7 @@ public final class MinigameManager extends BukkitRunnable {
             if (cfg.isAutomaticMinigames()) {
                 this.cfg.setLastGameLaunchTime(System.currentTimeMillis());
                 this.cfg.save();
-                this.newMinigame(Util.getRandom(this.minigameSupplier.keySet()), false);
+                this.newMinigame(false);
             } else {
                 Util.sendMsg(Bukkit.getConsoleSender(), "Tried to start an automatic minigame, but it's disabled in the config!");
             }

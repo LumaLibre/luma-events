@@ -13,6 +13,7 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -117,6 +118,19 @@ public sealed abstract class Minigame
             this.handleParticipantJoin(player);
         } catch (Throwable throwable) {
             throwable.printStackTrace();
+        }
+        return true;
+    }
+
+    public boolean removeParticipant(EventPlayer player) {
+        if (!this.active) {
+            return false;
+        }
+        this.participants.remove(player);
+        Player bukkitPlayer = player.getPlayer();
+        if (bukkitPlayer != null) {
+            bukkitPlayer.teleportAsync(this.getGameDropOffLocation());
+            Util.sendMsg(bukkitPlayer, "You have been removed from the active minigame!");
         }
         return true;
     }

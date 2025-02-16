@@ -3,6 +3,7 @@ package dev.jsinco.luma.lumaevents.configurable;
 import dev.jsinco.luma.lumaevents.configurable.sectors.BoatRaceDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
 import dev.jsinco.luma.lumaevents.enums.EventTeamType;
+import dev.jsinco.luma.lumaevents.enums.SerializableMinigame;
 import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.annotation.Comment;
 import lombok.Getter;
@@ -40,4 +41,6 @@ public class Config extends OkaeriConfig {
     private EventTeamType lastChosenTeam = EventTeamType.ROSETHORN;
     @Comment("Don't touch me")
     private long lastGameLaunchTime = System.currentTimeMillis();
+    @Comment("Don't touch me")
+    private SerializableMinigame lastMinigame = SerializableMinigame.ENVOYS;
 }

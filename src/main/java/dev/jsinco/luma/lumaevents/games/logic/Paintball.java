@@ -100,7 +100,7 @@ public non-sealed class Paintball extends Minigame {
     @EventHandler
     public void onPlayerClickInBoundingBox(PlayerInteractEvent event) {
         this.ensureNotIllegal();
-        if (!boundingBox.contains(event.getPlayer())) {
+        if (!event.getAction().isLeftClick() || !boundingBox.contains(event.getPlayer())) {
             return;
         }
 

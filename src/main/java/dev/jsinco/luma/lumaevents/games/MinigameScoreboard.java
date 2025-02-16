@@ -90,14 +90,6 @@ public class MinigameScoreboard {
         return playersByScore.indexOf(player) + 1;
     }
 
-    public int getFinalPositionAdditionalPoints(EventTeamType team) {
-        return switch (this.getPosition(team)) {
-            case 1 -> 1000;
-            case 2 -> 750;
-            default -> 500;
-        };
-    }
-
     public EventTeamType getLeadingTeam() {
         EventTeamType leadingTeam = EventTeamType.ROSETHORN; // Default to first team
         int leadingScore = 0;
@@ -118,11 +110,10 @@ public class MinigameScoreboard {
 
     // Distribute the number of points EVENLY to the team participants
     // If there is a remainder, the last player will receive the remainder
-    public void distributeAdditionalPoints(List<EventPlayer> teamParticipants, EventTeamType team) {
+    public void distributeAdditionalPoints(List<EventPlayer> teamParticipants, int points) {
         if (teamParticipants.isEmpty()) {
             return;
         }
-        int points = this.getFinalPositionAdditionalPoints(team);
         int pointsPerPlayer = points / teamParticipants.size();
         int remainder = points % teamParticipants.size();
         for (int i = 0; i < teamParticipants.size(); i++) {
@@ -148,20 +139,40 @@ public class MinigameScoreboard {
             player.sendNoPrefixedMessage("<#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     ");
             player.sendMessage("The " + winner.getTeamWithGradient() + " team <reset>has won!");
             player.sendMessage("Total scores<gray>:");
-            for (EventTeamType team : getTeamsByScore()) {
-                player.sendMessage(
-                        team.getTeamWithGradient() + "<gray>: <gold>" + getPoints(team) + " +"
-                                + getFinalPositionAdditionalPoints(team) + " additional <gray>points"
-                );
-            }
         }
 
         for (EventTeamType team : getTeamsByScore()) {
             List<EventPlayer> teamParticipants = participants.stream()
                     .filter(player -> player.getTeamType().equals(team))
                     .toList();
-            distributeAdditionalPoints(teamParticipants, team);
+            double bonusPercentage = getTeamBonusPercentage(team, teamParticipants);
+            int basePoints = getPoints(team);
+            int points = basePoints + (int) (basePoints * bonusPercentage);
+
+            distributeAdditionalPoints(teamParticipants, points);
+            for (EventPlayer player : participants) {
+                player.sendMessage(
+                        team.getTeamWithGradient() + "<gray>: <gold>" + getPoints(team) + " +"
+                                + points + " additional <gray>points"
+                );
+            }
         }
         callback.run();
+    }
+
+
+    // Based on how many participants are in the game, we want to add a % more points to teams with less
+    // participating players.
+
+    // Ex: HeartBreakers has 15, Rosthorn with 10, and SweetHearts with 5.
+    // We want to give HeartBreakers a 0% bonus because they have the most participants.
+    // Rosethorn should get a 20% bonus because they have 5 less participants than HeartBreakers.
+    // SweetHearts should get a 40% bonus because they have 10 less participants than HeartBreakers.
+    public double getTeamBonusPercentage(EventTeamType team, List<EventPlayer> participants) {
+        int teamParticipants = (int) participants.stream()
+                .filter(player -> player.getTeamType().equals(team)).count();
+        int maxParticipants = participants.size();
+        int difference = maxParticipants - teamParticipants;
+        return difference * 0.2;
     }
 }

@@ -180,7 +180,7 @@ public non-sealed class Envoys extends Minigame {
     public void onEnvoyInteract(PlayerInteractEvent event) {
         this.ensureNotIllegal();
         Block block = event.getClickedBlock();
-        if (event.getAction().isRightClick() || block == null) {
+        if (block == null) {
             return;
         }
 

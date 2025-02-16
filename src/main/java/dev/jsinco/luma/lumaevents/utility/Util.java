@@ -184,4 +184,22 @@ public final class Util {
             return def;
         }
     }
+
+    public static <T> String formatList(List<T> list, String objColor, String sepColor) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < list.size(); i++) {
+            sb.append(objColor).append(list.get(i));
+            if (i < list.size() - 1) {
+                sb.append(sepColor).append(", ");
+            }
+        }
+        return sb.toString();
+    }
+
+    public static <E extends Enum<E>> E getNextEnum(E current) {
+        // Get next enum or first if at the end
+        E[] values = current.getDeclaringClass().getEnumConstants();
+        int nextIndex = (current.ordinal() + 1) % values.length;
+        return values[nextIndex];
+    }
 }

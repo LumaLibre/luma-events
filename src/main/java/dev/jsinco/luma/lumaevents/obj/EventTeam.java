@@ -19,7 +19,9 @@ import org.bukkit.entity.Player;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -105,6 +107,28 @@ public class EventTeam {
         return "<b>"+type.getColor()+"Team <reset><gray>| "+type.getColor()+sender+"<gray>: "+type.getColor();
     }
 
+//    public List<UUID> getTeamPlayerUUIDs() {
+//        return teamPlayers.stream()
+//                .map(EventPlayer::getUuid)
+//                .collect(Collectors.toList());
+//    }
+
+    public List<String> getTeamPlayerNames(boolean onlineOnly) {
+        if (onlineOnly) {
+            return teamPlayers.stream()
+                    .map(EventPlayer::getPlayer)
+                    .filter(Objects::nonNull)
+                    .map(Player::getName)
+                    .collect(Collectors.toList());
+        } else {
+            return teamPlayers.stream()
+                    .map(it -> Bukkit.getOfflinePlayer(it.getUuid()).getName())
+                    .collect(Collectors.toList());
+        }
+    }
+
+    // ENTRY
+
     public static CompletableFuture<Set<EventTeam>> ofAsync() {
         return CompletableFuture.supplyAsync(() -> of(EventPlayerManager.EVENT_PLAYERS, false));
     }
@@ -168,6 +192,22 @@ public class EventTeam {
                     .collect(Collectors.toCollection(LinkedHashSet::new));
         }
         return createdTeamObjects;
+    }
+
+    public static CompletableFuture<EventTeam> ofTypeAsync(EventTeamType type) {
+        return CompletableFuture.supplyAsync(() -> ofType(type));
+    }
+
+    public static EventTeam ofType(EventTeamType type) {
+        EventTeam team = ofEmptyTeam(type);
+        for (EventPlayer eventPlayer : EventPlayerManager.EVENT_PLAYERS) {
+            EventTeamType playerTeamType = eventPlayer.getTeamType();
+            if (playerTeamType != null && playerTeamType == type) {
+                team.addPlayer(eventPlayer);
+                team.addPoints(eventPlayer.getPoints());
+            }
+        }
+        return team;
     }
 
     public static EventTeam ofEmptyTeam(EventTeamType type) {

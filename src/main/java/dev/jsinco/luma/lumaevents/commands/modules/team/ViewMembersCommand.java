@@ -7,8 +7,8 @@ import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
-import dev.jsinco.luma.lumaevents.obj.EventTeam;
 import dev.jsinco.luma.lumaevents.enums.EventTeamType;
+import dev.jsinco.luma.lumaevents.obj.EventTeam;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -19,12 +19,12 @@ import java.util.List;
 @AutoRegister(RegisterType.SUBCOMMAND)
 @CommandInfo(
         parent = CommandManager.class,
-        name = "team",
-        description = "Get information about a team",
+        name = "members",
+        description = "View the members on a team",
         usage = "/<command> team <team?>",
         permission = "lumaevents.default"
 )
-public class TeamCommand implements CommandModule {
+public class ViewMembersCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender sender, String s, String[] strings) {
         EventTeamType type;
@@ -39,29 +39,10 @@ public class TeamCommand implements CommandModule {
             return false;
         }
 
-        EventTeam.ofAsync().thenAcceptAsync(eventTeams -> {
-
-            EventTeam team = eventTeams.stream()
-                    .filter(eventTeam -> eventTeam.getType().equals(type))
-                    .findFirst()
-                    .orElse(null);
-
-            if (team == null) {
-                Util.sendMsg(sender, "Team not found");
-                return;
-            }
-
+        EventTeam.ofTypeAsync(type).thenAcceptAsync(team -> {
             team.msg(sender, "<#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     ");
-            team.msg(sender, "Team info for<gray>: " +
-                    type.getGradient() +
-                    type.getFormatted());
-            team.msg(sender, "Total accumulated points<gray>: " + team.getTeamPoints());
-            team.msg(sender, "Total members<gray>: " + team.getTeamPlayers().size());
-            List<String> onlineMembers = team.getTeamPlayerNames(true);
-            int total = team.getTeamPlayers().size();
-            int online = onlineMembers.size();
-            team.msg(sender, "Online Members <gold>(" + online + "/" + total + ")</gold><gray>:</gray> " +
-                    Util.formatList(onlineMembers, type.getColor(), "<white>"));
+            team.msg(sender, "Members for<gray>: " + type.getTeamWithGradient());
+            team.msg(sender, Util.formatList(team.getTeamPlayerNames(false), type.getColor(), "<white>"));
             team.msg(sender, "<#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     ");
         });
         return true;

@@ -29,6 +29,7 @@ public class EventPlayer implements Serializable {
     private final UUID uuid;
     private final List<EventReward> unclaimedRewards;
 
+    @Nullable
     private EventTeamType teamType;
     private int points;
     private boolean disabledTeamChat;
@@ -103,6 +104,14 @@ public class EventPlayer implements Serializable {
     @Nullable
     public Player getPlayer() {
         return Bukkit.getPlayer(this.uuid);
+    }
+
+    public boolean isOnline() {
+        Player player = this.getPlayer();
+        if (player == null) {
+            return false;
+        }
+        return player.isOnline();
     }
 
 
