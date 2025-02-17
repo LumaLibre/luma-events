@@ -11,6 +11,7 @@ import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.obj.minigame.EnvoyBlock;
 import dev.jsinco.luma.lumaevents.utility.MinigameConstants;
 import dev.jsinco.luma.lumaevents.utility.Util;
+import dev.jsinco.luma.lumaitems.api.LumaItemsAPI;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -24,6 +25,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
@@ -178,29 +180,36 @@ public non-sealed class Envoys extends Minigame {
 
     @EventHandler
     public void onEnvoyInteract(PlayerInteractEvent event) {
-        this.ensureNotIllegal();
         Block block = event.getClickedBlock();
         if (block == null) {
             return;
         }
+        Bukkit.getAsyncScheduler().runNow(EventMain.getInstance(), (task) -> {
+            this.ensureNotIllegal();
+            ItemStack itemStack = event.getItem();
+            if (itemStack != null && LumaItemsAPI.getInstance().isCustomItem(itemStack, "heartstring-hatchet")) {
+                Util.sendMsg(event.getPlayer(), "You can't use this item in this minigame.");
+                return;
+            }
 
-        EnvoyBlock envoyBlock = this.getEnvoyBlock(block);
-        if (envoyBlock == null) {
-            return;
-        }
+            EnvoyBlock envoyBlock = this.getEnvoyBlock(block);
+            if (envoyBlock == null) {
+                return;
+            }
 
-        envoyBlock.remove();
-        this.cachedEnvoys.remove(envoyBlock);
-        EventPlayer player = EventPlayerManager.getByUUID(event.getPlayer().getUniqueId());
-        if (!this.participants.contains(player)) {
-            player.sendMessage("You are not participating in this minigame");
-            return;
-        }
-        this.scoreboard.addScore(player, 1);
+            Bukkit.getScheduler().runTask(EventMain.getInstance(), envoyBlock::remove);
+            this.cachedEnvoys.remove(envoyBlock);
+            EventPlayer player = EventPlayerManager.getByUUID(event.getPlayer().getUniqueId());
+            if (!this.participants.contains(player)) {
+                player.sendMessage("You are not participating in this minigame");
+                return;
+            }
+            this.scoreboard.addScore(player, 1);
 
-        if (scoreboard.getScore(player) % 15 == 0) {
-            Util.giveTokens(event.getPlayer(), 1);
-        }
+            if (scoreboard.getScore(player) % 15 == 0) {
+                Util.giveTokens(event.getPlayer(), 1);
+            }
+        });
     }
 
 

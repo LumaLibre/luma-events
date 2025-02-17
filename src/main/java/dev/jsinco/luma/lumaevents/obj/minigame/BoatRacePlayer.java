@@ -9,6 +9,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Player;
+import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +24,7 @@ public class BoatRacePlayer {
 
     private boolean finished = false;
     private boolean returningToCheckpoint = false;
+    private boolean usedCheckpoint = false;
 
     public BoatRacePlayer(EventPlayer eventPlayer, Boat boat) {
         this.eventPlayer = eventPlayer;
@@ -39,6 +41,7 @@ public class BoatRacePlayer {
 
     public void addCheckpoint(BoatRaceCheckpoint checkpoint) {
         checkpointsAchieved.add(checkpoint);
+        this.usedCheckpoint = false;
     }
 
     public boolean finish(int checkpointCount) {
@@ -63,7 +66,7 @@ public class BoatRacePlayer {
     }
 
     public void teleportToLastCheckpoint() {
-        if (checkpointsAchieved.isEmpty()) {
+        if (checkpointsAchieved.isEmpty() || this.usedCheckpoint) {
             return;
         }
         BoatRaceCheckpoint lastCheckpoint = checkpointsAchieved.getLast();
@@ -73,11 +76,15 @@ public class BoatRacePlayer {
         }
         this.returningToCheckpoint = true;
         Location loc = lastCheckpoint.getCenterLocation(player.getPitch(), player.getYaw());
-        player.teleport(loc);
-        boat.teleport(loc);
-        boat.addPassenger(player);
-        Util.sendMsg(player, "Teleporting to last checkpoint!");
-        this.returningToCheckpoint = false;
+        player.teleportAsync(loc).whenComplete((aVoid, throwable) -> {
+            boat.setVelocity(new Vector(0, 0, 0));
+            boat.teleportAsync(loc).whenComplete((aVoid1, throwable1) -> {
+                        boat.addPassenger(player);
+                        Util.sendMsg(player, "Teleported to last checkpoint!");
+                        this.returningToCheckpoint = false;
+                        this.usedCheckpoint = true;
+            });
+        });
     }
 
     public boolean isOnline() {

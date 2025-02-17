@@ -57,7 +57,7 @@ public non-sealed class BoatRace extends Minigame {
     protected void handleStart() {
         this.checkpoints.forEach(boatRaceCheckpoint -> boatRaceCheckpoint.setWorth(this.participants.size()));
 
-        for (EventPlayer participant : this.getParticipants()) {
+        for (EventPlayer participant : this.participants) {
             Player player = participant.getPlayer();
             if (player == null) {
                 continue;
@@ -237,7 +237,7 @@ public non-sealed class BoatRace extends Minigame {
                 checkpoint.setWorth(checkpointWorth - 1);
 
                 scoreboard.addScore(eplayer, checkpointWorth);
-                eplayer.sendMessage("Checkpoint reached! <gold>+"+checkpointWorth*POINT_MULTIPLIER+" <gray>points");
+                eplayer.sendMessage("Checkpoint reached! <gold>+"+checkpointWorth*POINT_MULTIPLIER+" <gray>points (Use F to teleport back to this checkpoint!)");
                 eplayer.sendMessage("You are in <gold>#" + this.getPositionFromCheckpointWorth(checkpointWorth) + "<gray> place");
 
                 if (RANDOM.nextInt(100) <= 30) {
@@ -245,7 +245,9 @@ public non-sealed class BoatRace extends Minigame {
                 }
 
                 if (racer.finish(this.checkpoints.size())) { // ehh
-                    countdownBossBar.getBossBar().removeViewer(event.getPlayer());
+                    if (countdownBossBar != null) {
+                        countdownBossBar.getBossBar().removeViewer(event.getPlayer());
+                    }
                     eplayer.sendTitle("<green>Finished!", "<gray>You placed <gold>#" + this.getPositionFromCheckpointWorth(checkpointWorth));
                     event.getPlayer().teleportAsync(this.spawnLocation);
                     this.tryEndIfNoMoreRacers();
@@ -254,7 +256,7 @@ public non-sealed class BoatRace extends Minigame {
         });
     }
 
-    //@EventHandler //Disabled.
+    @EventHandler
     public void onPlayerSwapHands(PlayerSwapHandItemsEvent event) {
         if (!this.boundingBox.contains(event.getPlayer().getLocation()) || !event.getPlayer().isInsideVehicle()) {
             return;

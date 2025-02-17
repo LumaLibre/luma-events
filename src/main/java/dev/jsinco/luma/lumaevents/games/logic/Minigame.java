@@ -20,6 +20,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 @Getter
@@ -151,7 +152,8 @@ public sealed abstract class Minigame
                     }
 
                     registerEvents(this);
-                    this.audience = Audience.audience(participants.stream().map(EventPlayer::getPlayer).toList());
+                    this.audience = Audience.audience(participants.stream()
+                                    .map(EventPlayer::getPlayer).filter(Objects::nonNull).toList());
                     this.open = false;
                     this.startTime = System.currentTimeMillis();
                     if (this.exitPrevention != null) {
