@@ -15,16 +15,12 @@ import java.util.Map;
 
 public class MinigameScoreboard {
 
-    private final Map<EventTeamType, Integer> teamScores = new HashMap<>();
     private final Map<EventPlayer, Integer> individualScores = new HashMap<>();
 
     @Getter @Setter
     private int pointMultiplier;
 
     public MinigameScoreboard(int pointMultiplier) {
-        for (EventTeamType team : EventTeamType.values()) {
-            teamScores.put(team, 0);
-        }
         this.pointMultiplier = pointMultiplier;
     }
 
@@ -34,28 +30,16 @@ public class MinigameScoreboard {
 
     public void addScore(EventPlayer player, int points) {
         individualScores.putIfAbsent(player, 0);
-        teamScores.putIfAbsent(player.getTeamType(), 0);
         individualScores.put(player, individualScores.get(player) + points);
-        teamScores.put(player.getTeamType(), teamScores.get(player.getTeamType()) + points);
     }
 
     public void removeScore(EventPlayer player) {
         individualScores.remove(player);
     }
 
-    public void addScore(EventTeamType team, int points) {
-        teamScores.put(team, teamScores.get(team) + points);
-    }
-
-    public void removeScore(EventTeamType team) {
-        teamScores.remove(team);
-    }
 
     public int getPoints(EventTeamType team) {
-        if (!teamScores.containsKey(team)) {
-            return 0;
-        }
-        return teamScores.get(team) * pointMultiplier;
+        return this.getScore(team) * pointMultiplier;
     }
 
     public int getPoints(EventPlayer player) {
@@ -66,10 +50,14 @@ public class MinigameScoreboard {
     }
 
     public int getScore(EventTeamType team) {
-        if (!teamScores.containsKey(team)) {
-            return 0;
+        int points = 0;
+        for (Map.Entry<EventPlayer, Integer> entry : individualScores.entrySet()) {
+            EventTeamType playerTeam = entry.getKey().getTeamType();
+            if (playerTeam != null && playerTeam.equals(team)) {
+                points += entry.getValue();
+            }
         }
-        return teamScores.get(team);
+        return points;
     }
 
     public int getScore(EventPlayer player) {
@@ -99,21 +87,25 @@ public class MinigameScoreboard {
     }
 
     public EventTeamType getLeadingTeam() {
-        EventTeamType leadingTeam = EventTeamType.ROSETHORN; // Default to first team
-        int leadingScore = 0;
-        for (Map.Entry<EventTeamType, Integer> entry : teamScores.entrySet()) {
-            if (entry.getValue() > leadingScore) {
-                leadingTeam = entry.getKey();
-                leadingScore = entry.getValue();
-            }
+        Map<EventTeamType, Integer> teamScores = new HashMap<>();
+        for (EventTeamType teamType : EventTeamType.values()) {
+            teamScores.put(teamType, this.getScore(teamType));
         }
-        return leadingTeam;
+        return teamScores.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(EventTeamType.ROSETHORN); // Default to Rosethorn
     }
 
     public List<EventTeamType> getTeamsByScore() {
-        List<EventTeamType> teamsByScore = new ArrayList<>(teamScores.keySet());
-        teamsByScore.sort((team1, team2) -> teamScores.get(team2) - teamScores.get(team1));
-        return teamsByScore;
+        Map<EventTeamType, Integer> teamScores = new HashMap<>();
+        for (EventTeamType teamType : EventTeamType.values()) {
+            teamScores.put(teamType, this.getScore(teamType));
+        }
+        return teamScores.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .toList();
     }
 
     // Distribute the number of points EVENLY to the team participants
