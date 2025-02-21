@@ -5,6 +5,7 @@ import com.destroystokyo.paper.profile.ProfileProperty;
 import com.gamingmesh.jobs.commands.list.log;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaitems.api.LumaItemsAPI;
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -30,7 +31,7 @@ import java.util.UUID;
 
 public final class Util {
 
-    private static final String PREFIX = "<b><#954381>E<#EC60B0>v<#EE80C6>e<#C262A4>n<#954381>t</b> <dark_gray>»</dark_gray> ";
+    public static final String PREFIX = "<b><#954381>E<#EC60B0>v<#EE80C6>e<#C262A4>n<#954381>t</b> <dark_gray>»</dark_gray> ";
 
     public static void log(String msg) {
         sendMsg(Bukkit.getConsoleSender(), msg);
@@ -38,6 +39,10 @@ public final class Util {
 
     public static void sendMsg(CommandSender receiver, String message) {
         receiver.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString("#CBB6E9")));
+    }
+
+    public static void sendMsg(Audience audience, String message) {
+        audience.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString("#CBB6E9")));
     }
 
     public static void broadcast(String message) {

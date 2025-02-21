@@ -21,6 +21,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.vehicle.VehicleCollisionEvent;
+import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
 
 import java.util.HashSet;
@@ -237,18 +239,21 @@ public non-sealed class BoatRace extends Minigame {
                 checkpoint.setWorth(checkpointWorth - 1);
 
                 scoreboard.addScore(eplayer, checkpointWorth);
+                int position = this.getPositionFromCheckpointWorth(checkpointWorth);
                 eplayer.sendMessage("Checkpoint reached! <gold>+"+checkpointWorth*POINT_MULTIPLIER+" <gray>points (Use F to teleport back to this checkpoint!)");
-                eplayer.sendMessage("You are in <gold>#" + this.getPositionFromCheckpointWorth(checkpointWorth) + "<gray> place");
+                eplayer.sendMessage("You are in <gold>#" + position + "<gray> place");
 
-                if (RANDOM.nextInt(100) <= 30) {
+                if (RANDOM.nextInt(100) <= 14) {
                     Util.giveTokens(event.getPlayer(), 1);
                 }
 
                 if (racer.finish(this.checkpoints.size())) { // ehh
+                    Player bukkitPlayer = event.getPlayer();
                     if (countdownBossBar != null) {
-                        countdownBossBar.getBossBar().removeViewer(event.getPlayer());
+                        countdownBossBar.getBossBar().removeViewer(bukkitPlayer);
                     }
                     eplayer.sendTitle("<green>Finished!", "<gray>You placed <gold>#" + this.getPositionFromCheckpointWorth(checkpointWorth));
+                    Util.sendMsg(this.audience, "<gold>"+bukkitPlayer.getName()+"</gold>"+ " has finished in <gold>#" + position + "</gold> place!");
                     event.getPlayer().teleportAsync(this.spawnLocation);
                     this.tryEndIfNoMoreRacers();
                 }
@@ -272,6 +277,15 @@ public non-sealed class BoatRace extends Minigame {
 
         event.setCancelled(true);
         racer.teleportToLastCheckpoint();
+    }
+
+    @EventHandler
+    public void onBoatCollide(VehicleEntityCollisionEvent event) {
+        this.ensureNotIllegal();
+        if (!(event.getVehicle() instanceof Boat) || !this.boundingBox.contains(event.getVehicle().getLocation())) {
+            return;
+        }
+        event.setCancelled(true);
     }
 
 

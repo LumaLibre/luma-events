@@ -27,6 +27,8 @@ import java.util.UUID;
 public class EventPlayer implements Serializable {
 
     private final UUID uuid;
+    // FIXME: This should actually be 'claimedRewards' but,
+    // This is already on prod and i'm too lazy to change it
     private final List<EventReward> unclaimedRewards;
 
     @Nullable
@@ -156,20 +158,25 @@ public class EventPlayer implements Serializable {
         this.unclaimedRewards.remove(reward);
     }
 
-    public boolean claimRewards() {
-        if (this.unclaimedRewards.isEmpty()) {
-            return false;
-        }
+    public boolean claimAvailableRewards() {
         Player player = this.getPlayer();
         if (player == null) {
             return false;
         }
-        for (EventReward reward : this.unclaimedRewards) {
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), reward.getCommand()
-                    .replace("%player%", player.getName()));
+
+
+        boolean claimedAny = false;
+        for (EventReward reward : EventReward.values()) {
+            if (this.unclaimedRewards.contains(reward) || reward.getTeamType() != null && reward.getTeamType() != this.teamType) {
+                continue;
+            }
+
+            if (reward.claim(this)) {
+                this.unclaimedRewards.add(reward);
+                claimedAny = true;
+            }
         }
-        this.unclaimedRewards.clear();
         EventPlayerManager.save(this);
-        return true;
+        return claimedAny;
     }
 }

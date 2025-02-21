@@ -14,6 +14,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.bukkit.Bukkit;
+import org.bukkit.Sound;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
@@ -48,6 +49,9 @@ public final class MinigameManager extends BukkitRunnable {
         }
 
         Util.broadcast("<hover:show_text:'Click me!'><click:run_command:/event join>A minigame is starting! Use <gold>/valentide join</gold> to participate!");
+        Bukkit.getOnlinePlayers().forEach(player -> {
+            player.playSound(player.getLocation(), Sound.ENTITY_EVOKER_PREPARE_WOLOLO, 1f, 0.75f);
+        });
         this.current = this.minigameSupplier.get(game).get();
         return this.current.start(seconds);
     }

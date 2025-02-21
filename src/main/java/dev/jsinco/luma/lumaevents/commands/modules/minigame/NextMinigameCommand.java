@@ -19,8 +19,7 @@ import java.util.concurrent.TimeUnit;
         permission = "lumaevents.default",
         description = "Get the time until the next minigame",
         parent = CommandManager.class,
-        usage = "/<command> next",
-        playerOnly = true
+        usage = "/<command> next"
 )
 public class NextMinigameCommand implements CommandModule {
     @Override
