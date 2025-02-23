@@ -79,11 +79,13 @@ public class MinigameScoreboard {
     }
 
     public int getFinalPositionAdditionalPoints(EventTeamType team) {
-        return switch (this.getPosition(team)) {
+        int points = switch (this.getPosition(team)) {
             case 1 -> 500;
             case 2 -> 750;
             default -> 1000;
         };
+        // plus 10% of their original points too
+        return points + (int) (this.getPoints(team) * .10);
     }
 
     public EventTeamType getLeadingTeam() {
@@ -98,12 +100,13 @@ public class MinigameScoreboard {
     }
 
     public List<EventTeamType> getTeamsByScore() {
+        // order with the team with the highest score first
         Map<EventTeamType, Integer> teamScores = new HashMap<>();
         for (EventTeamType teamType : EventTeamType.values()) {
             teamScores.put(teamType, this.getScore(teamType));
         }
         return teamScores.entrySet().stream()
-                .sorted(Map.Entry.comparingByValue())
+                .sorted((entry1, entry2) -> entry2.getValue().compareTo(entry1.getValue())) // Sort in descending order
                 .map(Map.Entry::getKey)
                 .toList();
     }

@@ -20,6 +20,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Getter
 @Setter
@@ -158,25 +159,24 @@ public class EventPlayer implements Serializable {
         this.unclaimedRewards.remove(reward);
     }
 
-    public boolean claimAvailableRewards() {
+    public void claimAvailableRewards() {
         Player player = this.getPlayer();
         if (player == null) {
-            return false;
+            return;
         }
 
 
-        boolean claimedAny = false;
         for (EventReward reward : EventReward.values()) {
             if (this.unclaimedRewards.contains(reward) || reward.getTeamType() != null && reward.getTeamType() != this.teamType) {
                 continue;
             }
 
-            if (reward.claim(this)) {
-                this.unclaimedRewards.add(reward);
-                claimedAny = true;
-            }
+
+            Bukkit.getScheduler().runTaskLater(EventMain.getInstance(), () -> {
+                if (reward.claim(this)) {
+                    this.unclaimedRewards.add(reward);
+                }
+            }, 1L);
         }
-        EventPlayerManager.save(this);
-        return claimedAny;
     }
 }

@@ -9,6 +9,7 @@ import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -28,11 +29,9 @@ public class ClaimRewardsCommand implements CommandModule {
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
         Player player = (Player) commandSender;
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
-        if (eventPlayer.claimAvailableRewards()) {
-            Text.msg(player, "<green>You have claimed your available rewards!");
-        } else {
-            Text.msg(player, "<red>You have no available rewards to claim.");
-        }
+        eventPlayer.claimAvailableRewards();
+
+        Util.sendMsg(player, "Claimed available rewards.");
         return true;
     }
 
