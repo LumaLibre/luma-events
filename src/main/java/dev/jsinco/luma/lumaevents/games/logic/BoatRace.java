@@ -243,7 +243,7 @@ public non-sealed class BoatRace extends Minigame {
                 eplayer.sendMessage("Checkpoint reached! <gold>+"+checkpointWorth*POINT_MULTIPLIER+" <gray>points (Use F to teleport back to this checkpoint!)");
                 eplayer.sendMessage("You are in <gold>#" + position + "<gray> place");
 
-                if (RANDOM.nextInt(100) <= 14) {
+                if (RANDOM.nextInt(100) <= 22) {
                     Util.giveTokens(event.getPlayer(), 1);
                 }
 

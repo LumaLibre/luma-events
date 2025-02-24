@@ -7,7 +7,7 @@ author: jsinco
 #  - org.jetbrains.kotlin:kotlin-stdlib:2.0.21
 depend:
   - LumaCore
+  - LumaItems
   - ChatHeads
 softdepend:
-  - LumaItems
   - PlaceholderAPI

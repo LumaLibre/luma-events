@@ -206,7 +206,7 @@ public non-sealed class Envoys extends Minigame {
             }
             this.scoreboard.addScore(player, 1);
 
-            if (scoreboard.getScore(player) % 16 == 0) {
+            if (RANDOM.nextInt(100) <= 35) {
                 Util.giveTokens(event.getPlayer(), 1);
             }
         });
