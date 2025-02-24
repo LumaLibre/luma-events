@@ -154,7 +154,7 @@ public non-sealed class Paintball extends Minigame {
         }
 
 
-        if (RANDOM.nextInt(100) <= 5 || scoreboard.getScore(shooter) % 250 == 0) {
+        if (scoreboard.getScore(shooter) % 250 == 0) {
             Util.giveTokens(shooter.getPlayer(), 1);
         }
     }

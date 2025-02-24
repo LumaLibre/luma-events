@@ -4,6 +4,8 @@ import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
 import com.gamingmesh.jobs.commands.list.log;
 import dev.jsinco.luma.lumaevents.EventMain;
+import dev.jsinco.luma.lumaevents.configurable.Config;
+import dev.jsinco.luma.lumaevents.configurable.sectors.TokenBlackListedPlayer;
 import dev.jsinco.luma.lumaitems.api.LumaItemsAPI;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
@@ -64,6 +66,17 @@ public final class Util {
     }
 
     public static void giveTokens(Player player, int amount) {
+        Config cfg = EventMain.getOkaeriConfig();
+        if (cfg.isTokenBlackListed(player.getUniqueId())) {
+            TokenBlackListedPlayer blackListedPlayer = cfg.getTokenBlackListedPlayer(player.getUniqueId());
+            if (blackListedPlayer.getCurrent() + amount < blackListedPlayer.getMax()) {
+                blackListedPlayer.setCurrent(blackListedPlayer.getCurrent() + amount);
+                cfg.save();
+                Util.sendMsg(player, "Blacklisted from earning tokens: <gray>(" + blackListedPlayer.getCurrent() + "/" + blackListedPlayer.getMax() + ")");
+                return;
+            }
+        }
+
         if (Bukkit.isPrimaryThread()) {
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lumaitems give valentide_stamp " + player.getName() + " " + amount);
         } else {

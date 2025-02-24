@@ -2,6 +2,7 @@ package dev.jsinco.luma.lumaevents.configurable;
 
 import dev.jsinco.luma.lumaevents.configurable.sectors.BoatRaceDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
+import dev.jsinco.luma.lumaevents.configurable.sectors.TokenBlackListedPlayer;
 import dev.jsinco.luma.lumaevents.enums.EventTeamType;
 import dev.jsinco.luma.lumaevents.enums.SerializableMinigame;
 import eu.okaeri.configs.OkaeriConfig;
@@ -9,6 +10,9 @@ import eu.okaeri.configs.annotation.Comment;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
+
+import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -43,4 +47,19 @@ public class Config extends OkaeriConfig {
     private long lastGameLaunchTime = System.currentTimeMillis();
     @Comment("Don't touch me")
     private SerializableMinigame lastMinigame = SerializableMinigame.ENVOYS;
+    private List<TokenBlackListedPlayer> tokenBlackListedPlayers = List.of(new TokenBlackListedPlayer());
+
+    public boolean isTokenBlackListed(UUID uuid) {
+        return this.tokenBlackListedPlayers.stream()
+                .filter(player -> player.getUuid() != null)
+                .anyMatch(player -> player.getUuid().equals(uuid));
+    }
+
+    public TokenBlackListedPlayer getTokenBlackListedPlayer(UUID uuid) {
+        return this.tokenBlackListedPlayers.stream()
+                .filter(player -> player.getUuid() != null)
+                .filter(player -> player.getUuid().equals(uuid))
+                .findFirst()
+                .orElse(null);
+    }
 }
