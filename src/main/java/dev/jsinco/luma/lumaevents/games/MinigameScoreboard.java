@@ -79,12 +79,12 @@ public class MinigameScoreboard {
     }
 
     public int getFinalPositionAdditionalPoints(EventTeamType team) {
-        int points = switch (this.getPosition(team)) {
-            case 1 -> 500 + (int) (this.getPoints(team) * .4);
-            case 2 -> 750 + (int) (this.getPoints(team) * .7);
-            default -> 1000 + (int) (this.getPoints(team) * .14);
+        // scaling a bit too volatile for me to handle atm, just going to flat until p3
+        return switch (this.getPosition(team)) {
+            case 1 -> 500;
+            case 2 -> 750;
+            default -> 1300;
         };
-        return points;
     }
 
     public EventTeamType getLeadingTeam() {
