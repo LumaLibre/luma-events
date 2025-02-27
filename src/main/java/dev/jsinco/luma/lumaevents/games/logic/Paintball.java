@@ -174,13 +174,9 @@ public non-sealed class Paintball extends Minigame {
             break;
         }
 
-        if (!overlaying) {
-            scoreboard.addScore(shooter, 3);
-            scoreboard.addTempScore(shooter, 3);
-        } else {
-            scoreboard.addScore(shooter, 1);
-            scoreboard.addTempScore(shooter, 1);
-        }
+        int p = overlaying ? 1 : 3;
+        scoreboard.addScore(shooter, p);
+        scoreboard.addTempScore(shooter, p);
 
         sphere.paint(this.participants, encapsulatedPaintballTeam.getBlockData());
         painted.add(sphere);
