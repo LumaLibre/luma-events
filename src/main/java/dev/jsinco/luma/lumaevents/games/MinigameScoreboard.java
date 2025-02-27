@@ -16,12 +16,30 @@ import java.util.Map;
 public class MinigameScoreboard {
 
     private final Map<EventPlayer, Integer> individualScores = new HashMap<>();
+    private final Map<EventPlayer, Integer> tempIndividualScores = new HashMap<>();
 
     @Getter @Setter
     private int pointMultiplier;
 
     public MinigameScoreboard(int pointMultiplier) {
         this.pointMultiplier = pointMultiplier;
+    }
+
+    public void addTempScore(EventPlayer player, int points) {
+        tempIndividualScores.putIfAbsent(player, 0);
+        tempIndividualScores.put(player, tempIndividualScores.get(player) + points);
+    }
+
+    public void removeTempScore(EventPlayer player) {
+        tempIndividualScores.remove(player);
+    }
+
+    public void resetTempScore(EventPlayer player) {
+        tempIndividualScores.put(player, 0);
+    }
+
+    public int getTempScore(EventPlayer player) {
+        return tempIndividualScores.getOrDefault(player, 0);
     }
 
     public boolean hasScore(EventPlayer player) {

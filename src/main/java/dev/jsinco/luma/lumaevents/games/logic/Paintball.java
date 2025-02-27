@@ -8,10 +8,10 @@ import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.MinigameScoreboard;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.enums.EventTeamType;
+import dev.jsinco.luma.lumaevents.obj.PaintballSphere;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.MinigameConstants;
 import dev.jsinco.luma.lumaevents.utility.Util;
-import dev.jsinco.luma.lumaitems.shapes.Sphere;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
@@ -27,23 +27,33 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public non-sealed class Paintball extends Minigame {
 
-    private static final List<Material> BLACKLISTED_MATERIALS = List.of(Material.BARRIER, Material.AIR, Material.CAVE_AIR);
+    public static final List<Material> BLACKLISTED_MATERIALS = List.of(Material.BARRIER, Material.AIR, Material.CAVE_AIR);
 
     private final Location spawnPoint;
     private final MinigameScoreboard scoreboard;
     private CountdownBossBar countdownBossBar;
 
     private final List<EncapsulatedPaintballTeam> encapsulatedPaintballTeams;
+    private final ConcurrentLinkedQueue<PaintballSphere> painted;
+    // There are probably better methods to this, but I'm in a hurry
+    private final Map<UUID, Integer> cpsMap;
 
     public Paintball(MinigameDefinition def) {
-        super("Paintball", MinigameConstants.PAINTBALL_DESC, MinigameConstants.PAINTBALL_DURATION, 30, true);
+        super("Paintball", MinigameConstants.PAINTBALL_DESC, MinigameConstants.PAINTBALL_DURATION, 20, true);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.spawnPoint = def.getSpawnLocation().toCenterLocation();
-        this.scoreboard = new MinigameScoreboard(2);
+        this.scoreboard = new MinigameScoreboard(1);
+        this.painted = new ConcurrentLinkedQueue<>();
+        this.cpsMap = new HashMap<>();
 
         PaintballColorKit colorKit = Util.getRandFromList(PaintballColorKit.values());
         this.encapsulatedPaintballTeams = List.of(
@@ -90,6 +100,7 @@ public non-sealed class Paintball extends Minigame {
     @Override
     protected void onRunnable(long timeLeft) {
         audience.sendActionBar(Util.color("<yellow>Click to shoot!"));
+        cpsMap.clear();
     }
 
     @Override
@@ -105,6 +116,13 @@ public non-sealed class Paintball extends Minigame {
         }
 
         Player player = event.getPlayer();
+        int cps = cpsMap.getOrDefault(player.getUniqueId(), 0);
+        if (cps > 9) {
+            Util.sendMsg(player, "<dark_red>You are clicking too fast!");
+            return;
+        }
+        cpsMap.put(player.getUniqueId(), cps + 1);
+
         player.launchProjectile(Snowball.class);
     }
 
@@ -138,23 +156,50 @@ public non-sealed class Paintball extends Minigame {
                 .filter(team -> team.getTeamType().equals(shooter.getTeamType()))
                 .findFirst()
                 .orElseThrow();
-        //encapsulatedPaintballTeam.addAreaCovered();
-        scoreboard.addScore(shooter, 1);
 
-        Sphere sphere = new Sphere(blockHit.getLocation(), 3, 5);
 
-        for (EventPlayer player : this.participants) {
-            for (Block block : sphere.getSphere().stream().filter(b -> !BLACKLISTED_MATERIALS.contains(b.getType())).toList()) {
-                Player bukkitPlayer = player.getPlayer();
-                if (bukkitPlayer == null) {
-                    continue;
+        boolean overlaying = false;
+        PaintballSphere sphere = new PaintballSphere(blockHit.getLocation(), shooter.getTeamType());
+        for (PaintballSphere otherSphere : painted) {
+            if (!otherSphere.isNearCenter(blockHit.getLocation()) ) {
+                continue;
+            }
+
+            if (otherSphere.getPainter() == shooter.getTeamType()) {
+                overlaying = true;
+            } else {
+                // change the sphere painter to the shooter's team
+                otherSphere.setPainter(shooter.getTeamType());
+            }
+            break;
+        }
+
+        if (!overlaying) {
+            scoreboard.addScore(shooter, 3);
+            scoreboard.addTempScore(shooter, 3);
+        } else {
+            scoreboard.addScore(shooter, 1);
+            scoreboard.addTempScore(shooter, 1);
+        }
+
+        sphere.paint(this.participants, encapsulatedPaintballTeam.getBlockData());
+        painted.add(sphere);
+
+        // if the list's size is over 500, we start truncating
+        if (painted.size() > 500) {
+            // remove first 100 elements
+            synchronized (painted) { // have to lock
+                int i = 0;
+                for (Iterator<PaintballSphere> iterator = painted.iterator();
+                     iterator.hasNext() && i < 100; i++) {
+                    iterator.next();
+                    iterator.remove();
                 }
-                bukkitPlayer.sendBlockChange(block.getLocation(), encapsulatedPaintballTeam.getBlockData());
             }
         }
 
-
-        if (scoreboard.getScore(shooter) % 250 == 0) {
+        if (scoreboard.getTempScore(shooter) >= 300) {
+            scoreboard.resetTempScore(shooter);
             Util.giveTokens(shooter.getPlayer(), 1);
         }
     }
