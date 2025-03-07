@@ -21,7 +21,15 @@ public enum EventReward {
     TOKENS_18(EventTeamType.ROSETHORN, "lumaitems give valentide_stamp %player% 18"),
     TOKENS_12(EventTeamType.SWEETHEARTS, "lumaitems give valentide_stamp %player% 12"),
 
-    // TODO: Rewards #3
+
+    // Charms
+    HEARTBREAKERS_CHARM(EventTeamType.HEARTBREAKERS, "lumaitems give heartbreakers_charm %player%"),
+    ROSETHORN_CHARM(EventTeamType.ROSETHORN, "lumaitems give rosethorn_charm %player%"),
+    SWEETHEARTS_CHARM(EventTeamType.SWEETHEARTS, "lumaitems give sweethearts_charm %player%"),
+    // Tokens #2
+    TOKENS_28(EventTeamType.HEARTBREAKERS, "lumaitems give valentide_stamp %player% 28"),
+    TOKENS_24_2(EventTeamType.ROSETHORN, "lumaitems give valentide_stamp %player% 24"),
+    TOKENS_20(EventTeamType.SWEETHEARTS, "lumaitems give valentide_stamp %player% 20"),
     ;
 
     @Nullable
