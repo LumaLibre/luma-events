@@ -8,6 +8,7 @@ import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
+import dev.jsinco.luma.lumaevents.configurable.Config;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.command.CommandSender;
@@ -27,6 +28,12 @@ import java.util.List;
 public class ClaimRewardsCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
+        Config config = EventMain.getOkaeriConfig();
+        if (!config.isAutomaticMinigames()) {
+            Util.sendMsg(commandSender, "You have no rewards to claim.");
+            return false;
+        }
+
         Player player = (Player) commandSender;
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
         eventPlayer.claimAvailableRewards();

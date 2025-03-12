@@ -111,6 +111,10 @@ public final class MinigameManager extends BukkitRunnable {
     }
 
     public boolean canSafelyStartMinigame(boolean ignoreCooldown) {
+        if (!cfg.isAutomaticMinigames()) {
+            return false;
+        }
+
         if (this.current.isActive() || this.current.isOpen()) {
             return false; // We can't start another minigame if one is active or has a queue open!
         }
@@ -134,10 +138,7 @@ public final class MinigameManager extends BukkitRunnable {
                 this.cfg.setLastGameLaunchTime(System.currentTimeMillis());
                 this.cfg.save();
                 this.newMinigame(false);
-            } else {
-                Util.sendMsg(Bukkit.getConsoleSender(), "Tried to start an automatic minigame, but it's disabled in the config!");
             }
-
         }
     }
 

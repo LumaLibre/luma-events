@@ -63,7 +63,7 @@ public non-sealed class BoatRace extends Minigame {
             if (player == null) {
                 continue;
             }
-            Location loc = this.startLocation.clone().add(RANDOM.nextInt(4), 0, RANDOM.nextInt(4));
+            Location loc = this.startLocation.clone().add(RANDOM.nextInt(5), 0, RANDOM.nextInt(5));
             player.teleportAsync(loc);
 
             // Synchronize
