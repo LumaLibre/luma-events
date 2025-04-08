@@ -1,9 +1,8 @@
 package dev.jsinco.luma.lumaevents.obj;
 
-import dev.jsinco.luma.lumaevents.EventMain;
-import dev.jsinco.luma.lumaevents.EventPlayerManager;
-import dev.jsinco.luma.lumaevents.enums.EventReward;
-import dev.jsinco.luma.lumaevents.enums.EventTeamType;
+import dev.jsinco.luma.lumaevents.explorer.constants.ExplorerMiles;
+import dev.jsinco.luma.lumaevents.explorer.ActiveExplorerMile;
+import dev.jsinco.luma.lumaevents.explorer.ExplorerMile;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,14 +12,13 @@ import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
-import org.bukkit.metadata.FixedMetadataValue;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 @Getter
 @Setter
@@ -28,18 +26,11 @@ import java.util.concurrent.CompletableFuture;
 public class EventPlayer implements Serializable {
 
     private final UUID uuid;
-    // FIXME: This should actually be 'claimedRewards' but,
-    // This is already on prod and i'm too lazy to change it
-    private final List<EventReward> unclaimedRewards;
-
-    @Nullable
-    private EventTeamType teamType;
-    private int points;
-    private boolean disabledTeamChat;
+    private final List<ActiveExplorerMile> activeExplorerMiles;
 
     public EventPlayer(UUID uuid) {
         this.uuid = uuid;
-        this.unclaimedRewards = new ArrayList<>();
+        this.activeExplorerMiles = new ArrayList<>();
     }
 
     public void sendMessage(String m) {
@@ -66,12 +57,6 @@ public class EventPlayer implements Serializable {
         player.sendMessage(m);
     }
 
-    public void sendTeamStyleMessage(String m) {
-        this.sendNoPrefixedMessage(
-                "<b>"+teamType.getGradient()+teamType.getFormatted()+" <reset><dark_gray>» <white>"+m
-        );
-    }
-
     public void sendActionBar(String m) {
         Player player = this.getPlayer();
         if (player == null) {
@@ -96,13 +81,6 @@ public class EventPlayer implements Serializable {
         player.teleportAsync(location);
     }
 
-    public void addPoints(int points) {
-        this.points += points;
-    }
-
-    public void removePoints(int points) {
-        this.points -= points;
-    }
 
     @Nullable
     public Player getPlayer() {
@@ -118,65 +96,36 @@ public class EventPlayer implements Serializable {
     }
 
 
-    public void enableTeamChat() {
-        Player player = this.getPlayer();
-        if (player == null) {
-            return;
-        }
-        player.setMetadata("teamchat", new FixedMetadataValue(EventMain.getInstance(), true));
-    }
-
-    public void disableTeamChat() {
-        Player player = this.getPlayer();
-        if (player == null) {
-            return;
-        }
-        player.removeMetadata("teamchat", EventMain.getInstance());
-    }
-
-
-    public boolean isTeamChat() {
-        Player player = this.getPlayer();
-        if (player == null) {
-            return false;
-        }
-        return player.hasMetadata("teamchat");
-    }
-
-    public void setTeamChat(boolean enabled) {
-        if (enabled) {
-            enableTeamChat();
-        } else {
-            disableTeamChat();
-        }
-    }
-
-    public void addReward(EventReward reward) {
-        this.unclaimedRewards.add(reward);
-    }
-
-    public void removeReward(EventReward reward) {
-        this.unclaimedRewards.remove(reward);
-    }
-
-    public void claimAvailableRewards() {
-        Player player = this.getPlayer();
-        if (player == null) {
-            return;
-        }
-
-
-        for (EventReward reward : EventReward.values()) {
-            if (this.unclaimedRewards.contains(reward) || reward.getTeamType() != null && reward.getTeamType() != this.teamType) {
-                continue;
+    public <T> boolean hasActiveExplorerMile(ExplorerMile<T> explorerMile) {
+        for (ActiveExplorerMile activeExplorerMile : activeExplorerMiles) {
+            if (Objects.equals(activeExplorerMile.getMile().getFIELD_NAME(), explorerMile.getFIELD_NAME())) {
+                return true;
             }
-
-
-            Bukkit.getScheduler().runTaskLater(EventMain.getInstance(), () -> {
-                if (reward.claim(this)) {
-                    this.unclaimedRewards.add(reward);
-                }
-            }, 1L);
         }
+        return false;
     }
+
+    public void fireForExplorerMiles(Object event) {
+        List<ActiveExplorerMile> testableExplorerMiles = new ArrayList<>(activeExplorerMiles);
+
+        for (ExplorerMile<?> explorerMile : ExplorerMiles.asMap().values()) {
+            if (explorerMile.getEventClass() == event.getClass() && !hasActiveExplorerMile(explorerMile)) {
+                Util.log("Testing an ExplorerMile for which a player does not have any data for: " + explorerMile);
+                testableExplorerMiles.add(new ActiveExplorerMile(explorerMile, 0));
+            }
+        }
+
+        for (ActiveExplorerMile activeExplorerMile : testableExplorerMiles) {
+            if (activeExplorerMile.getMile().getEventClass() == event.getClass()) {
+                activeExplorerMile.apply(event);
+            }
+        }
+
+        testableExplorerMiles.forEach(activeExplorerMile -> {
+            if (activeExplorerMile.getCurrentQuantity() > 0 && !activeExplorerMiles.contains(activeExplorerMile)) {
+                activeExplorerMiles.add(activeExplorerMile);
+            }
+        });
+    }
+
 }

@@ -1,7 +1,7 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
 import dev.jsinco.luma.lumaevents.EventMain;
-import dev.jsinco.luma.lumaevents.events.MinigameExitPreventionListener;
+import dev.jsinco.luma.lumaevents.games.events.MinigameExitPreventionListener;
 import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameComponentIllegallyActive;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
@@ -28,7 +28,7 @@ import java.util.Random;
 public sealed abstract class Minigame
         extends BukkitRunnable
         implements Listener
-        permits BoatRace, Envoys, NonActiveMinigame, Paintball {
+        permits NonActiveMinigame {
 
     protected static final Random RANDOM = new Random();
 

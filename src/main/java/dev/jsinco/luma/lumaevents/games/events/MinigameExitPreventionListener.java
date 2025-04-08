@@ -1,4 +1,4 @@
-package dev.jsinco.luma.lumaevents.events;
+package dev.jsinco.luma.lumaevents.games.events;
 
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.games.logic.Minigame;

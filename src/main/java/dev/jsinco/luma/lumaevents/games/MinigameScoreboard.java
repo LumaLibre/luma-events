@@ -1,7 +1,6 @@
 package dev.jsinco.luma.lumaevents.games;
 
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
-import dev.jsinco.luma.lumaevents.enums.EventTeamType;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
@@ -56,9 +55,6 @@ public class MinigameScoreboard {
     }
 
 
-    public int getPoints(EventTeamType team) {
-        return this.getScore(team) * pointMultiplier;
-    }
 
     public int getPoints(EventPlayer player) {
         if (!individualScores.containsKey(player)) {
@@ -67,16 +63,6 @@ public class MinigameScoreboard {
         return individualScores.get(player) * pointMultiplier;
     }
 
-    public int getScore(EventTeamType team) {
-        int points = 0;
-        for (Map.Entry<EventPlayer, Integer> entry : individualScores.entrySet()) {
-            EventTeamType playerTeam = entry.getKey().getTeamType();
-            if (playerTeam != null && playerTeam.equals(team)) {
-                points += entry.getValue();
-            }
-        }
-        return points;
-    }
 
     public int getScore(EventPlayer player) {
         if (!individualScores.containsKey(player)) {
@@ -85,10 +71,7 @@ public class MinigameScoreboard {
         return individualScores.get(player);
     }
 
-    public int getPosition(EventTeamType team) {
-        List<EventTeamType> teamsByScore = getTeamsByScore();
-        return teamsByScore.indexOf(team) + 1;
-    }
+
 
     public int getPosition(EventPlayer player) {
         List<EventPlayer> playersByScore = new ArrayList<>(individualScores.keySet());
@@ -96,26 +79,8 @@ public class MinigameScoreboard {
         return playersByScore.indexOf(player) + 1;
     }
 
-    public int getFinalPositionAdditionalPoints(EventTeamType team) {
-        // scaling a bit too volatile for me to handle atm, just going to flat until p3
-        return switch (this.getPosition(team)) {
-            case 1 -> 500;
-            case 2 -> 750;
-            default -> 1300;
-        };
-    }
 
-    public EventTeamType getLeadingTeam() {
-        Map<EventTeamType, Integer> teamScores = new HashMap<>();
-        for (EventTeamType teamType : EventTeamType.values()) {
-            teamScores.put(teamType, this.getScore(teamType));
-        }
-        return teamScores.entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse(EventTeamType.ROSETHORN); // Default to Rosethorn
-    }
-
+    /*
     public List<EventTeamType> getTeamsByScore() {
         // order with the team with the highest score first
         Map<EventTeamType, Integer> teamScores = new HashMap<>();
@@ -176,4 +141,6 @@ public class MinigameScoreboard {
         }
         callback.run();
     }
+
+     */
 }

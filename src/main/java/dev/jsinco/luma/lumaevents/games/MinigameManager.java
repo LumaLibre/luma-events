@@ -2,13 +2,9 @@ package dev.jsinco.luma.lumaevents.games;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.Config;
-import dev.jsinco.luma.lumaevents.enums.SerializableMinigame;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameAlreadyStartedException;
-import dev.jsinco.luma.lumaevents.games.logic.BoatRace;
-import dev.jsinco.luma.lumaevents.games.logic.Envoys;
 import dev.jsinco.luma.lumaevents.games.logic.Minigame;
 import dev.jsinco.luma.lumaevents.games.logic.NonActiveMinigame;
-import dev.jsinco.luma.lumaevents.games.logic.Paintball;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -29,9 +25,9 @@ public final class MinigameManager extends BukkitRunnable {
     private final Config cfg = EventMain.getOkaeriConfig();
 
     private final Map<Class<? extends Minigame>, Supplier<Minigame>> minigameSupplier = Map.of(
-            Envoys.class, () -> new Envoys(cfg.getEnvoys()),
-            Paintball.class, () -> new Paintball(cfg.getPaintball()),
-            BoatRace.class, () -> new BoatRace(cfg.getBoatRace())
+//            Envoys.class, () -> new Envoys(cfg.getEnvoys()),
+//            Paintball.class, () -> new Paintball(cfg.getPaintball()),
+//            BoatRace.class, () -> new BoatRace(cfg.getBoatRace())
     );
 
 
@@ -61,17 +57,11 @@ public final class MinigameManager extends BukkitRunnable {
     }
 
     public boolean newMinigame(boolean force) throws GameAlreadyStartedException {
-        SerializableMinigame sMinigame = Util.getNextEnum(this.cfg.getLastMinigame());
-        this.cfg.setLastMinigame(sMinigame);
-        this.cfg.save();
-        return this.newMinigame(sMinigame.getMinigame(), force, 90);
+        return this.newMinigame(force, 90);
     }
 
     public boolean newMinigame(boolean force, int seconds) throws GameAlreadyStartedException {
-        SerializableMinigame sMinigame = Util.getNextEnum(this.cfg.getLastMinigame());
-        this.cfg.setLastMinigame(sMinigame);
-        this.cfg.save();
-        return this.newMinigame(sMinigame.getMinigame(), force, seconds);
+        return this.newMinigame(force, seconds);
     }
 
     public boolean tryNewMinigameSafely(Class<? extends Minigame> game, boolean ignoreCooldown, int seconds) {

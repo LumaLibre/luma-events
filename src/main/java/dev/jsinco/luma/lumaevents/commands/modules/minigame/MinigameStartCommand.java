@@ -6,11 +6,8 @@ import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
-import dev.jsinco.luma.lumaevents.games.logic.BoatRace;
-import dev.jsinco.luma.lumaevents.games.logic.Envoys;
 import dev.jsinco.luma.lumaevents.games.logic.Minigame;
 import dev.jsinco.luma.lumaevents.games.MinigameManager;
-import dev.jsinco.luma.lumaevents.games.logic.Paintball;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.command.CommandSender;
 
@@ -33,9 +30,9 @@ public class MinigameStartCommand implements CommandModule {
 
         Class<? extends Minigame> minigame =
         switch (strings[0]) {
-            case "envoys" -> Envoys.class;
-            case "paintball" -> Paintball.class;
-            case "boatrace" -> BoatRace.class;
+//            case "envoys" -> Envoys.class;
+//            case "paintball" -> Paintball.class;
+//            case "boatrace" -> BoatRace.class;
             default -> null;
         };
 

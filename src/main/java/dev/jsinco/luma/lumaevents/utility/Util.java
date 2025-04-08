@@ -2,16 +2,14 @@ package dev.jsinco.luma.lumaevents.utility;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
-import com.gamingmesh.jobs.commands.list.log;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import dev.jsinco.luma.lumaevents.EventMain;
-import dev.jsinco.luma.lumaevents.configurable.Config;
-import dev.jsinco.luma.lumaevents.configurable.sectors.TokenBlackListedPlayer;
-import dev.jsinco.luma.lumaitems.api.LumaItemsAPI;
+import dev.jsinco.luma.lumaevents.explorer.ActiveExplorerMile;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -27,11 +25,18 @@ import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
 public final class Util {
+
+    public static final Gson GSON = new GsonBuilder()
+            .registerTypeAdapter(ActiveExplorerMile.class, new ActiveExplorerMile.GsonTypeAdapter())
+            .excludeFieldsWithModifiers(Modifier.STATIC)
+            .setPrettyPrinting()
+            .create();
 
     public static final String PREFIX = "<b><#954381>E<#EC60B0>v<#EE80C6>e<#C262A4>n<#954381>t</b> <dark_gray>»</dark_gray> ";
 
@@ -66,22 +71,7 @@ public final class Util {
     }
 
     public static void giveTokens(Player player, int amount) {
-        Config cfg = EventMain.getOkaeriConfig();
-        if (cfg.isTokenBlackListed(player.getUniqueId())) {
-            TokenBlackListedPlayer blackListedPlayer = cfg.getTokenBlackListedPlayer(player.getUniqueId());
-            if (blackListedPlayer.getCurrent() + amount < blackListedPlayer.getMax()) {
-                blackListedPlayer.setCurrent(blackListedPlayer.getCurrent() + amount);
-                cfg.save();
-                Util.sendMsg(player, "Blacklisted from earning tokens: <gray>(" + blackListedPlayer.getCurrent() + "/" + blackListedPlayer.getMax() + ")");
-                return;
-            }
-        }
-
-        if (Bukkit.isPrimaryThread()) {
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lumaitems give valentide_stamp " + player.getName() + " " + amount);
-        } else {
-            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lumaitems give valentide_stamp " + player.getName() + " " + amount));
-        }
+       // TODO: impl
     }
 
     public static <P, C> C getPersistentKey(ItemStack item, String strKey, PersistentDataType<P, C> dataType) {

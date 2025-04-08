@@ -18,6 +18,8 @@ repositories {
     maven("https://maven.enginehub.org/repo/")
     maven("https://repo.jsinco.dev/releases")
     maven("https://repo.extendedclip.com/content/repositories/placeholderapi/")
+    maven("https://repo.codemc.io/repository/maven-public/")
+    maven("https://repo.glaremasters.me/repository/towny/")
 }
 
 
@@ -26,8 +28,10 @@ dependencies {
     compileOnly("dev.jsinco.luma.lumacore:LumaCore:d5c4530")
     compileOnly("dev.jsinco.luma.lumaitems:LumaItems:a7ea609")
     compileOnly("com.github.Zrips:jobs:v4.17.2")
-    compileOnly("dev.jsinco.chatheads:ChatHeads:1.6")
     compileOnly("me.clip:placeholderapi:2.11.6")
+    compileOnly("com.ghostchu:quickshop-bukkit:6.2.0.9-RELEASE-1")
+    compileOnly("com.ghostchu:quickshop-api:6.2.0.9-RELEASE-1")
+    compileOnly("com.palmergames.bukkit.towny:towny:0.101.1.0")
 
     implementation("eu.okaeri:okaeri-configs-yaml-bukkit:5.0.5")
     implementation("eu.okaeri:okaeri-configs-serdes-bukkit:5.0.5")

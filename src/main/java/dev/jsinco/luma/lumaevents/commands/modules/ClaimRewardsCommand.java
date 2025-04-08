@@ -36,7 +36,6 @@ public class ClaimRewardsCommand implements CommandModule {
 
         Player player = (Player) commandSender;
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
-        eventPlayer.claimAvailableRewards();
 
         Util.sendMsg(player, "Claimed available rewards.");
         return true;

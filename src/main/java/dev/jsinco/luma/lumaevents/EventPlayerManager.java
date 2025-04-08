@@ -3,6 +3,7 @@ package dev.jsinco.luma.lumaevents;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import dev.jsinco.luma.lumaevents.utility.Util;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -19,10 +20,7 @@ public final class EventPlayerManager {
 
     public static final List<EventPlayer> EVENT_PLAYERS = new ArrayList<>();
 
-    private static final Gson gson = new GsonBuilder()
-            .setPrettyPrinting()
-            .excludeFieldsWithModifiers(Modifier.STATIC)
-            .create();
+    private static final Gson gson = Util.GSON;
     private static final Path FOLDER = EventMain.getInstance()
             .getDataPath()
             .resolve("players");
