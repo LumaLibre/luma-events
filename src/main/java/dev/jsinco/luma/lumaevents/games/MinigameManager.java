@@ -5,6 +5,7 @@ import dev.jsinco.luma.lumaevents.configurable.Config;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameAlreadyStartedException;
 import dev.jsinco.luma.lumaevents.games.logic.Minigame;
 import dev.jsinco.luma.lumaevents.games.logic.NonActiveMinigame;
+import dev.jsinco.luma.lumaevents.games.logic.TheNabbits;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -25,9 +26,7 @@ public final class MinigameManager extends BukkitRunnable {
     private final Config cfg = EventMain.getOkaeriConfig();
 
     private final Map<Class<? extends Minigame>, Supplier<Minigame>> minigameSupplier = Map.of(
-//            Envoys.class, () -> new Envoys(cfg.getEnvoys()),
-//            Paintball.class, () -> new Paintball(cfg.getPaintball()),
-//            BoatRace.class, () -> new BoatRace(cfg.getBoatRace())
+            TheNabbits.class, () -> new TheNabbits(cfg.getTheNabbits())
     );
 
 

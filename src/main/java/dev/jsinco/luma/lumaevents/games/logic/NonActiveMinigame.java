@@ -5,7 +5,7 @@ import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 public non-sealed class NonActiveMinigame extends Minigame {
 
     public NonActiveMinigame() {
-        super("NotARealMiniGame", "Not a real minigame", 0, 1, false, false);
+        super("NotARealMiniGame", "Not a real minigame", 0, 1, false, false, false);
         this.startTime = System.currentTimeMillis();
     }
 
@@ -35,7 +35,7 @@ public non-sealed class NonActiveMinigame extends Minigame {
     }
 
     @Override
-    protected void handleParticipantJoin(EventPlayer player) {
-
+    protected boolean handleParticipantJoin(EventPlayer player) {
+        return false;
     }
 }

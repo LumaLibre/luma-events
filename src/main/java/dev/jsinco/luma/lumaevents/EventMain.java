@@ -28,6 +28,8 @@ public final class EventMain extends JavaPlugin {
         Bukkit.getScheduler().runTaskTimerAsynchronously(this, EventPlayerManager::saveAll, 0, 12000);
 
         MinigameManager.getInstance().runTaskTimerAsynchronously(this, 0, 600); // 30 seconds
+
+        // TODO: Reload this plugin when LumaItems is reloaded
     }
 
     @Override

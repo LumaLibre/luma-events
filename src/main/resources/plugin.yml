@@ -8,5 +8,6 @@ author: jsinco
 depend:
   - LumaCore
   - LumaItems
+  - LibsDisguises
 softdepend:
   - PlaceholderAPI

@@ -6,6 +6,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.explorer.ActiveExplorerMile;
+import dev.jsinco.luma.lumaitems.api.LumaItemsAPI;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
@@ -14,6 +15,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -23,9 +25,12 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -156,6 +161,20 @@ public final class Util {
         return collection.stream().skip(index).findFirst().orElse(null);
     }
 
+    public static <T> T getRandom(Collection<T> collection, Collection<T> collection2) {
+        Collection<T> merged = new ArrayList<>(collection);
+        merged.addAll(collection2);
+        return getRandom(merged);
+    }
+
+    public static <T> T getRandom(T[] array) {
+        return array[(int) (Math.random() * array.length)];
+    }
+
+    public static <T> T getRandom(List<T> list) {
+        return list.get((int) (Math.random() * list.size()));
+    }
+
     @Nullable
     public static <E extends Enum<E>> E getEnumFromString(Class<E> enumClass, String value) {
         try {
@@ -165,13 +184,6 @@ public final class Util {
         }
     }
 
-    public static <T> T getRandFromList(List<T> list) {
-        return list.get((int) (Math.random() * list.size()));
-    }
-
-    public static <T> T getRandFromList(T[] array) {
-        return array[(int) (Math.random() * array.length)];
-    }
 
     public static String formatInt(int num) {
         return String.format("%,d", num);
@@ -209,5 +221,38 @@ public final class Util {
         E[] values = current.getDeclaringClass().getEnumConstants();
         int nextIndex = (current.ordinal() + 1) % values.length;
         return values[nextIndex];
+    }
+
+    public static boolean isItemsWithAttributes(ItemStack[] contents, Attribute... attributes) {
+        for (ItemStack itemStack : contents) {
+            if (!itemStack.hasItemMeta()) continue;
+
+            ItemMeta itemMeta = itemStack.getItemMeta();
+            if (!itemMeta.hasAttributeModifiers()) continue;
+
+            for (Attribute attribute : attributes) {
+                if (itemMeta.getAttributeModifiers(attribute) != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static boolean hasCustomItem(ItemStack[] contents) {
+        Plugin lumaitemsPluginInstance = Bukkit.getPluginManager().getPlugin("LumaItems");
+        if (lumaitemsPluginInstance == null) {
+            throw new IllegalStateException("LumaItems instance not found!");
+        }
+        NamespacedKey lumaitemsKey = new NamespacedKey(lumaitemsPluginInstance, "lumaitem");
+        for (ItemStack itemStack : contents) {
+            if (itemStack == null || !itemStack.hasItemMeta()) continue;
+
+            ItemMeta itemMeta = itemStack.getItemMeta();
+            if (itemMeta.getPersistentDataContainer().has(lumaitemsKey)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

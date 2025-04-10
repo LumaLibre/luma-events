@@ -3,6 +3,7 @@ package dev.jsinco.luma.lumaevents.games.logic;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.games.events.MinigameExitPreventionListener;
 import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
+import dev.jsinco.luma.lumaevents.games.events.MinigamePreventInventoryTampering;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameComponentIllegallyActive;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
@@ -25,15 +26,13 @@ import java.util.Random;
 
 @Getter
 @Setter
-public sealed abstract class Minigame
-        extends BukkitRunnable
-        implements Listener
-        permits NonActiveMinigame {
+public sealed abstract class Minigame extends BukkitRunnable implements Listener permits TheNabbits, NonActiveMinigame {
 
     protected static final Random RANDOM = new Random();
 
     protected final List<EventPlayer> participants = new ArrayList<>();
     private final MinigameExitPreventionListener exitPrevention;
+    private final MinigamePreventInventoryTampering inventoryTampering;
 
     private final String name;
     private final String description;
@@ -55,18 +54,20 @@ public sealed abstract class Minigame
         this.tickInterval = tickInterval;
         this.async = async;
         this.exitPrevention = new MinigameExitPreventionListener(this);
+        this.inventoryTampering = new MinigamePreventInventoryTampering(this);
+        registerEvents(this.inventoryTampering);
     }
 
-    protected Minigame(String name, String description, long duration, long tickInterval, boolean async, boolean preventExit) {
+    protected Minigame(String name, String description, long duration, long tickInterval, boolean async, boolean preventExit, boolean preventInventoryTampering) {
         this.name = name;
         this.description = description;
         this.duration = duration;
         this.tickInterval = tickInterval;
         this.async = async;
-        if (preventExit) {
-            this.exitPrevention = new MinigameExitPreventionListener(this);
-        } else {
-            this.exitPrevention = null;
+        this.exitPrevention = preventExit ? new MinigameExitPreventionListener(this) : null;
+        this.inventoryTampering = preventInventoryTampering ? new MinigamePreventInventoryTampering(this) : null;
+        if (this.inventoryTampering != null) {
+            registerEvents(this.inventoryTampering);
         }
     }
 
@@ -98,6 +99,9 @@ public sealed abstract class Minigame
         if (this.exitPrevention != null) {
             unregisterEvents(this.exitPrevention);
         }
+        if (this.inventoryTampering != null) {
+            unregisterEvents(this.inventoryTampering);
+        }
         this.cancel();
         this.active = false;
         this.open = false; // Should be false by now anyway :P
@@ -107,19 +111,27 @@ public sealed abstract class Minigame
     public boolean addParticipant(EventPlayer player) {
         if (!this.active || !this.open) {
             return false;
-        } else if (!this.participants.contains(player)) {
-            this.participants.add(player);
         }
 
+        try {
+            if(!this.handleParticipantJoin(player)) {
+                player.sendMessage("This minigame has denied your entry.");
+                return false;
+            }
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+            player.sendMessage("An error occurred while trying to join the minigame.");
+            return false;
+        }
+
+
+        if (!this.participants.contains(player)) {
+            this.participants.add(player);
+        }
         player.sendTitle(
                 "<yellow>" + this.name,
                 "<red>" + this.description
         );
-        try {
-            this.handleParticipantJoin(player);
-        } catch (Throwable throwable) {
-            throwable.printStackTrace();
-        }
         return true;
     }
 
@@ -208,6 +220,42 @@ public sealed abstract class Minigame
         return EventMain.getOkaeriConfig().getGameDropOffLocation();
     }
 
+    protected void sendAudienceMessage(String m) {
+        if (this.audience == null) {
+            return;
+        }
+        this.audience.sendMessage(Util.color(Util.PREFIX + m));
+    }
+
+    protected boolean isParticipant(EventPlayer... players) {
+        for (EventPlayer p : players) {
+            if (!this.participants.contains(p)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    protected boolean isInBoundingBox(EventPlayer... players) {
+        for (EventPlayer p : players) {
+            Player bukkitPlayer = p.getPlayer();
+            if (bukkitPlayer == null) return false;
+            if (!this.boundingBox.contains(bukkitPlayer.getLocation())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    protected boolean isInBoundingBox(Player... players) {
+        for (Player p : players) {
+            if (!this.boundingBox.contains(p.getLocation())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     // Minigame starts, returns true if successful
     protected abstract void handleStart();
 
@@ -215,5 +263,5 @@ public sealed abstract class Minigame
     // Minigame stops, returns true if successful
     protected abstract void handleStop();
 
-    protected abstract void handleParticipantJoin(EventPlayer player);
+    protected abstract boolean handleParticipantJoin(EventPlayer player);
 }

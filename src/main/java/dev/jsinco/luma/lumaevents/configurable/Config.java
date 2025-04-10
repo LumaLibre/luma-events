@@ -1,6 +1,7 @@
 package dev.jsinco.luma.lumaevents.configurable;
 
 import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
+import dev.jsinco.luma.lumaevents.configurable.sectors.TheNabbitsMinigameDefinition;
 import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.annotation.Comment;
 import lombok.Getter;
@@ -26,8 +27,8 @@ public class Config extends OkaeriConfig {
     @Comment("Would be /spawn location")
     private Location gameDropOffLocation;
 
-    @Comment("nabbit")
-    private MinigameDefinition nabbits = new MinigameDefinition();
+    @Comment("Minigame definition for 'The Nabbits'")
+    private TheNabbitsMinigameDefinition theNabbits = new TheNabbitsMinigameDefinition();
 
 
     @Comment("Don't touch me")
