@@ -43,7 +43,7 @@ public final class MinigameManager extends BukkitRunnable {
             this.current.stop();
         }
 
-        Util.broadcast("<hover:show_text:'Click me!'><click:run_command:/event join>A minigame is starting! Use <gold>/valentide join</gold> to participate!");
+        Util.broadcast("<hover:show_text:'Click me!'><click:run_command:/event join>A minigame is starting! Use <gold>/easter join</gold> to participate!");
         Bukkit.getOnlinePlayers().forEach(player -> {
             player.playSound(player.getLocation(), Sound.ENTITY_EVOKER_PREPARE_WOLOLO, 1f, 0.75f);
         });
@@ -60,7 +60,8 @@ public final class MinigameManager extends BukkitRunnable {
     }
 
     public boolean newMinigame(boolean force, int seconds) throws GameAlreadyStartedException {
-        return this.newMinigame(force, seconds);
+        // This is lazy, but it's our only minigame for this event.
+        return this.newMinigame(TheNabbits.class, force, seconds);
     }
 
     public boolean tryNewMinigameSafely(Class<? extends Minigame> game, boolean ignoreCooldown, int seconds) {

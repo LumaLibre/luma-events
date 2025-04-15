@@ -4,7 +4,6 @@ import dev.jsinco.luma.lumaevents.explorer.constants.ExplorerMiles;
 import dev.jsinco.luma.lumaevents.explorer.ActiveExplorerMile;
 import dev.jsinco.luma.lumaevents.explorer.ExplorerMile;
 import dev.jsinco.luma.lumaevents.utility.Util;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.text.Component;
@@ -16,21 +15,46 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
 @Getter
 @Setter
-@AllArgsConstructor
 public class EventPlayer implements Serializable {
 
     private final UUID uuid;
-    private final List<ActiveExplorerMile> activeExplorerMiles;
+    private final List<ActiveExplorerMile> unlockedExplorerMiles;
 
+    // Initial creation
     public EventPlayer(UUID uuid) {
+        this(uuid, new ArrayList<>());
+
+        // Unlock 10 random ExplorerMiles for them, rest will have to be discovered or unlocked
+        int i = 0;
+        Collection<ExplorerMile<?>> explorerMiles = ExplorerMiles.values();
+        if (explorerMiles.size() < 10) {
+            for (ExplorerMile<?> explorerMile : explorerMiles) {
+                unlockedExplorerMiles.add(new ActiveExplorerMile(explorerMile, 0));
+            }
+        } else {
+            while (i < 10) {
+                ExplorerMile<?> explorerMile = Util.getRandom(explorerMiles);
+                if (hasUnlockedExplorerMile(explorerMile)) {
+                    continue;
+                }
+
+                unlockedExplorerMiles.add(new ActiveExplorerMile(explorerMile, 0));
+                i++;
+            }
+        }
+    }
+
+    // Gson load
+    public EventPlayer(UUID uuid, List<ActiveExplorerMile> unlockedExplorerMiles) {
         this.uuid = uuid;
-        this.activeExplorerMiles = new ArrayList<>();
+        this.unlockedExplorerMiles = unlockedExplorerMiles;
     }
 
     public void sendMessage(String m) {
@@ -96,8 +120,8 @@ public class EventPlayer implements Serializable {
     }
 
 
-    public <T> boolean hasActiveExplorerMile(ExplorerMile<T> explorerMile) {
-        for (ActiveExplorerMile activeExplorerMile : activeExplorerMiles) {
+    public <T> boolean hasUnlockedExplorerMile(ExplorerMile<T> explorerMile) {
+        for (ActiveExplorerMile activeExplorerMile : unlockedExplorerMiles) {
             if (Objects.equals(activeExplorerMile.getMile().getFIELD_NAME(), explorerMile.getFIELD_NAME())) {
                 return true;
             }
@@ -106,10 +130,10 @@ public class EventPlayer implements Serializable {
     }
 
     public void fireForExplorerMiles(Object event) {
-        List<ActiveExplorerMile> testableExplorerMiles = new ArrayList<>(activeExplorerMiles);
+        List<ActiveExplorerMile> testableExplorerMiles = new ArrayList<>(unlockedExplorerMiles);
 
         for (ExplorerMile<?> explorerMile : ExplorerMiles.asMap().values()) {
-            if (explorerMile.getEventClass() == event.getClass() && !hasActiveExplorerMile(explorerMile)) {
+            if (explorerMile.getEventClass() == event.getClass() && !hasUnlockedExplorerMile(explorerMile)) {
                 Util.log("Testing an ExplorerMile for which a player does not have any data for: " + explorerMile);
                 testableExplorerMiles.add(new ActiveExplorerMile(explorerMile, 0));
             }
@@ -122,8 +146,8 @@ public class EventPlayer implements Serializable {
         }
 
         testableExplorerMiles.forEach(activeExplorerMile -> {
-            if (activeExplorerMile.getCurrentQuantity() > 0 && !activeExplorerMiles.contains(activeExplorerMile)) {
-                activeExplorerMiles.add(activeExplorerMile);
+            if (activeExplorerMile.getCurrentQuantity() > 0 && !unlockedExplorerMiles.contains(activeExplorerMile)) {
+                unlockedExplorerMiles.add(activeExplorerMile);
             }
         });
     }

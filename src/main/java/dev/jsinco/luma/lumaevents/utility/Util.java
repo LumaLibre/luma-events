@@ -6,6 +6,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.explorer.ActiveExplorerMile;
+import dev.jsinco.luma.lumaevents.explorer.custom.EarnTokenExplorerEvent;
+import dev.jsinco.luma.lumaevents.explorer.events.ExplorerListeners;
 import dev.jsinco.luma.lumaitems.api.LumaItemsAPI;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
@@ -45,6 +47,12 @@ public final class Util {
 
     public static final String PREFIX = "<b><#954381>E<#EC60B0>v<#EE80C6>e<#C262A4>n<#954381>t</b> <dark_gray>»</dark_gray> ";
 
+    public static void giveTokens(Player player, int amount) {
+        EarnTokenExplorerEvent explorerEvent = new EarnTokenExplorerEvent(amount);
+        ExplorerListeners.fire(explorerEvent, player.getUniqueId());
+        // TODO: impl
+    }
+
     public static void log(String msg) {
         sendMsg(Bukkit.getConsoleSender(), msg);
     }
@@ -75,8 +83,11 @@ public final class Util {
         return strings.stream().map(Util::color).toList();
     }
 
-    public static void giveTokens(Player player, int amount) {
-       // TODO: impl
+    public static List<Component> colorList(List<String> strings, TextColor textColor) {
+        return strings.stream().map(string -> {
+            Component component = color(string);
+            return component.colorIfAbsent(textColor);
+        }).toList();
     }
 
     public static <P, C> C getPersistentKey(ItemStack item, String strKey, PersistentDataType<P, C> dataType) {
@@ -254,5 +265,30 @@ public final class Util {
             }
         }
         return false;
+    }
+
+
+
+
+    public static void sleepThread(long millis) {
+        if (Bukkit.isPrimaryThread()) {
+            throw new IllegalStateException("Cannot sleep on the main thread!");
+        }
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    public static ItemStack editMeta(ItemStack itemStack, EditMeta editMeta) {
+        ItemMeta itemMeta = itemStack.getItemMeta();
+        if (itemMeta == null) {
+            return itemStack;
+        }
+        editMeta.edit(itemMeta);
+        itemStack.setItemMeta(itemMeta);
+        return itemStack;
     }
 }

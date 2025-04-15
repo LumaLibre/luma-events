@@ -2,49 +2,43 @@ package dev.jsinco.luma.lumaevents.games.logic;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.TheNabbitsMinigameDefinition;
+import dev.jsinco.luma.lumaevents.explorer.custom.NabbitPickupCarrot;
+import dev.jsinco.luma.lumaevents.explorer.events.ExplorerListeners;
+import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstants;
 import dev.jsinco.luma.lumaevents.games.obj.NabbitPlayer;
 import dev.jsinco.luma.lumaevents.games.obj.NabbitPlayerSet;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Util;
-import dev.jsinco.lumaglowapi.colormanagers.ColorManager;
+import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerAttemptPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 
 import java.util.Objects;
 
 public final class TheNabbits extends Minigame {
 
-    // TODO: Game needs to find valid, random, spawn locations for all players.
-    // TODO: Game needs to spawn 'crops' that rabbits and fleeing players can pickup.
     // TODO: Game needs to properly reward players for specific actions.
 
+    private static final int TICK_INTERVAL = 20; // 20t = 1s
+    private static final int REVEAL_LOCATIONS_INTERVAL = 300; // 300t = 15s
     private static final String[] CAUGHT_MESSAGES = {
             "<yellow>%victim%</yellow> was caught by <dark_purple>%catcher%</dark_purple>!",
             "<dark_purple>%catcher%</dark_purple> nabbed <yellow>%victim%</yellow>!",
     };
-    private static final PotionEffect GLOWING = new PotionEffect(
-            PotionEffectType.GLOWING,
-            600,
-            1,
-            false,
-            false,
-            false
-    );
     private static final ItemStack REGULAR_CARROT = new ItemStack(Material.CARROT);
 
     static  {
@@ -56,52 +50,79 @@ public final class TheNabbits extends Minigame {
     private final NabbitPlayerSet nabbitParticipants;
     private final WorldTiedBoundingBox playArea;
     private final Location spawnPoint;
+    private CountdownBossBar countdownBossBar;
+    private int revealLocationsCounter = 0;
 
     public TheNabbits(TheNabbitsMinigameDefinition def) {
-        super("The Nabbits", MinigameConstants.THE_NABBITS_DESC, MinigameConstants.THE_NABBITS_DURATION, 100L, true);
+        super("The Nabbits", MinigameConstants.THE_NABBITS_DESC, MinigameConstants.THE_NABBITS_DURATION, TICK_INTERVAL, true);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.playArea = WorldTiedBoundingBox.of(def.getPlayArea().getLoc1(), def.getPlayArea().getLoc2());
         this.spawnPoint = def.getSpawnLocation().toCenterLocation();
-
         this.nabbitParticipants = new NabbitPlayerSet();
     }
 
     @Override
     protected void handleStart() {
+        if (this.participants.size() < 2) {
+            this.sendAudienceMessage("Not enough players to start the game.");
+            this.stop();
+            return;
+        }
+
         for (EventPlayer participant : this.participants) {
             nabbitParticipants.add(new NabbitPlayer(participant));
+            participant.teleportAsync(this.findValidSpawnLocation());
         }
         NabbitPlayer randomNabbitPlayer = Util.getRandom(this.nabbitParticipants);
-        randomNabbitPlayer.changeRole(NabbitPlayer.Role.NABBIT_BOOTSTRAP);
+        randomNabbitPlayer.changeRole(NabbitPlayer.Role.NABBIT_BOOTSTRAP, false);
+        this.nabbitParticipants.forEach(NabbitPlayer::sendRoleTitle);
+
+        this.countdownBossBar = CountdownBossBar.builder()
+                .title("<dark_purple><b>Time Remaining</b><gray>:</gray> <b>%s</b></dark_purple>")
+                .color(BossBar.Color.PURPLE)
+                .miliseconds(this.getDuration())
+                .audience(this.audience)
+                .build();
+        this.countdownBossBar.start();
     }
 
     @Override
     protected void onRunnable(long timeLeft) {
-
         // Let's make sure there are actually Nabbits to catch our runners.
         boolean allNabbitsOffline = this.nabbitParticipants.getNabbits().stream()
                 .map(nabbit -> nabbit.getEventPlayer().getPlayer())
                 .noneMatch(Objects::nonNull);
         if (allNabbitsOffline) {
             NabbitPlayer newNabbit = Util.getRandom(this.nabbitParticipants.getRoles(NabbitPlayer.Role.FLEEING, NabbitPlayer.Role.RABBIT));
-            newNabbit.changeRole(NabbitPlayer.Role.NABBIT_BOOTSTRAP);
+            newNabbit.changeRole(NabbitPlayer.Role.NABBIT_BOOTSTRAP, true);
             this.sendAudienceMessage("A new Nabbit has been assigned!");
         }
 
-        // Make Nabbits glow
-        for (NabbitPlayer nabbit : this.nabbitParticipants.getNabbits()) {
-            Player bukkitPlayer = nabbit.getEventPlayer().getPlayer();
-            if (bukkitPlayer != null) {
-                Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
-                    ColorManager.setTempPlayerColor(bukkitPlayer, ChatColor.DARK_PURPLE);
-                    bukkitPlayer.addPotionEffect(GLOWING);
-                });
+        // Spawn carrots for fleeing players and rabbits
+        this.spawnCarrots(2);
+
+
+        // Reveal locations of fleeing players
+        this.revealLocationsCounter += TICK_INTERVAL;
+        if (this.revealLocationsCounter >= REVEAL_LOCATIONS_INTERVAL) {
+            this.revealLocationsCounter = 0;
+            for (NabbitPlayer fleeing : this.nabbitParticipants.getFleeing()) {
+                fleeing.addStandardGlow();
             }
         }
 
-        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
-            this.spawnCarrots(5);
-        });
+
+        // Make nabbits glow and send actionbar tooltip
+        for (NabbitPlayer nabbitPlayer : this.nabbitParticipants) {
+            nabbitPlayer.addTicksSurvived(TICK_INTERVAL);
+            if (nabbitPlayer.isNabbit()) {
+                nabbitPlayer.addNabbitGlow();
+            }
+            int secsUntilNextLocReveal = (REVEAL_LOCATIONS_INTERVAL - this.revealLocationsCounter) / TICK_INTERVAL;
+            nabbitPlayer.sendActionBarTip(secsUntilNextLocReveal);
+        }
+
+        this.determineEarlyGameEnd();
     }
 
     @Override
@@ -113,13 +134,18 @@ public final class TheNabbits extends Minigame {
             });
         }
         this.nabbitParticipants.clear();
+        if (this.countdownBossBar != null) {
+            this.countdownBossBar.stop(false);
+        }
+        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+            this.boundingBox.getEntities(Item.class).forEach(Entity::remove);
+        });
     }
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
         Player bukkitPlayer = player.getPlayer();
-        if (bukkitPlayer == null) { // Should never happen
-            player.sendMessage("Something went wrong.");
+        if (bukkitPlayer == null) {
             return false;
         }
 
@@ -162,6 +188,7 @@ public final class TheNabbits extends Minigame {
                                 .replace("%victim%", victim.getName())
                                 .replace("%catcher%", damager.getName())
                 );
+                this.determineEarlyGameEnd();
             });
         }
 
@@ -179,11 +206,29 @@ public final class TheNabbits extends Minigame {
     }
 
     @EventHandler
+    public void onPlayerDamaged(EntityDamageEvent event) {
+        this.ensureNotIllegal();
+        if (!(event.getEntity() instanceof Player bukkitPlayer)) {
+            return;
+        }
+
+        NabbitPlayer victim = this.nabbitParticipants.getNabbitPlayer(bukkitPlayer);
+        if (victim != null && isInBoundingBox(bukkitPlayer)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
     public void onItemPickup(PlayerAttemptPickupItemEvent event) {
         this.ensureNotIllegal();
+        Player bukkitPlayer = event.getPlayer();
+        NabbitPlayer nabbitPlayer = this.nabbitParticipants.getNabbitPlayer(bukkitPlayer);
+        if (nabbitPlayer == null || !isInBoundingBox(bukkitPlayer)) {
+            return;
+        }
 
-        NabbitPlayer nabbitPlayer = this.nabbitParticipants.getNabbitPlayer(event.getPlayer());
-        if (nabbitPlayer == null || nabbitPlayer.isNabbit() || !isInBoundingBox(event.getPlayer())) {
+        event.setCancelled(true);
+        if (nabbitPlayer.isNabbit()) {
             return;
         }
 
@@ -193,22 +238,15 @@ public final class TheNabbits extends Minigame {
             return;
         }
 
-        event.setCancelled(true);
         item.remove();
+        ExplorerListeners.fire(new NabbitPickupCarrot(1), bukkitPlayer);
         event.getPlayer().sendMessage("debug: player picked up a carrot");
     }
 
 
     private void spawnCarrots(int amount) {
         for (int i = 0; i < amount; i++) {
-            Location location = this.playArea.getRandomLocation();
-            int attempts = 0;
-            while (attempts < 10) {
-                if (location.getBlock().isEmpty()) {
-                    break;
-                }
-                attempts++;
-            }
+            Location location = this.findValidSpawnLocation();
 
             // Prevent stacking
             ItemStack itemStack = REGULAR_CARROT.clone();
@@ -216,8 +254,29 @@ public final class TheNabbits extends Minigame {
 
             // Spawn dropped item
             Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
-                location.getWorld().dropItem(location.toCenterLocation(), itemStack);
+                location.getWorld().dropItem(location, itemStack);
             });
         }
     }
+
+    private Location findValidSpawnLocation() {
+        Location location = this.playArea.getRandomLocation();
+        int attempts = 0;
+        while (attempts < 10) {
+            if (location.getBlock().isEmpty()) {
+                break;
+            }
+            attempts++;
+        }
+        return location.toCenterLocation();
+    }
+
+    private void determineEarlyGameEnd() {
+        if (this.nabbitParticipants.getFleeing().isEmpty()) {
+            this.sendAudienceMessage("All fleeing players have been caught!");
+            this.stop();
+        }
+    }
+
+
 }

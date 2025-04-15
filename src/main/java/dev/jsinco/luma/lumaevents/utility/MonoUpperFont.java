@@ -17,20 +17,27 @@ public class MonoUpperFont {
         if (input == null) {
             return null; // Handle null input
         }
-        input = input.toUpperCase();
 
         StringBuilder result = new StringBuilder();
+        String regex = "(<[^>]*>)|([^<]+)";
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(regex);
+        java.util.regex.Matcher matcher = pattern.matcher(input);
 
-        // Iterate through each character in the input string
-        for (char c : input.toCharArray()) {
-            int index = NORMAL_ALPHABET.indexOf(c);
-
-            // If the character is a regular alphabet letter, convert it
-            if (index >= 0) {
-                result.append(MONO_UPPER_ALPHABET.charAt(index));
-            } else {
-                // If not a letter, just append the original character
-                result.append(c);
+        while (matcher.find()) {
+            if (matcher.group(1) != null) {
+                // Group 1: Content inside < > tags, leave it unchanged
+                result.append(matcher.group(1));
+            } else if (matcher.group(2) != null) {
+                // Group 2: Content outside < > tags, convert to 'monoupper'
+                String outsideText = matcher.group(2).toUpperCase();
+                for (char c : outsideText.toCharArray()) {
+                    int index = NORMAL_ALPHABET.indexOf(c);
+                    if (index >= 0) {
+                        result.append(MONO_UPPER_ALPHABET.charAt(index));
+                    } else {
+                        result.append(c);
+                    }
+                }
             }
         }
 

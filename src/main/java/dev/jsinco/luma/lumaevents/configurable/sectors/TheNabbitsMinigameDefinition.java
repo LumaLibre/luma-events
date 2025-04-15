@@ -1,12 +1,13 @@
 package dev.jsinco.luma.lumaevents.configurable.sectors;
 
+import eu.okaeri.configs.OkaeriConfig;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
 
 @Getter
 @Setter
-public class TheNabbitsMinigameDefinition {
+public class TheNabbitsMinigameDefinition extends OkaeriConfig {
 
     private Location spawnLocation;
     private Region region = new Region();

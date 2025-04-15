@@ -84,7 +84,7 @@ class ActiveExplorerMile(
             writer.endObject()  // End the main object
         }
 
-        override fun read(reader: JsonReader): ActiveExplorerMile {
+        override fun read(reader: JsonReader): ActiveExplorerMile? {
             var mileImplName: String? = null
             var currentQuantity = 0
             val dataMap: MutableMap<String, Any> = mutableMapOf()
@@ -133,7 +133,7 @@ class ActiveExplorerMile(
 
             val explorerMile = ExplorerMiles.asMap()[mileImplName] ?: run {
                 Util.log("Missing an ExplorerMile implementation for $mileImplName, was it removed?")
-                throw IllegalArgumentException("Invalid ExplorerMile implementation name: $mileImplName")
+                return null
             }
 
             val activeExplorerMile = ActiveExplorerMile(explorerMile, currentQuantity)
