@@ -1,5 +1,7 @@
 package dev.jsinco.luma.lumaevents.utility.gui;
 
+import dev.jsinco.luma.lumaevents.explorer.events.IAItemStacksListener;
+import dev.jsinco.luma.lumaevents.explorer.events.IAItemStacksListener.CustomStackNameSpace;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -10,6 +12,7 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -70,6 +73,19 @@ public class GuiUtil {
 
     public static ItemStack item(Material m, boolean glint, String name, String... lore) {
         ItemStack item = new ItemStack(m);
+        return createItemStack(glint, name, item, lore);
+    }
+
+    public static ItemStack item(CustomStackNameSpace csns, boolean glint, String name, String... lore) {
+        ItemStack item = IAItemStacksListener.getCachedIAStack(csns);
+        if (item == null) {
+            return item(Material.BARRIER, false, "<red>Item not found");
+        }
+        return createItemStack(glint, name, item, lore);
+    }
+
+    @NotNull
+    private static ItemStack createItemStack(boolean glint, String name, ItemStack item, String[] lore) {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) {
             return item;
@@ -97,7 +113,7 @@ public class GuiUtil {
         int count = 0;
 
         for (String word : words) {
-            if (count == 4) {
+            if (count >= 5) {
                 chunks.add(chunk.toString().trim());
                 chunk.setLength(0);
                 count = 0;
@@ -111,6 +127,14 @@ public class GuiUtil {
             chunks.add(chunk.toString().trim());
         }
 
+        return chunks;
+    }
+
+    public static List<String> formatLore(String[] inputs) {
+        List<String> chunks = new ArrayList<>();
+        for (String input : inputs) {
+            chunks.addAll(formatLore(input));
+        }
         return chunks;
     }
 

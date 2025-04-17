@@ -12,9 +12,6 @@ import org.bukkit.Location;
 @Setter
 public class Config extends OkaeriConfig {
 
-    @Comment("Enable or disable job token payouts")
-    private boolean jobTokenPayouts = false;
-
     @Comment("Enable or disable automatic minigames")
     private boolean automaticMinigames = false;
 

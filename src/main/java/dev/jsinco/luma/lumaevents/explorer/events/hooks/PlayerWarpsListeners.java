@@ -5,12 +5,12 @@ import com.olziedev.playerwarps.api.events.warp.PlayerWarpSponsorEvent;
 import com.olziedev.playerwarps.api.events.warp.PlayerWarpTeleportEvent;
 import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
 import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
-import dev.jsinco.luma.lumaevents.explorer.events.ExplorerListener;
+import dev.jsinco.luma.lumaevents.explorer.events.AbstractExplorerListener;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 
 @AutoRegister(value = RegisterType.LISTENER, listenerRequires = "PlayerWarps")
-public class PlayerWarpsListeners extends ExplorerListener {
+public class PlayerWarpsListeners extends AbstractExplorerListener {
 
     @EventHandler
     public void onPlayerWarpCreate(PlayerWarpCreateEvent event) {

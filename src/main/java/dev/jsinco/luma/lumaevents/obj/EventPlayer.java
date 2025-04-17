@@ -1,8 +1,10 @@
 package dev.jsinco.luma.lumaevents.obj;
 
+import com.google.gson.annotations.Expose;
 import dev.jsinco.luma.lumaevents.explorer.constants.ExplorerMiles;
 import dev.jsinco.luma.lumaevents.explorer.ActiveExplorerMile;
 import dev.jsinco.luma.lumaevents.explorer.ExplorerMile;
+import dev.jsinco.luma.lumaevents.npc.constants.TutorialSection;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,8 +18,10 @@ import org.jetbrains.annotations.Nullable;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -25,18 +29,19 @@ import java.util.UUID;
 public class EventPlayer implements Serializable {
 
     private final UUID uuid;
-    private final List<ActiveExplorerMile> unlockedExplorerMiles;
+    private final List<TutorialSection> completedTutorialSections;
+    private final Set<ActiveExplorerMile> unlockedExplorerMiles;
 
     // Initial creation
     public EventPlayer(UUID uuid) {
-        this(uuid, new ArrayList<>());
+        this(uuid, new ArrayList<>(), new HashSet<>());
 
         // Unlock 10 random ExplorerMiles for them, rest will have to be discovered or unlocked
         int i = 0;
         Collection<ExplorerMile<?>> explorerMiles = ExplorerMiles.values();
         if (explorerMiles.size() < 10) {
             for (ExplorerMile<?> explorerMile : explorerMiles) {
-                unlockedExplorerMiles.add(new ActiveExplorerMile(explorerMile, 0));
+                unlockedExplorerMiles.add(new ActiveExplorerMile(explorerMile));
             }
         } else {
             while (i < 10) {
@@ -45,16 +50,28 @@ public class EventPlayer implements Serializable {
                     continue;
                 }
 
-                unlockedExplorerMiles.add(new ActiveExplorerMile(explorerMile, 0));
+                unlockedExplorerMiles.add(new ActiveExplorerMile(explorerMile));
                 i++;
             }
         }
     }
 
     // Gson load
-    public EventPlayer(UUID uuid, List<ActiveExplorerMile> unlockedExplorerMiles) {
+    public EventPlayer(UUID uuid, List<TutorialSection> completedTutorialSections, Set<ActiveExplorerMile> unlockedExplorerMiles) {
         this.uuid = uuid;
+        this.completedTutorialSections = completedTutorialSections;
         this.unlockedExplorerMiles = unlockedExplorerMiles;
+    }
+
+    public void addCompletedTutorialSection(TutorialSection section) {
+        if (this.completedTutorialSections.contains(section)) {
+            return;
+        }
+        this.completedTutorialSections.add(section);
+    }
+
+    public boolean hasCompletedTutorialSection(TutorialSection section) {
+        return this.completedTutorialSections.contains(section);
     }
 
     public void sendMessage(String m) {
@@ -129,15 +146,34 @@ public class EventPlayer implements Serializable {
         return false;
     }
 
-    public void fireForExplorerMiles(Object event) {
-        List<ActiveExplorerMile> testableExplorerMiles = new ArrayList<>(unlockedExplorerMiles);
+    public <T> ActiveExplorerMile getActiveExplorerMile(ExplorerMile<T> explorerMile) {
+        for (ActiveExplorerMile activeExplorerMile : unlockedExplorerMiles) {
+            if (Objects.equals(activeExplorerMile.getMile().getFIELD_NAME(), explorerMile.getFIELD_NAME())) {
+                return activeExplorerMile;
+            }
+        }
+        return null;
+    }
+
+    public <T> int getCurrentQuantity(ExplorerMile<T> explorerMile) {
+        for (ActiveExplorerMile activeExplorerMile : unlockedExplorerMiles) {
+            if (Objects.equals(activeExplorerMile.getMile().getFIELD_NAME(), explorerMile.getFIELD_NAME())) {
+                return activeExplorerMile.getCurrentQuantity();
+            }
+        }
+        return 0;
+    }
+
+    public synchronized void fireForExplorerMiles(Object event) {
+        Set<ActiveExplorerMile> testableExplorerMiles = new HashSet<>(this.unlockedExplorerMiles);
 
         for (ExplorerMile<?> explorerMile : ExplorerMiles.asMap().values()) {
             if (explorerMile.getEventClass() == event.getClass() && !hasUnlockedExplorerMile(explorerMile)) {
                 Util.log("Testing an ExplorerMile for which a player does not have any data for: " + explorerMile);
-                testableExplorerMiles.add(new ActiveExplorerMile(explorerMile, 0));
+                testableExplorerMiles.add(new ActiveExplorerMile(explorerMile));
             }
         }
+
 
         for (ActiveExplorerMile activeExplorerMile : testableExplorerMiles) {
             if (activeExplorerMile.getMile().getEventClass() == event.getClass()) {
@@ -146,8 +182,8 @@ public class EventPlayer implements Serializable {
         }
 
         testableExplorerMiles.forEach(activeExplorerMile -> {
-            if (activeExplorerMile.getCurrentQuantity() > 0 && !unlockedExplorerMiles.contains(activeExplorerMile)) {
-                unlockedExplorerMiles.add(activeExplorerMile);
+            if (activeExplorerMile.hasProgress() && !hasUnlockedExplorerMile(activeExplorerMile.getMile())) {
+                this.unlockedExplorerMiles.add(activeExplorerMile);
             }
         });
     }

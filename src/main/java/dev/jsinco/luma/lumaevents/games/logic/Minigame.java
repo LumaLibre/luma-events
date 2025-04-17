@@ -159,6 +159,9 @@ public sealed abstract class Minigame extends BukkitRunnable implements Listener
                         // being changed to true, so we can just set them to false and return
                         this.active = false;
                         this.open = false;
+                        if (this.inventoryTampering != null) {
+                            unregisterEvents(this.inventoryTampering);
+                        }
                         Util.broadcast("Not enough players joined to start " + this.name);
                         return;
                     }

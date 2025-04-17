@@ -3,11 +3,11 @@ package dev.jsinco.luma.lumaevents.explorer.events.hooks;
 import com.ghostchu.quickshop.api.event.economy.ShopSuccessPurchaseEvent;
 import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
 import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
-import dev.jsinco.luma.lumaevents.explorer.events.ExplorerListener;
+import dev.jsinco.luma.lumaevents.explorer.events.AbstractExplorerListener;
 import org.bukkit.event.EventHandler;
 
 @AutoRegister(value = RegisterType.LISTENER, listenerRequires = "QuickShop-Hikari")
-public class QuickShopListeners extends ExplorerListener {
+public class QuickShopListeners extends AbstractExplorerListener {
 
     @EventHandler
     public void onShopSuccessfulTransaction(ShopSuccessPurchaseEvent event) {

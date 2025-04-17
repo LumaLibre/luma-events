@@ -9,7 +9,7 @@ import org.bukkit.event.Listener;
 
 import java.util.UUID;
 
-public abstract class ExplorerListener implements Listener {
+public abstract class AbstractExplorerListener implements Listener {
 
     public static void fire(Object event, Player player) {
         fire(event, player.getUniqueId());

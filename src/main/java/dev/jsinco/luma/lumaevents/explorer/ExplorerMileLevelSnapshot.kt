@@ -1,48 +1,53 @@
 package dev.jsinco.luma.lumaevents.explorer
 
-data class ExplorerMileLevelSnapshot(
+class ExplorerMileLevelSnapshot(
+    val maxQuantity: Int,
     var currentQuantity: Int,
-    val quantity: Int,
-    val levels: Int,
+    val maxLevels: Int,
+    var currentLevel: Int,
     val levelMultiplier: Double,
 ) {
 
-    fun getCurrentLevelQuantity(): Int {
-        if (currentQuantity == 0) {
-            return quantity
-        } else if (currentQuantity >= levels) {
-            return -1
+    fun isCompleted(): Boolean {
+        return currentLevel >= maxLevels //&& currentQuantity >= this.getMaxQuantityForLevel(currentLevel)
+    }
+
+    fun tryProgressLevel(): Boolean {
+        if (currentLevel >= maxLevels) {
+            return false
         }
 
-        return (currentQuantity * quantity).times(levelMultiplier).toInt()
-    }
 
-    fun getNextLevelQuantity(): Int {
-        if (currentQuantity == 0) {
-            return quantity
-        } else if (currentQuantity >= levels) {
-            return -1
+        if (currentQuantity >= this.getMaxQuantityForLevel(currentLevel)) {
+            currentLevel++
+            currentQuantity = 0
+            return true
         }
-
-        return (currentQuantity + 1 * quantity).times(levelMultiplier).toInt()
+        return false
     }
 
-    fun getCurrentLevel(): Int {
-        if (currentQuantity == 0) {
-            return 0
+    fun getMaxQuantityForCurrentLevel(): Int {
+        return getMaxQuantityForLevel(currentLevel)
+    }
+
+    fun getMaxQuantityForLevel(level: Int): Int {
+        if (level < 1) {
+            return maxQuantity
         }
-
-        val level = currentQuantity / quantity
-
-        return level.coerceIn(0, levels - 1)
+        return (maxQuantity * level * levelMultiplier).toInt()
     }
 
-
-    fun getMaximumQuantity(): Int {
-        return this.getQuantityForLevel(levels)
+    fun getNextLevel(): Int {
+        return currentLevel + 1
     }
 
-    fun getQuantityForLevel(level: Int): Int {
-        return (quantity * level).times(levelMultiplier).toInt()
+    fun getLevelsUntilCompletion(): Int {
+        var totalLevelsUntilCompletion = 0
+        for (i in 0 .. maxLevels) {
+            if (i > currentLevel) {
+                totalLevelsUntilCompletion++
+            }
+        }
+        return totalLevelsUntilCompletion
     }
 }

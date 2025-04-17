@@ -3,11 +3,11 @@ package dev.jsinco.luma.lumaevents.explorer.events.hooks;
 import com.oheers.fish.api.EMFFishEvent;
 import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
 import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
-import dev.jsinco.luma.lumaevents.explorer.events.ExplorerListener;
+import dev.jsinco.luma.lumaevents.explorer.events.AbstractExplorerListener;
 import org.bukkit.event.EventHandler;
 
 @AutoRegister(value = RegisterType.LISTENER, listenerRequires = "EvenMoreFish")
-public class EMFListeners extends ExplorerListener {
+public class EMFListeners extends AbstractExplorerListener {
 
     @EventHandler
     public void onEMFFish(EMFFishEvent event) {

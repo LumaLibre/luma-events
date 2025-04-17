@@ -50,7 +50,7 @@ public class IAItemStacksListener implements Listener {
     }
 
     @Nullable
-    public static ItemStack getPostCard(CustomStackNameSpace postCard) {
+    public static ItemStack getCachedIAStack(CustomStackNameSpace postCard) {
         CachedIAItemStack cachedIAItemStack = cachedIAItemStacks.get(postCard);
         if (cachedIAItemStack == null) {
             return null;

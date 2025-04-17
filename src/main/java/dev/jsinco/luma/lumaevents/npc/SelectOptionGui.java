@@ -2,14 +2,24 @@ package dev.jsinco.luma.lumaevents.npc;
 
 import dev.jsinco.luma.lumacore.manager.guis.AbstractGui;
 import dev.jsinco.luma.lumacore.manager.guis.GuiItem;
+import dev.jsinco.luma.lumaevents.explorer.events.IAItemStacksListener.CustomStackNameSpace;
 import dev.jsinco.luma.lumaevents.explorer.gui.ExplorerMilesGui;
+import dev.jsinco.luma.lumaevents.npc.constants.StalkMarketDays;
+import dev.jsinco.luma.lumaevents.npc.constants.TutorialSection;
+import dev.jsinco.luma.lumaevents.npc.events.ChatPromptInputListener.ChatInputCallback;
+import dev.jsinco.luma.lumaevents.npc.events.ChatPromptInputListener.ChatInputCallback.ChatInputCallbackHandler;
+import dev.jsinco.luma.lumaevents.npc.obj.StalkMarketDay;
 import dev.jsinco.luma.lumaevents.obj.DialogueText;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import dev.jsinco.luma.lumaevents.tokens.TokenExchanging;
+import dev.jsinco.luma.lumaevents.tokens.TokenExchanging.TokenType;
+import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumaevents.utility.gui.GuiUtil;
 import lombok.Getter;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.entity.HumanEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
@@ -23,41 +33,79 @@ public class SelectOptionGui extends AbstractGui {
     private DialogueText dialogueText;
 
     private final GuiItem stalkMarket = new GuiItem(
-            11,
-            GuiUtil.item(Material.CARROT, true, "<b>What's the price of carrots?"),
+            21,
+            GuiUtil.item(Material.CARROT, true, "<b>What's the price of Baskets?"),
             (event, a) -> {
-                dialogueText.queueText("The current price of carrots is $2.50.");
-                dialogueText.queueText("How else can I help?");
+                StalkMarketDay stalkMarketDay = StalkMarketDays.forToday();
+                dialogueText.queueText("Today I'm selling baskets for <aqua>" + stalkMarketDay.getPrice() + " Carrots<green> each!");
+                dialogueText.queueText("Let me know if you'd like to buy some baskets! ♥(ˆ⌣ˆԅ)");
                 HumanEntity h = event.getWhoClicked();
                 h.closeInventory();
-                dialogueText.sendQueuedText(NamedTextColor.GREEN, null, () -> {
+                dialogueText.sendQueuedText(() -> {
                     this.open(h);
                 });
             }
     );
 
     private final GuiItem barter = new GuiItem(
-            12,
-            GuiUtil.item(Material.GOLDEN_CARROT, true, "<b>Trade carrots for candies"),
+            22,
+            GuiUtil.item(Material.GOLDEN_CARROT, true, "<b><light_purple>Let's trade!"),
             (event, a) -> {
-                dialogueText.queueText("Oooh, want to trade some carrots for candies?");
-                dialogueText.queueText("I'm currently buying carrots for X candies.");
+                StalkMarketDay stalkMarket = StalkMarketDays.forToday();
+                Player player = (Player) event.getWhoClicked();
+                player.closeInventory();
+
+                dialogueText.queueText("Oooh, want to trade some carrots for baskets?");
+                dialogueText.queueText("Tell ya what, I'll give you <aqua>1 Basket <green>for <aqua>" + stalkMarket.getPrice() + " Carrots<green>.");
                 dialogueText.queueText("So,");
-                dialogueText.queueText("how many carrots do you want to trade?");
-                HumanEntity h = event.getWhoClicked();
-                h.closeInventory();
-                dialogueText.sendQueuedText(NamedTextColor.GREEN, null, () -> {
-                    this.open(h);
+                dialogueText.queueText("how many baskets do you want to buy?");
+
+
+                ChatInputCallbackHandler handler = (input) -> {
+                    int amount = input.equalsIgnoreCase("max")
+                            ? TokenExchanging.getAmount(player, TokenType.CARROT)
+                            : (Util.getInt(input, -1) * stalkMarket.getPrice()); // ex: 1 basket = 4 carrots
+                    if (amount < 1) {
+                        dialogueText.queueText("Oh, so you don't want to trade?");
+                        dialogueText.queueText("No worries!");
+                    } else {
+                        if (stalkMarket.trade(player, amount)){
+                            dialogueText.queueText("Pleasure doing business with ya!");
+                        } else {
+                            dialogueText.queueText("Oh, I don't think you have enough carrots for that...");
+                            dialogueText.queueText("Let me know if you'd like to trade a smaller amount!");
+                        }
+                    }
+                    dialogueText.sendQueuedText(() -> {
+                        this.open(player);
+                    });
+                };
+
+                dialogueText.sendQueuedText(() -> {
+                    ChatInputCallback.of(
+                            player,
+                            Util.title("<red>Input", "Input a value for this NPC"),
+                            "In chat, type how many <aqua>baskets</aqua> you would like to buy from Anais. Type <aqua>'cancel'</aqua> to return, or <aqua>'max'</aqua> to buy as many as possible.",
+                            handler
+                    );
                 });
             }
     );
 
     public final GuiItem explorerMiles = new GuiItem(
-            13,
-            GuiUtil.item(Material.PAPER, true, "<b>Explorer miles"),
+            23,
+            GuiUtil.item(CustomStackNameSpace.POSTCARD_CITY_NO_ART, true, "<b>Explorer Miles"),
             (event, guiItem) -> {
                 HumanEntity h = event.getWhoClicked();
-                new ExplorerMilesGui(eventPlayer).open(h);
+                ExplorerMilesGui gui = new ExplorerMilesGui(eventPlayer);
+                if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.EXPLORER_MILES)) {
+                    h.closeInventory();
+                    TutorialSection.EXPLORER_MILES.completeTutorial(eventPlayer, dialogueText, () -> {
+                        gui.open(h);
+                    });
+                } else {
+                    gui.open(h);
+                }
             }
     );
 
@@ -65,6 +113,7 @@ public class SelectOptionGui extends AbstractGui {
     public SelectOptionGui(EventPlayer eventPlayer) {
         this.eventPlayer = eventPlayer;
         this.dialogueText = new DialogueText(eventPlayer);
+        this.dialogueText.setIfAbsentColor(NamedTextColor.GREEN);
         this.autoRegister();
     }
 
@@ -74,8 +123,11 @@ public class SelectOptionGui extends AbstractGui {
     }
 
     @Override
-    public void onInventoryClose(@NotNull InventoryCloseEvent inventoryCloseEvent) {
-
+    public void onInventoryClose(@NotNull InventoryCloseEvent event) {
+        if (event.getReason() == InventoryCloseEvent.Reason.PLAYER) {
+            System.out.println("Player closed inventory");
+        }
     }
+
 
 }

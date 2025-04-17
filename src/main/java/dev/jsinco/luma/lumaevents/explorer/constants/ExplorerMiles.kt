@@ -78,9 +78,10 @@ object ExplorerMiles {
             Talkative much? We get it, you love to chat.
             But don't worry, we won't judge you for it.
         """.trimIndent(),
+        //objective = "Send messages in chat.",
         quantity = 100,
         levels = 2,
-        levelMultiplier = 2.0,
+        levelMultiplier = 0.5,
         eventClass = AsyncChatEvent::class.java
     ) { _, levelSnapShot, _ ->
         levelSnapShot.currentQuantity += 1
@@ -89,8 +90,9 @@ object ExplorerMiles {
     val DISCUSS_EASTER_RELATED_TOPICS = ExplorerMile<AsyncChatEvent>(
         title = "Discuss Easter Related Topics",
         desc = "TODO",
-        quantity = 1,
-        levels = 5,
+        //objective = "Say easter related words in chat.",
+        quantity = 2,
+        levels = 3,
         eventClass = AsyncChatEvent::class.java,
     ) { event, levelSnapShot, data ->
         val easterTopicWords = listOf("egg", "bunny", "chocolate", "hunt", "basket", "spring", "candy", "rabbit", "easter", "event")
@@ -111,6 +113,7 @@ object ExplorerMiles {
     val FARM_CARROTS = ExplorerMile<BlockBrokenExplorerEvent>(
         title = "Farm Carrots",
         desc = "TODO",
+        //objective = "Break carrots.",
         quantity = 350,
         levels = 2,
         levelMultiplier = 2.0,
@@ -127,6 +130,7 @@ object ExplorerMiles {
         desc = """
             A better description would be nice here.
         """.trimIndent(),
+        //objective = "Place carrots.",
         quantity = 350,
         levels = 2,
         levelMultiplier = 2.0,
@@ -143,6 +147,7 @@ object ExplorerMiles {
             You didn’t come all this way for coal. 
             Smash those sparkly suckers and get rich—or at least <i>look</i> rich!
         """.trimIndent(),
+        //objective = "Break diamond ores.",
         quantity = 100,
         levels = 2,
         levelMultiplier = 2.0,
@@ -160,6 +165,7 @@ object ExplorerMiles {
             Trade your way to riches by breaking emerald ores! 
             Remember, villagers might offer you deals, but they sure love crushing loaf.
         """.trimIndent(),
+        //objective = "Break emerald ores.",
         quantity = 50,
         levels = 2,
         levelMultiplier = 2.0,
@@ -176,6 +182,7 @@ object ExplorerMiles {
             The hardest block in all of Minecraft! Right?
             Well, at least I <i>think</i> it is....
         """.trimIndent(),
+        //objective = "Break obsidian.",
         quantity = 100,
         levels = 4,
         levelMultiplier = 1.5,
@@ -192,6 +199,7 @@ object ExplorerMiles {
         desc = """
             A better description would be nice here.
         """.trimIndent(),
+        //objective = "Break ancient debris.",
         quantity = 100,
         levels = 4,
         levelMultiplier = 1.5,
@@ -208,6 +216,7 @@ object ExplorerMiles {
             Break blocks? That's a little vague, don't you think?
             But hey, we'll reward you for it anyway!
         """.trimIndent(),
+        //objective = "Break any block.",
         quantity = 50000,
         levels = 2,
         levelMultiplier = 2.0,
@@ -222,6 +231,7 @@ object ExplorerMiles {
             For this mile, you'll need to kill a few poor bunnies.
             And don't worry, we're only asking you to take care of the baby ones!
         """.trimIndent(),
+        //objective = "Kill baby rabbits.",
         quantity = 20,
         levels = 3,
         levelMultiplier = 1.5,
@@ -1069,6 +1079,8 @@ object ExplorerMiles {
 
     // TODO: HoarderSellEvent
     // TODO: SimpleQuests
+    // TODO: JetsAntiAFK
+    // TODO: PlaceholderAPI
 
     val NABBIT_PICKUP_CARROTS = ExplorerMile<NabbitPickupCarrot>(
         title = "Pickup Carrots in 'The Nabbits'",
@@ -1168,6 +1180,8 @@ object ExplorerMiles {
     private val KEYS: MutableMap<String, ExplorerMile<*>> = mutableMapOf()
     @JvmStatic fun asMap() = KEYS
     @JvmStatic fun values() = KEYS.values
+    @JvmStatic fun valueOf(name: String) = KEYS[name]
+    @JvmStatic fun fromString(name: String) = KEYS[name]
     init {
         ExplorerMiles::class.java.declaredFields.forEach { field ->
             if (field.type == ExplorerMile::class.java) {

@@ -43,7 +43,7 @@ dependencies {
     compileOnly("com.github.NuVotifier:NuVotifier:2.7.2")
     compileOnly("com.olziedev:playerwarps-api:7.7.1")
     compileOnly("dev.jsinco.luma.lumacore:LumaCore:568ff58")
-    compileOnly("dev.jsinco.luma.lumaitems:LumaItems:a7ea609")
+    compileOnly("dev.jsinco.luma.lumaitems:LumaItems:e32431b")
     compileOnly("dev.jsinco.lumaglowapi:LumaGlowAPI:3cb670d")
     compileOnly("dev.lone:api-itemsadder:4.0.10")
     compileOnly("me.clip:placeholderapi:2.11.6")

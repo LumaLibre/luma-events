@@ -8,11 +8,11 @@ import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.explorer.ActiveExplorerMile;
 import dev.jsinco.luma.lumaevents.explorer.custom.EarnTokenExplorerEvent;
 import dev.jsinco.luma.lumaevents.explorer.events.ExplorerListeners;
-import dev.jsinco.luma.lumaitems.api.LumaItemsAPI;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -28,13 +28,13 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public final class Util {
@@ -58,6 +58,9 @@ public final class Util {
     }
 
     public static void sendMsg(CommandSender receiver, String message) {
+        if (receiver == null) {
+            return;
+        }
         receiver.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString("#CBB6E9")));
     }
 
@@ -79,17 +82,26 @@ public final class Util {
         return MiniMessage.miniMessage().deserialize("<!i>" + string);
     }
 
+    public static Component color(String string, TextColor ifAbsentColor) {
+        return color(string).colorIfAbsent(ifAbsentColor);
+    }
+
     public static List<Component> color(List<String> strings) {
         return strings.stream().map(Util::color).toList();
     }
 
-    public static List<Component> colorList(List<String> strings, TextColor textColor) {
+    public static List<Component> color(List<String> strings, TextColor textColor) {
         return strings.stream().map(string -> {
             Component component = color(string);
             return component.colorIfAbsent(textColor);
         }).toList();
     }
 
+    public static Title title(String title, String subtitle) {
+        return Title.title(Util.color(title), Util.color(subtitle));
+    }
+
+    @Nullable
     public static <P, C> C getPersistentKey(ItemStack item, String strKey, PersistentDataType<P, C> dataType) {
         return item.getItemMeta().getPersistentDataContainer().get(new NamespacedKey(EventMain.getInstance(), strKey), dataType);
     }
@@ -117,24 +129,70 @@ public final class Util {
         return item.hasItemMeta() && item.getItemMeta().getPersistentDataContainer().has(key, dataType);
     }
 
+    public static void giveItem(Player player, ItemStack itemStack, int amount) {
+        giveItem(player, itemStack.asQuantity(amount));
+    }
 
+    public static boolean takeItem(Player player, ItemStack itemStack) {
+        int amount = itemStack.getAmount();
+        return takeItem(player, itemStack, amount);
+    }
 
-    public static void giveItem(Player player, ItemStack item) {
-        PlayerInventory inventory = player.getInventory();
-        boolean itemAdded = false;
-
-        for (int i = 0; i < 36; i++) {  // Inventory slots 0 to 35
-            if (inventory.getItem(i) == null || inventory.getItem(i).isSimilar(item)) {
-                inventory.addItem(item);  // Add the item to the inventory
-                itemAdded = true;
-                break;
+    public static void giveItem(Player player, ItemStack itemStack) {
+        Map<Integer, ItemStack> didntFit = player.getInventory().addItem(itemStack);
+        if (!didntFit.isEmpty()) {
+            for (ItemStack itemStack1 : didntFit.values()) {
+                player.getWorld().dropItem(player.getLocation(), itemStack1);
             }
         }
-        // If item wasn't added (inventory full or no matching slots), drop the item at the player's location
-        if (!itemAdded) {
-            player.getWorld().dropItem(player.getLocation(), item);
-        }
     }
+
+    public static boolean takeItem(Player player, ItemStack itemStack, int amount) {
+        PlayerInventory inventory = player.getInventory();
+        if (!inventory.containsAtLeast(itemStack, amount)) {
+            return false;
+        }
+
+        Map<Integer, ItemStack> couldNotRemove = inventory.removeItemAnySlot(itemStack.asQuantity(amount));
+        if (couldNotRemove.isEmpty()) {
+            return true;
+        }
+        throw new RuntimeException("Failed to remove: " + couldNotRemove + " from " + player.getName() + "'s inventory!");
+    }
+
+
+//    public static void giveItem(Player player, ItemStack item) {
+//        PlayerInventory inventory = player.getInventory();
+//        boolean itemAdded = false;
+//
+//        for (int i = 0; i < 36; i++) {  // Inventory slots 0 to 35
+//            if (inventory.getItem(i) == null || inventory.getItem(i).isSimilar(item)) {
+//                inventory.addItem(item);  // Add the item to the inventory
+//                itemAdded = true;
+//                break;
+//            }
+//        }
+//        // If item wasn't added (inventory full or no matching slots), drop the item at the player's location
+//        if (!itemAdded) {
+//            player.getWorld().dropItem(player.getLocation(), item);
+//        }
+//    }
+
+
+//    public static boolean takeItem(Player player, ItemStack item, int amount) {
+//        int totalFound = 0;
+//
+//        for (ItemStack invItem : player.getInventory().getContents()) {
+//            if (invItem != null && invItem.isSimilar(item)) {
+//                totalFound += invItem.getAmount();
+//                if (totalFound >= amount) {
+//                    player.getInventory().removeItemAnySlot(item.asQuantity(amount));
+//                    return true;
+//                }
+//            }
+//        }
+//        return false;
+//    }
 
     public static ItemStack createBasicItem(Material material, String name, boolean glint, List<String> lore, List<String> datas) {
         ItemStack item = new ItemStack(material);

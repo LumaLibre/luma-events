@@ -36,7 +36,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerRiptideEvent;
 
 @AutoRegister(RegisterType.LISTENER)
-public class ExplorerListeners extends ExplorerListener {
+public final class ExplorerListeners extends AbstractExplorerListener {
 
     @EventHandler
     public void onChat(AsyncChatEvent event) {

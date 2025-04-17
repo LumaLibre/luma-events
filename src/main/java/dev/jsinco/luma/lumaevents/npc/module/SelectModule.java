@@ -1,4 +1,4 @@
-package dev.jsinco.luma.lumaevents.commands.modules;
+package dev.jsinco.luma.lumaevents.npc.module;
 
 import dev.jsinco.luma.lumacore.manager.commands.CommandInfo;
 import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
@@ -18,27 +18,25 @@ import java.util.List;
 
 @AutoRegister(RegisterType.SUBCOMMAND)
 @CommandInfo(
-        name = "testdialogue",
-        permission = "lumaevents.admin",
-        description = "test dialogue",
-        parent = CommandManager.class,
-        usage = "/<command> testdialogue"
+        name = "select",
+        permission = "lumaevents.internal",
+        parent = AnaisModuleManager.class
 )
-public class TestDialogueCommand implements CommandModule {
-
+public class SelectModule implements NPCCommandModule {
     @Override
-    public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
-        Player player = (Player) commandSender;
-        EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
+    public boolean execute(EventMain plugin, Player target, String label, String[] args) {
+        EventPlayer eventPlayer = EventPlayerManager.getByUUID(target.getUniqueId());
 
-        //DialogueText dialogueText = new DialogueText(eventPlayer);
-        //dialogueText.queueText("Hello, hello! How are you, " + player.getName() + "?");
-        //dialogueText.queueText("How can I help you today?");
-        //dialogueText.sendQueuedText(NamedTextColor.GREEN, null, () -> {
-            new SelectOptionGui(eventPlayer).open(player);
-        //});
+        DialogueText dialogueText = new DialogueText(eventPlayer);
+        dialogueText.setIfAbsentColor(NamedTextColor.GREEN);
+        dialogueText.queueText("Hello, hello! How are you, " + target.getName() + "?");
+        dialogueText.queueText("How can I help you today?");
+        dialogueText.sendQueuedText(() -> {
+            new SelectOptionGui(eventPlayer).open(target);
+        });
         return true;
     }
+
 
     @Override
     public List<String> tabComplete(EventMain eventMain, CommandSender commandSender, String[] strings) {

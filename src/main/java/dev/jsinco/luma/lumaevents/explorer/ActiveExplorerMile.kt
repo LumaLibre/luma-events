@@ -7,10 +7,15 @@ import com.google.gson.stream.JsonWriter
 import dev.jsinco.luma.lumaevents.explorer.constants.ExplorerMiles
 import dev.jsinco.luma.lumaevents.utility.Util
 
+typealias ExplorerMileLevelSnapshotModifier = (levelSnapshot: ExplorerMileLevelSnapshot) -> Unit
+
 class ActiveExplorerMile(
     val mile: ExplorerMile<*>,
     var currentQuantity: Int,
+    var currentLevel: Int,
 ) {
+
+    constructor(mile: ExplorerMile<*>) : this(mile, 0, 0)
 
     private var data: MutableMap<String, Any> = mutableMapOf()
     fun data(): MutableMap<String, Any> = data
@@ -18,12 +23,13 @@ class ActiveExplorerMile(
 
     fun <T> apply(event: T) {
         val levelSnapshot = ExplorerMileLevelSnapshot(
+            maxQuantity = mile.quantity,
             currentQuantity = this.currentQuantity,
-            quantity = mile.quantity,
-            levels = mile.levels,
+            maxLevels = mile.levels,
+            currentLevel = this.currentLevel,
             levelMultiplier = mile.levelMultiplier
         )
-        if (levelSnapshot.currentQuantity >= levelSnapshot.getMaximumQuantity()) {
+        if (levelSnapshot.isCompleted()) {
             Util.log("Skipping completed ExplorerMile: $this")
             return
         }
@@ -31,16 +37,54 @@ class ActiveExplorerMile(
         @Suppress("UNCHECKED_CAST")
         (mile.handler as ExplorerMileEventHandler<T>)(event, levelSnapshot, data)
 
-        if (levelSnapshot.currentQuantity != currentQuantity) {
-            currentQuantity = levelSnapshot.currentQuantity
-        }
+
+        levelSnapshot.tryProgressLevel()
+        this.currentQuantity = levelSnapshot.currentQuantity
+        this.currentLevel = levelSnapshot.currentLevel
 
         // TODO: Needs handling of rewards
 
     }
 
+    fun modifyLevelSnapshot(explorerSnapshotModifier: ExplorerMileLevelSnapshotModifier) {
+        val levelSnapshot = ExplorerMileLevelSnapshot(
+            maxQuantity = mile.quantity,
+            currentQuantity = this.currentQuantity,
+            maxLevels = mile.levels,
+            currentLevel = this.currentLevel,
+            levelMultiplier = mile.levelMultiplier
+        )
+        explorerSnapshotModifier(levelSnapshot)
+
+        this.currentQuantity = levelSnapshot.currentQuantity
+        this.currentLevel = levelSnapshot.currentLevel
+    }
+
+    fun getUnchangeableLevelSnapshot(): ExplorerMileLevelSnapshot {
+        return ExplorerMileLevelSnapshot(
+            maxQuantity = mile.quantity,
+            currentQuantity = this.currentQuantity,
+            maxLevels = mile.levels,
+            currentLevel = this.currentLevel,
+            levelMultiplier = mile.levelMultiplier
+        )
+    }
+
+    fun hasProgress(): Boolean {
+        return currentQuantity > 0 || currentLevel > 0
+    }
+
     override fun toString(): String {
         return "ActiveExplorerMile(mile=$mile, currentQuantity=$currentQuantity, data=$data)"
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as ActiveExplorerMile
+
+        return mile == other.mile
     }
 
 
@@ -52,6 +96,7 @@ class ActiveExplorerMile(
             writer.beginObject()
             writer.name("mileImplName").value(mileImplName)
             writer.name("currentQuantity").value(activeExplorerMile.currentQuantity)
+            writer.name("currentLevel").value(activeExplorerMile.currentLevel)
 
             // Serialize the data map
             if (activeExplorerMile.data.isNotEmpty()) {
@@ -87,6 +132,7 @@ class ActiveExplorerMile(
         override fun read(reader: JsonReader): ActiveExplorerMile? {
             var mileImplName: String? = null
             var currentQuantity = 0
+            var currentLevel = 0
             val dataMap: MutableMap<String, Any> = mutableMapOf()
 
             reader.beginObject()
@@ -98,6 +144,9 @@ class ActiveExplorerMile(
 
                     "currentQuantity" -> {
                         currentQuantity = reader.nextInt()
+                    }
+                    "currentLevel" -> {
+                        currentLevel = reader.nextInt()
                     }
                     "data" -> {
                         reader.beginObject()
@@ -136,7 +185,7 @@ class ActiveExplorerMile(
                 return null
             }
 
-            val activeExplorerMile = ActiveExplorerMile(explorerMile, currentQuantity)
+            val activeExplorerMile = ActiveExplorerMile(explorerMile, currentQuantity, currentLevel)
             if (dataMap.isNotEmpty()) {
                 activeExplorerMile.data = dataMap
             }

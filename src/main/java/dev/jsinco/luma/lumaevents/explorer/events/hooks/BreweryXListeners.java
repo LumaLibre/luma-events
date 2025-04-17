@@ -7,11 +7,11 @@ import com.dre.brewery.api.events.PlayerPushEvent;
 import com.dre.brewery.api.events.brew.BrewDrinkEvent;
 import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
 import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
-import dev.jsinco.luma.lumaevents.explorer.events.ExplorerListener;
+import dev.jsinco.luma.lumaevents.explorer.events.AbstractExplorerListener;
 import org.bukkit.event.EventHandler;
 
 @AutoRegister(value = RegisterType.LISTENER, listenerRequires = "BreweryX")
-public class BreweryXListeners extends ExplorerListener {
+public class BreweryXListeners extends AbstractExplorerListener {
 
     @EventHandler
     public void onIngredientAdd(IngedientAddEvent event) {
