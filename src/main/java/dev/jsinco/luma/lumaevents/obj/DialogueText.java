@@ -8,6 +8,7 @@ import lombok.Setter;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
@@ -117,11 +118,12 @@ public class DialogueText {
 
 
     private void sendActionBar(Player player, String substring) {
-        //Component component = Component.text(substring);
 
-        //if (color != null) component = component.color(color);
-        //if (decoration != null) component = component.decorate(decoration);
         player.sendActionBar(Util.color(substring, this.ifAbsentColor));
+        player.playSound(player.getLocation(), Sound.UI_HUD_BUBBLE_POP, 0.75f, 1f);
+//        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+//
+//        })
     }
 }
 

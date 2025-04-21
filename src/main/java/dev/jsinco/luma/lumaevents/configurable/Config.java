@@ -20,7 +20,7 @@ public class Config extends OkaeriConfig {
     @Comment("Automatic minigame cooldown in milliseconds")
     private long automaticMinigameCooldown = 7200000L;
 
-    @Comment("Default location for /valentide")
+    @Comment("Default location for /easter")
     private Location eventSpawnLocation;
 
     @Comment("Would be /spawn location")

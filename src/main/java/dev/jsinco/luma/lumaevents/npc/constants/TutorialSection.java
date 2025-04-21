@@ -37,6 +37,18 @@ public enum TutorialSection {
             "You completed <aqua>5<green> Explorer Miles!",
             "You can now use <gold>/easter miles<green> to check your miles.",
             "Enjoy! ♥(ˆ⌣ˆԅ) ~ Anais"
+    ),
+    ANAIS_INTRODUCTION(
+            "Hello there, <gold>stranger!",
+            "I'm Anais, the <gold>Stalk Market<green> lady!",
+            "I sell baskets for carrots, and I also help ya with your Explorer Miles.",
+            "Let me know if ya need anything!"
+    ),
+    QUIZ_REWARD(
+            "Oh? How did you find me all the way down here?",
+            "I was just about to go on a little adventure myself...",
+            "Then I got lost down this rabbit hole and now I'm stuck.",
+            "Here, take this and go find some help..."
     );
 
     private final String[] lines;

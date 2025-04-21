@@ -28,19 +28,27 @@ public class BunnyArenaListener implements Listener {
         if (!regionHandler.getPlayArea().contains(entity)) {
             return;
         }
-        if (!(event.getDamageSource().getCausingEntity() instanceof Player killer)) {
-            return;
-        }
-
-        entity.getLocation().getNearbyPlayers(3.0).forEach(player -> {
-            if (player != killer) {
-                regionHandler.rewardBunnyKill(entity, player);
-            }
-        });
-        regionHandler.rewardBunnyKill(entity, killer);
 
         event.setDroppedExp(0);
         event.getDrops().clear();
+
+        Player killer;
+        if (event.getDamageSource().getCausingEntity() instanceof Player inline) {
+            killer = inline;
+        } else {
+            killer = null;
+        }
+
+        if (killer != null) {
+            regionHandler.rewardBunnyKill(entity, killer);
+        }
+
+        entity.getLocation().getNearbyPlayers(3.0).forEach(player -> {
+            if (killer != null && player == killer) {
+                return;
+            }
+            regionHandler.rewardBunnyKill(entity, player);
+        });
     }
 
     @EventHandler

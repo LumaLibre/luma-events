@@ -44,7 +44,7 @@ public class IAItemStacksListener implements Listener {
                 int customModelData = itemStack.getItemMeta().getCustomModelData();
                 cachedIAItemStacks.put(customStackNameSpace, new CachedIAItemStack(material, customModelData));
             } else {
-                throw new RuntimeException("ItemsAdder is not enabled!");
+                Util.log("CustomStack is null for " + customStackNameSpace.getNamespace());
             }
         }
     }

@@ -71,8 +71,8 @@ public enum BunnyType {
         bunny.customName(Util.color(this.getCustomName()));
         bunny.setCustomNameVisible(true);
         Util.setPersistentKey(bunny, "bunny", PersistentDataType.STRING, this.name());
-        bunny.getAttribute(Attribute.MAX_HEALTH).setBaseValue(60);
-        bunny.setHealth(60);
+        bunny.getAttribute(Attribute.MAX_HEALTH).setBaseValue(40);
+        bunny.setHealth(40);
         bunny.setPersistent(false);
 
         Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {

@@ -19,10 +19,10 @@ public final class StalkMarketDays {
     public static final StalkMarketDay APR_17 = new StalkMarketDay(17, Month.APR, 16);
     public static final StalkMarketDay APR_18 = new StalkMarketDay(18, Month.APR, 15);
     public static final StalkMarketDay APR_20 = new StalkMarketDay(20, Month.APR, 17);
-    public static final StalkMarketDay APR_21 = new StalkMarketDay(21, Month.APR, 18);
-    public static final StalkMarketDay APR_22 = new StalkMarketDay(22, Month.APR, 16);
-    public static final StalkMarketDay APR_23 = new StalkMarketDay(23, Month.APR, 16);
-    public static final StalkMarketDay APR_24 = new StalkMarketDay(24, Month.APR, 16);
+    public static final StalkMarketDay APR_21 = new StalkMarketDay(21, Month.APR, 16);
+    public static final StalkMarketDay APR_22 = new StalkMarketDay(22, Month.APR, 14);
+    public static final StalkMarketDay APR_23 = new StalkMarketDay(23, Month.APR, 15);
+    public static final StalkMarketDay APR_24 = new StalkMarketDay(24, Month.APR, 18);
     public static final StalkMarketDay APR_25 = new StalkMarketDay(25, Month.APR, 14);
     public static final StalkMarketDay APR_26 = new StalkMarketDay(26, Month.APR, 15);
     public static final StalkMarketDay APR_27 = new StalkMarketDay(27, Month.APR, 16);

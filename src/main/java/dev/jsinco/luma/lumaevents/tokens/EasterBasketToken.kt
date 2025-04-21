@@ -16,7 +16,7 @@ class EasterBasketToken : CustomItemFunctions() {
     override fun createItem(): Pair<String, ItemStack> {
         return ItemFactory.builder()
             .name("<b><gradient:#d798d4:#f4d8ea:#94675d:#FCE78F:#80F3B2>Easter Basket</gradient></b>")
-            .lore("<gray>This item needs a", "<gray>description.")
+            .lore("<gray>Carefully gathered by", "<gray>hand, or paw...")
             .material(Material.PLAYER_HEAD)
             .b64PHead("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmU2ZDhjNjk4OGNkMGQxOTk5NzAzMDZhNGQ3NTY0NmQ5NzczZDcxMGViMjE5MzVkYjc3M2ViMjEyMTY3NjAyYiJ9fX0=")
             .tier(Tier.EASTER_2025)

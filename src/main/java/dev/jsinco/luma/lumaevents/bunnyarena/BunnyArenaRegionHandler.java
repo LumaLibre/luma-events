@@ -20,8 +20,8 @@ import java.util.function.Consumer;
 @Setter
 public class BunnyArenaRegionHandler {
 
-    private static final int EXTRA_BUNNIES_PER_PLAYER = 4;
-    private static final int DEFAULT_MAX_BUNNIES = 25;
+    private static final int EXTRA_BUNNIES_PER_PLAYER = 18;
+    private static final int DEFAULT_MAX_BUNNIES = 80;
 
     private final WorldTiedBoundingBox playArea;
     private final WorldTiedBoundingBox spawnArea;
@@ -93,7 +93,6 @@ public class BunnyArenaRegionHandler {
         }
 
         int amount = Util.RANDOM.nextInt(bunnyType.getTokenMin(), bunnyType.getTokenMax());
-        killer.sendMessage("DEBUG: You got: " + amount + " carrots");
         TokenExchanging.give(killer, bunnyType.getTokenType(), amount);
     }
 

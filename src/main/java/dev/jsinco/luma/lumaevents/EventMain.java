@@ -45,7 +45,7 @@ public final class EventMain extends JavaPlugin {
         LocalCustomItemManager.addCustomItem(new EasterBasketToken());
 
         BunnyArenaScheduler.getInstance()
-                .runTaskTimer(this, 0, 90 * 20); // 90 seconds
+                .runTaskTimer(this, 0, 30 * 20); // 30 seconds
         // TODO: Reload this plugin when LumaItems is reloaded
     }
 
