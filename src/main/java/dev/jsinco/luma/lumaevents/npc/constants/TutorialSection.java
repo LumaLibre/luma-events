@@ -25,7 +25,19 @@ public enum TutorialSection {
     ),
     // Anais explains what the Stalk Market is and how it works,
     // players won't see her explanation again
-    STALK_MARKET;
+    STALK_MARKET(
+            "So, ya got some carrots and ya wanna trade?",
+            "Here's the dilly-dally...",
+            "Every day, I'll buy Carrots for a price I think they're worth",
+            "Some days I think Carrots will be worth a bit more, some days less!",
+            "I'll give ya <aqua>1 Basket <green>in exchange for my selling price!",
+            "So, let's get to trading!"
+    ),
+    MILES_COMMAND(
+            "You completed <aqua>5<green> Explorer Miles!",
+            "You can now use <gold>/easter miles<green> to check your miles.",
+            "Enjoy! ♥(ˆ⌣ˆԅ) ~ Anais"
+    );
 
     private final String[] lines;
 

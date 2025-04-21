@@ -65,12 +65,12 @@ public final class ExplorerListeners extends AbstractExplorerListener {
         fire(event, event.getEntity());
     }
 
-    @EventHandler
-    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        if (event.getDamager() instanceof Player player) {
-            fire(event, player);
-        }
-    }
+//    @EventHandler
+//    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+//        if (event.getDamager() instanceof Player player) {
+//            fire(event, player);
+//        }
+//    }
 
     @EventHandler
     public void onPlayerFailMove(PlayerFailMoveEvent event) {

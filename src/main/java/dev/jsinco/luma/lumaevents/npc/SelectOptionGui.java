@@ -34,16 +34,26 @@ public class SelectOptionGui extends AbstractGui {
 
     private final GuiItem stalkMarket = new GuiItem(
             21,
-            GuiUtil.item(Material.CARROT, true, "<b>What's the price of Baskets?"),
+            GuiUtil.item(Material.CARROT, true, "<b><yellow>What's the price of Baskets?"),
             (event, a) -> {
                 StalkMarketDay stalkMarketDay = StalkMarketDays.forToday();
-                dialogueText.queueText("Today I'm selling baskets for <aqua>" + stalkMarketDay.getPrice() + " Carrots<green> each!");
-                dialogueText.queueText("Let me know if you'd like to buy some baskets! ♥(ˆ⌣ˆԅ)");
+                TutorialSection tutorialSection = TutorialSection.STALK_MARKET;
                 HumanEntity h = event.getWhoClicked();
                 h.closeInventory();
-                dialogueText.sendQueuedText(() -> {
-                    this.open(h);
-                });
+
+                Runnable runnable = () -> {
+                    dialogueText.queueText("Today I'm selling baskets for <aqua>" + stalkMarketDay.getPrice() + " Carrots<green> each!");
+                    dialogueText.queueText("Let me know if you'd like to buy some baskets! ♥(ˆ⌣ˆԅ)");
+                    dialogueText.sendQueuedText(() -> {
+                        this.open(h);
+                    });
+                };
+
+                if (!eventPlayer.hasCompletedTutorialSection(tutorialSection)) {
+                    tutorialSection.completeTutorial(eventPlayer, dialogueText, runnable);
+                } else {
+                    runnable.run();
+                }
             }
     );
 
@@ -97,15 +107,24 @@ public class SelectOptionGui extends AbstractGui {
             GuiUtil.item(CustomStackNameSpace.POSTCARD_CITY_NO_ART, true, "<b>Explorer Miles"),
             (event, guiItem) -> {
                 HumanEntity h = event.getWhoClicked();
-                ExplorerMilesGui gui = new ExplorerMilesGui(eventPlayer);
-                if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.EXPLORER_MILES)) {
-                    h.closeInventory();
-                    TutorialSection.EXPLORER_MILES.completeTutorial(eventPlayer, dialogueText, () -> {
-                        gui.open(h);
-                    });
-                } else {
-                    gui.open(h);
-                }
+
+
+                h.closeInventory();
+                dialogueText.queueText("This isn't available right now!");
+                dialogueText.queueText("<white><i>Coming soon!");
+                dialogueText.sendQueuedText(() -> {
+                    this.open(h);
+                });
+
+                // TODO: Disabled
+                //ExplorerMilesGui gui = new ExplorerMilesGui(eventPlayer);
+//                if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.EXPLORER_MILES)) {
+//                    TutorialSection.EXPLORER_MILES.completeTutorial(eventPlayer, dialogueText, () -> {
+//                        gui.open(h);
+//                    });
+//                } else {
+//                    gui.open(h);
+//                }
             }
     );
 
@@ -125,7 +144,7 @@ public class SelectOptionGui extends AbstractGui {
     @Override
     public void onInventoryClose(@NotNull InventoryCloseEvent event) {
         if (event.getReason() == InventoryCloseEvent.Reason.PLAYER) {
-            System.out.println("Player closed inventory");
+            // TODO: send dialogue
         }
     }
 

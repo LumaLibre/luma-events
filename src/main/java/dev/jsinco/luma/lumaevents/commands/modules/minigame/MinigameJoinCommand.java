@@ -40,8 +40,9 @@ public class MinigameJoinCommand implements CommandModule {
 
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
 
-        minigame.addParticipant(eventPlayer);
-        Util.sendMsg(commandSender, "Joined!");
+        if (minigame.addParticipant(eventPlayer)) {
+            Util.sendMsg(commandSender, "Joined!");
+        }
         return true;
     }
 

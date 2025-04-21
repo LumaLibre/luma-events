@@ -67,6 +67,7 @@ import java.util.logging.Level
 
 object ExplorerMiles {
 
+
     // 71 miles done so far-ish...
     // <aqua></aqua> tags should surround descriptive words for miles
     // that aren't super obvious as to what they are
@@ -112,7 +113,10 @@ object ExplorerMiles {
     // PlayerHarvestBlockEvent?
     val FARM_CARROTS = ExplorerMile<BlockBrokenExplorerEvent>(
         title = "Farm Carrots",
-        desc = "TODO",
+        desc = """
+            Channel your ophthalmologist's
+            agrarian impulses!
+        """.trimIndent(),
         //objective = "Break carrots.",
         quantity = 350,
         levels = 2,
@@ -126,9 +130,8 @@ object ExplorerMiles {
 
     val PLANT_CARROTS = ExplorerMile<BlockPlacedExplorerEvent>(
         title = "Plant Carrots",
-        // todo: add a better description
         desc = """
-            A better description would be nice here.
+            To prepare for easter 2026 we need as many carrots as we can get our hands on. Better start planting!
         """.trimIndent(),
         //objective = "Place carrots.",
         quantity = 350,
@@ -160,7 +163,6 @@ object ExplorerMiles {
 
     val BREAK_EMERALD_ORES = ExplorerMile<BlockBrokenExplorerEvent>(
         title = "Emerald Jeweler",
-        // Todo: add a better description
         desc = """
             Trade your way to riches by breaking emerald ores! 
             Remember, villagers might offer you deals, but they sure love crushing loaf.
@@ -195,9 +197,9 @@ object ExplorerMiles {
 
     val BREAK_ANCIENT_DEBRIS = ExplorerMile<BlockBrokenExplorerEvent>(
         title = "Ancient Debris Crusher",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            'I'm a valuable ore from the nether that's immune to explosions'.
+            Do you know who I am? Better get to mining!
         """.trimIndent(),
         //objective = "Break ancient debris.",
         quantity = 100,
@@ -279,9 +281,8 @@ object ExplorerMiles {
 
     val KILL_ANIMALS = ExplorerMile<EntityDeathEvent>(
         title = "Kill Animals",
-        // todo: add a better description
         desc = """
-            A better description would be nice here.
+            Aww, poor animals :< (You monster!)
         """.trimIndent(),
         quantity = 50,
         levels = 2,
@@ -307,77 +308,76 @@ object ExplorerMiles {
         levelSnapShot.currentQuantity += 1
     }
 
-    val KILL_ANOTHER_PLAYER = ExplorerMile<EntityDamageByEntityEvent>(
-        title = "Kill Players",
-        // TODO: add a better description
-        desc = """
-            A better description would be nice here.
-        """.trimIndent(),
-        quantity = 4,
-        levels = 2,
-        levelMultiplier = 2.0,
-        eventClass = EntityDamageByEntityEvent::class.java
-    ) { event, levelSnapshot, _ ->
-        val entity = event.entity as? LivingEntity ?: return@ExplorerMile
-        if (event.finalDamage > entity.getAttribute(Attribute.MAX_HEALTH)!!.value) {
-            levelSnapshot.currentQuantity += 1
-        }
-    }
+//    val KILL_ANOTHER_PLAYER = ExplorerMile<EntityDamageByEntityEvent>(
+//        title = "Kill Players",
+//        desc = """
+//            Go get em. (With permission!)
+//        """.trimIndent(),
+//        quantity = 4,
+//        levels = 2,
+//        levelMultiplier = 2.0,
+//        eventClass = EntityDamageByEntityEvent::class.java
+//    ) { event, levelSnapshot, _ ->
+//        val entity = event.entity as? LivingEntity ?: return@ExplorerMile
+//        if (event.finalDamage > entity.getAttribute(Attribute.MAX_HEALTH)!!.value) {
+//            levelSnapshot.currentQuantity += 1
+//        }
+//    }
 
-    val MOVE_WRONGLY = ExplorerMile<PlayerFailMoveEvent>(
-        title = "Move Wrongly",
-        desc = """
-            Yikes! The server just did a backflip and blamed you.
-            Must be some next-level rubberbanding gymnastics!
-        """.trimIndent(),
-        quantity = 1,
-        levels = 2,
-        eventClass = PlayerFailMoveEvent::class.java
-    ) { _, levelSnapShot, _ ->
-        levelSnapShot.currentQuantity += 1
-    }
+//    val MOVE_WRONGLY = ExplorerMile<PlayerFailMoveEvent>(
+//        title = "Move Wrongly",
+//        desc = """
+//            Yikes! The server just did a backflip and blamed you.
+//            Must be some next-level rubberbanding gymnastics!
+//        """.trimIndent(),
+//        quantity = 1,
+//        levels = 2,
+//        eventClass = PlayerFailMoveEvent::class.java
+//    ) { _, levelSnapShot, _ ->
+//        levelSnapShot.currentQuantity += 1
+//    }
 
-    val EXPLORE = ExplorerMile<PlayerMoveEvent>(
-        title = "Explore",
-        desc = """
-            Well aren't you just an explorer? We knew you had it in you!
-            We'll reward you for every couple thousand blocks you walk.
-            Just don't get lost, okay?
-        """.trimIndent(),
-        quantity = 5000,
-        levels = 7,
-        levelMultiplier = 3.0,
-        eventClass = PlayerMoveEvent::class.java
-    ) { event, levelSnapShot, _ ->
-        // TODO: Make sure it does a proper check in the EventHandler
-        val player = event.player
-        if (player.isGliding || player.isSwimming) {
-            return@ExplorerMile
-        }
-        levelSnapShot.currentQuantity += 1
-    }
+//    val EXPLORE = ExplorerMile<PlayerMoveEvent>(
+//        title = "Explore",
+//        desc = """
+//            Well aren't you just an explorer? We knew you had it in you!
+//            We'll reward you for every couple thousand blocks you walk.
+//            Just don't get lost, okay?
+//        """.trimIndent(),
+//        quantity = 50000,
+//        levels = 4,
+//        levelMultiplier = 3.0,
+//        eventClass = PlayerMoveEvent::class.java
+//    ) { event, levelSnapShot, _ ->
+//        val player = event.player
+//        if (player.isGliding || player.isSwimming) {
+//            return@ExplorerMile
+//        }
+//        levelSnapShot.currentQuantity += 1
+//    }
 
-    val EXPLORE_ELYTRA = ExplorerMile<PlayerMoveEvent>(
-        title = "Take to the Skies",
-        desc = """
-            Have fun <aqua>gliding</aqua> around!
-            Just don't look down!
-        """.trimIndent(),
-        quantity = 5000,
-        levels = 2,
-        levelMultiplier = 2.0,
-        eventClass = PlayerMoveEvent::class.java
-    ) { event, levelSnapShot, _ ->
-        if (event.player.isGliding) {
-            levelSnapShot.currentQuantity += 1
-        }
-    }
+//    val EXPLORE_ELYTRA = ExplorerMile<PlayerMoveEvent>(
+//        title = "Take to the Skies",
+//        desc = """
+//            Have fun <aqua>gliding</aqua> around!
+//            Just don't look down!
+//        """.trimIndent(),
+//        quantity = 50000,
+//        levels = 2,
+//        levelMultiplier = 2.0,
+//        eventClass = PlayerMoveEvent::class.java
+//    ) { event, levelSnapShot, _ ->
+//        if (event.player.isGliding) {
+//            levelSnapShot.currentQuantity += 1
+//        }
+//    }
 
     val JUMP = ExplorerMile<PlayerJumpEvent>(
         title = "Jump",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            Just put one foot in front of the other, and - wait, no, that's walking...
+            Ok, ok, so you're going to want to bend your legs, and then lower yourself- 
+            Wait, no, that's sitting... Does anyone have a handle on this 'jumping' stuff?
         """.trimIndent(),
         quantity = 100,
         levels = 2,
@@ -406,9 +406,8 @@ object ExplorerMiles {
 
     val CRAFT_BEACONS = ExplorerMile<CraftItemEvent>(
         title = "Craft: Beacons",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            Craft a beacon to flex your wealth and finally make that giant pyramid do something useful!
         """.trimIndent(),
         quantity = 72,
         eventClass = CraftItemEvent::class.java
@@ -421,9 +420,9 @@ object ExplorerMiles {
 
     val CRAFT_NETHERITE_BLOCKS = ExplorerMile<CraftItemEvent>(
         title = "Craft: Netherite Blocks",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            A little birdie told me this stuff is
+            pretty rare...
         """.trimIndent(),
         quantity = 72,
         eventClass = CraftItemEvent::class.java
@@ -468,23 +467,20 @@ object ExplorerMiles {
 
     val RUN_COMMANDS = ExplorerMile<PlayerCommandPreprocessEvent>(
         title = "Use Commands",
-        // TODO: add a better description
         desc = """
-            Using the Minecraft CLI?
-            ... A better description would be nice here.
+            Have you ever tried '/bellyflop' or any of the other fun commands on luma?
+            I dare you to use as many as you can!
         """.trimIndent(),
         quantity = 100,
         eventClass = PlayerCommandPreprocessEvent::class.java
     ) { _, levelSnapShot, _ ->
-        // TODO: record the commands used to ensure unique commands?
         levelSnapShot.currentQuantity += 1
     }
 
     val RUN_UNKNOWN_COMMANDS = ExplorerMile<UnknownCommandEvent>(
         title = "Run Commands That Don't Exist",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            'HOUSTON WE HAVE A PROBLEM'. I don't believe we have that command on luma...
         """.trimIndent(),
         quantity = 1,
         levels = 2,
@@ -493,26 +489,25 @@ object ExplorerMiles {
         levelSnapShot.currentQuantity += 1
     }
 
-    val PICKUP_ITEMS = ExplorerMile<PlayerAttemptPickupItemEvent>(
-        title = "PickerUpper",
-        // TODO: add a better description
-        desc = """
-            A better description would be nice here.
-        """.trimIndent(),
-        quantity = 5000,
-        levels = 5,
-        levelMultiplier = 3.0,
-        eventClass = PlayerAttemptPickupItemEvent::class.java
-    ) { _, levelSnapShot, _ ->
-
-        levelSnapShot.currentQuantity += 1
-    }
+//    val PICKUP_ITEMS = ExplorerMile<PlayerAttemptPickupItemEvent>(
+//        title = "PickerUpper",
+//        desc = """
+//            You can never have enough items- Right?
+//        """.trimIndent(),
+//        quantity = 5000,
+//        levels = 5,
+//        levelMultiplier = 3.0,
+//        eventClass = PlayerAttemptPickupItemEvent::class.java
+//    ) { _, levelSnapShot, _ ->
+//
+//        levelSnapShot.currentQuantity += 1
+//    }
 
     val SLEEP_IN_BED = ExplorerMile<PlayerBedEnterEvent>(
         title = "Sleep in a Bed",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            This is something normal people do, I'm told.
+            You're normal, right?
         """.trimIndent(),
         quantity = 1,
         levels = 2,
@@ -526,9 +521,8 @@ object ExplorerMiles {
 
     val CHANGE_LOCALE = ExplorerMile<PlayerClientOptionsChangeEvent>(
         title = "Try a New Language",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            Parlez vous français? o forse italiano?
         """.trimIndent(),
         quantity = 1,
         eventClass = PlayerClientOptionsChangeEvent::class.java
@@ -540,9 +534,9 @@ object ExplorerMiles {
 
     val SWAP_MAIN_HAND = ExplorerMile<PlayerClientOptionsChangeEvent>(
         title = "Swap Main Hand",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            Hi, I noticed you've been using that main hand of yours for quite a while. Perhaps you'd like to... swap it? 
+            How badly can one really need a specific hand anyway?
         """.trimIndent(),
         quantity = 1,
         eventClass = PlayerClientOptionsChangeEvent::class.java
@@ -554,9 +548,8 @@ object ExplorerMiles {
 
     val PUT_FLOWER_IN_FLOWERPOT = ExplorerMile<PlayerFlowerPotManipulateEvent>(
         title = "Put a Flower in a Flowerpot",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            Look at you go, interior designer and all that... Way to go!
         """.trimIndent(),
         quantity = 3,
         levels = 2,
@@ -570,9 +563,8 @@ object ExplorerMiles {
 
     val BREAK_A_TOOL = ExplorerMile<PlayerItemBreakEvent>(
         title = "Break a Tool",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            Uh oh! Maybe try repairing them instead?
         """.trimIndent(),
         quantity = 1,
         levels = 3,
@@ -584,9 +576,8 @@ object ExplorerMiles {
 
     val NAME_AN_ENTITY = ExplorerMile<PlayerNameEntityEvent>(
         title = "Name an Entity",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            One time I tried to name a sheep 'jeb_' to honor the creator of minecraft, never saw a sheep overreact more...
         """.trimIndent(),
         quantity = 1,
         eventClass = PlayerNameEntityEvent::class.java
@@ -596,9 +587,9 @@ object ExplorerMiles {
 
     val SIGN_A_BOOK = ExplorerMile<PlayerEditBookEvent>(
         title = "Sign a Book",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            Your preeminent status as an author precedes you.
+            Go on, Stardust... they're waiting for you.
         """.trimIndent(),
         quantity = 1,
         eventClass = PlayerEditBookEvent::class.java
@@ -624,9 +615,8 @@ object ExplorerMiles {
 
     val USE_A_RIPTIDE_TRIDENT = ExplorerMile<PlayerRiptideEvent>(
         title = "Use a Riptide Trident",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            Yeet yourself through the sky like Poseidon's favorite javelin on a water slide!
         """.trimIndent(),
         quantity = 10,
         levels = 3,
@@ -638,9 +628,8 @@ object ExplorerMiles {
 
     val DISABLE_ANOTHER_PLAYERS_SHIELD = ExplorerMile<PlayerShieldDisableEvent>(
         title = "Disable Another Player's Shield",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            Politely ask your friend's shield to take a break- with an axe to the face...
         """.trimIndent(),
         quantity = 1,
         eventClass = PlayerShieldDisableEvent::class.java
@@ -650,9 +639,8 @@ object ExplorerMiles {
 
     val SHEAR_BLOCK = ExplorerMile<PlayerShearBlockEvent>(
         title = "Shear a Block",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            Huh? I didn't know you could do that!
         """.trimIndent(),
         quantity = 10,
         levels = 2,
@@ -664,9 +652,8 @@ object ExplorerMiles {
 
     val CHANGE_A_BEACONS_EFFECTS = ExplorerMile<PlayerChangeBeaconEffectEvent>(
         title = "Change a Beacon's Effects",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            Wait, I was just using my beacon as a lamp... you're telling me it has effects to change, too?
         """.trimIndent(),
         quantity = 20,
         eventClass = PlayerChangeBeaconEffectEvent::class.java
@@ -676,23 +663,23 @@ object ExplorerMiles {
 
     val THROW_EGGS = ExplorerMile<PlayerEggThrowEvent>(
         title = "Throw Eggs",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            They say that throwing the first egg over the coop is good luck!
+            Just do it... oh, <aqua>127+</aqua> more times and I'm sure luck will come!
         """.trimIndent(),
         quantity = 128,
         levels = 2,
         levelMultiplier = 1.1,
         eventClass = PlayerEggThrowEvent::class.java
-    ) { event, levelSnapShot, _ ->
+    ) { _, levelSnapShot, _ ->
         levelSnapShot.currentQuantity += 1
     }
 
     val THROW_EGGS_THAT_HATCHED = ExplorerMile<PlayerEggThrowEvent>(
         title = "Throw Hatching Eggs",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            Your tenacity in the realm of egg-throwing is admirable.
+            I'm not sure the nearby grocery stores can keep up with your demand, however...
         """.trimIndent(),
         quantity = 10,
         levels = 2,
@@ -720,9 +707,9 @@ object ExplorerMiles {
 
     val REPAIR_ITEMS_USING_MENDING = ExplorerMile<PlayerItemMendEvent>(
         title = "Repair Items Using Mending",
-        // TODO: add a better description
         desc = """
-            A better description would be nice here.
+            Apparently, in ancient times, people used to repair their items by using the material the original tool was made of!
+            Then, Thomas Mending came along and invented mending. What a feat!
         """.trimIndent(),
         quantity = 100,
         levels = 3,
@@ -736,7 +723,10 @@ object ExplorerMiles {
     val JOBS_EARN_MONEY_FROM_JOBS by safeLazy {
         ExplorerMile<JobsPaymentEvent>(
             title = "Earn Money From Jobs",
-            desc = "TODO",
+            desc = """
+                Trade your irreplaceable and invaluable time in exchange for money, which you can use to buy necessary things like food, housing, and more!
+                What could be better than this?
+            """.trimIndent(),
             quantity = 100000,
             levels = 15,
             eventClass = JobsPaymentEvent::class.java
@@ -885,7 +875,6 @@ object ExplorerMiles {
     val EMF_CATCH_LEGENDARY_FISH by safeLazy {
         ExplorerMile<EMFFishEvent>(
             title = "Catch Legendary Fish",
-            // todo: add a better description
             desc = """
             You just caught a legendary fish! 
             Keep fishing and see what else you can reel in!
@@ -974,9 +963,8 @@ object ExplorerMiles {
     val TOWNY_INVITE_TO_TOWN by safeLazy {
         ExplorerMile<TownInvitePlayerEvent>(
             title = "Another Brick in the Neighborhood",
-            // TODO: add a better description
             desc = """
-            A better description would be nice here.
+            All in all it's just another brick in the wall... ok, but seriously, you'll need to invite someone to your town for this one.
         """.trimIndent(),
             quantity = 1,
             levels = 2,
@@ -989,9 +977,8 @@ object ExplorerMiles {
     val TOWNY_CLAIM_LAND by safeLazy {
         ExplorerMile<TownClaimEvent>(
             title = "Expanding the Borders",
-            // todo: add a better description
             desc = """
-            A better description would be nice here.
+            Expand your town with none of the horrifying human rights violations intrinsic to real-world imperialism!
         """.trimIndent(),
             quantity = 30,
             levels = 2,
@@ -1004,9 +991,9 @@ object ExplorerMiles {
     val PINATAPARTY_VOTE_RECEIVED by safeLazy {
         ExplorerMile<VoteReceivedEvent>(
             title = "Vote for Luma!",
-            // todo: Add a better description
             desc = """
-            A better description would be nice here.
+            Exercise your computer-bestowed right to type letters into your browser!
+            Or skip straight to /vote! What fun!
         """.trimIndent(),
             quantity = 8,
             levels = 10,
@@ -1019,9 +1006,9 @@ object ExplorerMiles {
     val PINATAPARTY_HIT_PINATA by safeLazy {
         ExplorerMile<PinataHitEvent>(
             title = "Hit a Pinata",
-            // TODO: add a better description
             desc = """
-            A better description would be nice here.
+            No, no, we promise they're just pinatas, not llamas.
+            You're <i>definitely</i> not punching a real llama.
         """.trimIndent(),
             quantity = 20,
             levels = 3,
@@ -1035,9 +1022,8 @@ object ExplorerMiles {
     val PLAYERWARPS_CREATE_WARP by safeLazy {
         ExplorerMile<PlayerWarpCreateEvent>(
             title = "Create Player Warps",
-            // TODO: add a better description
             desc = """
-            A better description would be nice here.
+            Show off by enabling others to visit your sick projects or farms. Better start asking for entry fees!
         """.trimIndent(),
             quantity = 1,
             eventClass = PlayerWarpCreateEvent::class.java
@@ -1049,9 +1035,8 @@ object ExplorerMiles {
     val PLAYERWARPS_TELEPORT_TO_WARPS by safeLazy {
         ExplorerMile<PlayerWarpTeleportEvent>(
             title = "Use Player Warps",
-            // TODO: add a better description
             desc = """
-            A better description would be nice here.
+            See what others on Luma are up to or check out someones xp farm!  
         """.trimIndent(),
             quantity = 2,
             levels = 2,
@@ -1065,9 +1050,8 @@ object ExplorerMiles {
     val PLAYERWARPS_SPONSOR_SLOT by safeLazy {
         ExplorerMile<PlayerWarpSponsorEvent>(
             title = "Create a Player Warp Sponsor Slot",
-            // TODO: add a better description
             desc = """
-            A better description would be nice here.
+            Uh oh, seems like someone <i>really</i> wants others to see what they've made. Go ahead fancy pants.
         """.trimIndent(),
             quantity = 1,
             eventClass = PlayerWarpSponsorEvent::class.java
@@ -1077,10 +1061,9 @@ object ExplorerMiles {
     }
 
 
-    // TODO: HoarderSellEvent
-    // TODO: SimpleQuests
-    // TODO: JetsAntiAFK
-    // TODO: PlaceholderAPI
+    // TODO: HoarderSellEvent?
+    // TODO: JetsAntiAFK?
+    // TODO: Earning Tokens.
 
     val NABBIT_PICKUP_CARROTS = ExplorerMile<NabbitPickupCarrot>(
         title = "Pickup Carrots in 'The Nabbits'",
@@ -1146,7 +1129,6 @@ object ExplorerMiles {
 
     val NABBIT_SURVIVE_EXTENDED_TIME_PERIOD = ExplorerMile<NabbitSurviveExtendedTimePeriod>(
         title = "Survive for 1 Minute in 'The Nabbits'",
-        // TODO: add a better description
         desc = """
             Surviving for 1 minute in 'The Nabbits' is no easy feat.
             But if you can do it, you're a true champion!

@@ -13,10 +13,40 @@ import java.util.Map;
 
 public final class StalkMarketDays {
 
-    public static final StalkMarketDay APR_17 = new StalkMarketDay(17, Month.APR, 4);
-    public static final StalkMarketDay APR_18 = new StalkMarketDay(18, Month.APR, 6);
-    // TODO: Need to do days for rest of week
+    // Event planned to go from April 20/21 to May 8/11
 
+    // April
+    public static final StalkMarketDay APR_17 = new StalkMarketDay(17, Month.APR, 16);
+    public static final StalkMarketDay APR_18 = new StalkMarketDay(18, Month.APR, 15);
+    public static final StalkMarketDay APR_20 = new StalkMarketDay(20, Month.APR, 17);
+    public static final StalkMarketDay APR_21 = new StalkMarketDay(21, Month.APR, 18);
+    public static final StalkMarketDay APR_22 = new StalkMarketDay(22, Month.APR, 16);
+    public static final StalkMarketDay APR_23 = new StalkMarketDay(23, Month.APR, 16);
+    public static final StalkMarketDay APR_24 = new StalkMarketDay(24, Month.APR, 16);
+    public static final StalkMarketDay APR_25 = new StalkMarketDay(25, Month.APR, 14);
+    public static final StalkMarketDay APR_26 = new StalkMarketDay(26, Month.APR, 15);
+    public static final StalkMarketDay APR_27 = new StalkMarketDay(27, Month.APR, 16);
+    public static final StalkMarketDay APR_28 = new StalkMarketDay(28, Month.APR, 16);
+    public static final StalkMarketDay APR_29 = new StalkMarketDay(29, Month.APR, 13);
+    public static final StalkMarketDay APR_30 = new StalkMarketDay(30, Month.APR, 20);
+    // May
+    public static final StalkMarketDay MAY_1 = new StalkMarketDay(1, Month.MAY, 18);
+    public static final StalkMarketDay MAY_2 = new StalkMarketDay(2, Month.MAY, 16);
+    public static final StalkMarketDay MAY_3 = new StalkMarketDay(3, Month.MAY, 17);
+    public static final StalkMarketDay MAY_4 = new StalkMarketDay(4, Month.MAY, 15);
+    public static final StalkMarketDay MAY_5 = new StalkMarketDay(5, Month.MAY, 16);
+    public static final StalkMarketDay MAY_6 = new StalkMarketDay(6, Month.MAY, 16);
+    public static final StalkMarketDay MAY_7 = new StalkMarketDay(7, Month.MAY, 14);
+    public static final StalkMarketDay MAY_8 = new StalkMarketDay(8, Month.MAY, 16);
+    public static final StalkMarketDay MAY_9 = new StalkMarketDay(9, Month.MAY, 16);
+    public static final StalkMarketDay MAY_10 = new StalkMarketDay(10, Month.MAY, 16);
+    public static final StalkMarketDay MAY_11 = new StalkMarketDay(11, Month.MAY, 16);
+    // Extra in case I forget to end event
+    public static final StalkMarketDay MAY_12 = new StalkMarketDay(12, Month.MAY, 16);
+    public static final StalkMarketDay MAY_13 = new StalkMarketDay(13, Month.MAY, 16);
+    public static final StalkMarketDay MAY_14 = new StalkMarketDay(14, Month.MAY, 16);
+    public static final StalkMarketDay MAY_15 = new StalkMarketDay(15, Month.MAY, 16);
+    public static final StalkMarketDay MAY_16 = new StalkMarketDay(16, Month.MAY, 16);
 
 
 

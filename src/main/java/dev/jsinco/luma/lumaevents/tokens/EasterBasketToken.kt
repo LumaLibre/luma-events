@@ -20,7 +20,7 @@ class EasterBasketToken : CustomItemFunctions() {
             .material(Material.PLAYER_HEAD)
             .b64PHead("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmU2ZDhjNjk4OGNkMGQxOTk5NzAzMDZhNGQ3NTY0NmQ5NzczZDcxMGViMjE5MzVkYjc3M2ViMjEyMTY3NjAyYiJ9fX0=")
             .tier(Tier.EASTER_2025)
-            .vanillaEnchants(Enchantment.KNOCKBACK to 8)
+            .vanillaEnchants(Enchantment.UNBREAKING to 10)
             .persistentData("easter-basket-token")
             .buildPair()
     }

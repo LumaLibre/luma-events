@@ -26,15 +26,18 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.persistence.PersistentDataHolder;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 public final class Util {
@@ -44,14 +47,10 @@ public final class Util {
             .excludeFieldsWithModifiers(Modifier.STATIC)
             .setPrettyPrinting()
             .create();
+    public static final Random RANDOM = new Random();
+    public static final String PREFIX = "<b><gradient:#A687CA:#6EABD3:#36CEDC:#63DBA3:#8FE86A:#C7E961:#FFD054:#FF787C>Easter</gradient></b> <dark_gray>»</dark_gray> ";
+    public static final String TEXT_COLOR = "#e6ffe0";
 
-    public static final String PREFIX = "<b><#954381>E<#EC60B0>v<#EE80C6>e<#C262A4>n<#954381>t</b> <dark_gray>»</dark_gray> ";
-
-    public static void giveTokens(Player player, int amount) {
-        EarnTokenExplorerEvent explorerEvent = new EarnTokenExplorerEvent(amount);
-        ExplorerListeners.fire(explorerEvent, player.getUniqueId());
-        // TODO: impl
-    }
 
     public static void log(String msg) {
         sendMsg(Bukkit.getConsoleSender(), msg);
@@ -61,15 +60,15 @@ public final class Util {
         if (receiver == null) {
             return;
         }
-        receiver.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString("#CBB6E9")));
+        receiver.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)));
     }
 
     public static void sendMsg(Audience audience, String message) {
-        audience.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString("#CBB6E9")));
+        audience.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)));
     }
 
     public static void broadcast(String message) {
-        Bukkit.broadcast(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString("#CBB6E9")));
+        Bukkit.broadcast(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)));
     }
 
     public static void broadcastSound(Sound sound, float volume, float pitch) {
@@ -106,12 +105,25 @@ public final class Util {
         return item.getItemMeta().getPersistentDataContainer().get(new NamespacedKey(EventMain.getInstance(), strKey), dataType);
     }
 
+    @Nullable
+    public static <P, C> C getPersistentKey(PersistentDataHolder holder, String strKey, PersistentDataType<P, C> dataType) {
+        return holder.getPersistentDataContainer().get(new NamespacedKey(EventMain.getInstance(), strKey), dataType);
+    }
+
     public static <P, C> void setPersistentKey(ItemStack item, String strKey, PersistentDataType<P, C> dataType, C value) {
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(new NamespacedKey(EventMain.getInstance(), strKey), dataType, value);
         item.setItemMeta(meta);
     }
-    
+
+    public static <P, C> void setPersistentKey(PersistentDataHolder holder, String strKey, PersistentDataType<P, C> dataType, C value) {
+        holder.getPersistentDataContainer().set(new NamespacedKey(EventMain.getInstance(), strKey), dataType, value);
+    }
+
+
+    public static boolean hasPersistentKey(PersistentDataHolder holder, String strKey) {
+        return holder.getPersistentDataContainer().has(new NamespacedKey(EventMain.getInstance(), strKey));
+    }
     
     public static boolean hasPersistentKey(ItemStack item, String strKey) {
         return hasPersistentKey(item, new NamespacedKey(EventMain.getInstance(), strKey));
@@ -308,16 +320,22 @@ public final class Util {
         return false;
     }
 
-    public static boolean hasCustomItem(ItemStack[] contents) {
+    public static boolean hasCustomItem(ItemStack[] contents, String... ignored) {
         Plugin lumaitemsPluginInstance = Bukkit.getPluginManager().getPlugin("LumaItems");
         if (lumaitemsPluginInstance == null) {
             throw new IllegalStateException("LumaItems instance not found!");
         }
         NamespacedKey lumaitemsKey = new NamespacedKey(lumaitemsPluginInstance, "lumaitem");
+        List<NamespacedKey> ignoredKeys = Arrays.stream(ignored).map(it -> new NamespacedKey(lumaitemsPluginInstance, it)).toList();
         for (ItemStack itemStack : contents) {
             if (itemStack == null || !itemStack.hasItemMeta()) continue;
 
             ItemMeta itemMeta = itemStack.getItemMeta();
+
+            if (!ignoredKeys.isEmpty() && ignoredKeys.stream().anyMatch(key -> itemMeta.getPersistentDataContainer().has(key))) {
+                continue;
+            }
+
             if (itemMeta.getPersistentDataContainer().has(lumaitemsKey)) {
                 return true;
             }

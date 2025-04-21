@@ -12,6 +12,7 @@ import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -227,7 +228,7 @@ public sealed abstract class Minigame extends BukkitRunnable implements Listener
         if (this.audience == null) {
             return;
         }
-        this.audience.sendMessage(Util.color(Util.PREFIX + m));
+        this.audience.sendMessage(Util.color(Util.PREFIX + m, TextColor.fromHexString(Util.TEXT_COLOR)));
     }
 
     protected boolean isParticipant(EventPlayer... players) {

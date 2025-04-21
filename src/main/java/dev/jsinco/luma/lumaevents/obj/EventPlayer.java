@@ -21,8 +21,10 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Getter
 @Setter
@@ -72,6 +74,16 @@ public class EventPlayer implements Serializable {
 
     public boolean hasCompletedTutorialSection(TutorialSection section) {
         return this.completedTutorialSections.contains(section);
+    }
+
+    public int getCompletedExplorerMiles() {
+        int completed = 0;
+        for (ActiveExplorerMile activeExplorerMile : this.unlockedExplorerMiles) {
+            if (activeExplorerMile.getUnchangeableLevelSnapshot().isCompleted()) {
+                completed++;
+            }
+        }
+        return completed;
     }
 
     public void sendMessage(String m) {
@@ -138,7 +150,7 @@ public class EventPlayer implements Serializable {
 
 
     public <T> boolean hasUnlockedExplorerMile(ExplorerMile<T> explorerMile) {
-        for (ActiveExplorerMile activeExplorerMile : unlockedExplorerMiles) {
+        for (ActiveExplorerMile activeExplorerMile : this.unlockedExplorerMiles) {
             if (Objects.equals(activeExplorerMile.getMile().getFIELD_NAME(), explorerMile.getFIELD_NAME())) {
                 return true;
             }
@@ -176,14 +188,20 @@ public class EventPlayer implements Serializable {
 
 
         for (ActiveExplorerMile activeExplorerMile : testableExplorerMiles) {
+            if (activeExplorerMile == null) {
+                continue;
+            }
             if (activeExplorerMile.getMile().getEventClass() == event.getClass()) {
-                activeExplorerMile.apply(event);
+                activeExplorerMile.apply(event, this);
             }
         }
 
         testableExplorerMiles.forEach(activeExplorerMile -> {
-            if (activeExplorerMile.hasProgress() && !hasUnlockedExplorerMile(activeExplorerMile.getMile())) {
-                this.unlockedExplorerMiles.add(activeExplorerMile);
+            if (!hasUnlockedExplorerMile(activeExplorerMile.getMile())) {
+                if (activeExplorerMile.hasProgress()) {
+                    this.unlockedExplorerMiles.add(activeExplorerMile);
+                    activeExplorerMile.playMilesUnlockEffect(this);
+                }
             }
         });
     }

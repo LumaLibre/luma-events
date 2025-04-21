@@ -4,8 +4,17 @@ import com.google.gson.TypeAdapter
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
+import dev.jsinco.luma.lumaevents.EventMain
 import dev.jsinco.luma.lumaevents.explorer.constants.ExplorerMiles
+import dev.jsinco.luma.lumaevents.npc.constants.TutorialSection
+import dev.jsinco.luma.lumaevents.obj.DialogueText
+import dev.jsinco.luma.lumaevents.obj.EventPlayer
+import dev.jsinco.luma.lumaevents.tokens.TokenExchanging
 import dev.jsinco.luma.lumaevents.utility.Util
+import net.kyori.adventure.text.format.NamedTextColor
+import org.bukkit.Bukkit
+import org.bukkit.Sound
+import org.bukkit.entity.Player
 
 typealias ExplorerMileLevelSnapshotModifier = (levelSnapshot: ExplorerMileLevelSnapshot) -> Unit
 
@@ -15,13 +24,17 @@ class ActiveExplorerMile(
     var currentLevel: Int,
 ) {
 
+    companion object {
+        private const val TOKENS_PER_LEVEL = 8
+    }
+
     constructor(mile: ExplorerMile<*>) : this(mile, 0, 0)
 
     private var data: MutableMap<String, Any> = mutableMapOf()
     fun data(): MutableMap<String, Any> = data
 
 
-    fun <T> apply(event: T) {
+    fun <T> apply(event: T, eventPlayer: EventPlayer) {
         val levelSnapshot = ExplorerMileLevelSnapshot(
             maxQuantity = mile.quantity,
             currentQuantity = this.currentQuantity,
@@ -30,7 +43,6 @@ class ActiveExplorerMile(
             levelMultiplier = mile.levelMultiplier
         )
         if (levelSnapshot.isCompleted()) {
-            Util.log("Skipping completed ExplorerMile: $this")
             return
         }
 
@@ -38,12 +50,45 @@ class ActiveExplorerMile(
         (mile.handler as ExplorerMileEventHandler<T>)(event, levelSnapshot, data)
 
 
-        levelSnapshot.tryProgressLevel()
         this.currentQuantity = levelSnapshot.currentQuantity
         this.currentLevel = levelSnapshot.currentLevel
 
-        // TODO: Needs handling of rewards
+        if (!levelSnapshot.tryProgressLevel()) {
+            return
+        }
 
+        var multiplier = 1.0
+        if (levelSnapshot.currentLevel > 1) {
+            multiplier = 1.5
+        }
+
+        // reward
+      val amount = TOKENS_PER_LEVEL * levelSnapshot.currentLevel * multiplier
+//        val player = eventPlayer.player
+//        TokenExchanging.give(
+//            player,
+//            TokenExchanging.TokenType.CARROT,
+//            amount.toInt()
+//        )
+      eventPlayer.sendMessage("DEBUG (EXPLORERMILES): You have received $amount tokens for leveling up your ${mile.title}!")
+//        //Bukkit.getScheduler().runTask()
+//
+//        // TODO: Needs handling of rewards testing
+//        val dialogueText = DialogueText(eventPlayer)
+//        dialogueText.queueText("You've leveled up your ${mile.title} to level ${levelSnapshot.currentLevel}!")
+//        if (levelSnapshot.isCompleted()) {
+//            dialogueText.queueText("You completed a mile! (${mile.title})")
+//            if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.MILES_COMMAND) && eventPlayer.completedExplorerMiles >= 5) {
+//                TutorialSection.MILES_COMMAND.completeTutorial(eventPlayer, dialogueText, null)
+//            } else {
+//                dialogueText.sendQueuedText();
+//            }
+//        }
+//
+//        // little noise :)
+//        Bukkit.getScheduler().runTask(EventMain.getInstance(), Runnable {
+//            player?.playSound(player.location, Sound.ENTITY_FIREWORK_ROCKET_BLAST_FAR, 1f, 1f)
+//        })
     }
 
     fun modifyLevelSnapshot(explorerSnapshotModifier: ExplorerMileLevelSnapshotModifier) {
@@ -68,6 +113,17 @@ class ActiveExplorerMile(
             currentLevel = this.currentLevel,
             levelMultiplier = mile.levelMultiplier
         )
+    }
+
+    fun playMilesUnlockEffect(eventPlayer: EventPlayer) {
+        val player = eventPlayer.player
+        Bukkit.getScheduler().runTask(EventMain.getInstance(), Runnable {
+            player?.playSound(player.location, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 1f, 1f)
+        })
+        val dialogueText = DialogueText(eventPlayer)
+        dialogueText.ifAbsentColor = NamedTextColor.YELLOW
+        dialogueText.queueText("You've unlocked a new Explorer Mile! (${mile.title})")
+        dialogueText.sendQueuedText()
     }
 
     fun hasProgress(): Boolean {

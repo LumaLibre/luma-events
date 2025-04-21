@@ -91,7 +91,6 @@ public class ExplorerMilesGui extends AbstractGui {
             }
 
             explorerMilePostCard.editMeta(meta -> {
-                // TODO: set some persistent data
                 String displayName;
                 List<String> lore;
                 if (hasUnlocked) {
@@ -204,7 +203,11 @@ public class ExplorerMilesGui extends AbstractGui {
     private String createProgressBar(String completed, String remaining, int progress, int total, int amount, String lastChar, int backspace) {
         int completedRounded = (int) (((double) progress) / total * amount);
         String completedStr = completed.repeat(completedRounded);
-        String remainingStr = remaining.repeat(amount - completedRounded);
+        int count = amount - completedRounded;
+        if (count < 0) {
+            count = 0;
+        }
+        String remainingStr = remaining.repeat(count);
         if (lastChar != null) {
             if (!remainingStr.isEmpty()) {
                 remainingStr = remainingStr.substring(0, remainingStr.length() - backspace) + lastChar;

@@ -17,10 +17,13 @@ class EasterCarrotToken : CustomItemFunctions() {
     override fun createItem(): Pair<String, ItemStack> {
         return ItemFactory.builder()
             .name("<b><gradient:#e48717:#FFC243:#C4D155:#348309>Easter Carrot</gradient></b>")
-            .lore("<gray>This item needs a", "<gray>description.")
+            .lore(
+                "<gray>Shiny and sweet, the",
+                "<gray>Nabbit's favorite treat!",
+            )
             .material(Material.GOLDEN_CARROT)
             .tier(Tier.EASTER_2025)
-            .vanillaEnchants(Enchantment.KNOCKBACK to 8)
+            .vanillaEnchants(Enchantment.UNBREAKING to 10)
             .persistentData("easter-carrot-token")
             .buildPair()
     }

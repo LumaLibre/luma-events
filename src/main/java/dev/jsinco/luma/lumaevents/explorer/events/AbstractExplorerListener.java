@@ -12,13 +12,18 @@ import java.util.UUID;
 public abstract class AbstractExplorerListener implements Listener {
 
     public static void fire(Object event, Player player) {
-        fire(event, player.getUniqueId());
+        // TODO: Disabled.
+        //fire(event, player.getUniqueId());
     }
 
     public static void fire(Object event, UUID playerUUID) {
-        EventPlayer eventPlayer = EventPlayerManager.getByUUID(playerUUID);
-        Bukkit.getScheduler().runTaskAsynchronously(EventMain.getInstance(),
-                () -> eventPlayer.fireForExplorerMiles(event)
-        );
+        // TODO: Disabled.
+
+        // if havent talked to anais yet, return
+//        EventPlayer eventPlayer = EventPlayerManager.getByUUID(playerUUID);
+//        eventPlayer.fireForExplorerMiles(event);
+//        Bukkit.getScheduler().runTaskAsynchronously(EventMain.getInstance(),
+//                () ->
+//        );
     }
 }
