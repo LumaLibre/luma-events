@@ -144,8 +144,7 @@ public final class TheNabbits extends Minigame {
             Player bukkitPlayer = eventPlayer.getPlayer();
 
             if (bukkitPlayer != null) {
-                // TODO: Just teleport to spawn
-                bukkitPlayer.teleportAsync(this.spawnPoint).whenComplete((b, t) -> {
+                bukkitPlayer.teleportAsync(this.getGameDropOffLocation()).whenComplete((b, t) -> {
                     bukkitPlayer.playSound(bukkitPlayer.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.0f);
                     if (this.earlyGameEnd) {
                         eventPlayer.sendTitle("<dark_purple>Nabbits Win", "All fleeing players were caught.");
@@ -155,7 +154,6 @@ public final class TheNabbits extends Minigame {
                 });
             }
             nabbitPlayer.handleGameEnd(() -> {
-                // TODO: Test this
                 int tokens = (int) (nabbitPlayer.getScore() / 3.5);
                 TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.CARROT, tokens);
             });
@@ -180,6 +178,7 @@ public final class TheNabbits extends Minigame {
 
 
         if (denyEntry) {
+            player.sendTitle("<red>Entry Denied", "<gray>Custom items are not allowed in this minigame.");
             player.sendMessage(
                     "Hold up! Just so you know, we don't allow custom items in this minigame... " +
                             "Try removing any custom items from your inventory and join again!"
