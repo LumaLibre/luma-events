@@ -336,13 +336,13 @@ public final class TheNabbits extends Minigame {
             return false;
         }
 
-        return rayTraceResult.getHitBlock() != null;
-//        Block hitBlock = rayTraceResult.getHitBlock();
-//        if (hitBlock == null) {
-//            return false;
-//        }
-//
-//        return !BLACKLISTED_SPAWN_MATERIALS.contains(hitBlock.getType());
+
+        Block hitBlock = rayTraceResult.getHitBlock();
+        if (hitBlock == null) {
+            return false;
+        }
+
+        return !BLACKLISTED_SPAWN_MATERIALS.contains(hitBlock.getType());
     }
 
     private boolean determineEarlyGameEnd() {
