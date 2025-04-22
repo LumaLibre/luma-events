@@ -30,6 +30,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerAttemptPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
@@ -55,6 +56,7 @@ public final class TheNabbits extends Minigame {
         REGULAR_CARROT.editMeta(itemMeta -> {
             itemMeta.addEnchant(Enchantment.MENDING, 1, true);
         });
+        Util.setPersistentKey(REGULAR_CARROT, "nabbit_carrot", PersistentDataType.BOOLEAN, true);
     }
 
     private final NabbitPlayerSet nabbitParticipants;

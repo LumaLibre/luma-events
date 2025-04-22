@@ -43,7 +43,8 @@ public class BunnyArenaListener implements Listener {
             regionHandler.rewardBunnyKill(entity, killer);
         }
 
-        entity.getLocation().getNearbyPlayers(3.0).forEach(player -> {
+
+        (killer != null ? killer : entity).getLocation().getNearbyPlayers(3.0).forEach(player -> {
             if (killer != null && player == killer) {
                 return;
             }
