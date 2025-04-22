@@ -19,6 +19,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
@@ -45,6 +46,9 @@ public final class TheNabbits extends Minigame {
             "<yellow>%victim%</yellow> was a victim of <dark_purple>%catcher%</dark_purple>...",
             "<dark_purple>%catcher%</dark_purple> stuffed <yellow>%victim%</yellow> in their bag...",
     };
+    private static final List<Material> BLACKLISTED_SPAWN_MATERIALS = List.of(
+            Material.BARRIER
+    );
     private static final ItemStack REGULAR_CARROT = new ItemStack(Material.CARROT);
 
     static  {
@@ -79,6 +83,11 @@ public final class TheNabbits extends Minigame {
         for (EventPlayer participant : this.participants) {
             nabbitParticipants.add(new NabbitPlayer(participant));
             participant.teleportAsync(this.findValidSpawnLocation(true));
+            Player bukkitPlayer = participant.getPlayer();
+            if (bukkitPlayer == null) {
+                continue;
+            }
+            Bukkit.getScheduler().runTask(EventMain.getInstance(), bukkitPlayer::clearActivePotionEffects);
         }
         NabbitPlayer randomNabbitPlayer = Util.getRandom(this.nabbitParticipants);
         randomNabbitPlayer.changeRole(NabbitPlayer.Role.NABBIT_BOOTSTRAP, false);
@@ -144,7 +153,12 @@ public final class TheNabbits extends Minigame {
             Player bukkitPlayer = eventPlayer.getPlayer();
 
             if (bukkitPlayer != null) {
-                bukkitPlayer.teleportAsync(this.getGameDropOffLocation()).whenComplete((b, t) -> {
+                Location dropOffLocation = this.getGameDropOffLocation();
+                if (dropOffLocation == null) {
+                    dropOffLocation = this.spawnPoint;
+                }
+
+                bukkitPlayer.teleportAsync(dropOffLocation).whenComplete((b, t) -> {
                     bukkitPlayer.playSound(bukkitPlayer.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.0f);
                     if (this.earlyGameEnd) {
                         eventPlayer.sendTitle("<dark_purple>Nabbits Win", "All fleeing players were caught.");
@@ -321,7 +335,14 @@ public final class TheNabbits extends Minigame {
         if (rayTraceResult == null) {
             return false;
         }
+
         return rayTraceResult.getHitBlock() != null;
+//        Block hitBlock = rayTraceResult.getHitBlock();
+//        if (hitBlock == null) {
+//            return false;
+//        }
+//
+//        return !BLACKLISTED_SPAWN_MATERIALS.contains(hitBlock.getType());
     }
 
     private boolean determineEarlyGameEnd() {

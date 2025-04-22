@@ -141,8 +141,8 @@ public class NabbitPlayer {
             return false;
         }
 
-        // 80% chance to become a rabbit, 20% chance to become a nabbit
-        if (Math.random() < 0.8) {
+        //
+        if (Math.random() < 0.5) {
             victim.changeRole(Role.RABBIT, true);
         } else {
             victim.changeRole(Role.NABBIT, true);

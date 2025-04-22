@@ -6,8 +6,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.explorer.ActiveExplorerMile;
-import dev.jsinco.luma.lumaevents.explorer.custom.EarnTokenExplorerEvent;
-import dev.jsinco.luma.lumaevents.explorer.events.ExplorerListeners;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
@@ -151,6 +149,10 @@ public final class Util {
     }
 
     public static void giveItem(Player player, ItemStack itemStack) {
+        if (player == null) {
+            return;
+        }
+
         Map<Integer, ItemStack> didntFit = player.getInventory().addItem(itemStack);
         if (!didntFit.isEmpty()) {
             for (ItemStack itemStack1 : didntFit.values()) {
@@ -160,6 +162,10 @@ public final class Util {
     }
 
     public static boolean takeItem(Player player, ItemStack itemStack, int amount) {
+        if (player == null) {
+            return false;
+        }
+
         PlayerInventory inventory = player.getInventory();
         if (!inventory.containsAtLeast(itemStack, amount)) {
             return false;
