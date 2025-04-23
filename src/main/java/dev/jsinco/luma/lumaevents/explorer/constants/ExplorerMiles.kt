@@ -482,7 +482,7 @@ object ExplorerMiles {
         desc = """
             'HOUSTON WE HAVE A PROBLEM'. I don't believe we have that command on luma...
         """.trimIndent(),
-        quantity = 1,
+        quantity = 10,
         levels = 2,
         eventClass = UnknownCommandEvent::class.java
     ) { _, levelSnapShot, _ ->

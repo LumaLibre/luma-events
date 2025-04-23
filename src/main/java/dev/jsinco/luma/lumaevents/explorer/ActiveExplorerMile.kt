@@ -50,20 +50,19 @@ class ActiveExplorerMile(
         (mile.handler as ExplorerMileEventHandler<T>)(event, levelSnapshot, data)
 
 
+        val progressed = levelSnapshot.tryProgressLevel()
+
         this.currentQuantity = levelSnapshot.currentQuantity
         this.currentLevel = levelSnapshot.currentLevel
 
-        if (!levelSnapshot.tryProgressLevel()) {
+        if (!progressed) {
             return
         }
 
-        var multiplier = 1.0
-        if (levelSnapshot.currentLevel > 1) {
-            multiplier = 1.5
-        }
+
 
         // reward
-      val amount = TOKENS_PER_LEVEL * levelSnapshot.currentLevel * multiplier
+      val amount = TOKENS_PER_LEVEL * levelSnapshot.currentLevel
 //        val player = eventPlayer.player
 //        TokenExchanging.give(
 //            player,
@@ -117,9 +116,7 @@ class ActiveExplorerMile(
 
     fun playMilesUnlockEffect(eventPlayer: EventPlayer) {
         val player = eventPlayer.player
-        Bukkit.getScheduler().runTask(EventMain.getInstance(), Runnable {
-            player?.playSound(player.location, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 1f, 1f)
-        })
+        player?.playSound(player.location, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 1f, 1f)
         val dialogueText = DialogueText(eventPlayer)
         dialogueText.ifAbsentColor = NamedTextColor.YELLOW
         dialogueText.queueText("You've unlocked a new Explorer Mile! (${mile.title})")

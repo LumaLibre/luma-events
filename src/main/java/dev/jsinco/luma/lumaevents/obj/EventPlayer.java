@@ -1,6 +1,5 @@
 package dev.jsinco.luma.lumaevents.obj;
 
-import com.google.gson.annotations.Expose;
 import dev.jsinco.luma.lumaevents.explorer.constants.ExplorerMiles;
 import dev.jsinco.luma.lumaevents.explorer.ActiveExplorerMile;
 import dev.jsinco.luma.lumaevents.explorer.ExplorerMile;
@@ -21,14 +20,24 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Getter
 @Setter
 public class EventPlayer implements Serializable {
+
+    private transient volatile Object LOCK;
+    private Object getLock() {
+        if (LOCK == null) {
+            synchronized (this) {
+                if (LOCK == null) {
+                    LOCK = new Object();
+                }
+            }
+        }
+        return LOCK;
+    }
 
     private final UUID uuid;
     private final List<TutorialSection> completedTutorialSections;
@@ -58,7 +67,6 @@ public class EventPlayer implements Serializable {
         }
     }
 
-    // Gson load
     public EventPlayer(UUID uuid, List<TutorialSection> completedTutorialSections, Set<ActiveExplorerMile> unlockedExplorerMiles) {
         this.uuid = uuid;
         this.completedTutorialSections = completedTutorialSections;
@@ -176,34 +184,36 @@ public class EventPlayer implements Serializable {
         return 0;
     }
 
-    public synchronized void fireForExplorerMiles(Object event) {
-        Set<ActiveExplorerMile> testableExplorerMiles = new HashSet<>(this.unlockedExplorerMiles);
+    public void fireForExplorerMiles(Object event) {
+        synchronized (this.getLock()) {
+            Set<ActiveExplorerMile> testableExplorerMiles = new HashSet<>(this.unlockedExplorerMiles);
 
-        for (ExplorerMile<?> explorerMile : ExplorerMiles.asMap().values()) {
-            if (explorerMile.getEventClass() == event.getClass() && !hasUnlockedExplorerMile(explorerMile)) {
-                Util.log("Testing an ExplorerMile for which a player does not have any data for: " + explorerMile);
-                testableExplorerMiles.add(new ActiveExplorerMile(explorerMile));
-            }
-        }
-
-
-        for (ActiveExplorerMile activeExplorerMile : testableExplorerMiles) {
-            if (activeExplorerMile == null) {
-                continue;
-            }
-            if (activeExplorerMile.getMile().getEventClass() == event.getClass()) {
-                activeExplorerMile.apply(event, this);
-            }
-        }
-
-        testableExplorerMiles.forEach(activeExplorerMile -> {
-            if (!hasUnlockedExplorerMile(activeExplorerMile.getMile())) {
-                if (activeExplorerMile.hasProgress()) {
-                    this.unlockedExplorerMiles.add(activeExplorerMile);
-                    activeExplorerMile.playMilesUnlockEffect(this);
+            for (ExplorerMile<?> explorerMile : ExplorerMiles.asMap().values()) {
+                if (explorerMile.getEventClass() == event.getClass() && !hasUnlockedExplorerMile(explorerMile)) {
+                    Util.log("Testing an ExplorerMile for which a player does not have any data for: " + explorerMile);
+                    testableExplorerMiles.add(new ActiveExplorerMile(explorerMile));
                 }
             }
-        });
+
+
+            for (ActiveExplorerMile activeExplorerMile : testableExplorerMiles) {
+                if (activeExplorerMile == null) {
+                    continue;
+                }
+                if (activeExplorerMile.getMile().getEventClass() == event.getClass()) {
+                    activeExplorerMile.apply(event, this);
+                }
+            }
+
+            testableExplorerMiles.forEach(activeExplorerMile -> {
+                if (!hasUnlockedExplorerMile(activeExplorerMile.getMile())) {
+                    if (activeExplorerMile.hasProgress()) {
+                        this.unlockedExplorerMiles.add(activeExplorerMile);
+                        activeExplorerMile.playMilesUnlockEffect(this);
+                    }
+                }
+            });
+        }
     }
 
 }

@@ -5,13 +5,11 @@ import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
 import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
-import dev.jsinco.luma.lumaevents.bunnyarena.BunnyArenaScheduler;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
 import dev.jsinco.luma.lumaevents.explorer.gui.ExplorerMilesGui;
 import dev.jsinco.luma.lumaevents.npc.constants.TutorialSection;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
-import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -32,6 +30,7 @@ public class MilesCommand implements CommandModule {
             return true;
         }
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
+        // TODO: Disabled
         if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.MILES_COMMAND)) {
             eventPlayer.sendMessage("Complete 5 Explorer Miles to unlock this command!");
             return true;

@@ -1,5 +1,7 @@
 package dev.jsinco.luma.lumaevents.explorer
 
+import dev.jsinco.luma.lumaevents.utility.Util
+
 class ExplorerMileLevelSnapshot(
     val maxQuantity: Int,
     var currentQuantity: Int,
@@ -19,6 +21,7 @@ class ExplorerMileLevelSnapshot(
 
 
         if (currentQuantity >= this.getMaxQuantityForLevel(currentLevel)) {
+            Util.log("Progressing level $currentLevel to ${currentLevel + 1} with quantity $currentQuantity")
             currentLevel++
             currentQuantity = 0
             return true

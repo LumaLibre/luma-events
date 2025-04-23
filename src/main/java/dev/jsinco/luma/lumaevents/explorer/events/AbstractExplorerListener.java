@@ -13,17 +13,17 @@ public abstract class AbstractExplorerListener implements Listener {
 
     public static void fire(Object event, Player player) {
         // TODO: Disabled.
-        //fire(event, player.getUniqueId());
+//        fire(event, player.getUniqueId());
     }
 
     public static void fire(Object event, UUID playerUUID) {
         // TODO: Disabled.
 
-        // if havent talked to anais yet, return
+        //todo: if havent talked to anais yet, return
 //        EventPlayer eventPlayer = EventPlayerManager.getByUUID(playerUUID);
-//        eventPlayer.fireForExplorerMiles(event);
+//
 //        Bukkit.getScheduler().runTaskAsynchronously(EventMain.getInstance(),
-//                () ->
+//                () -> eventPlayer.fireForExplorerMiles(event)
 //        );
     }
 }

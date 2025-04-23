@@ -12,6 +12,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
+import org.bukkit.event.entity.EntityTargetEvent;
 
 @AutoRegister(RegisterType.LISTENER)
 public class BunnyArenaListener implements Listener {
@@ -66,6 +67,24 @@ public class BunnyArenaListener implements Listener {
         }
 
         if (entity instanceof LivingEntity && !Util.hasPersistentKey(entity, "bunny")) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onEntityTarget(EntityTargetEvent event) {
+        BunnyArenaRegionHandler regionHandler = BunnyArenaScheduler.getInstance().getBunnyArenaRegionHandler();
+        if (regionHandler == null) {
+            return;
+        }
+
+        Entity entity = event.getEntity();
+
+        if (!regionHandler.getPlayArea().contains(entity) || !Util.hasPersistentKey(entity, "bunny")) {
+            return;
+        }
+
+        if (event.getReason() == EntityTargetEvent.TargetReason.TEMPT) {
             event.setCancelled(true);
         }
     }

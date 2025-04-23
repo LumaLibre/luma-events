@@ -121,9 +121,6 @@ public class DialogueText {
 
         player.sendActionBar(Util.color(substring, this.ifAbsentColor));
         player.playSound(player.getLocation(), Sound.UI_HUD_BUBBLE_POP, 0.75f, 1f);
-//        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
-//
-//        })
     }
 }
 
