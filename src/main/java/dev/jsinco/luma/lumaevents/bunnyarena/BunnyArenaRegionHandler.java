@@ -20,8 +20,8 @@ import java.util.function.Consumer;
 @Setter
 public class BunnyArenaRegionHandler {
 
-    private static final int EXTRA_BUNNIES_PER_PLAYER = 18;
-    private static final int DEFAULT_MAX_BUNNIES = 80;
+    private static final int EXTRA_BUNNIES_PER_PLAYER = 9;
+    private static final int DEFAULT_MAX_BUNNIES = 60;
 
     private final WorldTiedBoundingBox playArea;
     private final WorldTiedBoundingBox spawnArea;
@@ -37,9 +37,9 @@ public class BunnyArenaRegionHandler {
      * Automatically spawns as many bunnies as possible in the arena.
      */
     public void autoSpawnBunnies() {
-//        if (this.getPlayersInRegionSize() < 1) {
-//            return; // no players in the arena
-//        }
+        if (this.getPlayersInRegionSize() < 1) {
+            return; // no players in the area
+        }
 
         int max = DEFAULT_MAX_BUNNIES + (this.getPlayersInRegionSize() * EXTRA_BUNNIES_PER_PLAYER);
         int current = this.getBunnyCount();

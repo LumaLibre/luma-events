@@ -87,6 +87,13 @@ public final class Util {
         return strings.stream().map(Util::color).toList();
     }
 
+    public static List<Component> color(TextColor ifAbsent, String... strings) {
+        return Arrays.stream(strings).map(string -> {
+            Component component = color(string);
+            return component.colorIfAbsent(ifAbsent);
+        }).toList();
+    }
+
     public static List<Component> color(List<String> strings, TextColor textColor) {
         return strings.stream().map(string -> {
             Component component = color(string);

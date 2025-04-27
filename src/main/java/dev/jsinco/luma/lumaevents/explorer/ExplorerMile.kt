@@ -1,5 +1,10 @@
 package dev.jsinco.luma.lumaevents.explorer
 
+import dev.jsinco.luma.lumaevents.obj.DialogueText
+import dev.jsinco.luma.lumaevents.obj.EventPlayer
+import net.kyori.adventure.text.format.NamedTextColor
+import org.bukkit.Sound
+
 typealias ExplorerMileEventHandler<T> = (event: T, levelSnapshot: ExplorerMileLevelSnapshot, data: MutableMap<String, Any>) -> Unit
 
 open class ExplorerMile<T>(

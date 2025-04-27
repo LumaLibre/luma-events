@@ -61,33 +61,25 @@ class ActiveExplorerMile(
 
 
 
-        // reward
-      val amount = TOKENS_PER_LEVEL * levelSnapshot.currentLevel
-//        val player = eventPlayer.player
-//        TokenExchanging.give(
-//            player,
-//            TokenExchanging.TokenType.CARROT,
-//            amount.toInt()
-//        )
-      eventPlayer.sendMessage("DEBUG (EXPLORERMILES): You have received $amount tokens for leveling up your ${mile.title}!")
-//        //Bukkit.getScheduler().runTask()
-//
-//        // TODO: Needs handling of rewards testing
-//        val dialogueText = DialogueText(eventPlayer)
-//        dialogueText.queueText("You've leveled up your ${mile.title} to level ${levelSnapshot.currentLevel}!")
-//        if (levelSnapshot.isCompleted()) {
-//            dialogueText.queueText("You completed a mile! (${mile.title})")
-//            if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.MILES_COMMAND) && eventPlayer.completedExplorerMiles >= 5) {
-//                TutorialSection.MILES_COMMAND.completeTutorial(eventPlayer, dialogueText, null)
-//            } else {
-//                dialogueText.sendQueuedText();
-//            }
-//        }
-//
-//        // little noise :)
-//        Bukkit.getScheduler().runTask(EventMain.getInstance(), Runnable {
-//            player?.playSound(player.location, Sound.ENTITY_FIREWORK_ROCKET_BLAST_FAR, 1f, 1f)
-//        })
+        // TODO: reward
+        val amount = TOKENS_PER_LEVEL + (levelSnapshot.currentLevel * TOKENS_PER_LEVEL / 2)
+        val player = eventPlayer.player
+        player?.playSound(player.location, Sound.ENTITY_FIREWORK_ROCKET_BLAST_FAR, 0.5f, 1f)
+        val dialogueText = DialogueText(eventPlayer, NamedTextColor.YELLOW, 0.5f)
+        dialogueText.queueText("You've leveled up your ${mile.title} to level ${levelSnapshot.currentLevel}!")
+        if (levelSnapshot.isCompleted()) {
+            dialogueText.queueText("You completed a mile! (${mile.title})")
+            if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.MILES_COMMAND) && eventPlayer.completedExplorerMiles >= 5) {
+                TutorialSection.MILES_COMMAND.completeTutorial(eventPlayer, dialogueText, null)
+            } else {
+                dialogueText.sendQueuedText();
+            }
+        }
+
+        eventPlayer.sendMessage("You have received <gold>$amount Carrots</gold> for leveling up your Explorer Mile: ${mile.title}!")
+        Bukkit.getScheduler().runTask(EventMain.getInstance(), Runnable {
+            TokenExchanging.give(player, TokenExchanging.TokenType.CARROT, amount)
+        })
     }
 
     fun modifyLevelSnapshot(explorerSnapshotModifier: ExplorerMileLevelSnapshotModifier) {
@@ -114,13 +106,12 @@ class ActiveExplorerMile(
         )
     }
 
-    fun playMilesUnlockEffect(eventPlayer: EventPlayer) {
+    fun playMilesUnlockEffect(eventPlayer: EventPlayer, callback: Runnable?) {
         val player = eventPlayer.player
-        player?.playSound(player.location, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 1f, 1f)
-        val dialogueText = DialogueText(eventPlayer)
-        dialogueText.ifAbsentColor = NamedTextColor.YELLOW
+        player?.playSound(player.location, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 0.5f, 1f)
+        val dialogueText = DialogueText(eventPlayer, NamedTextColor.YELLOW, 0.5f)
         dialogueText.queueText("You've unlocked a new Explorer Mile! (${mile.title})")
-        dialogueText.sendQueuedText()
+        dialogueText.sendQueuedText(callback)
     }
 
     fun hasProgress(): Boolean {
@@ -140,11 +131,15 @@ class ActiveExplorerMile(
         return mile == other.mile
     }
 
+    override fun hashCode(): Int {
+        return javaClass.hashCode()
+    }
+
 
     class GsonTypeAdapter : TypeAdapter<ActiveExplorerMile>() {
         override fun write(writer: JsonWriter, activeExplorerMile: ActiveExplorerMile) {
             val mileImplName = activeExplorerMile.mile.FIELD_NAME
-                ?: throw IllegalArgumentException("${activeExplorerMile.mile.FIELD_NAME} must not be null")
+                ?: ""
 
             writer.beginObject()
             writer.name("mileImplName").value(mileImplName)

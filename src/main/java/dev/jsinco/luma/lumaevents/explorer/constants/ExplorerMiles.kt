@@ -90,8 +90,8 @@ object ExplorerMiles {
 
     val DISCUSS_EASTER_RELATED_TOPICS = ExplorerMile<AsyncChatEvent>(
         title = "Discuss Easter Related Topics",
-        desc = "TODO",
-        //objective = "Say easter related words in chat.",
+        desc = "Say easter related words in chat.",
+        //objective = "",
         quantity = 2,
         levels = 3,
         eventClass = AsyncChatEvent::class.java,
@@ -337,40 +337,40 @@ object ExplorerMiles {
 //        levelSnapShot.currentQuantity += 1
 //    }
 
-//    val EXPLORE = ExplorerMile<PlayerMoveEvent>(
-//        title = "Explore",
-//        desc = """
-//            Well aren't you just an explorer? We knew you had it in you!
-//            We'll reward you for every couple thousand blocks you walk.
-//            Just don't get lost, okay?
-//        """.trimIndent(),
-//        quantity = 50000,
-//        levels = 4,
-//        levelMultiplier = 3.0,
-//        eventClass = PlayerMoveEvent::class.java
-//    ) { event, levelSnapShot, _ ->
-//        val player = event.player
-//        if (player.isGliding || player.isSwimming) {
-//            return@ExplorerMile
-//        }
-//        levelSnapShot.currentQuantity += 1
-//    }
+    val EXPLORE = ExplorerMile<PlayerMoveEvent>(
+        title = "Explore",
+        desc = """
+            Well aren't you just an explorer? We knew you had it in you!
+            We'll reward you for every couple thousand blocks you walk.
+            Just don't get lost, okay?
+        """.trimIndent(),
+        quantity = 50000,
+        levels = 4,
+        levelMultiplier = 3.0,
+        eventClass = PlayerMoveEvent::class.java
+    ) { event, levelSnapShot, _ ->
+        val player = event.player
+        if (player.isGliding || player.isSwimming) {
+            return@ExplorerMile
+        }
+        levelSnapShot.currentQuantity += 1
+    }
 
-//    val EXPLORE_ELYTRA = ExplorerMile<PlayerMoveEvent>(
-//        title = "Take to the Skies",
-//        desc = """
-//            Have fun <aqua>gliding</aqua> around!
-//            Just don't look down!
-//        """.trimIndent(),
-//        quantity = 50000,
-//        levels = 2,
-//        levelMultiplier = 2.0,
-//        eventClass = PlayerMoveEvent::class.java
-//    ) { event, levelSnapShot, _ ->
-//        if (event.player.isGliding) {
-//            levelSnapShot.currentQuantity += 1
-//        }
-//    }
+    val EXPLORE_ELYTRA = ExplorerMile<PlayerMoveEvent>(
+        title = "Take to the Skies",
+        desc = """
+            Have fun <aqua>gliding</aqua> around!
+            Just don't look down!
+        """.trimIndent(),
+        quantity = 50000,
+        levels = 2,
+        levelMultiplier = 2.0,
+        eventClass = PlayerMoveEvent::class.java
+    ) { event, levelSnapShot, _ ->
+        if (event.player.isGliding) {
+            levelSnapShot.currentQuantity += 1
+        }
+    }
 
     val JUMP = ExplorerMile<PlayerJumpEvent>(
         title = "Jump",
@@ -488,7 +488,7 @@ object ExplorerMiles {
     ) { _, levelSnapShot, _ ->
         levelSnapShot.currentQuantity += 1
     }
-
+// TODO: is recursive
 //    val PICKUP_ITEMS = ExplorerMile<PlayerAttemptPickupItemEvent>(
 //        title = "PickerUpper",
 //        desc = """
@@ -498,8 +498,7 @@ object ExplorerMiles {
 //        levels = 5,
 //        levelMultiplier = 3.0,
 //        eventClass = PlayerAttemptPickupItemEvent::class.java
-//    ) { _, levelSnapShot, _ ->
-//
+//    ) { event, levelSnapShot, _ ->
 //        levelSnapShot.currentQuantity += 1
 //    }
 
@@ -728,7 +727,8 @@ object ExplorerMiles {
                 What could be better than this?
             """.trimIndent(),
             quantity = 100000,
-            levels = 15,
+            levelMultiplier = 1.5,
+            levels = 12,
             eventClass = JobsPaymentEvent::class.java
         ) { event, levelSnapShot, _ ->
             val moneyEarned = event.payment[CurrencyType.MONEY] ?: return@ExplorerMile
@@ -995,7 +995,7 @@ object ExplorerMiles {
             Exercise your computer-bestowed right to type letters into your browser!
             Or skip straight to /vote! What fun!
         """.trimIndent(),
-            quantity = 8,
+            quantity = 9,
             levels = 10,
             eventClass = VoteReceivedEvent::class.java,
         ) { _, levelSnapShot, _ ->
@@ -1101,8 +1101,8 @@ object ExplorerMiles {
             Well, now you're just a bunny... But at least you 
             can hop around and collect some carrots!
         """.trimIndent(),
-        quantity = 1,
-        levels = 7,
+        quantity = 2,
+        levels = 3,
         eventClass = NabbitChangeRole::class.java
     ) { event, levelSnapShot, _ ->
         if (event.role == NabbitPlayer.Role.RABBIT) {
@@ -1159,7 +1159,7 @@ object ExplorerMiles {
     }
 
     // Reflect
-    private val KEYS: MutableMap<String, ExplorerMile<*>> = mutableMapOf()
+    private val KEYS: MutableMap<String, ExplorerMile<*>> = LinkedHashMap()
     @JvmStatic fun asMap() = KEYS
     @JvmStatic fun values() = KEYS.values
     @JvmStatic fun valueOf(name: String) = KEYS[name]

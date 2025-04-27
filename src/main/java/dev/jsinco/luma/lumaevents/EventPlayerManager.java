@@ -18,6 +18,7 @@ import java.util.UUID;
 
 public final class EventPlayerManager {
 
+    // FIXME: This needs to lazy load players
     public static final List<EventPlayer> EVENT_PLAYERS = new ArrayList<>();
 
     private static final Gson gson = Util.GSON;

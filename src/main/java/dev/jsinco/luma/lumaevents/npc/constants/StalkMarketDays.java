@@ -9,6 +9,7 @@ import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class StalkMarketDays {
@@ -50,7 +51,7 @@ public final class StalkMarketDays {
 
 
 
-    private static final Map<String, StalkMarketDay> VALUES = new HashMap<>();
+    private static final Map<String, StalkMarketDay> VALUES = new LinkedHashMap<>();
 
     private static Collection<StalkMarketDay> values() {
         return VALUES.values();

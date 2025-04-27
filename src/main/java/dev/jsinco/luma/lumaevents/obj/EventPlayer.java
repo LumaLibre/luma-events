@@ -166,6 +166,10 @@ public class EventPlayer implements Serializable {
         return false;
     }
 
+    public <T> boolean unlockExplorerMile(ExplorerMile<T> explorerMile) {
+        return this.unlockedExplorerMiles.add(new ActiveExplorerMile(explorerMile));
+    }
+
     public <T> ActiveExplorerMile getActiveExplorerMile(ExplorerMile<T> explorerMile) {
         for (ActiveExplorerMile activeExplorerMile : unlockedExplorerMiles) {
             if (Objects.equals(activeExplorerMile.getMile().getFIELD_NAME(), explorerMile.getFIELD_NAME())) {
@@ -190,7 +194,7 @@ public class EventPlayer implements Serializable {
 
             for (ExplorerMile<?> explorerMile : ExplorerMiles.asMap().values()) {
                 if (explorerMile.getEventClass() == event.getClass() && !hasUnlockedExplorerMile(explorerMile)) {
-                    Util.log("Testing an ExplorerMile for which a player does not have any data for: " + explorerMile);
+                    //Util.log("Testing an ExplorerMile for which a player does not have any data for: " + explorerMile);
                     testableExplorerMiles.add(new ActiveExplorerMile(explorerMile));
                 }
             }
@@ -209,7 +213,7 @@ public class EventPlayer implements Serializable {
                 if (!hasUnlockedExplorerMile(activeExplorerMile.getMile())) {
                     if (activeExplorerMile.hasProgress()) {
                         this.unlockedExplorerMiles.add(activeExplorerMile);
-                        activeExplorerMile.playMilesUnlockEffect(this);
+                        activeExplorerMile.playMilesUnlockEffect(this, null);
                     }
                 }
             });

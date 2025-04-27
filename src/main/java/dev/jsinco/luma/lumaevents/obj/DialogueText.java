@@ -23,7 +23,7 @@ public class DialogueText {
     private final List<String> queue;
     @Getter @Setter
     private TextColor ifAbsentColor = NamedTextColor.WHITE;
-
+    private float voicePitch = 1.0f;
     private boolean monoUpperFont;
 
     public DialogueText(EventPlayer eventPlayer) {
@@ -32,9 +32,22 @@ public class DialogueText {
         this.queue = new ArrayList<>();
     }
 
-    public DialogueText(EventPlayer eventPlayer, boolean monoUpperFont) {
+    public DialogueText(EventPlayer eventPlayer, TextColor color) {
+        this(eventPlayer);
+        this.ifAbsentColor = color;
+    }
+
+    public DialogueText(EventPlayer eventPlayer, TextColor color, float voicePitch) {
+        this(eventPlayer);
+        this.ifAbsentColor = color;
+        this.voicePitch = voicePitch;
+    }
+
+    public DialogueText(EventPlayer eventPlayer, boolean monoUpperFont, TextColor color, float voicePitch) {
         this(eventPlayer);
         this.monoUpperFont = monoUpperFont;
+        this.ifAbsentColor = color;
+        this.voicePitch = voicePitch;
     }
 
     public void queueText(String msg) {
@@ -50,7 +63,7 @@ public class DialogueText {
         }
     }
 
-    public void queueText(String[] msg) {
+    public void queueText(String... msg) {
         for (String s : msg) {
             queueText(s);
         }
@@ -120,45 +133,6 @@ public class DialogueText {
     private void sendActionBar(Player player, String substring) {
 
         player.sendActionBar(Util.color(substring, this.ifAbsentColor));
-        player.playSound(player.getLocation(), Sound.UI_HUD_BUBBLE_POP, 0.75f, 1f);
+        player.playSound(player.getLocation(), Sound.UI_HUD_BUBBLE_POP, 0.75f, voicePitch);
     }
 }
-
-
-//public void sendMessage(String text) {
-//        sendMessage(text, null);
-//    }
-//
-//
-//    public void sendMessage(String text, @Nullable Runnable callback) {
-//        Player player = this.eventPlayer.getPlayer();
-//        if (player == null) {
-//            return;
-//        }
-//        final int totalChars = text.length();
-//        final int[] currentChar = {0}; // Mutable wrapper for the variable
-//
-//        Bukkit.getAsyncScheduler().runAtFixedRate(EventMain.getInstance(), (task) -> {
-//            currentChar[0]++; // Increment the value
-//            // If it's a space, let's jump to the next character
-//            if (currentChar[0] < totalChars && text.charAt(currentChar[0]) == ' ') {
-//                currentChar[0]++;
-//            }
-//            // If it's a < let's increment until we find a >
-//            if (currentChar[0] < totalChars && text.charAt(currentChar[0]) == '<') {
-//                while (currentChar[0] < totalChars && text.charAt(currentChar[0]) != '>') {
-//                    currentChar[0]++;
-//                }
-//                currentChar[0]++;
-//            }
-//
-//            if (currentChar[0] <= totalChars) {
-//                sendActionBar(player, text.substring(0, currentChar[0]));
-//            } else {
-//                task.cancel();
-//                if (callback != null) {
-//                    callback.run();
-//                }
-//            }
-//        }, 0, this.rate, TimeUnit.MILLISECONDS);
-//    }
