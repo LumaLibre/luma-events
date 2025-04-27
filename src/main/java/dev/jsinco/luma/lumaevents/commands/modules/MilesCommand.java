@@ -9,7 +9,10 @@ import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
 import dev.jsinco.luma.lumaevents.explorer.gui.ExplorerMilesGui;
 import dev.jsinco.luma.lumaevents.npc.constants.TutorialSection;
+import dev.jsinco.luma.lumaevents.obj.DialogueText;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -29,15 +32,20 @@ public class MilesCommand implements CommandModule {
         if (!(commandSender instanceof Player player)) {
             return true;
         }
-        EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
-        // TODO: Disabled
-        if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.MILES_COMMAND)) {
-            eventPlayer.sendMessage("Complete 5 Explorer Miles to unlock this command!");
-            return true;
-        }
+        Bukkit.getAsyncScheduler().runNow(EventMain.getInstance(), (task) -> {
+            EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
+            ExplorerMilesGui gui = new ExplorerMilesGui(eventPlayer);
 
-        ExplorerMilesGui gui = new ExplorerMilesGui(eventPlayer);
-        gui.open(player);
+            if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.MILES_COMMAND)) {
+                if (eventPlayer.getUnlockedExplorerMiles().size() >= 5) {
+                    TutorialSection.MILES_COMMAND.completeTutorial(eventPlayer, new DialogueText(eventPlayer, NamedTextColor.YELLOW, 0.5f), () -> gui.open(player));
+                } else {
+                    eventPlayer.sendMessage("You need to complete <aqua>5</aqua> Explorer Miles to unlock this command!");
+                }
+            } else {
+                gui.open(player);
+            }
+        });
         return true;
     }
 

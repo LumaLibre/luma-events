@@ -9,13 +9,16 @@ import dev.jsinco.luma.lumaevents.explorer.ExplorerMileLevelSnapshot;
 import dev.jsinco.luma.lumaevents.explorer.constants.ExplorerMiles;
 import dev.jsinco.luma.lumaevents.explorer.events.IAItemStacksListener;
 import dev.jsinco.luma.lumaevents.explorer.events.IAItemStacksListener.CustomStackNameSpace;
+import dev.jsinco.luma.lumaevents.obj.DialogueText;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import dev.jsinco.luma.lumaevents.tokens.TokenExchanging;
 import dev.jsinco.luma.lumaevents.utility.gui.GuiUtil;
 import dev.jsinco.luma.lumaevents.utility.gui.GuiUtil.GuiArrow;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumaevents.utility.gui.PaginatedGui;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.Sound;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
@@ -24,30 +27,69 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 public class ExplorerMilesGui extends AbstractGui {
 
-    private static final String EXPLORER_POSTCARD_KEY = "explorer_mile";
+    //private static final String EXPLORER_POSTCARD_KEY = "explorer_mile";
 
     private final Inventory baseInv = GuiUtil.getBaseInv(this, 54, "Explorer Miles");
     private PaginatedGui paginatedGui;
     private EventPlayer eventPlayer;
+    private DialogueText dialogueText;
 
     private final GuiItem unlockMore = new GuiItem(
             53,
-            Util.editMeta(IAItemStacksListener.getCachedIAStack(CustomStackNameSpace.POSTCARD_PILE), (meta -> {
+            Util.editMeta(Objects.requireNonNull(IAItemStacksListener.getCachedIAStack(CustomStackNameSpace.POSTCARD_PILE), "ItemsAdder is missing custom item POSTCAR_PILE"), (meta -> {
                 meta.displayName(Util.color("<gold><b>Unlock more explorer miles"));
-                int unlocked = 0;//eventPlayer.getUnlockedExplorerMiles().size();
-                int total = ExplorerMiles.values().size();
-                meta.lore(Util.color(GuiUtil.formatLore("You have unlocked " + unlocked + "/" + total + " explorer miles. Click to unlock more explorer miles for 100k each."), NamedTextColor.WHITE));
+                //int unlocked = -1; //eventPlayer.getUnlockedExplorerMiles().size();
+                //int total = ExplorerMiles.values().size();
+                meta.lore(Util.color(
+                        NamedTextColor.WHITE,
+                        //"You have unlocked <gold>" + unlocked + "/" + total + " explorer miles.",
+                        "Click to unlock more",
+                        "explorer miles for <aqua>40 Carrots</aqua> each."
+                ));
             })),
             (event, guiItem) -> {
-                eventPlayer.sendMessage("<red>Not implemented yet.");
+                Player bukkitPlayer = (Player) event.getWhoClicked();
+                bukkitPlayer.closeInventory();
+                int amount = TokenExchanging.getAmount(bukkitPlayer, TokenExchanging.TokenType.CARROT);
+                if (amount < 40) {
+                    dialogueText.queueText(
+                            "Hey hey,",
+                            "we don't do handouts around here.",
+                            "If you want to pay to unlock more explorer miles,",
+                            "we'll need <aqua>40 Carrots</aqua> up front first..."
+                    );
+                    dialogueText.sendQueuedText(() -> this.open(bukkitPlayer));
+                    return;
+                }
+
+                if (!TokenExchanging.take(bukkitPlayer, TokenExchanging.TokenType.CARROT, 40)) {
+                    return;
+                }
+
+                Collection<ExplorerMile<?>> explorerMiles = ExplorerMiles.values();
+                for (ExplorerMile<?> explorerMile : explorerMiles) {
+                    if (!eventPlayer.hasUnlockedExplorerMile(explorerMile)) {
+                        bukkitPlayer.playSound(bukkitPlayer.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 0.5f, 1f);
+                        eventPlayer.unlockExplorerMile(explorerMile);
+                        this.refreshGui();
+                        dialogueText.queueText(
+                                "You unlocked a new Explorer Mile! (" + explorerMile.getTitle() + ")",
+                                "...",
+                                "Congratulations!"
+                        );
+                        dialogueText.sendQueuedText(() -> this.open(bukkitPlayer));
+                        return;
+                    }
+                }
             }
     );
 
@@ -77,7 +119,12 @@ public class ExplorerMilesGui extends AbstractGui {
 
     public ExplorerMilesGui(EventPlayer eventPlayer) {
         this.eventPlayer = eventPlayer;
+        this.dialogueText = new DialogueText(eventPlayer, NamedTextColor.YELLOW, 0.4f);
+        this.autoRegister();
+        this.refreshGui();
+    }
 
+    private void refreshGui() {
         List<ItemStack> items = new ArrayList<>();
 
         for (ExplorerMile<?> explorerMile : ExplorerMiles.values()) {
@@ -117,8 +164,6 @@ public class ExplorerMilesGui extends AbstractGui {
             items.add(explorerMilePostCard);
         }
 
-        this.autoRegister();
-
         this.paginatedGui = new PaginatedGui.Builder()
                 .name("Explorer Miles")
                 .base(baseInv)
@@ -131,23 +176,6 @@ public class ExplorerMilesGui extends AbstractGui {
     @Override
     public void onInventoryClick(InventoryClickEvent event) {
         event.setCancelled(true);
-        /*
-        ItemStack clicked = event.getCurrentItem();
-        Player whoClicked = (Player) event.getWhoClicked();
-        if (clicked == null) {
-            return;
-        }
-
-        String explorerMileImplName = Util.getPersistentKey(clicked, EXPLORER_POSTCARD_KEY, PersistentDataType.STRING);
-        if (explorerMileImplName == null) {
-            return;
-        }
-
-        ExplorerMile<?> explorerMile = ExplorerMiles.valueOf(explorerMileImplName);
-        if (explorerMile == null) {
-            return;
-        }
-        */
     }
 
     @Override
@@ -178,7 +206,7 @@ public class ExplorerMilesGui extends AbstractGui {
         lore.add("");
         lore.add("<#EEE1D5><st>       </st>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>       </st></#EEE1D5>");
         lore.add("Stars<gray>:</gray> " + this.createLevelProgressBar(snapshot));
-        lore.add("Progress<gray>:</gray> " + this.createQuantityProgressBar(snapshot));
+        lore.add("Progress(" + snapshot.getCurrentQuantity() + "/" + snapshot.getMaxQuantityForCurrentLevel() +")<gray>:</gray> " + this.createQuantityProgressBar(snapshot));
         lore.add("<#EEE1D5><st>       </st>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>       </st></#EEE1D5>");
         return lore;
     }
@@ -216,13 +244,6 @@ public class ExplorerMilesGui extends AbstractGui {
             }
         }
         return completedStr + remainingStr;
-    }
-
-    private double fractionToDecimal(int x, int y) {
-        if (y == 0) {
-            return 0.0;
-        }
-        return ((double) x / (double) y) * 100;
     }
 
 }

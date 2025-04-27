@@ -107,24 +107,17 @@ public class SelectOptionGui extends AbstractGui {
             GuiUtil.item(CustomStackNameSpace.POSTCARD_CITY_NO_ART, true, "<b>Explorer Miles"),
             (event, guiItem) -> {
                 HumanEntity h = event.getWhoClicked();
-
-
                 h.closeInventory();
-                dialogueText.queueText("This isn't available right now!");
-                dialogueText.queueText("<white><i>Coming soon!");
-                dialogueText.sendQueuedText(() -> {
-                    this.open(h);
-                });
 
-                // TODO: Disabled
-                //ExplorerMilesGui gui = new ExplorerMilesGui(eventPlayer);
-//                if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.EXPLORER_MILES)) {
-//                    TutorialSection.EXPLORER_MILES.completeTutorial(eventPlayer, dialogueText, () -> {
-//                        gui.open(h);
-//                    });
-//                } else {
-//                    gui.open(h);
-//                }
+                ExplorerMilesGui gui = new ExplorerMilesGui(eventPlayer);
+                if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.EXPLORER_MILES)) {
+                    TutorialSection.EXPLORER_MILES.completeTutorial(eventPlayer, dialogueText, () -> {
+                        gui.open(h);
+                    });
+                } else {
+                    dialogueText.queueText("Here ya go!");
+                    dialogueText.sendQueuedText(() -> gui.open(h));
+                }
             }
     );
 
@@ -143,9 +136,6 @@ public class SelectOptionGui extends AbstractGui {
 
     @Override
     public void onInventoryClose(@NotNull InventoryCloseEvent event) {
-        if (event.getReason() == InventoryCloseEvent.Reason.PLAYER) {
-            // TODO: send dialogue
-        }
     }
 
 

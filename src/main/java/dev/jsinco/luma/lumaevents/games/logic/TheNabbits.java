@@ -28,6 +28,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.player.PlayerAttemptPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
@@ -170,8 +171,10 @@ public final class TheNabbits extends Minigame {
                 });
             }
             nabbitPlayer.handleGameEnd(() -> {
-                int tokens = (int) (nabbitPlayer.getScore() / 3.5);
-                TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.CARROT, tokens);
+                if (bukkitPlayer != null) {
+                    int tokens = (int) (nabbitPlayer.getScore() / 3.5);
+                    TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.CARROT, tokens);
+                }
             });
         }
         this.nabbitParticipants.clear();
@@ -317,6 +320,19 @@ public final class TheNabbits extends Minigame {
                 location.getWorld().dropItem(location, itemStack);
             });
         }
+    }
+
+    @EventHandler
+    public void onProjectileLaunch(ProjectileLaunchEvent event) {
+        this.ensureNotIllegal();
+        if (!this.boundingBox.contains(event.getEntity()) || !(event.getEntity().getShooter() instanceof Player bukkitPlayer)) {
+            return;
+        }
+        NabbitPlayer nabbitPlayer = this.nabbitParticipants.getNabbitPlayer(bukkitPlayer);
+        if (nabbitPlayer == null) {
+            return;
+        }
+        event.setCancelled(true);
     }
 
     private Location findValidSpawnLocation(boolean player) {

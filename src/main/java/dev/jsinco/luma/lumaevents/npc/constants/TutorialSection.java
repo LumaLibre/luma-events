@@ -16,11 +16,13 @@ public enum TutorialSection {
             "I'll let ya have access to <gold>/easter miles<green>!",
             "<i>So you won't have to chat with me all the time. ♥(ˆ⌣ˆԅ)",
             "...",
-            "Oops, one last thing! Most miles aren't unlocked by default.",
+            "Oops, one last thing!",
+            "Most miles aren't unlocked by default.",
             "So you'll have to <aqua>discover<green> them first.",
             "You can unlock miles by trading carrots to unlock new ones",
             "or, by completing certain tasks related to a mile.",
-            "To start you off, I'll give you <aqua>10<green> random miles.",
+            "To start you off,",
+            "I'll give you <aqua>10<green> random miles.",
             "Have fun!"
     ),
     // Anais explains what the Stalk Market is and how it works,
@@ -36,7 +38,7 @@ public enum TutorialSection {
     MILES_COMMAND(
             "You completed <aqua>5<green> Explorer Miles!",
             "You can now use <gold>/easter miles<green> to check your miles.",
-            "Enjoy! ♥(ˆ⌣ˆԅ) ~ Anais"
+            "Enjoy!"
     ),
     ANAIS_INTRODUCTION(
             "Hello there, <gold>stranger!",
