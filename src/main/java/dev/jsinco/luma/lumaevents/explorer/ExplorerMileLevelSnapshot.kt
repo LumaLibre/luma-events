@@ -21,7 +21,7 @@ class ExplorerMileLevelSnapshot(
 
 
         if (currentQuantity >= this.getMaxQuantityForLevel(currentLevel)) {
-            Util.log("Progressing level $currentLevel to ${currentLevel + 1} with quantity $currentQuantity")
+            //Util.log("Progressing level $currentLevel to ${currentLevel + 1} with quantity $currentQuantity")
             currentLevel++
             currentQuantity = 0
             return true

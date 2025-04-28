@@ -30,6 +30,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.player.PlayerAttemptPickupItemEvent;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.RayTraceResult;
@@ -50,6 +51,11 @@ public final class TheNabbits extends Minigame {
     };
     private static final List<Material> BLACKLISTED_SPAWN_MATERIALS = List.of(
             Material.BARRIER
+    );
+    private static final List<Enchantment> BLACKLISTED_ENCHANTMENTS = List.of(
+            Enchantment.FIRE_ASPECT,
+            Enchantment.KNOCKBACK,
+            Enchantment.THORNS
     );
     private static final ItemStack REGULAR_CARROT = new ItemStack(Material.CARROT);
 
@@ -204,9 +210,24 @@ public final class TheNabbits extends Minigame {
             );
             return false;
         }
+
+        ItemStack mainHand = bukkitPlayer.getInventory().getItemInMainHand();
+
+        if (!mainHand.getType().isAir()) {
+            if (BLACKLISTED_ENCHANTMENTS.stream().anyMatch(mainHand::containsEnchantment)) {
+                player.sendTitle("<red>Entry Denied", "<gray>Custom items are not allowed in this minigame.");
+                player.sendMessage(
+                        "You can't join while holding an item that contains those enchantments."
+                );
+                return false;
+            }
+        }
+
+
         bukkitPlayer.teleportAsync(this.spawnPoint);
         return true;
     }
+
 
     @EventHandler
     public void onPlayerDamageOther(EntityDamageByEntityEvent event) {
@@ -304,6 +325,20 @@ public final class TheNabbits extends Minigame {
         bukkitPlayer.playSound(bukkitPlayer.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
         bukkitPlayer.spawnParticle(Particle.HAPPY_VILLAGER, bukkitPlayer.getLocation(), 3, 0.5, 0.5, 0.5, 0.1);
         nabbitPlayer.getEventPlayer().sendActionBar("<gold>You picked up a carrot!");
+    }
+
+    @EventHandler
+    public void onPlayerConsumeItem(PlayerItemConsumeEvent event) {
+        this.ensureNotIllegal();
+        Player bukkitPlayer = event.getPlayer();
+        NabbitPlayer nabbitPlayer = this.nabbitParticipants.getNabbitPlayer(bukkitPlayer);
+        if (nabbitPlayer == null || !isInBoundingBox(bukkitPlayer)) {
+            return;
+        }
+
+        if (event.getItem().getType() == Material.CHORUS_FRUIT) {
+            event.setCancelled(true);
+        }
     }
 
 

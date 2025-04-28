@@ -11,6 +11,7 @@ import dev.jsinco.luma.lumaevents.obj.DialogueText;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.tokens.TokenExchanging;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -32,7 +33,9 @@ public class QuizRewardModule implements NPCCommandModule {
         TutorialSection tutorialSection = TutorialSection.QUIZ_REWARD;
         if (!eventPlayer.hasCompletedTutorialSection(tutorialSection)) {
             tutorialSection.completeTutorial(eventPlayer, dialogueText, () -> {
-                TokenExchanging.give(eventPlayer.getPlayer(), TokenExchanging.TokenType.BASKET, 2);
+                Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+                    TokenExchanging.give(eventPlayer.getPlayer(), TokenExchanging.TokenType.BASKET, 2);
+                });
             });
         } else {
             dialogueText.queueText("What are you doing here?");
