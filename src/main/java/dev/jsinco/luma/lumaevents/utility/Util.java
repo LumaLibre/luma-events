@@ -160,10 +160,21 @@ public final class Util {
             return;
         }
 
-        Map<Integer, ItemStack> didntFit = player.getInventory().addItem(itemStack);
-        if (!didntFit.isEmpty()) {
-            for (ItemStack itemStack1 : didntFit.values()) {
-                player.getWorld().dropItem(player.getLocation(), itemStack1);
+        if (!Bukkit.isPrimaryThread()) {
+            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+                Map<Integer, ItemStack> didntFit = player.getInventory().addItem(itemStack);
+                if (!didntFit.isEmpty()) {
+                    for (ItemStack itemStack1 : didntFit.values()) {
+                        player.getWorld().dropItem(player.getLocation(), itemStack1);
+                    }
+                }
+            });
+        } else {
+            Map<Integer, ItemStack> didntFit = player.getInventory().addItem(itemStack);
+            if (!didntFit.isEmpty()) {
+                for (ItemStack itemStack1 : didntFit.values()) {
+                    player.getWorld().dropItem(player.getLocation(), itemStack1);
+                }
             }
         }
     }
