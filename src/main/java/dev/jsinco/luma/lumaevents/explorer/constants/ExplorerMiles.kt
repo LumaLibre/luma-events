@@ -53,18 +53,30 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.inventory.CraftItemEvent
+import org.bukkit.event.inventory.PrepareAnvilEvent
+import org.bukkit.event.player.PlayerAnimationEvent
+import org.bukkit.event.player.PlayerAnimationType
 import org.bukkit.event.player.PlayerAttemptPickupItemEvent
 import org.bukkit.event.player.PlayerBedEnterEvent
+import org.bukkit.event.player.PlayerBucketEmptyEvent
+import org.bukkit.event.player.PlayerBucketFillEvent
 import org.bukkit.event.player.PlayerCommandPreprocessEvent
+import org.bukkit.event.player.PlayerDropItemEvent
 import org.bukkit.event.player.PlayerEditBookEvent
 import org.bukkit.event.player.PlayerEggThrowEvent
+import org.bukkit.event.player.PlayerInteractEntityEvent
 import org.bukkit.event.player.PlayerItemBreakEvent
 import org.bukkit.event.player.PlayerItemConsumeEvent
 import org.bukkit.event.player.PlayerItemMendEvent
+import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.event.player.PlayerRiptideEvent
+import org.bukkit.event.player.PlayerShearEntityEvent
+import org.bukkit.inventory.MainHand
 import java.util.logging.Level
+import kotlin.math.E
 
+@Suppress("UNUSED", "RemoveExplicitTypeArguments", "UNCHECKED_CAST")
 object ExplorerMiles {
 
 
@@ -156,7 +168,7 @@ object ExplorerMiles {
         levelMultiplier = 2.0,
         eventClass = BlockBrokenExplorerEvent::class.java
     ) { event, levelSnapShot, _ ->
-        if (event.type == Material.DIAMOND_ORE) {
+        if (event.type == Material.DIAMOND_ORE || event.type == Material.DEEPSLATE_DIAMOND_ORE) {
             levelSnapShot.currentQuantity += 1
         }
     }
@@ -173,7 +185,7 @@ object ExplorerMiles {
         levelMultiplier = 2.0,
         eventClass = BlockBrokenExplorerEvent::class.java
     ) { event, levelSnapShot, _ ->
-        if (event.type == Material.EMERALD_ORE) {
+        if (event.type == Material.EMERALD_ORE || event.type == Material.DEEPSLATE_EMERALD_ORE) {
             levelSnapShot.currentQuantity += 1
         }
     }
@@ -521,12 +533,12 @@ object ExplorerMiles {
     val CHANGE_LOCALE = ExplorerMile<PlayerClientOptionsChangeEvent>(
         title = "Try a New Language",
         desc = """
-            Parlez vous français? o forse italiano?
+            Wanna try out a new language? Give it a shot! Maybe try <aqua>LOLCAT</aqua>?
         """.trimIndent(),
         quantity = 1,
         eventClass = PlayerClientOptionsChangeEvent::class.java
     ) { event, levelSnapShot, _ ->
-        if (event.hasLocaleChanged()) {
+        if (event.locale == "lol_us") {
             levelSnapShot.currentQuantity += 1
         }
     }
@@ -540,7 +552,7 @@ object ExplorerMiles {
         quantity = 1,
         eventClass = PlayerClientOptionsChangeEvent::class.java
     ) { event, levelSnapShot, _ ->
-        if (event.hasMainHandChanged()) {
+        if (event.mainHand == MainHand.LEFT) {
             levelSnapShot.currentQuantity += 1
         }
     }
@@ -714,6 +726,140 @@ object ExplorerMiles {
         levels = 3,
         levelMultiplier = 2.0,
         eventClass = PlayerItemMendEvent::class.java
+    ) { _, levelSnapShot, _ ->
+        levelSnapShot.currentQuantity += 1
+    }
+
+    val PREPARE_ANVIL = ExplorerMile<PrepareAnvilEvent>(
+        title = "Prepare Anvil",
+        desc = """
+            You know, I heard that if you drop a few anvils on each other, they can make a really cool sound!
+            But don't ask me how to do it, I'm not a blacksmith!
+        """.trimIndent(),
+        quantity = 1,
+        eventClass = PrepareAnvilEvent::class.java
+    ) { _, levelSnapShot, _ ->
+        levelSnapShot.currentQuantity += 1
+    }
+
+    val DROP_CARROTS = ExplorerMile<PlayerDropItemEvent>(
+        title = "Drop Carrots",
+        desc = """
+            Drop a few carrots on the ground. 
+            I hear they make great decorations for your house!
+        """.trimIndent(),
+        quantity = 1000,
+        levels = 3,
+        levelMultiplier = 2.0,
+        eventClass = PlayerDropItemEvent::class.java
+    ) { event, levelSnapShot, _ ->
+        if (event.itemDrop.itemStack.type == Material.CARROT) {
+            levelSnapShot.currentQuantity += 1
+        }
+    }
+
+    val DROP_GOLD_INGOTS = ExplorerMile<PlayerDropItemEvent>(
+        title = "Drop Gold Ingots",
+        desc = """
+            Drop a few gold ingots on the ground. 
+            Make sure to pick them back up though, wouldn't want to lose 'em!
+        """.trimIndent(),
+        quantity = 1000,
+        levels = 3,
+        levelMultiplier = 2.0,
+        eventClass = PlayerDropItemEvent::class.java
+    ) { event, levelSnapShot, _ ->
+        if (event.itemDrop.itemStack.type == Material.GOLD_INGOT) {
+            levelSnapShot.currentQuantity += 1
+        }
+    }
+
+    val LOGIN_DAILY = ExplorerMile<PlayerJoinEvent>(
+        title = "Join Luma Daily",
+        desc = """
+            Join Luma every day to get a special reward!
+        """.trimIndent(),
+        quantity = 1,
+        levels = 5,
+        eventClass = PlayerJoinEvent::class.java
+    ) { _, levelSnapshot, data ->
+        val timeStamps = data["timeStamps"] as? MutableList<Long> ?: mutableListOf<Long>()
+        val currentTime = System.currentTimeMillis()
+        val ONE_DAY = 86400000L // 24 hours in milliseconds
+
+        if (timeStamps.isEmpty() || currentTime - timeStamps.last() > ONE_DAY) {
+            timeStamps.add(currentTime)
+            levelSnapshot.currentQuantity += 1
+            data["timeStamps"] = timeStamps
+        }
+    }
+
+    val SWING_YOUR_OFFHAND = ExplorerMile<PlayerAnimationEvent>(
+        title = "Swing Your Offhand",
+        desc = """
+            Swing your offhand like a pro!
+            Don't forget to put it back in your pocket when you're done!
+        """.trimIndent(),
+        quantity = 1,
+        eventClass = PlayerAnimationEvent::class.java
+    ) { event, levelSnapShot, _ ->
+        if (event.animationType == PlayerAnimationType.OFF_ARM_SWING) {
+            levelSnapShot.currentQuantity += 1
+        }
+    }
+
+    val INTERACT_WITH_ENTITIES = ExplorerMile<PlayerInteractEntityEvent>(
+        title = "Interact with Entities",
+        desc = """
+            Interact with entities like a pro!
+            Make sure to say hello first!
+        """.trimIndent(),
+        quantity = 100,
+        levels = 2,
+        levelMultiplier = 2.0,
+        eventClass = PlayerInteractEntityEvent::class.java
+    ) { _, levelSnapShot, _ ->
+        levelSnapShot.currentQuantity += 1
+    }
+
+
+    val SHEAR_ENTITIES = ExplorerMile<PlayerShearEntityEvent>(
+        title = "Shear Entities",
+        desc = """
+            I wonder which entities are shearable?
+        """.trimIndent(),
+        quantity = 50,
+        levels = 3,
+        levelMultiplier = 1.5,
+        eventClass = PlayerShearEntityEvent::class.java
+    ) { _, levelSnapShot, _ ->
+        levelSnapShot.currentQuantity += 1
+    }
+
+    val FILL_BUCKETS = ExplorerMile<PlayerBucketFillEvent>(
+        title = "Fill Buckets",
+        desc = """
+            Fill your buckets with water, lava, or whatever else you can find!
+            Also try emptying them out when you're done!
+        """.trimIndent(),
+        quantity = 100,
+        levels = 2,
+        levelMultiplier = 2.0,
+        eventClass = PlayerBucketFillEvent::class.java
+    ) { _, levelSnapShot, _ ->
+        levelSnapShot.currentQuantity += 1
+    }
+
+    val EMPTY_BUCKETS = ExplorerMile<PlayerBucketEmptyEvent>(
+        title = "Empty Buckets",
+        desc = """
+            Got some filled up buckets?
+            Let's go ahead and empty those out!
+        """.trimIndent(),
+        quantity = 200,
+        levels = 2,
+        levelMultiplier = 2.0,
+        eventClass = PlayerBucketEmptyEvent::class.java
     ) { _, levelSnapShot, _ ->
         levelSnapShot.currentQuantity += 1
     }

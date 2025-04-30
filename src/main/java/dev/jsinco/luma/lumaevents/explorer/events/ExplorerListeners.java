@@ -15,6 +15,7 @@ import io.papermc.paper.event.player.PlayerFlowerPotManipulateEvent;
 import io.papermc.paper.event.player.PlayerItemFrameChangeEvent;
 import io.papermc.paper.event.player.PlayerNameEntityEvent;
 import io.papermc.paper.event.player.PlayerShieldDisableEvent;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -24,16 +25,25 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
+import org.bukkit.event.inventory.PrepareAnvilEvent;
+import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerAttemptPickupItemEvent;
 import org.bukkit.event.player.PlayerBedEnterEvent;
+import org.bukkit.event.player.PlayerBucketEmptyEvent;
+import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerEditBookEvent;
 import org.bukkit.event.player.PlayerEggThrowEvent;
 import org.bukkit.event.player.PlayerItemBreakEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerItemMendEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerRiptideEvent;
+import org.bukkit.event.player.PlayerShearEntityEvent;
+
+import java.util.List;
 
 @AutoRegister(RegisterType.LISTENER)
 public final class ExplorerListeners extends AbstractExplorerListener {
@@ -123,6 +133,7 @@ public final class ExplorerListeners extends AbstractExplorerListener {
 
     @EventHandler
     public void onPlayerClientOptionsChange(PlayerClientOptionsChangeEvent event) {
+        System.out.println(event);
         fire(event, event.getPlayer());
     }
 
@@ -185,6 +196,43 @@ public final class ExplorerListeners extends AbstractExplorerListener {
 
     @EventHandler
     public void onPlayerItemMend(PlayerItemMendEvent event) {
+        fire(event, event.getPlayer());
+    }
+
+    @EventHandler
+    public void onPrepareAnvil(PrepareAnvilEvent event) {
+        List<HumanEntity> viewers = event.getViewers();
+        if (viewers.isEmpty()) return;
+        fire(event, viewers.getFirst().getUniqueId());
+    }
+
+    @EventHandler
+    public void onPlayerDropItem(PlayerDropItemEvent event) {
+        fire(event, event.getPlayer());
+    }
+
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        fireLater(event, event.getPlayer(), 400L);
+    }
+
+    @EventHandler
+    public void onPlayerAnimation(PlayerAnimationEvent event) {
+        fire(event, event.getPlayer());
+    }
+
+    @EventHandler
+    public void onPlayerShearEntity(PlayerShearEntityEvent event) {
+        fire(event, event.getPlayer());
+    }
+
+    @EventHandler
+    public void onPlayerBucketFill(PlayerBucketFillEvent event) {
+        fire(event, event.getPlayer());
+    }
+
+    @EventHandler
+    public void onPlayerBucketEmpty(PlayerBucketEmptyEvent event) {
         fire(event, event.getPlayer());
     }
 }
