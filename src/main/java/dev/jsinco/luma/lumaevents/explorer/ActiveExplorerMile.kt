@@ -11,10 +11,12 @@ import dev.jsinco.luma.lumaevents.obj.DialogueText
 import dev.jsinco.luma.lumaevents.obj.EventPlayer
 import dev.jsinco.luma.lumaevents.tokens.TokenExchanging
 import dev.jsinco.luma.lumaevents.utility.Util
+import dev.jsinco.luma.lumaitems.api.LumaItemsAPI
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Bukkit
 import org.bukkit.Sound
 import org.bukkit.entity.Player
+import org.bukkit.inventory.ItemStack
 
 typealias ExplorerMileLevelSnapshotModifier = (levelSnapshot: ExplorerMileLevelSnapshot) -> Unit
 
@@ -26,6 +28,7 @@ class ActiveExplorerMile(
 
     companion object {
         private const val TOKENS_PER_LEVEL = 8
+        private val EASTER_CHARM: ItemStack? = LumaItemsAPI.getInstance().getCustomItem("easter-charm")?.createItem()?.second
     }
 
     constructor(mile: ExplorerMile<*>) : this(mile, 0, 0)
@@ -60,20 +63,29 @@ class ActiveExplorerMile(
         }
 
 
-
-        // TODO: reward
-        val amount = TOKENS_PER_LEVEL + (levelSnapshot.currentLevel * TOKENS_PER_LEVEL / 2)
+        // ehh, still pretty messy
+        val amount = TOKENS_PER_LEVEL + (levelSnapshot.currentLevel - 1 * TOKENS_PER_LEVEL / 2)
         val player = eventPlayer.player
         player?.playSound(player.location, Sound.ENTITY_FIREWORK_ROCKET_BLAST_FAR, 0.5f, 1f)
         val dialogueText = DialogueText(eventPlayer, NamedTextColor.YELLOW, 0.5f)
         dialogueText.queueText("You've leveled up your ${mile.title} to level ${levelSnapshot.currentLevel}!")
+
         if (levelSnapshot.isCompleted()) {
             dialogueText.queueText("You completed a mile! (${mile.title})")
-            if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.MILES_COMMAND) && eventPlayer.completedExplorerMiles >= 5) {
-                TutorialSection.MILES_COMMAND.completeTutorial(eventPlayer, dialogueText, null)
-            } else {
-                dialogueText.sendQueuedText();
+        }
+
+        if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.MILES_COMMAND) && eventPlayer.completedExplorerMiles >= 5) {
+            TutorialSection.MILES_COMMAND.completeTutorial(eventPlayer, dialogueText, null)
+        } else if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.EASTER_CHARM) && eventPlayer.completedExplorerMiles >= 15) {
+            TutorialSection.EASTER_CHARM.completeTutorial(eventPlayer, dialogueText) {
+                if (EASTER_CHARM != null) {
+                    Bukkit.getScheduler().runTaskAsynchronously(EventMain.getInstance(), Runnable {
+                        Util.giveItem(player, EASTER_CHARM)
+                    })
+                }
             }
+        } else {
+            dialogueText.sendQueuedText()
         }
 
         eventPlayer.sendMessage("You have received <gold>$amount Carrots</gold> for leveling up your Explorer Mile: ${mile.title}!")
