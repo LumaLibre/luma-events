@@ -51,6 +51,15 @@ public enum TutorialSection {
             "I was just about to go on a little adventure myself...",
             "Then I got lost down this rabbit hole and now I'm stuck.",
             "Here, take this and go find some help..."
+    ),
+    QUIZ_REWARD_FIXED(
+            "Oh? How did you find me all the way down here?",
+            "I was just about to go on a little adventure myself...",
+            "Then I got lost down this rabbit hole and now I'm stuck.",
+            "Here, take this and go find some help..."
+    ),
+    EASTER_CHARM(
+            "Congrats, you found an Easter Charm!"
     );
 
     private final String[] lines;

@@ -30,7 +30,7 @@ public class QuizRewardModule implements NPCCommandModule {
 
         DialogueText dialogueText = new DialogueText(eventPlayer);
         dialogueText.setIfAbsentColor(NamedTextColor.YELLOW);
-        TutorialSection tutorialSection = TutorialSection.QUIZ_REWARD;
+        TutorialSection tutorialSection = TutorialSection.QUIZ_REWARD_FIXED;
         if (!eventPlayer.hasCompletedTutorialSection(tutorialSection)) {
             tutorialSection.completeTutorial(eventPlayer, dialogueText, () -> {
                 Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {

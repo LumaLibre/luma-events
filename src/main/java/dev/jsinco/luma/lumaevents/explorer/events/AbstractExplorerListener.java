@@ -16,6 +16,10 @@ public abstract class AbstractExplorerListener implements Listener {
         fire(event, player.getUniqueId());
     }
 
+    public static void fireLater(Object event, Player player, long delay) {
+        fireLater(event, player.getUniqueId(), delay);
+    }
+
     public static void fire(Object event, UUID playerUUID) {
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(playerUUID);
         if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.EXPLORER_MILES)) {
@@ -25,5 +29,18 @@ public abstract class AbstractExplorerListener implements Listener {
         Bukkit.getScheduler().runTaskAsynchronously(EventMain.getInstance(),
                 () -> eventPlayer.fireForExplorerMiles(event)
         );
+    }
+
+    public static void fireLater(Object event, UUID playerUUID, long delay) {
+        EventPlayer eventPlayer = EventPlayerManager.getByUUID(playerUUID);
+        if (!eventPlayer.hasCompletedTutorialSection(TutorialSection.EXPLORER_MILES)) {
+            return;
+        }
+        Bukkit.getScheduler().runTaskLaterAsynchronously(EventMain.getInstance(), () -> {
+            if (!eventPlayer.isOnline()) {
+                return; // Player logged off
+            }
+            eventPlayer.fireForExplorerMiles(event);
+        }, delay);
     }
 }
