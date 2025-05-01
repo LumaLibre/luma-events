@@ -410,9 +410,8 @@ object ExplorerMiles {
         levelMultiplier = 2.0,
         eventClass = CraftItemEvent::class.java
     ) { event, levelSnapShot, _ ->
-        if (event.currentItem?.type == Material.GOLDEN_CARROT) {
-            val amount = event.currentItem?.amount ?: 0
-            levelSnapShot.currentQuantity += amount
+        if (event.recipe.result.type == Material.GOLDEN_CARROT) {
+            levelSnapShot.currentQuantity += 1
         }
     }
 
@@ -424,9 +423,8 @@ object ExplorerMiles {
         quantity = 72,
         eventClass = CraftItemEvent::class.java
     ) { event, levelSnapShot, _ ->
-        if (event.currentItem?.type == Material.BEACON) {
-            val amount = event.currentItem?.amount ?: 0
-            levelSnapShot.currentQuantity += amount
+        if (event.recipe.result.type == Material.BEACON) {
+            levelSnapShot.currentQuantity += 1
         }
     }
 
@@ -439,9 +437,8 @@ object ExplorerMiles {
         quantity = 72,
         eventClass = CraftItemEvent::class.java
     ) { event, levelSnapShot, _ ->
-        if (event.currentItem?.type == Material.NETHERITE_BLOCK) {
-            val amount = event.currentItem?.amount ?: 0
-            levelSnapShot.currentQuantity += amount
+        if (event.recipe.result.type == Material.NETHERITE_BLOCK) {
+            levelSnapShot.currentQuantity += 1
         }
     }
 

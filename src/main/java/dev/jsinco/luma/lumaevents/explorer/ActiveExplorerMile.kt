@@ -27,7 +27,7 @@ class ActiveExplorerMile(
 ) {
 
     companion object {
-        private const val TOKENS_PER_LEVEL = 8
+        private const val TOKENS_PER_LEVEL = 9
         private val EASTER_CHARM: ItemStack? = LumaItemsAPI.getInstance().getCustomItem("easter-charm")?.createItem()?.second
     }
 
@@ -64,7 +64,7 @@ class ActiveExplorerMile(
 
 
         // ehh, still pretty messy
-        val amount = TOKENS_PER_LEVEL + (levelSnapshot.currentLevel - 1 * TOKENS_PER_LEVEL / 2)
+        val amount = TOKENS_PER_LEVEL + (levelSnapshot.currentLevel * 4)
         val player = eventPlayer.player
         player?.playSound(player.location, Sound.ENTITY_FIREWORK_ROCKET_BLAST_FAR, 0.5f, 1f)
         val dialogueText = DialogueText(eventPlayer, NamedTextColor.YELLOW, 0.5f)
