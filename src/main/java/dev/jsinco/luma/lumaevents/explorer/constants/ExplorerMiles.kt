@@ -31,6 +31,7 @@ import dev.jsinco.luma.lumaevents.utility.Util
 import github.scarsz.discordsrv.api.events.DiscordGuildMessageReceivedEvent
 import io.papermc.paper.event.block.PlayerShearBlockEvent
 import io.papermc.paper.event.player.AsyncChatEvent
+import io.papermc.paper.event.player.PlayerArmSwingEvent
 import io.papermc.paper.event.player.PlayerChangeBeaconEffectEvent
 import io.papermc.paper.event.player.PlayerFailMoveEvent
 import io.papermc.paper.event.player.PlayerFlowerPotManipulateEvent
@@ -791,14 +792,16 @@ object ExplorerMiles {
         }
     }
 
-    val SWING_YOUR_OFFHAND = ExplorerMile<PlayerAnimationEvent>(
+    val SWING_YOUR_OFFHAND = ExplorerMile<PlayerArmSwingEvent>(
         title = "Swing Your Offhand",
         desc = """
             Swing your offhand like a pro!
             Don't forget to put it back in your pocket when you're done!
         """.trimIndent(),
-        quantity = 1,
-        eventClass = PlayerAnimationEvent::class.java
+        quantity = 100,
+        levels = 2,
+        levelMultiplier = 3.0,
+        eventClass = PlayerArmSwingEvent::class.java
     ) { event, levelSnapShot, _ ->
         if (event.animationType == PlayerAnimationType.OFF_ARM_SWING) {
             levelSnapShot.currentQuantity += 1

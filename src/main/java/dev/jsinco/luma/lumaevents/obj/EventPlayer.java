@@ -5,6 +5,7 @@ import dev.jsinco.luma.lumaevents.explorer.ActiveExplorerMile;
 import dev.jsinco.luma.lumaevents.explorer.ExplorerMile;
 import dev.jsinco.luma.lumaevents.npc.constants.TutorialSection;
 import dev.jsinco.luma.lumaevents.utility.Util;
+import io.papermc.paper.event.player.PlayerArmSwingEvent;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.text.Component;

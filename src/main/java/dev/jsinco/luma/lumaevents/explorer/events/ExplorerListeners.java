@@ -9,6 +9,7 @@ import dev.jsinco.luma.lumaevents.explorer.custom.BlockBrokenExplorerEvent;
 import dev.jsinco.luma.lumaevents.explorer.custom.BlockPlacedExplorerEvent;
 import io.papermc.paper.event.block.PlayerShearBlockEvent;
 import io.papermc.paper.event.player.AsyncChatEvent;
+import io.papermc.paper.event.player.PlayerArmSwingEvent;
 import io.papermc.paper.event.player.PlayerChangeBeaconEffectEvent;
 import io.papermc.paper.event.player.PlayerFailMoveEvent;
 import io.papermc.paper.event.player.PlayerFlowerPotManipulateEvent;
@@ -21,12 +22,10 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.command.UnknownCommandEvent;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
-import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerAttemptPickupItemEvent;
 import org.bukkit.event.player.PlayerBedEnterEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
@@ -35,6 +34,7 @@ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerEditBookEvent;
 import org.bukkit.event.player.PlayerEggThrowEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerItemBreakEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerItemMendEvent;
@@ -133,7 +133,6 @@ public final class ExplorerListeners extends AbstractExplorerListener {
 
     @EventHandler
     public void onPlayerClientOptionsChange(PlayerClientOptionsChangeEvent event) {
-        System.out.println(event);
         fire(event, event.getPlayer());
     }
 
@@ -217,7 +216,7 @@ public final class ExplorerListeners extends AbstractExplorerListener {
     }
 
     @EventHandler
-    public void onPlayerAnimation(PlayerAnimationEvent event) {
+    public void onPlayerAnimation(PlayerArmSwingEvent event) {
         fire(event, event.getPlayer());
     }
 
@@ -233,6 +232,11 @@ public final class ExplorerListeners extends AbstractExplorerListener {
 
     @EventHandler
     public void onPlayerBucketEmpty(PlayerBucketEmptyEvent event) {
+        fire(event, event.getPlayer());
+    }
+
+    @EventHandler
+    public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         fire(event, event.getPlayer());
     }
 }
