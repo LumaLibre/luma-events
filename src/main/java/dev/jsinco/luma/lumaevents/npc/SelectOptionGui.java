@@ -2,6 +2,7 @@ package dev.jsinco.luma.lumaevents.npc;
 
 import dev.jsinco.luma.lumacore.manager.guis.AbstractGui;
 import dev.jsinco.luma.lumacore.manager.guis.GuiItem;
+import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.explorer.events.IAItemStacksListener.CustomStackNameSpace;
 import dev.jsinco.luma.lumaevents.explorer.gui.ExplorerMilesGui;
 import dev.jsinco.luma.lumaevents.npc.constants.StalkMarketDays;
@@ -17,6 +18,7 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumaevents.utility.gui.GuiUtil;
 import lombok.Getter;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
@@ -102,7 +104,7 @@ public class SelectOptionGui extends AbstractGui {
             }
     );
 
-    public final GuiItem explorerMiles = new GuiItem(
+    private final GuiItem explorerMiles = new GuiItem(
             23,
             GuiUtil.item(CustomStackNameSpace.POSTCARD_CITY_NO_ART, true, "<b>Explorer Miles"),
             (event, guiItem) -> {
@@ -118,6 +120,31 @@ public class SelectOptionGui extends AbstractGui {
                     dialogueText.queueText("Here ya go!");
                     dialogueText.sendQueuedText(() -> gui.open(h));
                 }
+            }
+    );
+
+    private final GuiItem exchangeOldBaskets = new GuiItem(
+            44,
+            GuiUtil.playerHead(
+                    "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmU2ZDhjNjk4OGNkMGQxOTk5NzAzMDZhNGQ3NTY0NmQ5NzczZDcxMGViMjE5MzVkYjc3M2ViMjEyMTY3NjAyYiJ9fX0=",
+                    "<red><b>Exchange Broken Baskets",
+                    "<gray>Exchange your broken baskets for new ones!"
+            ),
+            (event, guiItem) -> {
+                Player player = (Player) event.getWhoClicked();
+                player.closeInventory();
+
+                int basketsAmount = TokenExchanging.getAmount(player, TokenType.BASKET);
+                if (basketsAmount > 0) {
+                    TokenExchanging.take(player, TokenType.BASKET, basketsAmount);
+                    Bukkit.getScheduler().runTaskLater(EventMain.getInstance(), () -> {
+                        TokenExchanging.give(player, TokenType.BASKET, basketsAmount);
+                    }, 1);
+                    dialogueText.queueText("I exchanged your broken baskets for new ones!");
+                } else {
+                    dialogueText.queueText("Hmm", "I don't see any baskets in your inventory...");
+                }
+                dialogueText.sendQueuedText(() -> this.open(player));
             }
     );
 

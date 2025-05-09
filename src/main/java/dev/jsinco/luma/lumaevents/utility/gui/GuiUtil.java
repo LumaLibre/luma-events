@@ -1,5 +1,7 @@
 package dev.jsinco.luma.lumaevents.utility.gui;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
+import com.destroystokyo.paper.profile.ProfileProperty;
 import dev.jsinco.luma.lumaevents.explorer.events.IAItemStacksListener;
 import dev.jsinco.luma.lumaevents.explorer.events.IAItemStacksListener.CustomStackNameSpace;
 import dev.jsinco.luma.lumaevents.utility.Util;
@@ -12,16 +14,19 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class GuiUtil {
 
     private static final Map<ItemStack, int[]> defaultItems = new HashMap<>();
+    private static final UUID STATIC_UUID = UUID.fromString("dac456f8-bf29-40ce-9373-96947782b57f");
 
     static {
         defaultItems.put(borderItem(Material.GREEN_STAINED_GLASS_PANE), new int[]{0, 8, 45, 53});
@@ -69,6 +74,16 @@ public class GuiUtil {
 
     public static ItemStack borderItem(Material m) {
         return item(m, false, "<black>");
+    }
+
+    public static ItemStack playerHead(String base64, String name, String... lore) {
+        ItemStack itemStack = item(Material.PLAYER_HEAD, false, name, lore);
+        SkullMeta meta = (SkullMeta) itemStack.getItemMeta();
+        PlayerProfile profile = Bukkit.createProfile(STATIC_UUID);
+        profile.getProperties().add(new ProfileProperty("textures", base64));
+        meta.setPlayerProfile(profile);
+        itemStack.setItemMeta(meta);
+        return itemStack;
     }
 
     public static ItemStack item(Material m, boolean glint, String name, String... lore) {
