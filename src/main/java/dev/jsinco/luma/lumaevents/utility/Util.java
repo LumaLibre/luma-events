@@ -196,6 +196,47 @@ public final class Util {
         throw new RuntimeException("Failed to remove: " + couldNotRemove + " from " + player.getName() + "'s inventory!");
     }
 
+    public static boolean takeItem(Player player, NamespacedKey namespacedKey, int amount) {
+        if (player == null) {
+            return false;
+        }
+
+        PlayerInventory inventory = player.getInventory();
+
+        int total = 0;
+        for (ItemStack itemStack : inventory.getContents()) {
+            if (itemStack == null || !itemStack.hasItemMeta()) {
+                continue;
+            }
+
+            if (itemStack.getPersistentDataContainer().has(namespacedKey)) {
+                total += itemStack.getAmount();
+            }
+        }
+
+        if (total < amount) {
+            return false;
+        }
+
+        for (ItemStack itemStack : inventory.getContents()) {
+            if (itemStack == null || !itemStack.hasItemMeta()) {
+                continue;
+            }
+
+            if (itemStack.getPersistentDataContainer().has(namespacedKey)) {
+                int toRemove = Math.min(itemStack.getAmount(), amount);
+                itemStack.setAmount(itemStack.getAmount() - toRemove);
+                amount -= toRemove;
+
+                if (amount <= 0) {
+                    return true;
+                }
+            }
+        }
+
+        throw new RuntimeException("Failed to remove: " + amount + "/" + namespacedKey + " from " + player.getName() + "'s inventory!");
+    }
+
 
 //    public static void giveItem(Player player, ItemStack item) {
 //        PlayerInventory inventory = player.getInventory();
