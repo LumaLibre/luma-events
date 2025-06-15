@@ -36,17 +36,12 @@ public final class EventMain extends JavaPlugin {
         Bukkit.getScheduler().runTaskTimerAsynchronously(this, EventPlayerManager::saveAll, 0, 12000);
 
         MinigameManager.getInstance().runTaskTimerAsynchronously(this, 0, 600); // 30 seconds
-        if (Bukkit.getPluginManager().isPluginEnabled("DiscordSRV")) {
-            discordSRVListeners = new DiscordSRVListeners();
-            DiscordSRV.api.subscribe(discordSRVListeners);
-        }
 
         LocalCustomItemManager.addCustomItem(new EasterCarrotToken());
         LocalCustomItemManager.addCustomItem(new EasterBasketToken());
 
-        BunnyArenaScheduler.getInstance()
-                .runTaskTimer(this, 0, 30 * 20); // 30 seconds
-        // TODO: Reload this plugin when LumaItems is reloaded
+
+
     }
 
     @Override

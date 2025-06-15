@@ -17,6 +17,9 @@ public class Config extends OkaeriConfig {
     @Comment("Enable or disable automatic minigames")
     private boolean automaticMinigames = false;
 
+    @Comment("Explorer miles enabling")
+    private boolean explorerMiles = false;
+
     @Comment("Automatic minigame cooldown in milliseconds")
     private long automaticMinigameCooldown = 7200000L;
 

@@ -19,6 +19,7 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
+import org.bukkit.event.world.WorldSaveEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -200,6 +201,7 @@ public final class Util {
         if (player == null) {
             return false;
         }
+        WorldSaveEvent
 
         PlayerInventory inventory = player.getInventory();
 

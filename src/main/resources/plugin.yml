@@ -1,4 +1,4 @@
-name: Easter
+name: Summer
 main: dev.jsinco.luma.lumaevents.EventMain
 version: '1.0-SNAPSHOT'
 api-version: 1.21
@@ -6,8 +6,7 @@ author: jsinco
 depend:
   - LumaCore
   - LumaItems
-  - LibsDisguises
-  - ItemsAdder
+  - InventoryRollbackPlus
 softdepend:
   - PlaceholderAPI
-  - DiscordSRV # DiscordSRV uses a custom listener bus
+  - LibsDisguises

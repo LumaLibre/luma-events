@@ -27,7 +27,7 @@ import java.util.Random;
 
 @Getter
 @Setter
-public sealed abstract class Minigame extends BukkitRunnable implements Listener permits TheNabbits, NonActiveMinigame {
+public abstract class Minigame extends BukkitRunnable implements Listener {
 
     protected static final Random RANDOM = new Random();
 
