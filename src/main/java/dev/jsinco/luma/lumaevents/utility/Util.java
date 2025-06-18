@@ -5,7 +5,6 @@ import com.destroystokyo.paper.profile.ProfileProperty;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.jsinco.luma.lumaevents.EventMain;
-import dev.jsinco.luma.lumaevents.explorer.ActiveExplorerMile;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
@@ -19,7 +18,6 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
-import org.bukkit.event.world.WorldSaveEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -201,7 +199,6 @@ public final class Util {
         if (player == null) {
             return false;
         }
-        WorldSaveEvent
 
         PlayerInventory inventory = player.getInventory();
 
@@ -272,6 +269,10 @@ public final class Util {
 //        }
 //        return false;
 //    }
+
+    public static ItemStack createBasicItem(Material material, boolean glint) {
+        return createBasicItem(material, "<gray>ItemStack", glint, new ArrayList<>(), new ArrayList<>());
+    }
 
     public static ItemStack createBasicItem(Material material, String name, boolean glint, List<String> lore, List<String> datas) {
         ItemStack item = new ItemStack(material);
@@ -426,6 +427,17 @@ public final class Util {
 
 
     public static ItemStack editMeta(ItemStack itemStack, EditMeta editMeta) {
+        ItemMeta itemMeta = itemStack.getItemMeta();
+        if (itemMeta == null) {
+            return itemStack;
+        }
+        editMeta.edit(itemMeta);
+        itemStack.setItemMeta(itemMeta);
+        return itemStack;
+    }
+
+    public static ItemStack createItem(Material material, EditMeta editMeta) {
+        ItemStack itemStack = new ItemStack(material);
         ItemMeta itemMeta = itemStack.getItemMeta();
         if (itemMeta == null) {
             return itemStack;

@@ -1,14 +1,11 @@
 package dev.jsinco.luma.lumaevents.games.events;
 
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
-import dev.jsinco.luma.lumaevents.games.inventories.InventorySnapshot;
-import dev.jsinco.luma.lumaevents.games.inventories.InventorySnapshotManager;
 import dev.jsinco.luma.lumaevents.games.logic.Minigame;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
 public class MinigameExitPreventionListener implements Listener {
@@ -33,16 +30,5 @@ public class MinigameExitPreventionListener implements Listener {
             event.setCancelled(true);
             eplayer.sendMessage("You can't leave this minigame while it's active!");
         }
-    }
-
-    @EventHandler
-    public void onPlayerQuit(PlayerQuitEvent event) {
-        InventorySnapshot inventorySnapshot = InventorySnapshotManager.INSTANCE.getSnapshotByOwner(event.getPlayer().getUniqueId());
-        if (inventorySnapshot != null) {
-            inventorySnapshot.restore(event.getPlayer());
-            InventorySnapshotManager.INSTANCE.unregisterSnapshot(inventorySnapshot);
-        }
-        EventPlayer eplayer = EventPlayerManager.getByUUID(event.getPlayer().getUniqueId());
-        minigame.removeParticipant(eplayer);
     }
 }

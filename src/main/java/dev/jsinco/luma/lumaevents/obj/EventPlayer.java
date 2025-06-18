@@ -1,11 +1,7 @@
 package dev.jsinco.luma.lumaevents.obj;
 
-import dev.jsinco.luma.lumaevents.explorer.constants.ExplorerMiles;
-import dev.jsinco.luma.lumaevents.explorer.ActiveExplorerMile;
-import dev.jsinco.luma.lumaevents.explorer.ExplorerMile;
 import dev.jsinco.luma.lumaevents.npc.constants.TutorialSection;
 import dev.jsinco.luma.lumaevents.utility.Util;
-import io.papermc.paper.event.player.PlayerArmSwingEvent;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.text.Component;
@@ -17,11 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -42,36 +34,14 @@ public class EventPlayer implements Serializable {
 
     private final UUID uuid;
     private final List<TutorialSection> completedTutorialSections;
-    private final Set<ActiveExplorerMile> unlockedExplorerMiles;
-
     // Initial creation
     public EventPlayer(UUID uuid) {
-        this(uuid, new ArrayList<>(), new HashSet<>());
-
-        // Unlock 10 random ExplorerMiles for them, rest will have to be discovered or unlocked
-        int i = 0;
-        Collection<ExplorerMile<?>> explorerMiles = ExplorerMiles.values();
-        if (explorerMiles.size() < 10) {
-            for (ExplorerMile<?> explorerMile : explorerMiles) {
-                unlockedExplorerMiles.add(new ActiveExplorerMile(explorerMile));
-            }
-        } else {
-            while (i < 10) {
-                ExplorerMile<?> explorerMile = Util.getRandom(explorerMiles);
-                if (hasUnlockedExplorerMile(explorerMile)) {
-                    continue;
-                }
-
-                unlockedExplorerMiles.add(new ActiveExplorerMile(explorerMile));
-                i++;
-            }
-        }
+        this(uuid, new ArrayList<>());
     }
 
-    public EventPlayer(UUID uuid, List<TutorialSection> completedTutorialSections, Set<ActiveExplorerMile> unlockedExplorerMiles) {
+    public EventPlayer(UUID uuid, List<TutorialSection> completedTutorialSections) {
         this.uuid = uuid;
         this.completedTutorialSections = completedTutorialSections;
-        this.unlockedExplorerMiles = unlockedExplorerMiles;
     }
 
     public void addCompletedTutorialSection(TutorialSection section) {
@@ -83,16 +53,6 @@ public class EventPlayer implements Serializable {
 
     public boolean hasCompletedTutorialSection(TutorialSection section) {
         return this.completedTutorialSections.contains(section);
-    }
-
-    public int getCompletedExplorerMiles() {
-        int completed = 0;
-        for (ActiveExplorerMile activeExplorerMile : this.unlockedExplorerMiles) {
-            if (activeExplorerMile.getUnchangeableLevelSnapshot().isCompleted()) {
-                completed++;
-            }
-        }
-        return completed;
     }
 
     public void sendMessage(String m) {
@@ -155,70 +115,6 @@ public class EventPlayer implements Serializable {
             return false;
         }
         return player.isOnline();
-    }
-
-
-    public <T> boolean hasUnlockedExplorerMile(ExplorerMile<T> explorerMile) {
-        for (ActiveExplorerMile activeExplorerMile : this.unlockedExplorerMiles) {
-            if (Objects.equals(activeExplorerMile.getMile().getFIELD_NAME(), explorerMile.getFIELD_NAME())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public <T> boolean unlockExplorerMile(ExplorerMile<T> explorerMile) {
-        return this.unlockedExplorerMiles.add(new ActiveExplorerMile(explorerMile));
-    }
-
-    public <T> ActiveExplorerMile getActiveExplorerMile(ExplorerMile<T> explorerMile) {
-        for (ActiveExplorerMile activeExplorerMile : unlockedExplorerMiles) {
-            if (Objects.equals(activeExplorerMile.getMile().getFIELD_NAME(), explorerMile.getFIELD_NAME())) {
-                return activeExplorerMile;
-            }
-        }
-        return null;
-    }
-
-    public <T> int getCurrentQuantity(ExplorerMile<T> explorerMile) {
-        for (ActiveExplorerMile activeExplorerMile : unlockedExplorerMiles) {
-            if (Objects.equals(activeExplorerMile.getMile().getFIELD_NAME(), explorerMile.getFIELD_NAME())) {
-                return activeExplorerMile.getCurrentQuantity();
-            }
-        }
-        return 0;
-    }
-
-    public void fireForExplorerMiles(Object event) {
-        synchronized (this.getLock()) {
-            Set<ActiveExplorerMile> testableExplorerMiles = new HashSet<>(this.unlockedExplorerMiles);
-
-            for (ExplorerMile<?> explorerMile : ExplorerMiles.asMap().values()) {
-                if (explorerMile.getEventClass() == event.getClass() && !hasUnlockedExplorerMile(explorerMile)) {
-                    //Util.log("Testing an ExplorerMile for which a player does not have any data for: " + explorerMile);
-                    testableExplorerMiles.add(new ActiveExplorerMile(explorerMile));
-                }
-            }
-
-
-            for (ActiveExplorerMile activeExplorerMile : testableExplorerMiles) {
-                if (activeExplorerMile == null) {
-                    continue;
-                }
-                if (activeExplorerMile.getMile().getEventClass() == event.getClass()) {
-                    activeExplorerMile.apply(event, this);
-                }
-            }
-
-            testableExplorerMiles.forEach(activeExplorerMile -> {
-                if (!hasUnlockedExplorerMile(activeExplorerMile.getMile())) {
-                    if (activeExplorerMile.hasProgress()) {
-                        this.unlockedExplorerMiles.add(activeExplorerMile);
-                        activeExplorerMile.playMilesUnlockEffect(this, null);
-                    }
-                }
-            });
-        }
     }
 
 }

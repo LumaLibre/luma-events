@@ -2,10 +2,10 @@ package dev.jsinco.luma.lumaevents.games.logic;
 
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 
-public non-sealed class NonActiveMinigame extends Minigame {
+public final class NonActiveMinigame extends Minigame {
 
     public NonActiveMinigame() {
-        super("NotARealMiniGame", "Not a real minigame", 0, 1, false, false, false);
+        super("NotARealMinigame", "Not a real minigame", 0, 1, false, false, false);
         this.startTime = System.currentTimeMillis();
     }
 

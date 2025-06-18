@@ -32,7 +32,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
     protected static final Random RANDOM = new Random();
 
     protected final List<EventPlayer> participants = new ArrayList<>();
-    private final MinigameExitPreventionListener exitPrevention;
+    protected final List<Listener> extraListeners = new ArrayList<>();
     private final MinigamePreventInventoryTampering inventoryTampering;
 
     private final String name;
@@ -54,7 +54,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         this.duration = duration;
         this.tickInterval = tickInterval;
         this.async = async;
-        this.exitPrevention = new MinigameExitPreventionListener(this);
+        this.extraListeners.add(new MinigameExitPreventionListener(this));
         this.inventoryTampering = new MinigamePreventInventoryTampering(this);
         registerEvents(this.inventoryTampering);
     }
@@ -65,7 +65,9 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         this.duration = duration;
         this.tickInterval = tickInterval;
         this.async = async;
-        this.exitPrevention = preventExit ? new MinigameExitPreventionListener(this) : null;
+        if (preventExit) {
+            this.extraListeners.add(new MinigameExitPreventionListener(this));
+        }
         this.inventoryTampering = preventInventoryTampering ? new MinigamePreventInventoryTampering(this) : null;
         if (this.inventoryTampering != null) {
             registerEvents(this.inventoryTampering);
@@ -97,9 +99,9 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
             throwable.printStackTrace();
         }
         unregisterEvents(this);
-        if (this.exitPrevention != null) {
-            unregisterEvents(this.exitPrevention);
-        }
+        extraListeners.stream()
+                .filter(Objects::nonNull)
+                .forEach(this::unregisterEvents);
         if (this.inventoryTampering != null) {
             unregisterEvents(this.inventoryTampering);
         }
@@ -172,9 +174,9 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
                                     .map(EventPlayer::getPlayer).filter(Objects::nonNull).toList());
                     this.open = false;
                     this.startTime = System.currentTimeMillis();
-                    if (this.exitPrevention != null) {
-                        registerEvents(this.exitPrevention);
-                    }
+                    extraListeners.stream()
+                            .filter(Objects::nonNull)
+                            .forEach(this::registerEvents);
 
                     try {
                         this.handleStart();
@@ -210,6 +212,17 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         if (!this.isActive()) {
             throw new GameComponentIllegallyActive("Minigame is not active");
         }
+    }
+
+    protected boolean addExtraListener(Listener listener) {
+        if (listener == null) {
+            return false;
+        }
+        this.extraListeners.add(listener);
+        if (!this.open) {
+            registerEvents(listener);
+        }
+        return true;
     }
 
     protected void registerEvents(Listener listener) {

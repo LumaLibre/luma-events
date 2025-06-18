@@ -13,7 +13,7 @@ import org.jetbrains.annotations.NotNull;
 @AutoRegister(RegisterType.COMMAND)
 @CommandInfo(
         name = "event",
-        aliases = {"easter"},
+        aliases = {"summer"},
         permission = "lumaevents.default"
 )
 public class CommandManager extends AbstractCommandManager<EventMain, CommandModule> {

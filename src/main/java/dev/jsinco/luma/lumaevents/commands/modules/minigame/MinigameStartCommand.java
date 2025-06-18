@@ -8,7 +8,8 @@ import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
 import dev.jsinco.luma.lumaevents.games.logic.Minigame;
 import dev.jsinco.luma.lumaevents.games.MinigameManager;
-import dev.jsinco.luma.lumaevents.games.logic.TheNabbits;
+import dev.jsinco.luma.lumaevents.games.logic.Paintball2_1;
+import dev.jsinco.luma.lumaevents.games.logic.TNTTag;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.command.CommandSender;
 
@@ -31,7 +32,8 @@ public class MinigameStartCommand implements CommandModule {
 
         Class<? extends Minigame> minigame =
         switch (strings[0]) {
-            case "the_nabbits" -> TheNabbits.class;
+            case "paintball2.1" -> Paintball2_1.class;
+            case "tnttag" -> TNTTag.class;
             default -> null;
         };
 
@@ -60,6 +62,6 @@ public class MinigameStartCommand implements CommandModule {
 
     @Override
     public List<String> tabComplete(EventMain eventMain, CommandSender commandSender, String[] strings) {
-        return List.of("the_nabbits");
+        return List.of("paintball2.1", "tnttag");
     }
 }
