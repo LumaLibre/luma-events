@@ -1,9 +1,9 @@
 package dev.jsinco.luma.lumaevents.games.events;
 
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
-import dev.jsinco.luma.lumaevents.games.inventories.InventorySnapshot;
-import dev.jsinco.luma.lumaevents.games.inventories.InventorySnapshotManager;
-import dev.jsinco.luma.lumaevents.games.logic.Minigame;
+import dev.jsinco.luma.lumaevents.games.obj.InventorySnapshot;
+import dev.jsinco.luma.lumaevents.games.InventorySnapshotManager;
+import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;

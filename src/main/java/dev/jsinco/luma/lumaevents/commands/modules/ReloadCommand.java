@@ -4,7 +4,6 @@ import dev.jsinco.luma.lumacore.manager.commands.CommandInfo;
 import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
 import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
 import dev.jsinco.luma.lumaevents.EventMain;
-import dev.jsinco.luma.lumaevents.bunnyarena.BunnyArenaScheduler;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
 import dev.jsinco.luma.lumaevents.utility.Util;
@@ -24,7 +23,6 @@ public class ReloadCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
         EventMain.getOkaeriConfig().load(true);
-        BunnyArenaScheduler.getInstance().refreshBunnyArenaRegionHandler();
         Util.sendMsg(commandSender, "Reloaded config");
         return true;
     }

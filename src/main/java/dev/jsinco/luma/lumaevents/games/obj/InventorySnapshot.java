@@ -1,4 +1,4 @@
-package dev.jsinco.luma.lumaevents.games.inventories;
+package dev.jsinco.luma.lumaevents.games.obj;
 
 import lombok.Getter;
 import me.danjono.inventoryrollback.data.LogType;

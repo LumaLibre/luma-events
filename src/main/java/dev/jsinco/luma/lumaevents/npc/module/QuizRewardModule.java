@@ -1,5 +1,6 @@
 package dev.jsinco.luma.lumaevents.npc.module;
 
+/*
 import dev.jsinco.luma.lumacore.manager.commands.CommandInfo;
 import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
 import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
@@ -16,6 +17,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.List;
+
 
 @AutoRegister(RegisterType.SUBCOMMAND)
 @CommandInfo(
@@ -51,3 +53,4 @@ public class QuizRewardModule implements NPCCommandModule {
         return List.of();
     }
 }
+ */

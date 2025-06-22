@@ -3,7 +3,7 @@ package dev.jsinco.luma.lumaevents.games;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.Config;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameAlreadyStartedException;
-import dev.jsinco.luma.lumaevents.games.logic.Minigame;
+import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.games.logic.NonActiveMinigame;
 import dev.jsinco.luma.lumaevents.games.logic.Paintball2_1;
 import dev.jsinco.luma.lumaevents.games.logic.TNTTag;
@@ -27,9 +27,8 @@ public final class MinigameManager extends BukkitRunnable {
     private final Config cfg = EventMain.getOkaeriConfig();
 
     private final Map<Class<? extends Minigame>, Supplier<Minigame>> minigameSupplier = Map.of(
-            // TODO!
-            //  Paintball2_1.class, () -> new Paintball2_1(),
-            //  TNTTag.class, () -> new TNTTag()
+            Paintball2_1.class, () -> new Paintball2_1(cfg.getPaintball()),
+            TNTTag.class, () -> new TNTTag(cfg.getTntTag())
     );
 
 
@@ -63,8 +62,9 @@ public final class MinigameManager extends BukkitRunnable {
     }
 
     public boolean newMinigame(boolean force, int seconds) throws GameAlreadyStartedException {
-        // This is lazy, but it's our only minigame for this event.
-        return this.newMinigame(TheNabbits.class, force, seconds);
+        // Random minigame selection
+        Class<? extends Minigame> game = Util.getRandom(this.minigameSupplier.keySet());
+        return this.newMinigame(game, force, seconds);
     }
 
     public boolean tryNewMinigameSafely(Class<? extends Minigame> game, boolean ignoreCooldown, int seconds) {

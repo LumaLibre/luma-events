@@ -1,5 +1,6 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
+import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 
 public final class NonActiveMinigame extends Minigame {

@@ -1,8 +1,9 @@
 package dev.jsinco.luma.lumaevents.games.events;
 
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
-import dev.jsinco.luma.lumaevents.games.logic.Minigame;
+import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import dev.jsinco.luma.lumaevents.obj.MinigameBoundingBox;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -19,7 +20,7 @@ public class MinigameExitPreventionListener implements Listener {
     @EventHandler
     public void onPlayerTeleport(PlayerTeleportEvent event) {
         minigame.ensureNotIllegal(); // Ensure active. Should be unregistered if not active
-        WorldTiedBoundingBox bb = minigame.getBoundingBox();
+        MinigameBoundingBox bb = minigame.getBoundingBox();
         if (!bb.contains(event.getFrom()) || bb.contains(event.getTo())) { // Ensure player is in minigame
             return;
         }

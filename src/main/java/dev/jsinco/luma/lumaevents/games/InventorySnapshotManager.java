@@ -1,5 +1,7 @@
-package dev.jsinco.luma.lumaevents.games.inventories;
+package dev.jsinco.luma.lumaevents.games;
 
+import dev.jsinco.luma.lumaevents.games.exceptions.UnsafeInventorySnapshot;
+import dev.jsinco.luma.lumaevents.games.obj.InventorySnapshot;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;

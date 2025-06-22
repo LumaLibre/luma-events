@@ -3,6 +3,7 @@ package dev.jsinco.luma.lumaevents.games.logic;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
 import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
+import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.EditMeta;
@@ -35,7 +36,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 // TODO: Test
-public class TNTTag extends InventoryUnifiedMinigame {
+public final class TNTTag extends InventoryUnifiedMinigame {
 
     private static final int ROUND_DURATION = 60;
     private static final int MAX_ROUNDS = 3;
@@ -53,12 +54,12 @@ public class TNTTag extends InventoryUnifiedMinigame {
     }
 
     @Override
+    protected int minimumParticipants() {
+        return 2;
+    }
+
+    @Override
     protected void handleStart() {
-        if (this.participants.size() < 2) {
-            this.sendAudienceMessage("Not enough players to start the game. Minimum 2 players required.");
-            this.stop();
-            return;
-        }
         for (EventPlayer participant : this.participants) {
             this.swapRole(participant, () -> new Runner(participant));
         }
@@ -87,7 +88,7 @@ public class TNTTag extends InventoryUnifiedMinigame {
             this.roundCountdownBar.stop(false);
         }
         for (TNTTagPlayer player : this.tntTagPlayers.values()) {
-            player.removeEffects();
+            player.removeEffects(true);
         }
         this.tntTagPlayers.clear();
         this.sendAudienceMessage("TNT Tag has ended! (debug)");
@@ -103,7 +104,7 @@ public class TNTTag extends InventoryUnifiedMinigame {
     public boolean removeParticipant(EventPlayer player) {
         TNTTagPlayer tntTagPlayer = this.tntTagPlayers.get(player.getUuid());
         if (tntTagPlayer != null) {
-            tntTagPlayer.removeEffects();
+            tntTagPlayer.removeEffects(true);
             this.tntTagPlayers.remove(player.getUuid());
         }
         return super.removeParticipant(player);
@@ -112,7 +113,7 @@ public class TNTTag extends InventoryUnifiedMinigame {
     public <T extends TNTTagPlayer> T swapRole(EventPlayer eventPlayer, Supplier<? extends TNTTagPlayer> newRoleSupplier) {
         TNTTagPlayer currentRole = tntTagPlayers.get(eventPlayer.getUuid());
         if (currentRole != null) {
-            currentRole.removeEffects();
+            currentRole.removeEffects(false);
         }
         TNTTagPlayer newRole = newRoleSupplier.get();
         newRole.addEffects();
@@ -156,11 +157,11 @@ public class TNTTag extends InventoryUnifiedMinigame {
 
 
     public void startRound() {
-        this.getTaggers().forEach(Tagger::removeEffects);
-        this.getRunners().forEach(Runner::addEffects);
-
         Runner initialTagger = Util.getRandom(this.getRunners());
         this.swapRole(initialTagger.getWho(), () -> new Tagger(initialTagger.getWho()));
+
+        this.getTaggers().forEach(Tagger::addEffects);
+        this.getRunners().forEach(Runner::addEffects);
 
         this.sendAudienceMessage("A new round has started!");
         this.roundCountdownBar = CountdownBossBar.builder()
@@ -186,7 +187,7 @@ public class TNTTag extends InventoryUnifiedMinigame {
         this.getTaggers().forEach(tagger -> {
             this.swapRole(tagger.getWho(), () -> new Spectator(tagger.getWho(), this.participants));
         });
-        this.getRunners().forEach(Runner::removeEffects);
+        this.getRunners().forEach(runner -> runner.removeEffects(false));
 
         this.sendAudienceMessage("The round has ended!");
     }
@@ -258,7 +259,7 @@ public class TNTTag extends InventoryUnifiedMinigame {
         }
 
         public abstract void addEffects();
-        public abstract void removeEffects();
+        public abstract void removeEffects(boolean gameOver);
         public abstract void tick();
 
         @Nullable
@@ -288,7 +289,7 @@ public class TNTTag extends InventoryUnifiedMinigame {
         }
 
         @Override
-        public void removeEffects() {
+        public void removeEffects(boolean gameOver) {
             Player player = getPlayer();
             if (player == null) {
                 return;
@@ -336,7 +337,10 @@ public class TNTTag extends InventoryUnifiedMinigame {
         }
 
         @Override
-        public void removeEffects() {
+        public void removeEffects(boolean gameOver) {
+            if (gameOver) {
+                return;
+            }
             Player player = getPlayer();
             if (player == null) {
                 return;
@@ -381,7 +385,7 @@ public class TNTTag extends InventoryUnifiedMinigame {
         }
 
         @Override
-        public void removeEffects() {
+        public void removeEffects(boolean gameOver) {
             Player whoPlayer = getPlayer();
             if (whoPlayer == null) {
                 return;

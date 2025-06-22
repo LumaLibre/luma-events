@@ -1,7 +1,5 @@
 package dev.jsinco.luma.lumaevents.tokens;
 
-import dev.jsinco.luma.lumaevents.explorer.custom.EarnTokenExplorerEvent;
-import dev.jsinco.luma.lumaevents.explorer.events.ExplorerListeners;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumaitems.LumaItems;
 import dev.jsinco.luma.lumaitems.manager.CustomItem;
@@ -25,9 +23,6 @@ public class TokenExchanging {
         Util.giveItem(player, itemStack, amount);
 
         Util.sendMsg(player, "You got <yellow>" + amount  + "</yellow> " + type.customName + "(s)!");
-
-        EarnTokenExplorerEvent explorerEvent = new EarnTokenExplorerEvent(type, amount);
-        ExplorerListeners.fire(explorerEvent, player);
     }
 
     public static boolean take(Player player, TokenType type, int amount) {

@@ -40,7 +40,6 @@ import java.util.UUID;
 public final class Util {
 
     public static final Gson GSON = new GsonBuilder()
-            .registerTypeAdapter(ActiveExplorerMile.class, new ActiveExplorerMile.GsonTypeAdapter())
             .excludeFieldsWithModifiers(Modifier.STATIC)
             .setPrettyPrinting()
             .create();

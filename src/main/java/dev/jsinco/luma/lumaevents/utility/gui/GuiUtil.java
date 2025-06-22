@@ -2,8 +2,6 @@ package dev.jsinco.luma.lumaevents.utility.gui;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
-import dev.jsinco.luma.lumaevents.explorer.events.IAItemStacksListener;
-import dev.jsinco.luma.lumaevents.explorer.events.IAItemStacksListener.CustomStackNameSpace;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -88,14 +86,6 @@ public class GuiUtil {
 
     public static ItemStack item(Material m, boolean glint, String name, String... lore) {
         ItemStack item = new ItemStack(m);
-        return createItemStack(glint, name, item, lore);
-    }
-
-    public static ItemStack item(CustomStackNameSpace csns, boolean glint, String name, String... lore) {
-        ItemStack item = IAItemStacksListener.getCachedIAStack(csns);
-        if (item == null) {
-            return item(Material.BARRIER, false, "<red>Item not found");
-        }
         return createItemStack(glint, name, item, lore);
     }
 

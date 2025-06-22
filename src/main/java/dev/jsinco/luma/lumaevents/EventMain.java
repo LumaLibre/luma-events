@@ -1,17 +1,14 @@
 package dev.jsinco.luma.lumaevents;
 
 import dev.jsinco.luma.lumacore.manager.modules.ModuleManager;
-import dev.jsinco.luma.lumaevents.bunnyarena.BunnyArenaScheduler;
 import dev.jsinco.luma.lumaevents.configurable.Config;
 import dev.jsinco.luma.lumaevents.configurable.ConfigManager;
-import dev.jsinco.luma.lumaevents.explorer.events.hooks.DiscordSRVListeners;
 import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.MinigameManager;
-import dev.jsinco.luma.lumaevents.games.logic.Minigame;
+import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.tokens.EasterBasketToken;
 import dev.jsinco.luma.lumaevents.tokens.EasterCarrotToken;
 import dev.jsinco.luma.lumaevents.tokens.LocalCustomItemManager;
-import github.scarsz.discordsrv.DiscordSRV;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -22,7 +19,6 @@ public final class EventMain extends JavaPlugin {
     @Getter
     private static Config okaeriConfig;
     private static ModuleManager moduleManager;
-    private static DiscordSRVListeners discordSRVListeners;
 
     @Override
     public void onEnable() {
@@ -54,10 +50,6 @@ public final class EventMain extends JavaPlugin {
             current.stop();
         }
         CountdownBossBar.stopAll(false);
-
-        if (discordSRVListeners != null) {
-            DiscordSRV.api.unsubscribe(discordSRVListeners);
-        }
     }
 
     public static EventMain getInstance() {

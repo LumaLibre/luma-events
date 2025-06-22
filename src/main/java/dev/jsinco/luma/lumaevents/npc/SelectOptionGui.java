@@ -1,5 +1,6 @@
 package dev.jsinco.luma.lumaevents.npc;
 
+/*
 import dev.jsinco.luma.lumacore.manager.guis.AbstractGui;
 import dev.jsinco.luma.lumacore.manager.guis.GuiItem;
 import dev.jsinco.luma.lumaevents.EventMain;
@@ -167,3 +168,4 @@ public class SelectOptionGui extends AbstractGui {
 
 
 }
+*/

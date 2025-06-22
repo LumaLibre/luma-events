@@ -1,11 +1,12 @@
-package dev.jsinco.luma.lumaevents.games.logic;
+package dev.jsinco.luma.lumaevents.games.interfaces;
 
 import dev.jsinco.luma.lumaevents.EventMain;
-import dev.jsinco.luma.lumaevents.games.events.MinigameExitPreventionListener;
 import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
+import dev.jsinco.luma.lumaevents.games.events.MinigameExitPreventionListener;
 import dev.jsinco.luma.lumaevents.games.events.MinigamePreventInventoryTampering;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameComponentIllegallyActive;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import dev.jsinco.luma.lumaevents.obj.MinigameBoundingBox;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
@@ -46,7 +47,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
     protected boolean open = false;
     protected boolean active = false;
     protected Audience audience;
-    protected WorldTiedBoundingBox boundingBox;
+    protected MinigameBoundingBox boundingBox;
 
     protected Minigame(String name, String description, long duration, long tickInterval, boolean async) {
         this.name = name;
@@ -157,7 +158,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
                 .seconds(seconds)
                 .color(BossBar.Color.BLUE)
                 .callback(() -> {
-                    if (this.participants.isEmpty()) {
+                    if (this.participants.size() < this.minimumParticipants()) {
                         // Nothing has happened at this point other than these values
                         // being changed to true, so we can just set them to false and return
                         this.active = false;
@@ -168,6 +169,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
                         Util.broadcast("Not enough players joined to start " + this.name);
                         return;
                     }
+                    this.onPreStart();
 
                     registerEvents(this);
                     this.audience = Audience.audience(participants.stream()
@@ -271,6 +273,16 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
             }
         }
         return true;
+    }
+
+    protected void onPreStart() {
+        // This method can be overridden to perform actions before the minigame starts
+        // For example, setting up the environment, clearing inventories, etc.
+    }
+
+    protected int minimumParticipants() {
+        // This method can be overridden to specify the minimum number of participants required to start the minigame
+        return 1; // Default is 1 participant
     }
 
     // Minigame starts, returns true if successful

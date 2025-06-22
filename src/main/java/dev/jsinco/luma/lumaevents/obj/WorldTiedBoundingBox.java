@@ -18,7 +18,7 @@ import java.util.Random;
 @ToString
 @Getter
 @Setter
-public class WorldTiedBoundingBox extends BoundingBox {
+public class WorldTiedBoundingBox extends BoundingBox implements MinigameBoundingBox {
 
     private World world;
 
@@ -27,10 +27,7 @@ public class WorldTiedBoundingBox extends BoundingBox {
         this.world = world;
     }
 
-    public boolean contains(Entity entity) {
-        return this.world.equals(entity.getWorld()) && super.contains(entity.getLocation().toVector());
-    }
-
+    @Override
     public boolean contains(Location location) {
         return this.world.equals(location.getWorld()) && super.contains(location.toVector());
     }
@@ -68,6 +65,7 @@ public class WorldTiedBoundingBox extends BoundingBox {
         return new Location(this.getWorld(), this.getCenterX(), this.getCenterY(), this.getCenterZ(), yaw, pitch);
     }
 
+    @Override
     public List<Player> getPlayers() {
         List<Player> players = new LinkedList<>();
         for (Player player : this.world.getPlayers()) {
@@ -78,6 +76,7 @@ public class WorldTiedBoundingBox extends BoundingBox {
         return players;
     }
 
+    @Override
     public <T extends Entity> List<T> getEntities(Class<T> clazz) {
         List<T> entities = new LinkedList<>();
         for (Entity entity : this.world.getEntitiesByClass(clazz)) {
