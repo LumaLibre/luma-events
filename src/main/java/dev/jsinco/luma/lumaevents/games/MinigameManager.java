@@ -4,6 +4,7 @@ import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.Config;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameAlreadyStartedException;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
+import dev.jsinco.luma.lumaevents.games.logic.BoatRace2;
 import dev.jsinco.luma.lumaevents.games.logic.NonActiveMinigame;
 import dev.jsinco.luma.lumaevents.games.logic.Paintball2_1;
 import dev.jsinco.luma.lumaevents.games.logic.TNTTag;
@@ -28,7 +29,8 @@ public final class MinigameManager extends BukkitRunnable {
 
     private final Map<Class<? extends Minigame>, Supplier<Minigame>> minigameSupplier = Map.of(
             Paintball2_1.class, () -> new Paintball2_1(cfg.getPaintball()),
-            TNTTag.class, () -> new TNTTag(cfg.getTntTag())
+            TNTTag.class, () -> new TNTTag(cfg.getTntTag()),
+            BoatRace2.class, () -> new BoatRace2(cfg.getBoatRace())
     );
 
 

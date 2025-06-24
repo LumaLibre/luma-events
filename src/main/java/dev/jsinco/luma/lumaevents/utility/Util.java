@@ -28,6 +28,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.Nullable;
 
+import java.awt.Color;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -71,6 +72,10 @@ public final class Util {
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.playSound(player.getLocation(), sound, volume, pitch);
         }
+    }
+
+    public static Component prefixed(String message) {
+        return color(PREFIX + message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR));
     }
 
     public static Component color(String string) {
@@ -444,5 +449,9 @@ public final class Util {
         editMeta.edit(itemMeta);
         itemStack.setItemMeta(itemMeta);
         return itemStack;
+    }
+
+    public static Color bukkitToAwtColor(org.bukkit.Color bukkitColor) {
+        return new Color(bukkitColor.getRed(), bukkitColor.getGreen(), bukkitColor.getBlue());
     }
 }

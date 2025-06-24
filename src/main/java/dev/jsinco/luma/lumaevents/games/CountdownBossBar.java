@@ -21,6 +21,7 @@ public class CountdownBossBar extends BukkitRunnable {
     private final Runnable callback;
     private final boolean global;
 
+    @Getter
     private float secondsRemaining;
     private Audience audience;
 
@@ -67,6 +68,10 @@ public class CountdownBossBar extends BukkitRunnable {
         }
     }
 
+    public String secondsRemaining() {
+        return String.format("%.0f", secondsRemaining);
+    }
+
 
     @Override
     public void run() {
@@ -83,7 +88,8 @@ public class CountdownBossBar extends BukkitRunnable {
             bossBar.progress(newProgress);
         }
 
-        bossBar.name(Util.color(String.format(title, String.format("%.1f", secondsRemaining))));
+        //String.format("%.1f", secondsRemaining)
+        bossBar.name(Util.color(String.format(title, secondsRemaining())));
         secondsRemaining -= 0.1f;
 
         // when done:

@@ -8,6 +8,7 @@ import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.games.MinigameManager;
+import dev.jsinco.luma.lumaevents.games.logic.BoatRace2;
 import dev.jsinco.luma.lumaevents.games.logic.Paintball2_1;
 import dev.jsinco.luma.lumaevents.games.logic.TNTTag;
 import dev.jsinco.luma.lumaevents.utility.Util;
@@ -34,6 +35,7 @@ public class MinigameStartCommand implements CommandModule {
         switch (strings[0]) {
             case "paintball2.1" -> Paintball2_1.class;
             case "tnttag" -> TNTTag.class;
+            case "boatrace2" -> BoatRace2.class;
             default -> null;
         };
 
@@ -62,6 +64,6 @@ public class MinigameStartCommand implements CommandModule {
 
     @Override
     public List<String> tabComplete(EventMain eventMain, CommandSender commandSender, String[] strings) {
-        return List.of("paintball2.1", "tnttag");
+        return List.of("paintball2.1", "tnttag", "boatrace2");
     }
 }

@@ -1,5 +1,6 @@
 package dev.jsinco.luma.lumaevents.configurable;
 
+import dev.jsinco.luma.lumaevents.configurable.sectors.BoatRaceDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.BunnyArenaDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition;
@@ -32,6 +33,9 @@ public class Config extends OkaeriConfig {
 
     @Comment("Minigame definition for 'TnT Tag'")
     private MinigameDefinition tntTag = new MinigameDefinition();
+
+    @Comment("Minigame definition for 'Boatrace 2'")
+    private BoatRaceDefinition boatRace = new BoatRaceDefinition();
 
 
     // TODO: Should use a separate file

@@ -55,4 +55,5 @@ public final class EventMain extends JavaPlugin {
     public static EventMain getInstance() {
         return instance;
     }
+
 }
