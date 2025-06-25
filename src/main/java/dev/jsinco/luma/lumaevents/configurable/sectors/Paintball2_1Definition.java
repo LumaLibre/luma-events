@@ -4,6 +4,10 @@ import eu.okaeri.configs.OkaeriConfig;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
+import org.bukkit.Material;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -13,4 +17,33 @@ public class Paintball2_1Definition extends OkaeriConfig {
     private Location team1SpawnLocation;
     private Location team2SpawnLocation;
     private Region region = new Region();
+    private List<Material> blacklistedBlocks = List.of(Material.SPRUCE_TRAPDOOR);
+    private List<String> regexBlacklistedBlocks = List.of(
+            ".*_TRAPDOOR",
+            ".*_FENCE_GATE",
+            ".*_DOOR",
+            ".*_BUTTON",
+            ".*_LEVER",
+            ".*_SIGN",
+            ".*_WALL_SIGN",
+            ".*_PLATE"
+    );
+
+    public List<Material> regexBlacklistedBlocksAsMaterials() {
+        List<Material> materials = new ArrayList<>();
+        for (Material material : Material.values()) {
+            for (String regex : regexBlacklistedBlocks) {
+                if (material.name().matches(regex)) {
+                    materials.add(material);
+                }
+            }
+        }
+        return materials;
+    }
+
+    public  List<Material> getAllBlacklistedBlocks() {
+        List<Material> allBlacklistedBlocks = new ArrayList<>(blacklistedBlocks);
+        allBlacklistedBlocks.addAll(regexBlacklistedBlocksAsMaterials());
+        return allBlacklistedBlocks;
+    }
 }

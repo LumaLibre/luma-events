@@ -44,7 +44,7 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
     }
 
     @Override
-    public boolean stop() {
+    public void onPostStop() {
         for (EventPlayer participant : this.participants) {
             Player player = participant.getPlayer();
             if (player == null) {
@@ -58,8 +58,6 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
                 Logging.errorLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found.");
             }
         }
-
-        return super.stop();
     }
 
     @Override

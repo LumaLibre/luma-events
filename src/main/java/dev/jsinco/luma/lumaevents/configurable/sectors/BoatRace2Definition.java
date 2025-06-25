@@ -9,10 +9,11 @@ import java.util.List;
 
 @ToString
 @Getter
-public class BoatRaceDefinition extends OkaeriConfig {
+public class BoatRace2Definition extends OkaeriConfig {
 
     private Location spawnLocation;
     private Location startLocation;
+    private int maxLaps = 3;
     private Region region = new Region();
     private Region finishLine = new Region();
     private List<Region> checkpoints = List.of(new Region(), new Region());

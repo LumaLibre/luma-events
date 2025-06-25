@@ -2,12 +2,11 @@ package dev.jsinco.luma.lumaevents.games;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.Config;
+import dev.jsinco.luma.lumaevents.configurable.MinigameState;
+import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameAlreadyStartedException;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
-import dev.jsinco.luma.lumaevents.games.logic.BoatRace2;
 import dev.jsinco.luma.lumaevents.games.logic.NonActiveMinigame;
-import dev.jsinco.luma.lumaevents.games.logic.Paintball2_1;
-import dev.jsinco.luma.lumaevents.games.logic.TNTTag;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -17,21 +16,16 @@ import org.bukkit.Sound;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Map;
-import java.util.function.Supplier;
+import java.util.List;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class MinigameManager extends BukkitRunnable {
 
+
     private static MinigameManager instance;
 
     private final Config cfg = EventMain.getOkaeriConfig();
-
-    private final Map<Class<? extends Minigame>, Supplier<Minigame>> minigameSupplier = Map.of(
-            Paintball2_1.class, () -> new Paintball2_1(cfg.getPaintball()),
-            TNTTag.class, () -> new TNTTag(cfg.getTntTag()),
-            BoatRace2.class, () -> new BoatRace2(cfg.getBoatRace())
-    );
+    private final MinigameState minigameState = EventMain.getMinigameState();
 
 
     @NotNull
@@ -39,7 +33,7 @@ public final class MinigameManager extends BukkitRunnable {
     private Minigame current = new NonActiveMinigame();
 
 
-    public boolean newMinigame(Class<? extends Minigame> game, boolean force, int seconds) throws GameAlreadyStartedException {
+    public boolean newMinigame(MinigameConstant game, boolean force, int seconds) throws GameAlreadyStartedException {
         if (this.current.isActive()) {
             if (!force) {
                 throw new GameAlreadyStartedException("Minigame: " + this.current.getName() + " is already active!");
@@ -51,11 +45,12 @@ public final class MinigameManager extends BukkitRunnable {
         Bukkit.getOnlinePlayers().forEach(player -> {
             player.playSound(player.getLocation(), Sound.ENTITY_EVOKER_PREPARE_WOLOLO, 1f, 0.75f);
         });
-        this.current = this.minigameSupplier.get(game).get();
+
+        this.current = game.getSupplier().get();
         return this.current.start(seconds);
     }
 
-    public boolean newMinigame(Class<? extends Minigame> game, boolean force) throws GameAlreadyStartedException {
+    public boolean newMinigame(MinigameConstant game, boolean force) throws GameAlreadyStartedException {
         return this.newMinigame(game, force, 90);
     }
 
@@ -65,11 +60,10 @@ public final class MinigameManager extends BukkitRunnable {
 
     public boolean newMinigame(boolean force, int seconds) throws GameAlreadyStartedException {
         // Random minigame selection
-        Class<? extends Minigame> game = Util.getRandom(this.minigameSupplier.keySet());
-        return this.newMinigame(game, force, seconds);
+        return this.newMinigame(MinigameConstant.random(), force, seconds);
     }
 
-    public boolean tryNewMinigameSafely(Class<? extends Minigame> game, boolean ignoreCooldown, int seconds) {
+    public boolean tryNewMinigameSafely(MinigameConstant game, boolean ignoreCooldown, int seconds) {
         if (!this.canSafelyStartMinigame(ignoreCooldown)) {
             return false;
         }
@@ -97,7 +91,7 @@ public final class MinigameManager extends BukkitRunnable {
         }
     }
 
-    public boolean tryNewMinigameSafely(Class<? extends Minigame> game, boolean ignoreCooldown) {
+    public boolean tryNewMinigameSafely(MinigameConstant game, boolean ignoreCooldown) {
         return this.tryNewMinigameSafely(game, ignoreCooldown, 90);
     }
 
@@ -106,10 +100,6 @@ public final class MinigameManager extends BukkitRunnable {
     }
 
     public boolean canSafelyStartMinigame(boolean ignoreCooldown) {
-        if (!cfg.isAutomaticMinigames()) {
-            return false;
-        }
-
         if (this.current.isActive() || this.current.isOpen()) {
             return false; // We can't start another minigame if one is active or has a queue open!
         }
@@ -120,7 +110,7 @@ public final class MinigameManager extends BukkitRunnable {
 
         // We can't start another minigame if the cooldown hasn't passed!
         long currentTime = System.currentTimeMillis();
-        long lastMinigameTime = this.cfg.getLastGameLaunchTime();
+        long lastMinigameTime = this.minigameState.getLastGameLaunchTime();
 
 
         return (currentTime - lastMinigameTime) >= this.cfg.getAutomaticMinigameCooldown();
@@ -128,13 +118,19 @@ public final class MinigameManager extends BukkitRunnable {
 
     @Override
     public void run() {
-        if (this.canSafelyStartMinigame(false)) {
-            if (cfg.isAutomaticMinigames()) {
-                this.cfg.setLastGameLaunchTime(System.currentTimeMillis());
-                this.cfg.save();
-                this.newMinigame(false);
-            }
+        if (!cfg.isAutomaticMinigames() || !this.canSafelyStartMinigame(false)) {
+            return;
         }
+
+
+        List<MinigameConstant> availableMinigames = List.of(MinigameConstant.values());
+        int lastIndex = availableMinigames.indexOf(this.minigameState.getLastMinigame());
+        MinigameConstant nextMinigame = availableMinigames.get((lastIndex + 1) % availableMinigames.size());
+
+        this.minigameState.setLastGameLaunchTime(System.currentTimeMillis());
+        this.minigameState.setLastMinigame(nextMinigame);
+        this.minigameState.save();
+        this.newMinigame(nextMinigame, false);
     }
 
     public static MinigameManager getInstance() {

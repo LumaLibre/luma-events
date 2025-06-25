@@ -1,13 +1,12 @@
 package dev.jsinco.luma.lumaevents.games.interfaces;
 
 import dev.jsinco.luma.lumaevents.EventMain;
-import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
+import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.events.MinigameExitPreventionListener;
 import dev.jsinco.luma.lumaevents.games.events.MinigamePreventInventoryTampering;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameComponentIllegallyActive;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.MinigameBoundingBox;
-import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
@@ -30,7 +29,7 @@ import java.util.Random;
 @Setter
 public abstract class Minigame extends BukkitRunnable implements Listener {
 
-    protected static final Random RANDOM = new Random();
+    protected static final Random RANDOM = Util.RANDOM;
 
     protected final List<EventPlayer> participants = new ArrayList<>();
     protected final List<Listener> extraListeners = new ArrayList<>();
@@ -107,6 +106,13 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
             unregisterEvents(this.inventoryTampering);
         }
         this.cancel();
+
+        try {
+            this.onPostStop();
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+        }
+
         this.active = false;
         this.open = false; // Should be false by now anyway :P
         return true;
@@ -278,6 +284,11 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
     protected void onPreStart() {
         // This method can be overridden to perform actions before the minigame starts
         // For example, setting up the environment, clearing inventories, etc.
+    }
+
+    protected void onPostStop() {
+        // This method can be overridden to perform actions after the minigame stops
+        // For example, restoring player inventories, cleaning up resources, etc.
     }
 
     protected int minimumParticipants() {

@@ -2,6 +2,7 @@ package dev.jsinco.luma.lumaevents.tokens;
 
 import dev.jsinco.luma.lumaitems.api.LumaItemsAPI;
 import dev.jsinco.luma.lumaitems.manager.CustomItem;
+import org.bukkit.Bukkit;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,6 +23,14 @@ public class LocalCustomItemManager {
     public static void registerCustomItems() {
         for (CustomItem customItem : customItems) {
             lumaItemsAPI.registerCustomItem(customItem);
+
+            if (customItem instanceof CustomItemFunctionsWithRecipe withRecipe) {
+                var pair = withRecipe.recipe();
+                if (Bukkit.getRecipe(pair.getFirst()) != null) {
+                    Bukkit.removeRecipe(pair.getFirst());
+                }
+                Bukkit.addRecipe(pair.getSecond());
+            }
         }
     }
 
@@ -43,4 +52,5 @@ public class LocalCustomItemManager {
         }
         return null;
     }
+
 }

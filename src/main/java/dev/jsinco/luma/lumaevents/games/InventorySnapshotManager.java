@@ -12,7 +12,7 @@ public final class InventorySnapshotManager {
 
     public static final InventorySnapshotManager INSTANCE = new InventorySnapshotManager();
 
-    private static final Set<InventorySnapshot> inventorySnapshots = new HashSet<>();
+    private final Set<InventorySnapshot> inventorySnapshots = new HashSet<>();
 
     public void registerSnapshot(InventorySnapshot snapshot) {
         if (!snapshot.isBackedUp()) {

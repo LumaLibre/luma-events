@@ -7,14 +7,14 @@ import dev.jsinco.luma.lumaevents.obj.CylinderBoundingBox;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import org.bukkit.Location;
 
-public class TNTRun extends InventoryUnifiedMinigame {
+public final class TNTRun extends InventoryUnifiedMinigame {
 
     private static final int LAYER_GAP = 8; // The gap between layer of TNT/Sand blocks
     private static final int LAYER_AMOUNT = 3; // The amount of layers of TNT/Sand blocks
 
     private final Location spawnLocation;
 
-    protected TNTRun(CylindricalMinigameDefinition def) {
+    public TNTRun(CylindricalMinigameDefinition def) {
         super("TNT Run", "Don't fall down!", 480000, 20, true, true);
         CylinderRegion r = def.getRegion();
         this.boundingBox = CylinderBoundingBox.of(r.getCenter(), r.getRadius(), r.getHeight());

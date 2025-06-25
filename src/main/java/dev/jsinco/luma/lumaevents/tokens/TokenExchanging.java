@@ -10,6 +10,14 @@ import org.bukkit.inventory.ItemStack;
 
 public class TokenExchanging {
 
+    public static void giveWithChances(Player player, int amount) {
+        TokenType type = TokenType.OPAL;
+        if (Util.RANDOM.nextInt(101) < 10) { // 10% chance to give refined opal
+            type = TokenType.REFINED_OPAL;
+        }
+        give(player, type, amount);
+    }
+
     public static void give(Player player, TokenType type, int amount) {
         if (amount < 1) {
             return;
@@ -46,8 +54,8 @@ public class TokenExchanging {
 
     @Getter
     public enum TokenType {
-        CARROT(EasterCarrotToken.class, "Carrot", "easter-carrot-token"),
-        BASKET(EasterBasketToken.class, "Basket", "easter-basket-token"),;
+        OPAL(SummerOpal.class, "Opal", "summer-opal-token"),
+        REFINED_OPAL(RefinedSummerOpal.class, "Refined Opal", "refined-summer-opal"),;
 
         private final Class<? extends CustomItem> tokenClass;
         private final String customName;

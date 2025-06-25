@@ -1,10 +1,10 @@
-package dev.jsinco.luma.lumaevents.games;
+package dev.jsinco.luma.lumaevents.games.obj;
 
+import dev.jsinco.luma.lumaevents.games.interfaces.Scorer;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.title.Title;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -40,7 +40,7 @@ public class Scoreboard<T extends Scorer> {
     }
 
     public Map<T, Integer> getScores() {
-        return new HashMap<>(scores); // Return a copy to prevent external modification
+        return Map.copyOf(scores);
     }
 
     @Nullable
@@ -96,8 +96,14 @@ public class Scoreboard<T extends Scorer> {
             audience.sendMessage(message);
         }
         audience.sendMessage(Util.color(BORDER));
+
         if (callback != null) {
-            callback.run();
+            try {
+                callback.run();
+            } catch (Throwable e) {
+                audience.sendMessage(Util.color("<red>Error while handling game end: " + e.getMessage()));
+                e.printStackTrace();
+            }
         }
     }
 }

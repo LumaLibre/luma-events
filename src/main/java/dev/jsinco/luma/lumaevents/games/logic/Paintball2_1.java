@@ -3,10 +3,12 @@ package dev.jsinco.luma.lumaevents.games.logic;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition;
-import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
-import dev.jsinco.luma.lumaevents.games.Scoreboard;
-import dev.jsinco.luma.lumaevents.games.Scorer;
+import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
+import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
+import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
+import dev.jsinco.luma.lumaevents.games.interfaces.Scorer;
 import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
+import dev.jsinco.luma.lumaevents.games.tokenformula.Paintball2_1TokenFormula;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Couple;
@@ -24,6 +26,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -42,49 +45,54 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.inventory.ItemStack;
-import org.jetbrains.annotations.Nullable;
+import org.bukkit.potion.PotionEffect;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-// TODO:
-//  - Need to calculate scores and display winning team
-//  - Handle tokens
-//  - Test
-// - Handle players killing each other/respawning (DONE!)
+// TODO: Test, cleanup
 public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
-    private static final List<Material> BLACKLISTED_MATERIALS = List.of(Material.BARRIER, Material.AIR, Material.CAVE_AIR, Material.LADDER);
-    private static final List<Material> PAINTABLE_WHITELIST = List.of(
-            Material.WAXED_WEATHERED_CUT_COPPER, Material.POLISHED_BASALT, Material.POLISHED_ANDESITE,
-            Material.STONE, Material.OAK_PLANKS, Material.POLISHED_BLACKSTONE, Material.CHISELED_DEEPSLATE,
-            Material.BLACK_TERRACOTTA, Material.STRIPPED_MANGROVE_LOG, Material.YELLOW_CONCRETE,
-            Material.WAXED_OXIDIZED_COPPER, Material.SMOOTH_STONE, Material.NETHER_BRICKS, Material.LIGHT_GRAY_TERRACOTTA,
-            Material.STRIPPED_BAMBOO_BLOCK
-    );
+    private static final List<Material> STANDARD_BLACKLIST = List.of(Material.BARRIER, Material.AIR, Material.CAVE_AIR, Material.LADDER);
     private static final AttributeModifier ATTRIBUTE_MODIFIER = new AttributeModifier(
             new NamespacedKey(EventMain.getInstance(), "paintball"),
             -4.5,
             AttributeModifier.Operation.ADD_NUMBER
     );
+    private static final PotionEffect REGEN = new PotionEffect(
+            org.bukkit.potion.PotionEffectType.REGENERATION,
+            100,
+            1,
+            false, // Ambient
+            false,
+            false
+    );
 
     private final Paintball2_1Definition def;
     private final ConcurrentHashMap<Location, PaintballTeam> paintedLocations; // TODO: Don't use locations
     private final Scoreboard<PaintballTeam> scoreboard;
+    private final List<Material> blacklistedMaterials;
+    private final Paintball2_1TokenFormula tokenFormula;
     private CountdownBossBar countdownBossBar;
     private List<PaintballTeam> paintballTeams;
 
     public Paintball2_1(Paintball2_1Definition def) {
-        super("Paintball 2.1", "Cover as much area as possible.", 120000, 20, true, true);
+        super("Paintball 2.1", "Cover as much area as possible.", 180000L, 20, true, true);
         this.def = def;
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.paintedLocations = new ConcurrentHashMap<>();
         this.scoreboard = new Scoreboard<>();
-
+        this.blacklistedMaterials = def.getAllBlacklistedBlocks();
+        this.blacklistedMaterials.addAll(STANDARD_BLACKLIST);
+        this.tokenFormula = new Paintball2_1TokenFormula();
     }
 
+//    @Override
+//    protected int minimumParticipants() {
+//        return 2;
+//    }
 
     @Override
     protected void handleStart() {
@@ -99,10 +107,16 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         for (PaintballTeam team : this.paintballTeams) {
             for (EventPlayer member : team.getMembers()) {
                 Player player = member.getPlayer();
-                if (player != null) {
-                    player.teleportAsync(team.getSpawnPoint().toCenterLocation());
-                    player.getInventory().setItemInMainHand(team.getPaintball());
+                if (player == null) {
+                    continue;
                 }
+                player.teleportAsync(team.getSpawnPoint().toCenterLocation());
+                Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+                    player.getInventory().setItemInMainHand(team.getPaintball());
+                    if (player.getGameMode() != GameMode.SURVIVAL) {
+                        player.setGameMode(GameMode.SURVIVAL);
+                    }
+                });
             }
         }
 
@@ -121,6 +135,22 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         if (this.countdownBossBar != null) {
             this.countdownBossBar.stop(false);
         }
+
+        PaintballTeam winningTeam = this.scoreboard.getTopScorer();
+
+        for (PaintballTeam team : this.paintballTeams) {
+            int position = 1;
+            for (var mapEntry : team.membersByScores().entrySet()) {
+                EventPlayer member = mapEntry.getKey();
+                int score = mapEntry.getValue();
+                Couple<Integer, Boolean> couple = Couple.of(position, team.equals(winningTeam));
+
+                tokenFormula.giveTokens(member, couple);
+                member.addPermanentScore(MinigameConstant.PAINTBALL2_1, score);
+                position++;
+            }
+        }
+
         // TODO: Need to calculate scores and display winning team
         this.scoreboard.handleGameEnd(this.audience, () -> {
             this.participants.stream().filter(
@@ -128,11 +158,14 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             ).forEach(p -> p.getPlayer().teleportAsync(def.getSpawnLocation()));
             CountdownBossBar.builder()
                     .audience(this.audience)
-                    .color(BossBar.Color.PURPLE)
-                    .title("<light_purple><b>Game Over")
+                    .color(BossBar.Color.RED)
+                    .title("<red><b>Game Over")
                     .seconds(15)
                     .callback(() -> this.boundingBox.getPlayers().forEach(player -> {
-                        player.teleportAsync(this.getGameDropOffLocation());
+                        Location loc = this.getGameDropOffLocation();
+                        if (loc != null) {
+                            player.teleportAsync(loc);
+                        }
                         Util.sendMsg(player, "This minigame has concluded.");
 
                         if (this.isInBoundingBox(player)) {
@@ -162,12 +195,12 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         int team2PaintedBlocks = totalPaintedBlocks - team1PaintedBlocks; // Since there are only 2 teams
         double team1Coverage = (double) team1PaintedBlocks / totalPaintedBlocks * 100;
         double team2Coverage = (double) team2PaintedBlocks / totalPaintedBlocks * 100;
-        PaintballTeam team1 = paintballTeams.getFirst();
+        PaintballTeam team1 = this.paintballTeams.getFirst();
 
         Component breakLine = Util.color(" <white>|</white> ");
 
 
-        for (PaintballTeam paintballTeam : paintballTeams) {
+        for (PaintballTeam paintballTeam : this.paintballTeams) {
             for (EventPlayer member : paintballTeam.getMembers()) {
                 PaintballTeam enemyTeam = paintballTeams.stream().filter(t -> t != paintballTeam).findFirst().orElse(null);
                 if (enemyTeam == null) continue;
@@ -183,6 +216,11 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 Component actionBar = ourTeamComp.append(breakLine).append(enemyTeamComp).decorate(TextDecoration.BOLD);
 
                 member.sendActionBar(actionBar);
+                // regen
+                Player player = member.getPlayer();
+                if (player != null) {
+                    Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> player.addPotionEffect(REGEN));
+                }
             }
         }
 
@@ -237,6 +275,10 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 .filter(team -> team.isMember(shooterEventPlayer))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Player is not a member of any team."));
+        PaintballTeam victimTeam = this.paintballTeams.stream()
+                .filter(team -> team.isMember(eventPlayer))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Victim is not a member of any team."));
 
 
         this.paint(player.getLocation().add(0, -1, 0), paintballTeam, shooterEventPlayer, 3);
@@ -251,7 +293,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         event.setCancelled(true);
         event.setReviveHealth(20.0);
         event.setDeathSound(Sound.ITEM_TOTEM_USE);
-        player.teleportAsync(paintballTeam.getSpawnPoint().toCenterLocation());
+        player.teleportAsync(victimTeam.getSpawnPoint().toCenterLocation());
     }
 
 
@@ -305,18 +347,10 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     }
 
     private void handleProjectileHitBlock(Block blockHit, PaintballTeam paintballTeam, EventPlayer shooter) {
-        if (BLACKLISTED_MATERIALS.contains(blockHit.getType())) {
+        if (this.blacklistedMaterials.contains(blockHit.getType())) {
             return;
         }
-
-
         this.paint(blockHit.getLocation(), paintballTeam, shooter, 1);
-
-        // TODO: Replace
-//        if (scoreboard.getTempScore(shooter) >= 300) {
-//            scoreboard.resetTempScore(shooter);
-//            Util.giveTokens(shooter.getPlayer(), 1);
-//        }
     }
 
     public void paint(Location blockHit, PaintballTeam paintballTeam, EventPlayer shooter, int size) {
@@ -335,21 +369,16 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     }
 
     private void paintOnBlock(Block block, PaintballTeam paintballTeam, EventPlayer shooter) {
-        if (!PAINTABLE_WHITELIST.contains(block.getType())) {
-            return; // Do not paint if the block is not in the whitelist
+        if (this.blacklistedMaterials.contains(block.getType())) {
+            return;
         }
 
         PaintballTeam existingPainter = paintedLocations.get(block.getLocation());
         if (existingPainter != null && existingPainter.equals(paintballTeam)) {
-            // Resend the block change to the player
-            Player player = shooter.getPlayer();
-            if (player != null) {
-                player.sendBlockChange(block.getLocation(), paintballTeam.getBlockData());
-            }
             return; // Already painted by the same team
         }
 
-        Location loc = block.getLocation().clone();
+        Location loc = block.getLocation();
         paintedLocations.put(loc, paintballTeam);
         paintballTeam.addScore(1, shooter);
         scoreboard.addScore(paintballTeam, 1);
@@ -397,6 +426,12 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             this.paintball.setData(DataComponentTypes.ITEM_MODEL, NamespacedKey.minecraft(colorKit.model));
         }
 
+
+        public Map<EventPlayer, Integer> membersByScores() {
+            return scoreMap.entrySet().stream()
+                    .sorted(Map.Entry.<EventPlayer, Integer>comparingByValue().reversed())
+                    .collect(HashMap::new, (map, entry) -> map.put(entry.getKey(), entry.getValue()), HashMap::putAll);
+        }
         public List<EventPlayer> getMembers() {
             return List.copyOf(scoreMap.keySet());
         }
@@ -436,7 +471,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         ORANGE(Material.ORANGE_WOOL, NamedTextColor.GOLD, "orange_dye"),
         PURPLE(Material.PURPLE_WOOL, NamedTextColor.DARK_PURPLE, "purple_dye"),
         // YELLOW is not used in Paintball2_1, but can be added if needed
-        PINK(Material.PINK_WOOL, NamedTextColor.LIGHT_PURPLE, "pink_dye"),
+        PINK(Material.PINK_WOOL, TextColor.fromHexString("#f4b8da"), "pink_dye"),
         LIGHT_BLUE(Material.LIGHT_BLUE_WOOL, NamedTextColor.AQUA, "light_blue_dye"),
         MAGENTA(Material.MAGENTA_WOOL, TextColor.fromHexString("#d630d6"), "magenta_dye");
 

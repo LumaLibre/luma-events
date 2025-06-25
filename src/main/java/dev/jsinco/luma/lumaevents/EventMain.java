@@ -3,27 +3,26 @@ package dev.jsinco.luma.lumaevents;
 import dev.jsinco.luma.lumacore.manager.modules.ModuleManager;
 import dev.jsinco.luma.lumaevents.configurable.Config;
 import dev.jsinco.luma.lumaevents.configurable.ConfigManager;
-import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
+import dev.jsinco.luma.lumaevents.configurable.MinigameState;
+import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.MinigameManager;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
-import dev.jsinco.luma.lumaevents.tokens.EasterBasketToken;
-import dev.jsinco.luma.lumaevents.tokens.EasterCarrotToken;
+import dev.jsinco.luma.lumaevents.tokens.RefinedSummerOpal;
+import dev.jsinco.luma.lumaevents.tokens.SummerOpal;
 import dev.jsinco.luma.lumaevents.tokens.LocalCustomItemManager;
-import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class EventMain extends JavaPlugin {
 
     private static EventMain instance;
-    @Getter
-    private static Config okaeriConfig;
+    private static ConfigManager okaeriConfigManager;
     private static ModuleManager moduleManager;
 
     @Override
     public void onEnable() {
         instance = this;
-        okaeriConfig = new ConfigManager().getConfig();
+        okaeriConfigManager = new ConfigManager();
         moduleManager = new ModuleManager(this);
         moduleManager.reflectivelyRegisterModules();
 
@@ -33,10 +32,8 @@ public final class EventMain extends JavaPlugin {
 
         MinigameManager.getInstance().runTaskTimerAsynchronously(this, 0, 600); // 30 seconds
 
-        LocalCustomItemManager.addCustomItem(new EasterCarrotToken());
-        LocalCustomItemManager.addCustomItem(new EasterBasketToken());
-
-
+        LocalCustomItemManager.addCustomItem(new SummerOpal());
+        LocalCustomItemManager.addCustomItem(new RefinedSummerOpal());
 
     }
 
@@ -52,8 +49,16 @@ public final class EventMain extends JavaPlugin {
         CountdownBossBar.stopAll(false);
     }
 
+    @SuppressWarnings("")
     public static EventMain getInstance() {
         return instance;
     }
 
+    public static Config getOkaeriConfig() {
+        return okaeriConfigManager.getConfig();
+    }
+
+    public static MinigameState getMinigameState() {
+        return okaeriConfigManager.getMinigameState();
+    }
 }

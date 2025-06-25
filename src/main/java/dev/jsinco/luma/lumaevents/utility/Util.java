@@ -45,7 +45,7 @@ public final class Util {
             .setPrettyPrinting()
             .create();
     public static final Random RANDOM = new Random();
-    public static final String PREFIX = "<b><gradient:#A687CA:#6EABD3:#36CEDC:#63DBA3:#8FE86A:#C7E961:#FFD054:#FF787C>Easter</gradient></b> <dark_gray>»</dark_gray> ";
+    public static final String PREFIX = "<b><gradient:#DC8BE5:#F6FF5C>Event</gradient></b> <dark_gray>»</dark_gray> ";
     public static final String TEXT_COLOR = "#e6ffe0";
 
 
@@ -453,5 +453,13 @@ public final class Util {
 
     public static Color bukkitToAwtColor(org.bukkit.Color bukkitColor) {
         return new Color(bukkitColor.getRed(), bukkitColor.getGreen(), bukkitColor.getBlue());
+    }
+
+    public static Class<?> classForNameOr(String className, Class<?> defaultClass) {
+        try {
+            return Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            return defaultClass;
+        }
     }
 }

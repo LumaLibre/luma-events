@@ -6,11 +6,8 @@ import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
-import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
+import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.MinigameManager;
-import dev.jsinco.luma.lumaevents.games.logic.BoatRace2;
-import dev.jsinco.luma.lumaevents.games.logic.Paintball2_1;
-import dev.jsinco.luma.lumaevents.games.logic.TNTTag;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.command.CommandSender;
 
@@ -31,13 +28,7 @@ public class MinigameStartCommand implements CommandModule {
             return false;
         }
 
-        Class<? extends Minigame> minigame =
-        switch (strings[0]) {
-            case "paintball2.1" -> Paintball2_1.class;
-            case "tnttag" -> TNTTag.class;
-            case "boatrace2" -> BoatRace2.class;
-            default -> null;
-        };
+        MinigameConstant minigame = MinigameConstant.fromAlias(strings[0]);
 
         if (minigame == null) {
             Util.sendMsg(commandSender, "Invalid minigame");

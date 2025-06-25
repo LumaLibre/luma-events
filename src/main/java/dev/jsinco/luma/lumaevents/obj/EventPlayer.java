@@ -1,7 +1,7 @@
 package dev.jsinco.luma.lumaevents.obj;
 
-import dev.jsinco.luma.lumaevents.games.Scorer;
-import dev.jsinco.luma.lumaevents.npc.constants.TutorialSection;
+import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
+import dev.jsinco.luma.lumaevents.games.interfaces.Scorer;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,48 +14,28 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Getter
 @Setter
 public class EventPlayer implements Serializable, Scorer {
 
-    private transient volatile Object LOCK;
-    private Object getLock() {
-        if (LOCK == null) {
-            synchronized (this) {
-                if (LOCK == null) {
-                    LOCK = new Object();
-                }
-            }
-        }
-        return LOCK;
-    }
-
     private final UUID uuid;
-    private final List<TutorialSection> completedTutorialSections;
+    private final Map<MinigameConstant, Integer> scores;
+
+
     // Initial creation
     public EventPlayer(UUID uuid) {
-        this(uuid, new ArrayList<>());
+        this(uuid, new HashMap<>());
     }
 
-    public EventPlayer(UUID uuid, List<TutorialSection> completedTutorialSections) {
+    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores) {
         this.uuid = uuid;
-        this.completedTutorialSections = completedTutorialSections;
+        this.scores = scores;
     }
 
-    public void addCompletedTutorialSection(TutorialSection section) {
-        if (this.completedTutorialSections.contains(section)) {
-            return;
-        }
-        this.completedTutorialSections.add(section);
-    }
-
-    public boolean hasCompletedTutorialSection(TutorialSection section) {
-        return this.completedTutorialSections.contains(section);
-    }
 
     public void sendMessage(String m) {
         Player player = this.getPlayer();
@@ -66,11 +46,7 @@ public class EventPlayer implements Serializable, Scorer {
     }
 
     public void sendNoPrefixedMessage(String m) {
-        Player player = this.getPlayer();
-        if (player == null) {
-            return;
-        }
-        player.sendMessage(Util.color(m));
+        this.sendNoPrefixedMessage(Util.color(m));
     }
 
     public void sendNoPrefixedMessage(Component m) {
@@ -127,5 +103,13 @@ public class EventPlayer implements Serializable, Scorer {
     public String getName() {
         OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(this.uuid);
         return offlinePlayer.getName();
+    }
+
+    public void addPermanentScore(MinigameConstant minigame, int score) {
+        this.scores.put(minigame, this.scores.getOrDefault(minigame, 0) + score);
+    }
+
+    public int getPermanentScore(MinigameConstant minigame) {
+        return this.scores.getOrDefault(minigame, 0);
     }
 }

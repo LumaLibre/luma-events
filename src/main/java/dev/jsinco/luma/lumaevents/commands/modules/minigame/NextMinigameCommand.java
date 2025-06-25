@@ -7,6 +7,7 @@ import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
 import dev.jsinco.luma.lumaevents.configurable.Config;
+import dev.jsinco.luma.lumaevents.configurable.MinigameState;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.command.CommandSender;
 
@@ -25,8 +26,9 @@ public class NextMinigameCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
         Config cfg = EventMain.getOkaeriConfig();
+        MinigameState minigameState = EventMain.getMinigameState();
 
-        long timeSinceLast = System.currentTimeMillis() - cfg.getLastGameLaunchTime();
+        long timeSinceLast = System.currentTimeMillis() - minigameState.getLastGameLaunchTime();
         long timeCombined = cfg.getAutomaticMinigameCooldown() - timeSinceLast;
         // print how long until the next minigame
         Util.sendMsg(commandSender, "The next minigame will be in <gold>" + millisToMins(timeCombined) + "</gold>.");

@@ -2,8 +2,11 @@ package dev.jsinco.luma.lumaevents.games.logic;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
-import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
+import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
+import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
+import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
+import dev.jsinco.luma.lumaevents.games.tokenformula.TNTTagTokenFormula;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.EditMeta;
@@ -11,6 +14,7 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -38,19 +42,25 @@ import java.util.function.Supplier;
 // TODO: Test
 public final class TNTTag extends InventoryUnifiedMinigame {
 
-    private static final int ROUND_DURATION = 60;
+    private static final int ROUND_DURATION = 90;
     private static final int MAX_ROUNDS = 3;
+    private static final int TICK_INTERVAL = 20; // 1 second in ticks
 
-    private final Map<UUID, TNTTagPlayer> tntTagPlayers = new HashMap<>();
+    private final Map<UUID, TNTTagPlayer> tntTagPlayers;
     private final Location spawnPoint;
+    private final Scoreboard<EventPlayer> scoreboard;
+    private final TNTTagTokenFormula tokenFormula;
 
     private CountdownBossBar roundCountdownBar;
     private int roundCount = 0;
 
     public TNTTag(MinigameDefinition def) {
-        super("TNT Tag", "Don't explode!", (ROUND_DURATION * MAX_ROUNDS * 2000) /* internally double the duration for ticks */, 20, false, true);
+        super("TNT Tag", "Don't explode!", (ROUND_DURATION * MAX_ROUNDS * 2000) /* internally double the duration for ticks */, TICK_INTERVAL, false, true);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
+        this.tntTagPlayers = new HashMap<>();
         this.spawnPoint = def.getSpawnLocation().toCenterLocation();
+        this.scoreboard = new Scoreboard<>();
+        this.tokenFormula = new TNTTagTokenFormula();
     }
 
     @Override
@@ -61,7 +71,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     @Override
     protected void handleStart() {
         for (EventPlayer participant : this.participants) {
-            this.swapRole(participant, () -> new Runner(participant));
+            this.swapRole(participant, () -> new Runner(participant, this.scoreboard));
         }
         this.startRound();
     }
@@ -87,11 +97,35 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         if (this.roundCountdownBar != null) {
             this.roundCountdownBar.stop(false);
         }
-        for (TNTTagPlayer player : this.tntTagPlayers.values()) {
-            player.removeEffects(true);
-        }
-        this.tntTagPlayers.clear();
-        this.sendAudienceMessage("TNT Tag has ended! (debug)");
+        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+            for (TNTTagPlayer player : this.tntTagPlayers.values()) {
+                player.removeEffects();
+                EventPlayer eventPlayer = player.getWho();
+                int finalScore = this.scoreboard.getScore(eventPlayer);
+                tokenFormula.giveTokens(eventPlayer, finalScore);
+                eventPlayer.addPermanentScore(MinigameConstant.TNTTAG, finalScore);
+            }
+        });
+
+        this.scoreboard.handleGameEnd(this.audience, () -> {
+            this.participants.stream().filter(
+                    p -> p.getPlayer() != null
+            ).forEach(p -> p.getPlayer().teleportAsync(this.spawnPoint));
+            CountdownBossBar.builder()
+                    .audience(this.audience)
+                    .color(BossBar.Color.RED)
+                    .title("<red><b>Game Over")
+                    .seconds(15)
+                    .callback(() -> this.boundingBox.getPlayers().forEach(player -> {
+                        Location loc = this.getGameDropOffLocation();
+                        if (loc != null) {
+                            player.teleportAsync(loc);
+                        }
+                        Util.sendMsg(player, "This minigame has concluded.");
+                    }))
+                    .build()
+                    .start();
+        });
     }
 
     @Override
@@ -104,7 +138,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     public boolean removeParticipant(EventPlayer player) {
         TNTTagPlayer tntTagPlayer = this.tntTagPlayers.get(player.getUuid());
         if (tntTagPlayer != null) {
-            tntTagPlayer.removeEffects(true);
+            tntTagPlayer.removeEffects();
             this.tntTagPlayers.remove(player.getUuid());
         }
         return super.removeParticipant(player);
@@ -113,10 +147,10 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     public <T extends TNTTagPlayer> T swapRole(EventPlayer eventPlayer, Supplier<? extends TNTTagPlayer> newRoleSupplier) {
         TNTTagPlayer currentRole = tntTagPlayers.get(eventPlayer.getUuid());
         if (currentRole != null) {
-            currentRole.removeEffects(false);
+            Bukkit.getScheduler().runTask(EventMain.getInstance(), currentRole::removeEffects);
         }
         TNTTagPlayer newRole = newRoleSupplier.get();
-        newRole.addEffects();
+        Bukkit.getScheduler().runTask(EventMain.getInstance(), newRole::addEffects);
         tntTagPlayers.put(eventPlayer.getUuid(), newRole);
         return (T) newRole;
     }
@@ -157,21 +191,43 @@ public final class TNTTag extends InventoryUnifiedMinigame {
 
 
     public void startRound() {
-        Runner initialTagger = Util.getRandom(this.getRunners());
-        this.swapRole(initialTagger.getWho(), () -> new Tagger(initialTagger.getWho()));
+        // for every 5 players, a new tagger is added
+        int taggerCount = Math.max(1, this.getRunners().size() / 5);
+        for (int i = this.getTaggers().size(); i < taggerCount; i++) {
+            Runner tagger = Util.getRandom(this.getRunners());
+            this.swapRole(tagger.getWho(), () -> new Tagger(tagger.getWho()));
+            this.sendAudienceMessage("<red>" + tagger.getWho().getName() + " is it!");
+        }
 
-        this.getTaggers().forEach(Tagger::addEffects);
-        this.getRunners().forEach(Runner::addEffects);
+
+        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+            this.getTaggers().forEach(Tagger::addEffects);
+            this.getRunners().forEach(Runner::addEffects);
+        });
+
+        // tp all to spawnPoint
+        this.tntTagPlayers.values().stream()
+                .map(TNTTagPlayer::getPlayer)
+                .filter(Objects::nonNull)
+                .forEach(player -> player.teleportAsync(this.spawnPoint));
 
         this.sendAudienceMessage("A new round has started!");
         this.roundCountdownBar = CountdownBossBar.builder()
                 .seconds(ROUND_DURATION)
                 .color(BossBar.Color.YELLOW)
-                .title("<yellow><b>Round ends in: %s <gray>| <yellow>Round: " + (this.roundCount + 1) + "/" + MAX_ROUNDS)
+                .title("<yellow><b>Round ends in: %ss <gray>| <yellow>Round: " + (this.roundCount + 1) + "/" + MAX_ROUNDS)
                 .global(false)
                 .audience(this.audience)
                 .callback(() -> {
                     this.endRound();
+
+                    this.sendAudienceMessage("Runner count: " + this.getRunners().size());
+                    if (this.getRunners().size() < 2) {
+                        this.sendAudienceMessage("Not enough runners left to continue. Ending game.");
+                        this.stop();
+                        return;
+                    }
+
                     this.roundCount++;
                     if (this.roundCount < MAX_ROUNDS) {
                         this.startRound();
@@ -187,7 +243,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         this.getTaggers().forEach(tagger -> {
             this.swapRole(tagger.getWho(), () -> new Spectator(tagger.getWho(), this.participants));
         });
-        this.getRunners().forEach(runner -> runner.removeEffects(false));
+        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> this.getRunners().forEach(runner -> runner.removeEffects()));
 
         this.sendAudienceMessage("The round has ended!");
     }
@@ -211,18 +267,18 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         }
 
         if (!(damager instanceof Tagger tagger)) {
-            event.setCancelled(true);
+            //event.setCancelled(true);
             return;
         }
         if (!(victim instanceof Runner runner)) {
-            event.setCancelled(true);
+            //event.setCancelled(true);
             return;
         }
 
         event.setDamage(0.0);
-        this.swapRole(tagger.getWho(), () -> new Runner(tagger.getWho()));
+        this.swapRole(tagger.getWho(), () -> new Runner(tagger.getWho(), this.scoreboard));
         this.swapRole(runner.getWho(), () -> new Tagger(runner.getWho()));
-        this.sendAudienceMessage(tagger.getWho() + " has tagged " + runner.getWho() + "!");
+        this.sendAudienceMessage("<red>" + bukkitVictim.getName() + " is now it!");
     }
 
     @EventHandler
@@ -259,7 +315,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         }
 
         public abstract void addEffects();
-        public abstract void removeEffects(boolean gameOver);
+        public abstract void removeEffects();
         public abstract void tick();
 
         @Nullable
@@ -269,14 +325,20 @@ public final class TNTTag extends InventoryUnifiedMinigame {
             }
             return who.getPlayer();
         }
-
     }
 
 
     public static class Runner extends TNTTagPlayer {
 
-        public Runner(EventPlayer who) {
+        private static final PotionEffect RUNNER_SPEED = new PotionEffect(PotionEffectType.SPEED, 350, 1, false, false, true);
+
+        private final Scoreboard<EventPlayer> scoreboard;
+        private int tickCounter; // Ticks gone without becoming a tagger
+
+        public Runner(EventPlayer who, Scoreboard<EventPlayer> scoreboard) {
             super(who);
+            this.scoreboard = scoreboard;
+            this.tickCounter = 0;
         }
 
         @Override
@@ -285,11 +347,11 @@ public final class TNTTag extends InventoryUnifiedMinigame {
             if (player == null) {
                 return;
             }
-            player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 350, 1));
+            player.addPotionEffect(RUNNER_SPEED);
         }
 
         @Override
-        public void removeEffects(boolean gameOver) {
+        public void removeEffects() {
             Player player = getPlayer();
             if (player == null) {
                 return;
@@ -300,11 +362,23 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         @Override
         public void tick() {
             this.who.sendActionBar("<yellow>Run! Don't get tagged!");
+            this.addEffects();
+            this.tickCounter += TICK_INTERVAL / 20; // Convert TICK_INTERVAL to seconds
+
+            if (this.tickCounter >= 30) {
+                // If the runner has been running for 30 seconds without being tagged, they earn an opal
+                this.tickCounter = 0; // Reset the counter
+                this.scoreboard.addScore(this.who, 1); // Increment the score
+            }
         }
     }
 
 
     public static class Tagger extends TNTTagPlayer {
+
+        private static final PotionEffect TAGGER_SPEED = new PotionEffect(PotionEffectType.SPEED, 350, 2, false, false, true);
+        private static final PotionEffect TAGGER_DOLPHIN = new PotionEffect(PotionEffectType.DOLPHINS_GRACE, 350, 0, false, false, true);
+
         private static final EditMeta editMeta = meta -> {
             LeatherArmorMeta armorMeta = (LeatherArmorMeta) meta;
             armorMeta.setColor(Color.RED);
@@ -329,6 +403,9 @@ public final class TNTTag extends InventoryUnifiedMinigame {
                 return;
             }
 
+            player.addPotionEffect(TAGGER_SPEED);
+            player.addPotionEffect(TAGGER_DOLPHIN);
+
             EntityEquipment equipment = player.getEquipment();
             equipment.setHelmet(TAGGER_HAT);
             equipment.setChestplate(TAGGER_CHESTPLATE);
@@ -337,10 +414,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         }
 
         @Override
-        public void removeEffects(boolean gameOver) {
-            if (gameOver) {
-                return;
-            }
+        public void removeEffects() {
             Player player = getPlayer();
             if (player == null) {
                 return;
@@ -355,11 +429,20 @@ public final class TNTTag extends InventoryUnifiedMinigame {
 
         @Override
         public void tick() {
-            this.who.sendMessage("<gold>Uh oh! You are it! Tag others to pass the TNT!");
+            this.who.sendActionBar("<red>Uh oh, you're it! Tag others to pass the <white>TNT</white>!");
+            Player player = getPlayer();
+            if (player == null) {
+                return;
+            }
+
+            player.addPotionEffect(TAGGER_SPEED);
+            player.addPotionEffect(TAGGER_DOLPHIN);
         }
     }
 
     public static class Spectator extends TNTTagPlayer {
+
+        private static final PotionEffect SPECTATOR_INVIS = new PotionEffect(PotionEffectType.INVISIBILITY, 350, 0);
 
         private final List<EventPlayer> participants;
 
@@ -385,12 +468,12 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         }
 
         @Override
-        public void removeEffects(boolean gameOver) {
+        public void removeEffects() {
             Player whoPlayer = getPlayer();
             if (whoPlayer == null) {
                 return;
             }
-            for (EventPlayer participant : participants) {
+            for (EventPlayer participant : this.participants) {
                 Player player = participant.getPlayer();
                 if (player == null || player == this.who) {
                     continue;
@@ -406,8 +489,8 @@ public final class TNTTag extends InventoryUnifiedMinigame {
             if (player == null) {
                 return;
             }
-            player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 350, 0));
-            this.who.sendActionBar("<red>You are spectating. Leave with: <white>/event quit");
+            player.addPotionEffect(SPECTATOR_INVIS);
+            this.who.sendActionBar("<gold>You are spectating. Leave with: <white>/event quit");
         }
     }
 }

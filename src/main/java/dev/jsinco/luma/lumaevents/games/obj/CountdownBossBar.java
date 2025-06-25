@@ -1,4 +1,4 @@
-package dev.jsinco.luma.lumaevents.games;
+package dev.jsinco.luma.lumaevents.games.obj;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.utility.Util;

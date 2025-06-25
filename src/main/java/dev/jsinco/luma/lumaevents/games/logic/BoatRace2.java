@@ -1,12 +1,13 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
-import dev.jsinco.luma.lumaevents.games.Scoreboard;
+import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
+import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
+import dev.jsinco.luma.lumaevents.games.tokenformula.BoatRace2TokenFormula;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
-
 import dev.jsinco.luma.lumaevents.EventMain;
-import dev.jsinco.luma.lumaevents.configurable.sectors.BoatRaceDefinition;
-import dev.jsinco.luma.lumaevents.games.CountdownBossBar;
+import dev.jsinco.luma.lumaevents.configurable.sectors.BoatRace2Definition;
+import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
@@ -44,33 +45,33 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-// TODO:
-//  - Debug
-//  - Test
-public class BoatRace2 extends Minigame {
+// TODO: Test
+public final class BoatRace2 extends Minigame {
 
     private static final String FINISH_LINE_IDENTIFIER = "finish";
-
-    private static final int MAX_LAPS = 3;
 
     private final Set<BoatRaceCheckpoint> checkpoints;
     private final Set<BoatRacePlayer> racers;
     private final Location spawnLocation;
     private final Location startLocation;
     private final Scoreboard<EventPlayer> scoreboard;
+    private final int maxLaps;
+    private final BoatRace2TokenFormula tokenFormula;
 
 
     private CountdownBossBar countdownBossBar;
     private int basePoints;
 
-    public BoatRace2(BoatRaceDefinition def) {
-        super("Boat Race 2", "Place as high as you can!", 300000L, 10, true, false, false);
+    public BoatRace2(BoatRace2Definition def) {
+        super("Boat Racers 2", "Aim for first place!", 300000L, 10, true, false, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.checkpoints = new HashSet<>();
         this.racers = new HashSet<>();
         this.spawnLocation = def.getSpawnLocation().toCenterLocation();
         this.startLocation = def.getStartLocation().toCenterLocation();
         this.scoreboard = new Scoreboard<>();
+        this.maxLaps = def.getMaxLaps();
+        this.tokenFormula = new BoatRace2TokenFormula();
 
         def.getCheckpoints().stream()
                 .map(region -> WorldTiedBoundingBox.of(region.getLoc1(), region.getLoc2()))
@@ -98,7 +99,7 @@ public class BoatRace2 extends Minigame {
                 Boat boat = player.getWorld().spawn(loc, Util.getRandom(BoatRaceBoatType.values()).getBoatType());
                 boat.addPassenger(player);
 
-                BoatRacePlayer racer = BoatRacePlayer.of(participant, boat);
+                BoatRacePlayer racer = BoatRacePlayer.of(participant, boat, this.maxLaps);
                 this.racers.add(racer);
             });
         }
@@ -272,7 +273,7 @@ public class BoatRace2 extends Minigame {
             if (!checkpoint.isFinishLine() && !completedLap) {
                 racer.addCheckpoint(checkpoint, this.checkpoints);
             }
-            EventPlayer eplayer = racer.getEventPlayer();
+            EventPlayer eventPlayer = racer.getEventPlayer();
 
             Integer position = this.position(racer);
 
@@ -280,34 +281,34 @@ public class BoatRace2 extends Minigame {
             // Need to check if the racer has completed some laps beforehand to prevent
             // completing a lap at the beginning of the race
             if (checkpoint.isFinishLine() && completedLap) {
+                int formattedLaps = racer.getLap() + 1;
                 racer.incrementLap(this.checkpoints);
                 if (position != null) {
                     int points = this.basePoints - position;
-                    this.scoreboard.addScore(racer.getEventPlayer(), points);
+                    this.scoreboard.addScore(eventPlayer, points);
+                    eventPlayer.addPermanentScore(MinigameConstant.BOATRACE2, points);
                 }
 
-                if (racer.getLap() < MAX_LAPS) {
-                    eplayer.sendTitle("<green>Lap Completed!", "<gray>You have completed <gold>Lap " + racer.getLap() + "</gray>");
+                if (racer.getLap() < this.maxLaps) {
+                    eventPlayer.sendTitle("<green>Lap Completed!", "<white>You finished <gold>lap " + formattedLaps + "</gold>!");
                 }
+
+                // Tokens
+                tokenFormula.giveTokens(eventPlayer, position);
             }
 
 
-            if (racer.getLap() >= MAX_LAPS) {
+            if (racer.getLap() >= this.maxLaps) {
                 Player bukkitPlayer = event.getPlayer();
                 if (this.countdownBossBar != null) {
                     this.countdownBossBar.getBossBar().removeViewer(bukkitPlayer);
                 }
-                eplayer.sendTitle("<green>Finished!", "<gray>You placed <gold>#" + position);
+                eventPlayer.sendTitle("<green>Finished!", "<gray>You placed <gold>#" + position);
                 Util.sendMsg(this.audience, "<gold>"+bukkitPlayer.getName()+"</gold>"+ " has finished in <gold>#" + position + "</gold> place!");
                 racer.finish();
                 event.getPlayer().teleportAsync(this.spawnLocation);
                 this.tryEndIfNoMoreRacers();
             }
-
-            // TODO:
-//                if (RANDOM.nextInt(100) <= 35) {
-//                    Util.giveTokens(event.getPlayer(), 1);
-//                }
         });
     }
 
@@ -324,7 +325,22 @@ public class BoatRace2 extends Minigame {
     private List<BoatRacePlayer> getSortedRacers() {
         Comparator<BoatRacePlayer> comparator = Comparator
                 .comparingInt(BoatRacePlayer::getLap)
-                .thenComparingInt(r -> r.getCheckpoints().size()).reversed()
+                .thenComparingInt(racer -> {
+                    var racerCheckpoints = racer.getCheckpoints();
+                    if (racerCheckpoints.size() < this.checkpoints.size()) {
+                        return racerCheckpoints.size(); // We can compare using the size of checkpoints
+                    }
+                    // TODO: Test accuracy
+                    // Check the value of each checkpoint.
+                    int value = 0;
+                    for (var mapEntry : racerCheckpoints.entrySet()) {
+                        int lapCompletedForCheckpoint = mapEntry.getValue();
+                        if (lapCompletedForCheckpoint >= racer.getLap()) {
+                            value++; // Count only checkpoints that have been lapped in the current lap
+                        }
+                    }
+                    return value;
+                }).reversed()
                 .thenComparing(BoatRacePlayer::isFinished, Comparator.reverseOrder())
                 .thenComparingDouble(player -> {
                     Player bukkitPlayer = player.getEventPlayer().getPlayer();
@@ -387,21 +403,22 @@ public class BoatRace2 extends Minigame {
         private final Map<BoatRaceCheckpoint, Integer> checkpoints;
         private final Boat boat;
         private final BossBar bossBar;
+        private final int maxLaps;
 
         private int lap = 0;
         private boolean finished = false;
 
-        public BoatRacePlayer(EventPlayer eventPlayer, Boat boat) {
+        public BoatRacePlayer(EventPlayer eventPlayer, Boat boat, int maxLaps) {
             this.eventPlayer = eventPlayer;
             this.checkpoints = new LinkedHashMap<>();
             this.boat = boat;
             this.bossBar = BossBar.bossBar(
-                    Util.color("<b>Lap: " + (this.lap + 1) + "/" + MAX_LAPS),
+                    Util.color("<b>Lap: " + (this.lap + 1) + "/" + maxLaps),
                     0.0f,
                     BossBar.Color.WHITE,
                     BossBar.Overlay.NOTCHED_12
             );
-
+            this.maxLaps = maxLaps;
             this.bossBar.addViewer(Objects.requireNonNull(eventPlayer.getPlayer()));
         }
 
@@ -465,7 +482,7 @@ public class BoatRace2 extends Minigame {
             int remainingCheckpoints = this.getRemainingCheckPoints(trackCheckpoints);
             float progress = 1.0f - ((float) remainingCheckpoints / trackCheckpoints.size());
             this.bossBar.progress(progress);
-            this.bossBar.name(Util.color("<b>Lap: " + (this.lap + 1) + "/" + MAX_LAPS));
+            this.bossBar.name(Util.color("<b>Lap: " + (this.lap + 1) + "/" + this.maxLaps));
         }
 
         public void addCheckpoint(BoatRaceCheckpoint checkpoint, Set<BoatRaceCheckpoint> trackCheckpoints) {
@@ -522,8 +539,8 @@ public class BoatRace2 extends Minigame {
             return player.isOnline();
         }
 
-        public static BoatRacePlayer of(EventPlayer eventPlayer, Boat boat) {
-            return new BoatRacePlayer(eventPlayer, boat);
+        public static BoatRacePlayer of(EventPlayer eventPlayer, Boat boat, int maxLaps) {
+            return new BoatRacePlayer(eventPlayer, boat, maxLaps);
         }
     }
 
