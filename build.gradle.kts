@@ -18,20 +18,17 @@ repositories {
     maven("https://repo.extendedclip.com/content/repositories/placeholderapi/")
     maven("https://repo.codemc.io/repository/maven-public/")
     maven("https://repo.md-5.net/content/groups/public/")
+    maven("https://maven.enginehub.org/repo/")
 }
 
 
 dependencies {
-
     compileOnly("dev.jsinco.luma.lumacore:LumaCore:776c4e4")
     compileOnly("dev.jsinco.luma.lumaitems:LumaItems:4215be2")
     compileOnly("dev.jsinco.lumaglowapi:LumaGlowAPI:3cb670d")
     compileOnly("me.clip:placeholderapi:2.11.6")
-    compileOnly("me.libraryaddict.disguises:libsdisguises:11.0.0")
     compileOnly("com.nuclyon.technicallycoded.inventoryrollback:InventoryRollbackPlus:1.7.3")
     compileOnly("com.github.Zrips:jobs:v4.17.2")
-
-
 
 
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")

@@ -91,7 +91,7 @@ public final class BoatRace2 extends Minigame {
             if (player == null) {
                 continue;
             }
-            Location loc = this.startLocation.clone().add(RANDOM.nextInt(5), 0, RANDOM.nextInt(5));
+            Location loc = this.startLocation.clone().add(RANDOM.nextDouble(6), 0, RANDOM.nextDouble(6));
             player.teleportAsync(loc);
 
             // Synchronize
@@ -125,7 +125,7 @@ public final class BoatRace2 extends Minigame {
             if (racer.isFinished()) continue;
 
             EventPlayer player = racer.getEventPlayer();
-            player.sendActionBar("<b><green>Points: " + this.scoreboard.getScore(player) + " <gold>Position: #" + this.position(racer) + " <gray>(" + this.countdownBossBar.secondsRemaining() + "s left)");
+            player.sendActionBar("<b><gold>Position: #" + this.position(racer) + " <gray>(" + this.countdownBossBar.secondsRemaining() + "s left)");
         }
         this.tryEndIfNoMoreRacers();
     }
@@ -268,7 +268,7 @@ public final class BoatRace2 extends Minigame {
                 return;
             }
 
-            boolean completedLap = racer.checkIfCompletedLap(this.checkpoints, true);
+            boolean completedLap = racer.checkIfCompletedLap(this.checkpoints, true, 1);
 
             if (!checkpoint.isFinishLine() && !completedLap) {
                 racer.addCheckpoint(checkpoint, this.checkpoints);
@@ -416,17 +416,17 @@ public final class BoatRace2 extends Minigame {
                     Util.color("<b>Lap: " + (this.lap + 1) + "/" + maxLaps),
                     0.0f,
                     BossBar.Color.WHITE,
-                    BossBar.Overlay.NOTCHED_12
+                    BossBar.Overlay.PROGRESS
             );
             this.maxLaps = maxLaps;
             this.bossBar.addViewer(Objects.requireNonNull(eventPlayer.getPlayer()));
         }
 
-        public boolean checkIfCompletedLap(Set<BoatRaceCheckpoint> trackCheckpoints, boolean ignoreFinish) {
-            return checkIfCompletedLap(trackCheckpoints, this.lap, ignoreFinish);
+        public boolean checkIfCompletedLap(Set<BoatRaceCheckpoint> trackCheckpoints, boolean ignoreFinish, int allowGrace) {
+            return checkIfCompletedLap(trackCheckpoints, this.lap, ignoreFinish, allowGrace);
         }
 
-        public boolean checkIfCompletedLap(Set<BoatRaceCheckpoint> trackCheckpoints, int lap, boolean ignoreFinish) {
+        public boolean checkIfCompletedLap(Set<BoatRaceCheckpoint> trackCheckpoints, int lap, boolean ignoreFinish, int allowGrace) {
             if (this.finished) {
                 return true; // Already finished
             }
@@ -438,16 +438,14 @@ public final class BoatRace2 extends Minigame {
             }
 
             // Check if all checkpoints for lap are present
+            int missed = 0;
             for (BoatRaceCheckpoint checkpoint : setCopy) {
-                if (!this.checkpoints.containsKey(checkpoint)) {
-                    return false; // Missing checkpoint
-                }
-                int currentValueForCheckpoint = this.checkpoints.get(checkpoint);
-                if (currentValueForCheckpoint < lap) {
-                    return false;
+                Integer currentValueForCheckpoint = this.checkpoints.get(checkpoint);
+                if (currentValueForCheckpoint == null || currentValueForCheckpoint < lap) {
+                    missed++; // Not lapped this checkpoint in the current lap
                 }
             }
-            return true;
+            return missed <= allowGrace; // Not enough checkpoints lapped
         }
 
         public int getRemainingCheckPoints(Set<BoatRaceCheckpoint> trackCheckpoints) {
@@ -494,6 +492,7 @@ public final class BoatRace2 extends Minigame {
             this.lap++;
             this.updateBossBar(trackCheckpoints);
             Bukkit.getAsyncScheduler().runDelayed(EventMain.getInstance(), (task) -> {
+                this.bossBar.color(Util.getRandom(BossBar.Color.values()));
                 if (this.bossBar.progress() > 0.9f) {
                     this.bossBar.progress(0.0f); // Reset progress for the new lap
                 }

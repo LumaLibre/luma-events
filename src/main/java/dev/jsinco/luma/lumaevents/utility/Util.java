@@ -462,4 +462,18 @@ public final class Util {
             return defaultClass;
         }
     }
+
+    public static String formatMaterialName(String s) {
+        String name = s.toLowerCase().replace("_", " ");
+        name = name.substring(0, 1).toUpperCase() + name.substring(1);
+
+        for (int i = 0; i < name.length(); i++) {
+            if (name.charAt(i) == ' ' && i + 1 < name.length()) {
+                name = name.substring(0, i + 1)
+                        + Character.toUpperCase(name.charAt(i + 1))
+                        + name.substring(i + 2);
+            }
+        }
+        return name;
+    }
 }

@@ -9,4 +9,3 @@ depend:
   - InventoryRollbackPlus
 softdepend:
   - PlaceholderAPI
-  - LibsDisguises

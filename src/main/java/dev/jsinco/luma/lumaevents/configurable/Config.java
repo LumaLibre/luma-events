@@ -24,10 +24,10 @@ public class Config extends OkaeriConfig {
     @Comment("Automatic minigame cooldown in milliseconds")
     private long automaticMinigameCooldown = 7200000L;
 
-    @Comment("Default location for /event")
+    @Comment("Location for /event")
     private Location eventSpawnLocation;
 
-    @Comment("Would be /spawn location")
+    @Comment("Game drop-off location for minigames")
     private Location gameDropOffLocation;
 
     @Comment("Minigame definition for 'Paintball 2.1'")
@@ -35,7 +35,7 @@ public class Config extends OkaeriConfig {
             "default", new Paintball2_1Definition()
     );
 
-    @Comment("Minigame definition for 'TnT Tag'")
+    @Comment("Minigame definition for 'TNT Tag'")
     private Map<String, MinigameDefinition> tntTagMaps = Map.of(
             "default", new MinigameDefinition()
     );

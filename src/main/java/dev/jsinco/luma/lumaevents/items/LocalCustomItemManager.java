@@ -1,4 +1,4 @@
-package dev.jsinco.luma.lumaevents.tokens;
+package dev.jsinco.luma.lumaevents.items;
 
 import dev.jsinco.luma.lumaitems.api.LumaItemsAPI;
 import dev.jsinco.luma.lumaitems.manager.CustomItem;
@@ -17,13 +17,11 @@ public class LocalCustomItemManager {
 
     public static void addCustomItem(CustomItem customItem) {
         customItems.add(customItem);
-        lumaItemsAPI.registerCustomItem(customItem);
     }
 
     public static void registerCustomItems() {
         for (CustomItem customItem : customItems) {
             lumaItemsAPI.registerCustomItem(customItem);
-
             if (customItem instanceof CustomItemFunctionsWithRecipe withRecipe) {
                 var pair = withRecipe.recipe();
                 if (Bukkit.getRecipe(pair.getFirst()) != null) {

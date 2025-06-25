@@ -1,7 +1,7 @@
 package dev.jsinco.luma.lumaevents.games.interfaces;
 
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
-import dev.jsinco.luma.lumaevents.tokens.TokenExchanging;
+import dev.jsinco.luma.lumaevents.items.TokenExchanging;
 import org.bukkit.entity.Player;
 
 public interface TokenFormula<C> {

@@ -2,6 +2,7 @@ package dev.jsinco.luma.lumaevents.obj;
 
 import dev.jsinco.luma.lumaitems.particles.ParticleDisplay;
 import dev.jsinco.luma.lumaitems.particles.Particles;
+import lombok.Getter;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
@@ -9,6 +10,7 @@ import org.bukkit.entity.Entity;
 import java.util.HashSet;
 import java.util.Set;
 
+@Getter
 public class Sphere {
 
 
@@ -22,25 +24,6 @@ public class Sphere {
         this.density = density;
     }
 
-    // Getters
-
-    public Location getCenter() {
-        return center;
-    }
-
-    public double getRadius() {
-        return radius;
-    }
-
-    public double getDensity() {
-        return density;
-    }
-
-    /**
-     * I have no idea. This was *mostly* taken from the XSeries particle lib.
-     * @see Particles#circle(double, double, ParticleDisplay)
-     * @return Set of blocks that make up the holo sphere.
-     */
     public Set<Block> getSphere() {
         Set<Block> blockList = new HashSet<>();
 
@@ -50,10 +33,7 @@ public class Sphere {
         return blockList;
     }
 
-    /**
-     * I do have idea and this should be way faster, but it does not consider density.
-     * @return Set of blocks that make up the sphere.
-     */
+
     public Set<Block> getSphereFast() {
 
         Set<Block> blockList = new HashSet<>();
@@ -169,12 +149,6 @@ public class Sphere {
     }
 
 
-    /**
-     * Checks if a location is within a certain marge of the sphere.
-     * @param location The location to check.
-     * @param marge The marge to check.
-     * @return True if the location is within the marge of the sphere.
-     */
     public boolean isWithinMarge(Location location, double marge) {
         double x = location.getX() - center.getX();
         double y = location.getY() - center.getY();
@@ -182,11 +156,6 @@ public class Sphere {
         return x * x + y * y + z * z <= (radius + marge) * (radius + marge);
     }
 
-    /**
-     * I have no idea. This was *mostly* taken from the XSeries particle lib.
-     * @see Particles#circle(double, double, ParticleDisplay)
-     * @return Set of blocks that make up the holo sphere.
-     */
     public static Set<Block> getHollowSphere(Location center, double radius, double density) {
         Set<Block> blockList = new HashSet<>();
 

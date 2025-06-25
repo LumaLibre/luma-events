@@ -70,6 +70,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStart() {
+        this.scoreboard.addScorers(this.participants);
         for (EventPlayer participant : this.participants) {
             this.swapRole(participant, () -> new Runner(participant, this.scoreboard));
         }
@@ -130,6 +131,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
+        super.handleParticipantJoin(player);
         player.teleportAsync(this.spawnPoint);
         return true;
     }
@@ -209,7 +211,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         this.tntTagPlayers.values().stream()
                 .map(TNTTagPlayer::getPlayer)
                 .filter(Objects::nonNull)
-                .forEach(player -> player.teleportAsync(this.spawnPoint));
+                .forEach(this::teleportNearSpawnPoint);
 
         this.sendAudienceMessage("A new round has started!");
         this.roundCountdownBar = CountdownBossBar.builder()
@@ -221,9 +223,8 @@ public final class TNTTag extends InventoryUnifiedMinigame {
                 .callback(() -> {
                     this.endRound();
 
-                    this.sendAudienceMessage("Runner count: " + this.getRunners().size());
                     if (this.getRunners().size() < 2) {
-                        this.sendAudienceMessage("Not enough runners left to continue. Ending game.");
+                        this.sendAudienceMessage("Not enough runners left to continue, ending early!");
                         this.stop();
                         return;
                     }
@@ -246,6 +247,12 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> this.getRunners().forEach(runner -> runner.removeEffects()));
 
         this.sendAudienceMessage("The round has ended!");
+    }
+
+    public void teleportNearSpawnPoint(Player player) {
+        Location spawnLocation = this.spawnPoint.clone();
+        spawnLocation.add(RANDOM.nextDouble(6), 0, RANDOM.nextDouble(6));
+        player.teleportAsync(spawnLocation);
     }
 
     @EventHandler
@@ -320,10 +327,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
 
         @Nullable
         public Player getPlayer() {
-            if (who == null) {
-                throw new IllegalStateException("Tagger is not set.");
-            }
-            return who.getPlayer();
+            return this.who.getPlayer();
         }
     }
 

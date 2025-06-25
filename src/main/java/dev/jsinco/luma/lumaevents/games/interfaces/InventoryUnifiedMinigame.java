@@ -7,6 +7,7 @@ import dev.jsinco.luma.lumaevents.games.InventorySnapshotManager;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.checkerframework.common.returnsreceiver.qual.This;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class InventoryUnifiedMinigame extends Minigame {
@@ -58,6 +59,13 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
                 Logging.errorLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found.");
             }
         }
+    }
+
+    @Override
+    protected boolean handleParticipantJoin(EventPlayer player) {
+        String m = "This minigame will modify your inventory during gameplay. <yellow>Disconnecting will automatically kick you from this game.</yellow>";
+        player.sendMessage(m);
+        return true;
     }
 
     @Override

@@ -42,7 +42,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
-        return false;
+        super.handleParticipantJoin(player);
+        return true;
     }
 
 

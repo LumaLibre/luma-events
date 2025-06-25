@@ -46,6 +46,7 @@ import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.util.HashMap;
 import java.util.List;
@@ -61,14 +62,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             -4.5,
             AttributeModifier.Operation.ADD_NUMBER
     );
-    private static final PotionEffect REGEN = new PotionEffect(
-            org.bukkit.potion.PotionEffectType.REGENERATION,
-            100,
-            1,
-            false, // Ambient
-            false,
-            false
-    );
+    private static final PotionEffect REGEN = new PotionEffect(PotionEffectType.REGENERATION, 100, 1, false, false,false);
 
     private final Paintball2_1Definition def;
     private final ConcurrentHashMap<Location, PaintballTeam> paintedLocations; // TODO: Don't use locations
@@ -79,7 +73,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     private List<PaintballTeam> paintballTeams;
 
     public Paintball2_1(Paintball2_1Definition def) {
-        super("Paintball 2.1", "Cover as much area as possible.", 180000L, 20, true, true);
+        super("Paintball 2.1", "Cover as much area as possible.", 240000L, 20, true, true);
         this.def = def;
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.paintedLocations = new ConcurrentHashMap<>();
@@ -89,10 +83,6 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         this.tokenFormula = new Paintball2_1TokenFormula();
     }
 
-//    @Override
-//    protected int minimumParticipants() {
-//        return 2;
-//    }
 
     @Override
     protected void handleStart() {
@@ -103,6 +93,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 new PaintballTeam(this.participants.subList(0, middle), colorKits.a(), def.getTeam1SpawnLocation()),
                 new PaintballTeam(this.participants.subList(middle, this.participants.size()), colorKits.b(), def.getTeam2SpawnLocation())
         );
+        this.scoreboard.addScorers(this.paintballTeams);
 
         for (PaintballTeam team : this.paintballTeams) {
             for (EventPlayer member : team.getMembers()) {
@@ -228,6 +219,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
+        super.handleParticipantJoin(player);
         player.teleportAsync(def.getSpawnLocation());
         return true;
     }
@@ -359,10 +351,10 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             this.paintOnBlock(blockHit.getBlock(), paintballTeam, shooter);
             return;
         }
-        Sphere sphere = new Sphere(blockHit, size, 100);
+        Sphere sphere = new Sphere(blockHit, size, 75);
 
-        // Check if the sphere is already painted by the same team
-        for (Block block : sphere.getSphereFast()) {
+
+        for (Block block : sphere.getSphere()) {
            this.paintOnBlock(block, paintballTeam, shooter);
         }
 
@@ -453,7 +445,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
         public String shortName() {
             String materialName = material.name().replace("_WOOL", "");
-            return materialName.substring(0, 1).toUpperCase() + materialName.substring(1).toLowerCase();
+            return Util.formatMaterialName(materialName);
         }
 
         @Override
@@ -470,7 +462,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         BLUE(Material.BLUE_WOOL, NamedTextColor.BLUE, "blue_dye"),
         ORANGE(Material.ORANGE_WOOL, NamedTextColor.GOLD, "orange_dye"),
         PURPLE(Material.PURPLE_WOOL, NamedTextColor.DARK_PURPLE, "purple_dye"),
-        // YELLOW is not used in Paintball2_1, but can be added if needed
+        // YELLOW
         PINK(Material.PINK_WOOL, TextColor.fromHexString("#f4b8da"), "pink_dye"),
         LIGHT_BLUE(Material.LIGHT_BLUE_WOOL, NamedTextColor.AQUA, "light_blue_dye"),
         MAGENTA(Material.MAGENTA_WOOL, TextColor.fromHexString("#d630d6"), "magenta_dye");

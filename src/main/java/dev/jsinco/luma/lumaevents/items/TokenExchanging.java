@@ -1,4 +1,4 @@
-package dev.jsinco.luma.lumaevents.tokens;
+package dev.jsinco.luma.lumaevents.items;
 
 import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumaitems.LumaItems;
