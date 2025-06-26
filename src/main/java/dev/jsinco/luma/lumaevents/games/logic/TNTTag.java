@@ -16,6 +16,7 @@ import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -73,6 +74,10 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         this.scoreboard.addScorers(this.participants);
         for (EventPlayer participant : this.participants) {
             this.swapRole(participant, () -> new Runner(participant, this.scoreboard));
+            Player player = participant.getPlayer();
+            if (player != null && player.getGameMode() != GameMode.SURVIVAL) {
+                Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> player.setGameMode(GameMode.SURVIVAL));
+            }
         }
         this.startRound();
     }
@@ -100,7 +105,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         }
         Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
             for (TNTTagPlayer player : this.tntTagPlayers.values()) {
-                player.removeEffects();
+                player.removeEffects(true);
                 EventPlayer eventPlayer = player.getWho();
                 int finalScore = this.scoreboard.getScore(eventPlayer);
                 tokenFormula.giveTokens(eventPlayer, finalScore);
@@ -140,7 +145,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     public boolean removeParticipant(EventPlayer player) {
         TNTTagPlayer tntTagPlayer = this.tntTagPlayers.get(player.getUuid());
         if (tntTagPlayer != null) {
-            tntTagPlayer.removeEffects();
+            tntTagPlayer.removeEffects(false);
             this.tntTagPlayers.remove(player.getUuid());
         }
         return super.removeParticipant(player);
@@ -149,7 +154,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     public <T extends TNTTagPlayer> T swapRole(EventPlayer eventPlayer, Supplier<? extends TNTTagPlayer> newRoleSupplier) {
         TNTTagPlayer currentRole = tntTagPlayers.get(eventPlayer.getUuid());
         if (currentRole != null) {
-            Bukkit.getScheduler().runTask(EventMain.getInstance(), currentRole::removeEffects);
+            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> currentRole.removeEffects(false));
         }
         TNTTagPlayer newRole = newRoleSupplier.get();
         Bukkit.getScheduler().runTask(EventMain.getInstance(), newRole::addEffects);
@@ -244,7 +249,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         this.getTaggers().forEach(tagger -> {
             this.swapRole(tagger.getWho(), () -> new Spectator(tagger.getWho(), this.participants));
         });
-        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> this.getRunners().forEach(runner -> runner.removeEffects()));
+        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> this.getRunners().forEach(runner -> runner.removeEffects(false)));
 
         this.sendAudienceMessage("The round has ended!");
     }
@@ -322,7 +327,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         }
 
         public abstract void addEffects();
-        public abstract void removeEffects();
+        public abstract void removeEffects(boolean ending);
         public abstract void tick();
 
         @Nullable
@@ -355,7 +360,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         }
 
         @Override
-        public void removeEffects() {
+        public void removeEffects(boolean ending) {
             Player player = getPlayer();
             if (player == null) {
                 return;
@@ -418,9 +423,9 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         }
 
         @Override
-        public void removeEffects() {
+        public void removeEffects(boolean ending) {
             Player player = getPlayer();
-            if (player == null) {
+            if (player == null || ending) {
                 return;
             }
 
@@ -472,7 +477,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         }
 
         @Override
-        public void removeEffects() {
+        public void removeEffects(boolean ending) {
             Player whoPlayer = getPlayer();
             if (whoPlayer == null) {
                 return;

@@ -87,7 +87,7 @@ public class Scoreboard<T extends Scorer> {
         List<Component> messages = this.scoreboardMessage();
 
         audience.showTitle(Util.title(
-                "<yellow>Game over",
+                "<yellow>Game Over",
                 "<gold>" + (topScorer != null ? topScorer.getName() : "Unknown") + " has won!"
         ));
 

@@ -11,11 +11,13 @@ import org.bukkit.inventory.ItemStack;
 public class TokenExchanging {
 
     public static void giveWithChances(Player player, int amount) {
-        TokenType type = TokenType.OPAL;
-        if (Util.RANDOM.nextInt(101) < 10) { // 10% chance to give refined opal
-            type = TokenType.REFINED_OPAL;
+        for (int i = 0; i < amount; i++) {
+            TokenType type = TokenType.OPAL;
+            if (Util.RANDOM.nextInt(101) < 10) { // 10% chance to give refined opal
+                type = TokenType.REFINED_OPAL;
+            }
+            give(player, type, 1);
         }
-        give(player, type, amount);
     }
 
     public static void give(Player player, TokenType type, int amount) {
