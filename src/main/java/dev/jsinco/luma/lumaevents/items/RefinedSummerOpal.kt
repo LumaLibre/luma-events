@@ -14,15 +14,15 @@ class RefinedSummerOpal : CustomItemFunctionsWithRecipe() {
 
     override fun createItem(): Pair<String, ItemStack> {
         return ItemFactory.builder()
-            .name("<b><gradient:#DC8BE5:#F6FF5C>Refined Summer Opal</gradient></b>")
+            .name("<b><gradient:#ff4e50:#fc913a:#f9d62e:#eae374:#97c753>Refined Summer Opal</gradient></b>")
             .lore(
-                "<gray>This opal has been refined to",
-                "<gray>its purest form, radiating a",
-                "<gray>brilliant iridescence.",
+                "This opal has been refined to",
+                "its purest form, radiating a",
+                "brilliant iridescence.",
                 "",
-                "<gray>You might be able to break",
-                "<gray>this down into multiple",
-                "<gray><gradient:#DC8BE5:#F6FF5C>Summer Opals</gradient> for trading."
+                "You might be able to break",
+                "this down into multiple",
+                "<gradient:#ff4e50:#fc913a:#f9d62e:#eae374:#97c753>Summer Opals</gradient> for trading."
             )
             .material(Material.RESIN_BRICK)
             .tier(Tier.SUMMER_2025)

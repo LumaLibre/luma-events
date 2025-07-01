@@ -62,8 +62,10 @@ public final class BoatRace2 extends Minigame {
     private CountdownBossBar countdownBossBar;
     private int basePoints;
 
+    private List<BoatRacePlayer> sortedRacers;
+
     public BoatRace2(BoatRace2Definition def) {
-        super("Boat Racers 2", "Aim for first place!", 300000L, 1, true, false, false);
+        super("Boat Racers 2", "Aim for first place!", 300000L, 2, true, false, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.checkpoints = new HashSet<>();
         this.racers = new HashSet<>();
@@ -121,6 +123,7 @@ public final class BoatRace2 extends Minigame {
 
     @Override
     protected void onRunnable(long timeLeft) {
+        this.sortRacers();
         for (BoatRacePlayer racer : this.racers) {
             if (racer.isFinished()) continue;
 
@@ -134,7 +137,10 @@ public final class BoatRace2 extends Minigame {
     protected void handleStop() {
         for (BoatRacePlayer racer : this.racers) {
             if (!racer.isFinished()) {
-                racer.finish();
+                Integer position = this.position(racer);
+                if (position != null) {
+                    racer.finish(position);
+                }
             }
         }
 
@@ -277,17 +283,19 @@ public final class BoatRace2 extends Minigame {
 
             Integer position = this.position(racer);
 
+            if (position == null) {
+                return; // Player not found in the sorted list
+            }
+
 
             // Need to check if the racer has completed some laps beforehand to prevent
             // completing a lap at the beginning of the race
             if (checkpoint.isFinishLine() && completedLap) {
                 int formattedLaps = racer.getLap() + 1;
                 racer.incrementLap(this.checkpoints);
-                if (position != null) {
-                    int points = this.basePoints - position;
-                    this.scoreboard.addScore(eventPlayer, points);
-                    eventPlayer.addPermanentScore(MinigameConstant.BOATRACE2, points);
-                }
+                int points = this.basePoints - position;
+                this.scoreboard.addScore(eventPlayer, points);
+                eventPlayer.addPermanentScore(MinigameConstant.BOATRACE2, points);
 
                 if (racer.getLap() < this.maxLaps) {
                     eventPlayer.sendTitle("<green>Lap Completed!", "<white>You finished <gold>lap " + formattedLaps + "</gold>!");
@@ -305,7 +313,7 @@ public final class BoatRace2 extends Minigame {
                 }
                 eventPlayer.sendTitle("<green>Finished!", "<gray>You placed <gold>#" + position);
                 Util.sendMsg(this.audience, "<gold>"+bukkitPlayer.getName()+"</gold>"+ " has finished in <gold>#" + position + "</gold> place!");
-                racer.finish();
+                racer.finish(position);
                 event.getPlayer().teleportAsync(this.spawnLocation);
                 this.tryEndIfNoMoreRacers();
             }
@@ -315,47 +323,38 @@ public final class BoatRace2 extends Minigame {
 
     @Nullable
     private Integer position(BoatRacePlayer player) {
-        List<BoatRacePlayer> sortedRacers = getSortedRacers();
-        if (!sortedRacers.contains(player)) {
+        if (!this.sortedRacers.contains(player)) {
             return null; // Player not found in the sorted list
         }
-        return sortedRacers.indexOf(player) + 1; // +1 to convert from index to position
+        return this.sortedRacers.indexOf(player) + 1; // +1 to convert from index to position
     }
 
-    private List<BoatRacePlayer> getSortedRacers() {
+    private void sortRacers() {
+        // tie-breaker formula:
         Comparator<BoatRacePlayer> comparator = Comparator
-                .comparing(BoatRacePlayer::isFinished, Comparator.reverseOrder())
-                .thenComparingInt(BoatRacePlayer::getLap)
+                .comparingInt(BoatRacePlayer::getLap).reversed()
                 .thenComparingInt(racer -> {
-                    Map<BoatRaceCheckpoint, Integer> racerCheckpoints = racer.getCheckpoints();
-                    if (racerCheckpoints.size() < this.checkpoints.size()) {
-                        return racerCheckpoints.size(); // We can compare using the size of checkpoints
+                    // Only return a value for this if the racer is finished
+                    if (racer.isFinished()) {
+                        return racer.getFinishedPosition(); // Use finished position if available
                     }
-                    // TODO: Test accuracy
-                    // Check the value of each checkpoint.
-                    int value = 0;
-                    for (var mapEntry : racerCheckpoints.entrySet()) {
-                        int lapCompletedForCheckpoint = mapEntry.getValue();
-                        if (lapCompletedForCheckpoint >= racer.getLap()) {
-                            value++; // Count only checkpoints that have been lapped in the current lap
-                        }
-                    }
-                    return value;
-                }).reversed()
+                    return Integer.MAX_VALUE; // If not finished...
+                })
+                .thenComparingInt(racer -> racer.getRemainingCheckPoints(this.checkpoints))
                 .thenComparingDouble(player -> {
                     Player bukkitPlayer = player.getEventPlayer().getPlayer();
                     if (bukkitPlayer == null || !bukkitPlayer.isOnline()) {
                         return Double.MAX_VALUE; // If player is offline, place them at the end
                     }
                     Location nextCheckpointLoc = getNextCheckpoint(player).getCenterLocation(); // Implement this
-                    return bukkitPlayer.getLocation().distance(nextCheckpointLoc);
+                    return bukkitPlayer.getLocation().distance(nextCheckpointLoc); // Sort by distance to next checkpoint
                 });
-
-        return this.racers.stream()
+        this.sortedRacers = this.racers.stream()
                 .filter(BoatRacePlayer::isOnline)
                 .sorted(comparator)
                 .toList();
     }
+
 
     private BoatRaceCheckpoint getNextCheckpoint(BoatRacePlayer player) {
         for (BoatRaceCheckpoint checkpoint : this.checkpoints) {
@@ -407,6 +406,7 @@ public final class BoatRace2 extends Minigame {
 
         private int lap = 0;
         private boolean finished = false;
+        private int finishedPosition = -1;
 
         public BoatRacePlayer(EventPlayer eventPlayer, Boat boat, int maxLaps) {
             this.eventPlayer = eventPlayer;
@@ -499,8 +499,9 @@ public final class BoatRace2 extends Minigame {
             }, 1, TimeUnit.SECONDS);
         }
 
-        public void finish() {
+        public void finish(int position) {
             this.finished = true;
+            this.finishedPosition = position;
             this.cleanup();
         }
 

@@ -34,7 +34,7 @@ public enum MinigameConstant {
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends OkaeriConfig> Map<String, T> getDefinitions(Class<? extends Minigame> game) {
+    public <T extends OkaeriConfig> Map<String, T> getDefinitions() {
         Config cfg = EventMain.getOkaeriConfig();
 
         return switch (this) {
@@ -45,7 +45,7 @@ public enum MinigameConstant {
     }
 
     public Supplier<Minigame> getSupplier() {
-        var randomDefinition = Util.getRandom(getDefinitions(minigameClass).values());
+        var randomDefinition = Util.getRandom(getDefinitions().values());
         return getSupplier(randomDefinition);
     }
 

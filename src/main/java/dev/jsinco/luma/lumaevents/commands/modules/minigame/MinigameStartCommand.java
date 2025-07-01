@@ -9,6 +9,7 @@ import dev.jsinco.luma.lumaevents.commands.CommandModule;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.MinigameManager;
 import dev.jsinco.luma.lumaevents.utility.Util;
+import eu.okaeri.configs.OkaeriConfig;
 import org.bukkit.command.CommandSender;
 
 import java.util.List;
@@ -29,11 +30,14 @@ public class MinigameStartCommand implements CommandModule {
         }
 
         MinigameConstant minigame = MinigameConstant.fromAlias(strings[0]);
+        OkaeriConfig definition;
+
 
         if (minigame == null) {
             Util.sendMsg(commandSender, "Invalid minigame");
             return false;
         }
+
 
         int seconds = 90;
         if (strings.length >= 2) {
@@ -45,7 +49,17 @@ public class MinigameStartCommand implements CommandModule {
             }
         }
 
-        if (MinigameManager.getInstance().tryNewMinigameSafely(minigame, true, seconds)){
+        if (strings.length >= 3) {
+            definition = minigame.getDefinitions().get(strings[2]);
+            if (definition == null) {
+                Util.sendMsg(commandSender, "Invalid minigame definition: " + strings[2]);
+                return false;
+            }
+        } else {
+            definition = Util.getRandom(minigame.getDefinitions().values());
+        }
+
+        if (MinigameManager.getInstance().tryNewMinigameSafely(minigame, definition, true, seconds)){
             Util.sendMsg(commandSender, "Minigame started");
         } else {
             Util.sendMsg(commandSender, "Failed to start minigame. Is there another minigame active?");

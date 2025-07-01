@@ -11,14 +11,14 @@ class SummerOpal : CustomItemFunctions() {
 
     override fun createItem(): Pair<String, ItemStack> {
         return ItemFactory.builder()
-            .name("<b><gradient:#DC8BE5:#F6FF5C>Summer Opal</gradient></b>")
+            .name("<b><gradient:#ff4e50:#fc913a:#f9d62e:#eae374:#97c753>Summer Opal</gradient></b>")
             .lore(
-                "<gray>A valuable stone that",
-                "<gray>gives off a mesmerizing",
-                "<gray>iridescence.",
+                "A valuable stone that",
+                "gives off a mesmerizing",
+                "iridescence.",
                 "",
-                "<gray>You can trade multiple of",
-                "<gray>these in for special rewards."
+                "You can trade multiple of",
+                "these in for rewards."
             )
             .material(Material.RESIN_CLUMP)
             .tier(Tier.SUMMER_2025)

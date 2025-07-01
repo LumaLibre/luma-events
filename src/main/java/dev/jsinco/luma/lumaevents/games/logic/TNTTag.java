@@ -1,5 +1,6 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
+import dev.jsinco.luma.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
@@ -205,7 +206,8 @@ public final class TNTTag extends InventoryUnifiedMinigame {
 
     public void startRound() {
         // for every 5 players, a new tagger is added
-        int taggerCount = Math.max(1, this.getRunners().size() / 5);
+        int taggerCount = Math.max(1, this.getRunners().size() / 5 );
+        Logging.log("DEBUG: " + this.getRunners().size() + " runners, " + taggerCount + " taggers.");
         for (int i = this.getTaggers().size(); i < taggerCount; i++) {
             Runner tagger = Util.getRandom(this.getRunners());
             this.swapRole(tagger.getWho(), () -> new Tagger(tagger.getWho()));
@@ -346,6 +348,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     public static class Runner extends TNTTagPlayer {
 
         private static final PotionEffect RUNNER_SPEED = new PotionEffect(PotionEffectType.SPEED, 350, 1, false, false, true);
+        private static final PotionEffect RUNNER_GLOW = new PotionEffect(PotionEffectType.GLOWING, 350, 0, false, false, true);
 
         private final Scoreboard<EventPlayer> scoreboard;
         private int tickCounter; // Ticks gone without becoming a tagger
@@ -359,10 +362,10 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         @Override
         public void addEffects() {
             Player player = getPlayer();
-            if (player == null) {
-                return;
+            if (player != null) {
+                player.addPotionEffect(RUNNER_SPEED);
+                player.addPotionEffect(RUNNER_GLOW);
             }
-            player.addPotionEffect(RUNNER_SPEED);
         }
 
         @Override
@@ -372,12 +375,14 @@ public final class TNTTag extends InventoryUnifiedMinigame {
                 return;
             }
             player.removePotionEffect(PotionEffectType.SPEED);
+            player.removePotionEffect(PotionEffectType.GLOWING);
         }
 
         @Override
         public void tick() {
             this.who.sendActionBar("<yellow>Run! Don't get tagged!");
             this.addEffects();
+
             this.tickCounter += TICK_INTERVAL / 20; // Convert TICK_INTERVAL to seconds
 
             if (this.tickCounter >= 30) {
@@ -391,7 +396,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
 
     public static class Tagger extends TNTTagPlayer {
 
-        private static final PotionEffect TAGGER_SPEED = new PotionEffect(PotionEffectType.SPEED, 350, 2, false, false, true);
+        private static final PotionEffect TAGGER_SPEED = new PotionEffect(PotionEffectType.SPEED, 350, 3, false, false, true);
         private static final PotionEffect TAGGER_DOLPHIN = new PotionEffect(PotionEffectType.DOLPHINS_GRACE, 350, 0, false, false, true);
 
         private static final EditMeta editMeta = meta -> {
@@ -440,6 +445,9 @@ public final class TNTTag extends InventoryUnifiedMinigame {
             equipment.setChestplate(AIR);
             equipment.setLeggings(AIR);
             equipment.setBoots(AIR);
+
+            player.removePotionEffect(PotionEffectType.SPEED);
+            player.removePotionEffect(PotionEffectType.DOLPHINS_GRACE);
         }
 
         @Override
@@ -458,6 +466,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     public static class Spectator extends TNTTagPlayer {
 
         private static final PotionEffect SPECTATOR_INVIS = new PotionEffect(PotionEffectType.INVISIBILITY, 350, 0);
+        private static final PotionEffect SPECTATOR_SPEED = new PotionEffect(PotionEffectType.SPEED, 350, 4);
 
         private final List<EventPlayer> participants;
 
@@ -496,6 +505,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
                 player.showPlayer(EventMain.getInstance(), whoPlayer);
             }
             whoPlayer.removePotionEffect(PotionEffectType.INVISIBILITY);
+            whoPlayer.removePotionEffect(PotionEffectType.SPEED);
         }
 
         @Override
@@ -505,6 +515,8 @@ public final class TNTTag extends InventoryUnifiedMinigame {
                 return;
             }
             player.addPotionEffect(SPECTATOR_INVIS);
+            player.addPotionEffect(SPECTATOR_SPEED);
+
             this.who.sendActionBar("<gold>You are spectating. Leave with: <white>/event quit");
         }
     }
