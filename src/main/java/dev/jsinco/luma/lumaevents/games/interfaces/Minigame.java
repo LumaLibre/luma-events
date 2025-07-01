@@ -108,7 +108,11 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         this.cancel();
 
         try {
-            this.onPostStop();
+            if (Bukkit.isPrimaryThread()) {
+                this.onPostStop();
+            } else {
+                Bukkit.getScheduler().runTask(EventMain.getInstance(), this::onPostStop);
+            }
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }
@@ -150,9 +154,10 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
             return false;
         }
         this.participants.remove(player);
+        Location loc = this.getGameDropOffLocation();
         Player bukkitPlayer = player.getPlayer();
-        if (bukkitPlayer != null) {
-            bukkitPlayer.teleportAsync(this.getGameDropOffLocation());
+        if (bukkitPlayer != null && loc != null) {
+            bukkitPlayer.teleportAsync(loc);
             Util.sendMsg(bukkitPlayer, "You have been removed from the active minigame!");
         }
         return true;
@@ -160,7 +165,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
 
     private void openQueue(int seconds) {
         CountdownBossBar.builder()
-                .title("<aqua><b>" + name + " Starting in</b><gray>:</gray> <b>%s</b></aqua>")
+                .title("<aqua><b>" + name + " Starting in</b><gray>:</gray> <b>%ss</b></aqua>")
                 .seconds(seconds)
                 .color(BossBar.Color.BLUE)
                 .callback(() -> {

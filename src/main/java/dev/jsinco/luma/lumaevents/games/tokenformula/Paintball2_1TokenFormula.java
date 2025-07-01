@@ -10,12 +10,12 @@ public class Paintball2_1TokenFormula implements TokenFormula<Couple<Integer, Bo
         int position = context.getFirst();
         boolean isWinner = context.getSecond();
 
-        int total = 5;
+        int total = 4;
 
         if (position <= 2) {
-            total = 9;
+            total += 3;
         } else if (position <= 5) {
-            total = 7;
+            total += 2;
         }
 
         if (!isWinner) {

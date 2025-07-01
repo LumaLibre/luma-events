@@ -48,21 +48,20 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
 
     @Override
     public void onPostStop() {
-        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
-            for (EventPlayer participant : this.participants) {
-                Player player = participant.getPlayer();
-                if (player == null) {
-                    continue;
-                }
-                InventorySnapshot snapshot = InventorySnapshotManager.INSTANCE.getSnapshotByOwner(participant.getUuid());
-                if (snapshot != null) {
-                    snapshot.restore(player);
-                    InventorySnapshotManager.INSTANCE.unregisterSnapshot(snapshot);
-                } else {
-                    Logging.errorLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found.");
-                }
+        for (EventPlayer participant : this.participants) {
+            Player player = participant.getPlayer();
+            if (player == null) {
+                continue;
             }
-        });
+            InventorySnapshot snapshot = InventorySnapshotManager.INSTANCE.getSnapshotByOwner(participant.getUuid());
+            if (snapshot != null) {
+                snapshot.restore(player);
+                InventorySnapshotManager.INSTANCE.unregisterSnapshot(snapshot);
+            } else {
+                Logging.errorLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found.");
+            }
+        }
+        this.handleTokens();
     }
 
     @Override
@@ -91,4 +90,6 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
     protected ItemStack defaultItem() {
         return null;
     }
+
+    protected abstract void handleTokens();
 }

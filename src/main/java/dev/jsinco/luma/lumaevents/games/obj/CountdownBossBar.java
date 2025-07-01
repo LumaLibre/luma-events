@@ -1,5 +1,6 @@
 package dev.jsinco.luma.lumaevents.games.obj;
 
+import dev.jsinco.luma.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
@@ -34,7 +35,7 @@ public class CountdownBossBar extends BukkitRunnable {
         this.callback = callback;
         this.audience = audience;
         this.global = false;
-        bossBar.addViewer(audience);
+
     }
 
     public CountdownBossBar(String title, BossBar.Color barColor, float seconds, boolean global, Runnable callback) {
@@ -45,7 +46,6 @@ public class CountdownBossBar extends BukkitRunnable {
         this.callback = callback;
         if (global) this.audience = Audience.audience(Bukkit.getOnlinePlayers());
         this.global = global;
-        bossBar.addViewer(audience);
     }
 
     public CountdownBossBar(String title, BossBar.Color barColor, float seconds, Audience audience) {
@@ -54,6 +54,12 @@ public class CountdownBossBar extends BukkitRunnable {
 
 
     public void start() {
+        if (EventMain.STOPPING) {
+            if (this.callback != null) this.callback.run();
+            Logging.errorLog("Cannot start CountdownBossBar, the server is stopping. This method shouldn't be called at this time.");
+            return;
+        }
+        bossBar.addViewer(audience);
         activeCountdowns.add(this);
         this.runTaskTimerAsynchronously(EventMain.getInstance(), 0, 2);
     }

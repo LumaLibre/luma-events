@@ -106,10 +106,6 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
             for (TNTTagPlayer player : this.tntTagPlayers.values()) {
                 player.removeEffects(true);
-                EventPlayer eventPlayer = player.getWho();
-                int finalScore = this.scoreboard.getScore(eventPlayer);
-                tokenFormula.giveTokens(eventPlayer, finalScore);
-                eventPlayer.addPermanentScore(MinigameConstant.TNTTAG, finalScore);
             }
         });
 
@@ -132,6 +128,16 @@ public final class TNTTag extends InventoryUnifiedMinigame {
                     .build()
                     .start();
         });
+    }
+
+    @Override
+    protected void handleTokens() {
+        for (TNTTagPlayer player : this.tntTagPlayers.values()) {
+            EventPlayer eventPlayer = player.getWho();
+            int finalScore = this.scoreboard.getScore(eventPlayer);
+            tokenFormula.giveTokens(eventPlayer, finalScore);
+            eventPlayer.addPermanentScore(MinigameConstant.TNTTAG, finalScore);
+        }
     }
 
     @Override

@@ -19,6 +19,8 @@ public final class EventMain extends JavaPlugin {
     private static ConfigManager okaeriConfigManager;
     private static ModuleManager moduleManager;
 
+    public static boolean STOPPING = false;
+
     @Override
     public void onEnable() {
         instance = this;
@@ -39,6 +41,7 @@ public final class EventMain extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        STOPPING = true;
         moduleManager.unregisterModules();
 
         EventPlayerManager.saveAll();

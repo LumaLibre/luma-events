@@ -4,6 +4,7 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumaitems.LumaItems;
 import dev.jsinco.luma.lumaitems.manager.CustomItem;
 import lombok.Getter;
+import net.kyori.adventure.text.minimessage.internal.parser.TokenType;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -11,13 +12,18 @@ import org.bukkit.inventory.ItemStack;
 public class TokenExchanging {
 
     public static void giveWithChances(Player player, int amount) {
+        int amountClone = amount;
         for (int i = 0; i < amount; i++) {
             TokenType type = TokenType.OPAL;
-            if (Util.RANDOM.nextInt(101) < 10) { // 10% chance to give refined opal
+            if (Util.RANDOM.nextInt(101) < 5) { // 5% chance to give refined opal
                 type = TokenType.REFINED_OPAL;
+                Util.sendMsg(player, "You got <yellow>1</yellow> " + TokenType.REFINED_OPAL.customName + "!");
+                amountClone--;
             }
             give(player, type, 1);
         }
+        Util.sendMsg(player, "You got <yellow>" + amountClone + "</yellow> " + TokenType.OPAL.customName + "(s)!");
+
     }
 
     public static void give(Player player, TokenType type, int amount) {
@@ -32,7 +38,6 @@ public class TokenExchanging {
         }
         Util.giveItem(player, itemStack, amount);
 
-        Util.sendMsg(player, "You got <yellow>" + amount  + "</yellow> " + type.customName + "(s)!");
     }
 
     public static boolean take(Player player, TokenType type, int amount) {

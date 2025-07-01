@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 
@@ -53,15 +54,15 @@ public class MinigamePreventInventoryTampering implements Listener {
         }
     }
 
-//    @EventHandler
-//    public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
-//        minigame.ensureNotIllegal();
-//
-//        Player player = event.getPlayer();
-//        EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
-//        if (minigame.getParticipants().contains(eventPlayer) && minigame.getBoundingBox().contains(player)) {
-//            event.setCancelled(true);
-//            eventPlayer.sendMessage("You can't use commands while participating in this minigame. Use /easter quit to leave.");
-//        }
-//    }
+    //@EventHandler
+    public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
+        minigame.ensureNotIllegal();
+
+        Player player = event.getPlayer();
+        EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
+        if (minigame.getParticipants().contains(eventPlayer) && minigame.getBoundingBox().contains(player)) {
+            event.setCancelled(true);
+            eventPlayer.sendMessage("You can't use commands while participating in this minigame. Use /event quit to leave.");
+        }
+    }
 }

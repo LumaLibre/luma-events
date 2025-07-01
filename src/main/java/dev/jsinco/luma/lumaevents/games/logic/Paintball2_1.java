@@ -3,6 +3,7 @@ package dev.jsinco.luma.lumaevents.games.logic;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition;
+import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition.TeamBedPart;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
@@ -11,6 +12,7 @@ import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
 import dev.jsinco.luma.lumaevents.games.tokenformula.Paintball2_1TokenFormula;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
+import dev.jsinco.luma.lumaevents.utility.BlockFaces;
 import dev.jsinco.luma.lumaevents.utility.Couple;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumaevents.obj.Sphere;
@@ -35,7 +37,9 @@ import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.type.Bed;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Snowball;
@@ -57,11 +61,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
     private static final List<Material> STANDARD_BLACKLIST = List.of(Material.BARRIER, Material.AIR, Material.CAVE_AIR, Material.LADDER);
-    private static final AttributeModifier ATTRIBUTE_MODIFIER = new AttributeModifier(
-            new NamespacedKey(EventMain.getInstance(), "paintball"),
-            -4.5,
-            AttributeModifier.Operation.ADD_NUMBER
-    );
+    private static final AttributeModifier ATTRIBUTE_MODIFIER = new AttributeModifier(new NamespacedKey(EventMain.getInstance(), "paintball"), -4.5, AttributeModifier.Operation.ADD_NUMBER);
     private static final PotionEffect REGEN = new PotionEffect(PotionEffectType.REGENERATION, 100, 1, false, false,false);
 
     private final Paintball2_1Definition def;
@@ -90,8 +90,8 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         Couple<ColorKit, ColorKit> colorKits = ColorKits.getRandomColorKits();
         int middle = this.participants.size() / 2;
         this.paintballTeams = List.of(
-                new PaintballTeam(this.participants.subList(0, middle), colorKits.a(), def.getTeam1SpawnLocation()),
-                new PaintballTeam(this.participants.subList(middle, this.participants.size()), colorKits.b(), def.getTeam2SpawnLocation())
+                new PaintballTeam(this.participants.subList(0, middle), colorKits.a(), def.getTeam1SpawnLocation(), def.getTeam1BedParts()),
+                new PaintballTeam(this.participants.subList(middle, this.participants.size()), colorKits.b(), def.getTeam2SpawnLocation(), def.getTeam2BedParts())
         );
         this.scoreboard.addScorers(this.paintballTeams);
 
@@ -127,21 +127,6 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             this.countdownBossBar.stop(false);
         }
 
-        PaintballTeam winningTeam = this.scoreboard.getTopScorer();
-
-        for (PaintballTeam team : this.paintballTeams) {
-            int position = 1;
-            for (var mapEntry : team.membersByScores().entrySet()) {
-                EventPlayer member = mapEntry.getKey();
-                int score = mapEntry.getValue();
-                Couple<Integer, Boolean> couple = Couple.of(position, team.equals(winningTeam));
-
-                tokenFormula.giveTokens(member, couple);
-                member.addPermanentScore(MinigameConstant.PAINTBALL2_1, score);
-                position++;
-            }
-        }
-
         // TODO: Need to calculate scores and display winning team
         this.scoreboard.handleGameEnd(this.audience, () -> {
             this.participants.stream().filter(
@@ -169,6 +154,24 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                     .build()
                     .start();
         });
+    }
+
+    @Override
+    protected void handleTokens() {
+        PaintballTeam winningTeam = this.scoreboard.getTopScorer();
+
+        for (PaintballTeam team : this.paintballTeams) {
+            int position = 1;
+            for (var mapEntry : team.membersByScores().entrySet()) {
+                EventPlayer member = mapEntry.getKey();
+                int score = mapEntry.getValue();
+                Couple<Integer, Boolean> couple = Couple.of(position, team.equals(winningTeam));
+
+                tokenFormula.giveTokens(member, couple);
+                member.addPermanentScore(MinigameConstant.PAINTBALL2_1, score);
+                position++;
+            }
+        }
     }
 
     @Override
@@ -246,6 +249,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Player is not a member of any team."));
         snowball.setItem(paintballTeam.getSnowballMaterial());
+        snowball.setVelocity(snowball.getVelocity().multiply(0.4));
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -319,8 +323,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
         if (hitEntity != null && boundingBox.contains(hitEntity) && hitEntity instanceof Player hitPlayer) {
             // Check if the hit entity is standing on a block painted by the other team
-            shooter.playSound(hitPlayer.getLocation(), Sound.ENTITY_PLAYER_HURT, 1.0f, 1.0f);
-            Bukkit.getAsyncScheduler().runNow(EventMain.getInstance(), (task) -> handleProjectileHitPlayer(hitPlayer, eventPlayer));
+            Bukkit.getAsyncScheduler().runNow(EventMain.getInstance(), (task) -> handleProjectileHitPlayer(hitPlayer, shooter, paintballTeam));
         } else if (hitBlock != null && boundingBox.contains(hitBlock.getLocation())) {
             shooter.playSound(hitBlock.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
             Bukkit.getAsyncScheduler().runNow(EventMain.getInstance(), (task) -> handleProjectileHitBlock(hitBlock, paintballTeam, eventPlayer));
@@ -328,13 +331,18 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
     }
 
-    private void handleProjectileHitPlayer(Player hitPlayer, EventPlayer shooter) {
-        Player shooterPlayer = shooter.getPlayer();
-        if (shooterPlayer == null || !boundingBox.contains(hitPlayer.getLocation())) {
-            return; // Shooter is not in the bounding box or hit player is not in the bounding box
+    private void handleProjectileHitPlayer(Player hitPlayer, Player shooter, PaintballTeam paintballTeam) {
+        PaintballTeam paintballTeam2 = this.paintballTeams.stream()
+                .filter(team -> team.isMember(hitPlayer))
+                .findFirst()
+                .orElseThrow();
+
+        if (!boundingBox.contains(hitPlayer.getLocation()) || paintballTeam == paintballTeam2) {
+            return; // Shooter is not in the bounding box or hit player is not in the bounding box or shooter hit their own teammate
         }
         Bukkit.getScheduler().runTask(EventMain.getInstance(), () ->{
-            hitPlayer.damage(12.0, shooterPlayer);
+            shooter.playSound(hitPlayer.getLocation(), Sound.ENTITY_PLAYER_HURT, 1.0f, 1.0f);
+            hitPlayer.damage(12.0, shooter);
         });
     }
 
@@ -397,7 +405,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         private final ItemStack snowballMaterial;
 
 
-        public PaintballTeam(List<EventPlayer> members, ColorKit colorKit, Location spawnPoint) {
+        public PaintballTeam(List<EventPlayer> members, ColorKit colorKit, Location spawnPoint, List<TeamBedPart> teamBedParts) {
             this.scoreMap = new HashMap<>();
             for (EventPlayer member : members) {
                 this.scoreMap.put(member, 0);
@@ -416,6 +424,28 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 meta.addAttributeModifier(Attribute.BLOCK_INTERACTION_RANGE, ATTRIBUTE_MODIFIER);
             });
             this.paintball.setData(DataComponentTypes.ITEM_MODEL, NamespacedKey.minecraft(colorKit.model));
+
+            // team bed parts
+            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+                for (TeamBedPart teamBedPart : teamBedParts) {
+                    Location l = teamBedPart.getBlockLocation();
+                    if (l == null) continue;
+
+                    Block block = l.getBlock();
+                    BlockState blockState = block.getState();
+                    blockState.setType(colorKit.bed);
+
+                    if (blockState.getBlockData() instanceof Bed bed) {
+                        bed.setPart(teamBedPart.getPart());
+                        bed.setFacing(BlockFaces.yawToFace(l.getYaw(), false).getOppositeFace());
+                        blockState.setBlockData(bed);
+                    } else {
+                        Util.log("<red>Failed to set bed data for team: " + shortName() + " at location: " + l);
+                    }
+                    blockState.update(true, false);
+                }
+            });
+
         }
 
 
@@ -457,17 +487,18 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     @AllArgsConstructor
     public enum ColorKits {
 
-        RED(Material.RED_WOOL, NamedTextColor.RED, "red_dye"),
-        GREEN(Material.LIME_WOOL, NamedTextColor.GREEN, "lime_dye"),
-        BLUE(Material.BLUE_WOOL, NamedTextColor.BLUE, "blue_dye"),
-        ORANGE(Material.ORANGE_WOOL, NamedTextColor.GOLD, "orange_dye"),
-        PURPLE(Material.PURPLE_WOOL, NamedTextColor.DARK_PURPLE, "purple_dye"),
+        RED(Material.RED_WOOL, Material.RED_BED, NamedTextColor.RED, "red_dye"),
+        GREEN(Material.LIME_WOOL, Material.LIME_BED, NamedTextColor.GREEN, "lime_dye"),
+        BLUE(Material.BLUE_WOOL, Material.BLUE_BED, NamedTextColor.BLUE, "blue_dye"),
+        ORANGE(Material.ORANGE_WOOL, Material.ORANGE_BED, NamedTextColor.GOLD, "orange_dye"),
+        PURPLE(Material.PURPLE_WOOL, Material.PURPLE_BED, NamedTextColor.DARK_PURPLE, "purple_dye"),
         // YELLOW
-        PINK(Material.PINK_WOOL, TextColor.fromHexString("#f4b8da"), "pink_dye"),
-        LIGHT_BLUE(Material.LIGHT_BLUE_WOOL, NamedTextColor.AQUA, "light_blue_dye"),
-        MAGENTA(Material.MAGENTA_WOOL, TextColor.fromHexString("#d630d6"), "magenta_dye");
+        PINK(Material.PINK_WOOL, Material.PINK_BED, TextColor.fromHexString("#f4b8da"), "pink_dye"),
+        LIGHT_BLUE(Material.LIGHT_BLUE_WOOL, Material.LIGHT_BLUE_BED, NamedTextColor.AQUA, "light_blue_dye"),
+        MAGENTA(Material.MAGENTA_WOOL, Material.MAGENTA_BED, TextColor.fromHexString("#d630d6"), "magenta_dye");
 
         private final Material material;
+        private final Material bed;
         private final TextColor textColor;
         private final String model;
 
@@ -478,19 +509,20 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             do {
                 team2 = Util.getRandom(values);
             } while (team1 == team2);
-            return Couple.of(ColorKit.of(team1.material, team1.textColor, team1.model),
-                    ColorKit.of(team2.material, team2.textColor, team2.model));
+            return Couple.of(ColorKit.of(team1.material, team1.bed, team1.textColor, team1.model),
+                    ColorKit.of(team2.material, team2.bed, team2.textColor, team2.model));
         }
     }
 
     @AllArgsConstructor
     public static class ColorKit {
         private final Material material;
+        private final Material bed;
         private final TextColor textColor;
         private final String model;
 
-        public static ColorKit of(Material material, TextColor textColor, String model) {
-            return new ColorKit(material, textColor, model);
+        public static ColorKit of(Material material, Material bed, TextColor textColor, String model) {
+            return new ColorKit(material, bed, textColor, model);
         }
     }
 }

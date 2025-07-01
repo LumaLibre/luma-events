@@ -1,10 +1,12 @@
 package dev.jsinco.luma.lumaevents.configurable.sectors;
 
 import eu.okaeri.configs.OkaeriConfig;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.data.type.Bed;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +30,9 @@ public class Paintball2_1Definition extends OkaeriConfig {
             ".*_WALL_SIGN",
             ".*_PLATE"
     );
+    private List<TeamBedPart> team1BedParts = List.of(new TeamBedPart(null, Bed.Part.HEAD), new TeamBedPart(null, Bed.Part.FOOT));
+    private List<TeamBedPart> team2BedParts = List.of(new TeamBedPart(null, Bed.Part.HEAD), new TeamBedPart(null, Bed.Part.FOOT));
+
 
     public List<Material> regexBlacklistedBlocksAsMaterials() {
         List<Material> materials = new ArrayList<>();
@@ -45,5 +50,12 @@ public class Paintball2_1Definition extends OkaeriConfig {
         List<Material> allBlacklistedBlocks = new ArrayList<>(blacklistedBlocks);
         allBlacklistedBlocks.addAll(regexBlacklistedBlocksAsMaterials());
         return allBlacklistedBlocks;
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public static class TeamBedPart extends OkaeriConfig {
+        private Location blockLocation;
+        private Bed.Part part;
     }
 }

@@ -63,7 +63,7 @@ public final class BoatRace2 extends Minigame {
     private int basePoints;
 
     public BoatRace2(BoatRace2Definition def) {
-        super("Boat Racers 2", "Aim for first place!", 300000L, 10, true, false, false);
+        super("Boat Racers 2", "Aim for first place!", 300000L, 1, true, false, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.checkpoints = new HashSet<>();
         this.racers = new HashSet<>();
@@ -324,9 +324,10 @@ public final class BoatRace2 extends Minigame {
 
     private List<BoatRacePlayer> getSortedRacers() {
         Comparator<BoatRacePlayer> comparator = Comparator
-                .comparingInt(BoatRacePlayer::getLap)
+                .comparing(BoatRacePlayer::isFinished, Comparator.reverseOrder())
+                .thenComparingInt(BoatRacePlayer::getLap)
                 .thenComparingInt(racer -> {
-                    var racerCheckpoints = racer.getCheckpoints();
+                    Map<BoatRaceCheckpoint, Integer> racerCheckpoints = racer.getCheckpoints();
                     if (racerCheckpoints.size() < this.checkpoints.size()) {
                         return racerCheckpoints.size(); // We can compare using the size of checkpoints
                     }
@@ -341,7 +342,6 @@ public final class BoatRace2 extends Minigame {
                     }
                     return value;
                 }).reversed()
-                .thenComparing(BoatRacePlayer::isFinished, Comparator.reverseOrder())
                 .thenComparingDouble(player -> {
                     Player bukkitPlayer = player.getEventPlayer().getPlayer();
                     if (bukkitPlayer == null || !bukkitPlayer.isOnline()) {
