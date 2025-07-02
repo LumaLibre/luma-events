@@ -8,7 +8,7 @@ import dev.jsinco.luma.lumaevents.EventMain;
 
 @AutoRegister(RegisterType.PLACEHOLDER)
 @PlaceholderInfo(
-        identifier = "valentide",
+        identifier = "events",
         author = "Jsinco",
         version = "1.0"
 )

@@ -70,7 +70,7 @@ public final class BoatRace2 extends Minigame {
     private List<BoatRacePlayer> sortedRacers;
 
     public BoatRace2(BoatRace2Definition def) {
-        super("Boat Racers 2", "Aim for first place!", 300000L, 2, true, false, false);
+        super("Boat Race 2", "Aim for first place!", 300000L, 2, true, false, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.checkpoints = new HashSet<>();
         this.racers = new HashSet<>();

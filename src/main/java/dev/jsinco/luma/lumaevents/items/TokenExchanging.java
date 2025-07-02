@@ -15,7 +15,7 @@ public class TokenExchanging {
         int amountClone = amount;
         for (int i = 0; i < amount; i++) {
             TokenType type = TokenType.OPAL;
-            if (Util.RANDOM.nextInt(101) < 5) { // 5% chance to give refined opal
+            if (Util.RANDOM.nextInt(101) < 3) { // 3% chance to give refined opal
                 type = TokenType.REFINED_OPAL;
                 Util.sendMsg(player, "You got <yellow>1</yellow> " + TokenType.REFINED_OPAL.customName + "!");
                 amountClone--;

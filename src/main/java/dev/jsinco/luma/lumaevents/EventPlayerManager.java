@@ -31,6 +31,10 @@ public final class EventPlayerManager {
         }
     }
 
+    public static List<EventPlayer> eventPlayers() {
+        return List.copyOf(EVENT_PLAYERS);
+    }
+
     public static EventPlayer load(UUID uuid) {
         EventPlayer eventPlayer = null;
         try (FileReader fileReader = new FileReader(FOLDER.resolve(uuid.toString() + ".json").toFile())) {
