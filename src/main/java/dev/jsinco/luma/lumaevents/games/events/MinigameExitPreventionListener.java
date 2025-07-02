@@ -5,8 +5,10 @@ import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.MinigameBoundingBox;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
 public class MinigameExitPreventionListener implements Listener {
@@ -30,6 +32,18 @@ public class MinigameExitPreventionListener implements Listener {
         if (minigame.getParticipants().contains(eplayer)) { // Ensure the player is supposed to BE in the minigame
             event.setCancelled(true);
             eplayer.sendMessage("You can't leave this minigame while it's active!");
+        }
+    }
+
+    @EventHandler
+    public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
+        minigame.ensureNotIllegal();
+
+        Player player = event.getPlayer();
+        EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
+        if (minigame.getParticipants().contains(eventPlayer) && minigame.getBoundingBox().contains(player) && !player.hasPermission("lumaevents.bypass")) {
+            event.setCancelled(true);
+            eventPlayer.sendMessage("You can't use commands while participating in this minigame. Use /event quit to leave.");
         }
     }
 }

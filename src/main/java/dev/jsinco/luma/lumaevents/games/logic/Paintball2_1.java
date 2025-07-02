@@ -369,7 +369,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     }
 
     private void paintOnBlock(Block block, PaintballTeam paintballTeam, EventPlayer shooter) {
-        if (this.blacklistedMaterials.contains(block.getType())) {
+        if (this.blacklistedMaterials.contains(block.getType()) || !block.isSolid()) {
             return;
         }
 

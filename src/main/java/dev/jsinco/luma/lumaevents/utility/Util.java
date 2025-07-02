@@ -45,7 +45,7 @@ public final class Util {
             .setPrettyPrinting()
             .create();
     public static final Random RANDOM = new Random();
-    public static final String PREFIX = "<b><gradient:#DC8BE5:#F6FF5C>Event</gradient></b> <dark_gray>»</dark_gray> ";
+    public static final String PREFIX = "<b><gradient:#ff4e50:#fc913a:#f9d62e:#eae374:#97c753>Event</gradient></b> <dark_gray>»</dark_gray> ";
     public static final String TEXT_COLOR = "#e6ffe0";
 
 

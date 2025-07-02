@@ -54,15 +54,4 @@ public class MinigamePreventInventoryTampering implements Listener {
         }
     }
 
-    //@EventHandler
-    public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
-        minigame.ensureNotIllegal();
-
-        Player player = event.getPlayer();
-        EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
-        if (minigame.getParticipants().contains(eventPlayer) && minigame.getBoundingBox().contains(player)) {
-            event.setCancelled(true);
-            eventPlayer.sendMessage("You can't use commands while participating in this minigame. Use /event quit to leave.");
-        }
-    }
 }

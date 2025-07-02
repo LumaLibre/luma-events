@@ -13,6 +13,7 @@ public class BoatRace2Definition extends OkaeriConfig {
 
     private Location spawnLocation;
     private Location startLocation;
+    private Location spectateLocation;
     private int maxLaps = 3;
     private Region region = new Region();
     private Region finishLine = new Region();

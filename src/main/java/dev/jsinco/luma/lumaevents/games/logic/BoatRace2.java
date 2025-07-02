@@ -1,5 +1,6 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
+import dev.jsinco.luma.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
@@ -33,6 +34,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
@@ -49,11 +52,13 @@ import java.util.concurrent.TimeUnit;
 public final class BoatRace2 extends Minigame {
 
     private static final String FINISH_LINE_IDENTIFIER = "finish";
+    private static final PotionEffect SPEED = new PotionEffect(PotionEffectType.SPEED, 250, 4, false, false);
 
     private final Set<BoatRaceCheckpoint> checkpoints;
     private final Set<BoatRacePlayer> racers;
     private final Location spawnLocation;
     private final Location startLocation;
+    private final Location spectateLocation;
     private final Scoreboard<EventPlayer> scoreboard;
     private final int maxLaps;
     private final BoatRace2TokenFormula tokenFormula;
@@ -71,6 +76,7 @@ public final class BoatRace2 extends Minigame {
         this.racers = new HashSet<>();
         this.spawnLocation = def.getSpawnLocation().toCenterLocation();
         this.startLocation = def.getStartLocation().toCenterLocation();
+        this.spectateLocation = def.getSpectateLocation().toCenterLocation();
         this.scoreboard = new Scoreboard<>();
         this.maxLaps = def.getMaxLaps();
         this.tokenFormula = new BoatRace2TokenFormula();
@@ -124,13 +130,19 @@ public final class BoatRace2 extends Minigame {
     @Override
     protected void onRunnable(long timeLeft) {
         this.sortRacers();
+        this.tryEndIfNoMoreRacers();
         for (BoatRacePlayer racer : this.racers) {
             if (racer.isFinished()) continue;
 
             EventPlayer player = racer.getEventPlayer();
             player.sendActionBar("<b><gold>Position: #" + this.position(racer) + " <gray>(" + this.countdownBossBar.secondsRemaining() + "s left)");
         }
-        this.tryEndIfNoMoreRacers();
+
+        for (EventPlayer participant : this.participants) {
+            Player player = participant.getPlayer();
+            if (player == null || player.isInsideVehicle() || !isInBoundingBox(player)) continue;
+            player.addPotionEffect(SPEED);
+        }
     }
 
     @Override
@@ -314,7 +326,7 @@ public final class BoatRace2 extends Minigame {
                 eventPlayer.sendTitle("<green>Finished!", "<gray>You placed <gold>#" + position);
                 Util.sendMsg(this.audience, "<gold>"+bukkitPlayer.getName()+"</gold>"+ " has finished in <gold>#" + position + "</gold> place!");
                 racer.finish(position);
-                event.getPlayer().teleportAsync(this.spawnLocation);
+                event.getPlayer().teleportAsync(this.spectateLocation);
                 this.tryEndIfNoMoreRacers();
             }
         });
@@ -553,6 +565,10 @@ public final class BoatRace2 extends Minigame {
 
         public BoatRaceCheckpoint(WorldTiedBoundingBox boundingBox, String identifier) {
             super(boundingBox.getWorld(), boundingBox.getMinX(), boundingBox.getMinY(), boundingBox.getMinZ(), boundingBox.getMaxX(), boundingBox.getMaxY(), boundingBox.getMaxZ());
+            if (boundingBox.getMax() == boundingBox.getMin()) {
+                Logging.errorLog("Ambiguous bounding box for checkpoint: " + identifier + ". Checkpoints must have a non-zero size!");
+                Logging.errorLog("Center location: " + boundingBox.getCenterLocation());
+            }
             this.identifier = identifier;
         }
 
