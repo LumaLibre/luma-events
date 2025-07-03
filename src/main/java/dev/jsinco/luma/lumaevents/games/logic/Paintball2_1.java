@@ -18,6 +18,8 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumaevents.obj.Sphere;
 import dev.jsinco.luma.lumaitems.particles.ParticleDisplay;
 import dev.jsinco.luma.lumaitems.particles.Particles;
+import dev.jsinco.lumaglowapi.LumaGlowAPI;
+import dev.jsinco.lumaglowapi.colormanagers.ColorManager;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -52,6 +54,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
+import javax.inject.Named;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +66,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     private static final List<Material> STANDARD_BLACKLIST = List.of(Material.BARRIER, Material.AIR, Material.CAVE_AIR, Material.LADDER);
     private static final AttributeModifier ATTRIBUTE_MODIFIER = new AttributeModifier(new NamespacedKey(EventMain.getInstance(), "paintball"), -4.5, AttributeModifier.Operation.ADD_NUMBER);
     private static final PotionEffect REGEN = new PotionEffect(PotionEffectType.REGENERATION, 100, 1, false, false,false);
+    private static final PotionEffect GLOW = new PotionEffect(PotionEffectType.GLOWING, 100, 0, false, false, false);
 
     private final Paintball2_1Definition def;
     private final ConcurrentHashMap<Location, PaintballTeam> paintedLocations; // TODO: Don't use locations
@@ -107,6 +111,8 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                     if (player.getGameMode() != GameMode.SURVIVAL) {
                         player.setGameMode(GameMode.SURVIVAL);
                     }
+
+                    ColorManager.setTempPlayerColor(player, Util.chatColorFromNamedTextColor(team.getGlowColor()));
                 });
             }
         }
@@ -131,7 +137,11 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         this.scoreboard.handleGameEnd(this.audience, () -> {
             this.participants.stream().filter(
                     p -> p.getPlayer() != null
-            ).forEach(p -> p.getPlayer().teleportAsync(def.getSpawnLocation()));
+            ).forEach(p -> {
+                Player player = p.getPlayer();
+                player.teleportAsync(def.getSpawnLocation());
+                ColorManager.updatePlayersColor(player);
+            });
             CountdownBossBar.builder()
                     .audience(this.audience)
                     .color(BossBar.Color.RED)
@@ -202,18 +212,25 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 double ourCoverage = paintballTeam == team1 ? team1Coverage : team2Coverage;
                 double enemyCoverage = enemyTeam == team1 ? team1Coverage : team2Coverage;
 
+                Component kills = Component.text("K: " + paintballTeam.killCount(member) + "!")
+                        .color(NamedTextColor.GRAY)
+                        .decorate(TextDecoration.ITALIC);
+
                 Component ourTeamComp = Component.text("Good Guys " + String.format("%.0f", ourCoverage) + "%")
                         .color(paintballTeam.getTextColor());
                 Component enemyTeamComp = Component.text("Bad Guys " + String.format("%.0f", enemyCoverage) + "%")
                         .color(enemyTeam.getTextColor());
 
-                Component actionBar = ourTeamComp.append(breakLine).append(enemyTeamComp).decorate(TextDecoration.BOLD);
+                Component actionBar = ourTeamComp.append(breakLine).append(enemyTeamComp).append(breakLine).append(kills).decorate(TextDecoration.BOLD);
 
                 member.sendActionBar(actionBar);
                 // regen
                 Player player = member.getPlayer();
                 if (player != null) {
-                    Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> player.addPotionEffect(REGEN));
+                    Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+                        player.addPotionEffect(REGEN);
+                        player.addPotionEffect(GLOW);
+                    });
                 }
             }
         }
@@ -278,6 +295,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
 
         this.paint(player.getLocation().add(0, -1, 0), paintballTeam, shooterEventPlayer, 3);
+        paintballTeam.addKill(shooterEventPlayer);
 
         // LumaItems ParticleLib
         ParticleDisplay particleDisplay = ParticleDisplay.of(Particle.DUST)
@@ -397,18 +415,22 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     public static class PaintballTeam implements Scorer {
 
         private final Map<EventPlayer, Integer> scoreMap;
+        private final Map<EventPlayer, Integer> killMap;
         private final Material material;
         private final TextColor textColor;
         private final BlockData blockData;
         private final Location spawnPoint;
         private final ItemStack paintball;
         private final ItemStack snowballMaterial;
+        private final NamedTextColor glowColor;
 
 
         public PaintballTeam(List<EventPlayer> members, ColorKit colorKit, Location spawnPoint, List<TeamBedPart> teamBedParts) {
             this.scoreMap = new HashMap<>();
+            this.killMap = new HashMap<>();
             for (EventPlayer member : members) {
                 this.scoreMap.put(member, 0);
+                this.killMap.put(member, 0);
             }
             this.material = colorKit.material;
             this.textColor = colorKit.textColor;
@@ -424,6 +446,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 meta.addAttributeModifier(Attribute.BLOCK_INTERACTION_RANGE, ATTRIBUTE_MODIFIER);
             });
             this.paintball.setData(DataComponentTypes.ITEM_MODEL, NamespacedKey.minecraft(colorKit.model));
+            this.glowColor = colorKit.glowColor;
 
             // team bed parts
             Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
@@ -482,6 +505,14 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         public String getName() {
             return shortName() + " Team";
         }
+
+        public int killCount(EventPlayer player) {
+            return killMap.getOrDefault(player, 0);
+        }
+
+        public void addKill(EventPlayer player) {
+            killMap.put(player, killMap.getOrDefault(player, 0) + 1);
+        }
     }
 
     @AllArgsConstructor
@@ -493,14 +524,19 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         ORANGE(Material.ORANGE_WOOL, Material.ORANGE_BED, NamedTextColor.GOLD, "orange_dye"),
         PURPLE(Material.PURPLE_WOOL, Material.PURPLE_BED, NamedTextColor.DARK_PURPLE, "purple_dye"),
         // YELLOW
-        PINK(Material.PINK_WOOL, Material.PINK_BED, TextColor.fromHexString("#f4b8da"), "pink_dye"),
+        PINK(Material.PINK_WOOL, Material.PINK_BED, TextColor.fromHexString("#f4b8da"), "pink_dye", NamedTextColor.WHITE),
         LIGHT_BLUE(Material.LIGHT_BLUE_WOOL, Material.LIGHT_BLUE_BED, NamedTextColor.AQUA, "light_blue_dye"),
-        MAGENTA(Material.MAGENTA_WOOL, Material.MAGENTA_BED, TextColor.fromHexString("#d630d6"), "magenta_dye");
+        MAGENTA(Material.MAGENTA_WOOL, Material.MAGENTA_BED, TextColor.fromHexString("#d630d6"), "magenta_dye", NamedTextColor.LIGHT_PURPLE);
 
         private final Material material;
         private final Material bed;
         private final TextColor textColor;
         private final String model;
+        private final NamedTextColor glowColor;
+
+        ColorKits(Material material, Material bed, NamedTextColor textColor, String model) {
+            this(material, bed, textColor, model, textColor);
+        }
 
         public static Couple<ColorKit, ColorKit> getRandomColorKits() {
             ColorKits[] values = ColorKits.values();
@@ -509,8 +545,8 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             do {
                 team2 = Util.getRandom(values);
             } while (team1 == team2);
-            return Couple.of(ColorKit.of(team1.material, team1.bed, team1.textColor, team1.model),
-                    ColorKit.of(team2.material, team2.bed, team2.textColor, team2.model));
+            return Couple.of(ColorKit.of(team1.material, team1.bed, team1.textColor, team1.model, team1.glowColor),
+                    ColorKit.of(team2.material, team2.bed, team2.textColor, team2.model, team2.glowColor));
         }
     }
 
@@ -520,9 +556,10 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         private final Material bed;
         private final TextColor textColor;
         private final String model;
+        private final NamedTextColor glowColor;
 
-        public static ColorKit of(Material material, Material bed, TextColor textColor, String model) {
-            return new ColorKit(material, bed, textColor, model);
+        public static ColorKit of(Material material, Material bed, TextColor textColor, String model, NamedTextColor glowColor) {
+            return new ColorKit(material, bed, textColor, model, glowColor);
         }
     }
 }

@@ -22,6 +22,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.boat.AcaciaBoat;
+import org.bukkit.entity.boat.BambooRaft;
 import org.bukkit.entity.boat.BirchBoat;
 import org.bukkit.entity.boat.CherryBoat;
 import org.bukkit.entity.boat.DarkOakBoat;
@@ -91,7 +92,6 @@ public final class BoatRace2 extends Minigame {
 
     @Override
     protected void handleStart() {
-        this.cleanBoats();
         this.basePoints = this.participants.size() + 1;
         this.scoreboard.addScorers(this.participants);
         for (EventPlayer participant : this.participants) {
@@ -100,15 +100,16 @@ public final class BoatRace2 extends Minigame {
                 continue;
             }
             Location loc = this.startLocation.clone().add(RANDOM.nextDouble(6), 0, RANDOM.nextDouble(6));
-            player.teleportAsync(loc);
+            player.teleportAsync(loc).whenComplete((v, b) -> {
+                // Synchronize
+                Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+                    BoatRaceBoatType boatType = BoatRaceBoatType.BAMBOO; // Util.getRandom(BoatRaceBoatType.values());
+                    Boat boat = player.getWorld().spawn(loc, boatType.getBoatType());
+                    boat.addPassenger(player);
 
-            // Synchronize
-            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
-                Boat boat = player.getWorld().spawn(loc, Util.getRandom(BoatRaceBoatType.values()).getBoatType());
-                boat.addPassenger(player);
-
-                BoatRacePlayer racer = BoatRacePlayer.of(participant, boat, this.maxLaps);
-                this.racers.add(racer);
+                    BoatRacePlayer racer = BoatRacePlayer.of(participant, boat, this.maxLaps);
+                    this.racers.add(racer);
+                });
             });
         }
 
@@ -602,7 +603,8 @@ public final class BoatRace2 extends Minigame {
         DARK_OAK(DarkOakBoat.class),
         MANGROVE(MangroveBoat.class),
         CHERRY(CherryBoat.class),
-        PALE_OAK(PaleOakBoat.class);
+        PALE_OAK(PaleOakBoat.class),
+        BAMBOO(BambooRaft.class);
 
         private final Class<? extends Boat> boatType;
 

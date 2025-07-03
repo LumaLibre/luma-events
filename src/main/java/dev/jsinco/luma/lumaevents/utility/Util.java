@@ -7,10 +7,12 @@ import com.google.gson.GsonBuilder;
 import dev.jsinco.luma.lumaevents.EventMain;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
@@ -475,5 +477,14 @@ public final class Util {
             }
         }
         return name;
+    }
+
+
+    public static ChatColor chatColorFromNamedTextColor(NamedTextColor c1) {
+        ChatColor chatColor = getEnumFromString(ChatColor.class, c1.toString().toUpperCase());
+        if (chatColor != null) {
+            return chatColor;
+        }
+        return ChatColor.GRAY;
     }
 }

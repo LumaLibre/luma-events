@@ -365,6 +365,9 @@ public final class TNTTag extends InventoryUnifiedMinigame {
             if (player != null) {
                 player.addPotionEffect(RUNNER_SPEED);
                 player.addPotionEffect(RUNNER_GLOW);
+                if (player.getFoodLevel() < 20) {
+                    player.setFoodLevel(20);
+                }
             }
         }
 
@@ -460,6 +463,10 @@ public final class TNTTag extends InventoryUnifiedMinigame {
 
             player.addPotionEffect(TAGGER_SPEED);
             player.addPotionEffect(TAGGER_DOLPHIN);
+
+            if (player.getFoodLevel() < 20) {
+                player.setFoodLevel(20);
+            }
         }
     }
 
@@ -516,6 +523,10 @@ public final class TNTTag extends InventoryUnifiedMinigame {
             }
             player.addPotionEffect(SPECTATOR_INVIS);
             player.addPotionEffect(SPECTATOR_SPEED);
+
+            if (player.getFoodLevel() < 20) {
+                player.setFoodLevel(20);
+            }
 
             this.who.sendActionBar("<gold>You are spectating. Leave with: <white>/event quit");
         }
