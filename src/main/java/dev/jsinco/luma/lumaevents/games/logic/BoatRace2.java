@@ -141,7 +141,9 @@ public final class BoatRace2 extends Minigame {
         for (EventPlayer participant : this.participants) {
             Player player = participant.getPlayer();
             if (player == null || player.isInsideVehicle() || !isInBoundingBox(player)) continue;
-            player.addPotionEffect(SPEED);
+            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+                player.addPotionEffect(SPEED);
+            });
         }
     }
 
