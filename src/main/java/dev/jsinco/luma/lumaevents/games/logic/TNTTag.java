@@ -12,6 +12,7 @@ import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.EditMeta;
 import dev.jsinco.luma.lumaevents.utility.Util;
+import dev.jsinco.lumaglowapi.colormanagers.ColorManager;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
@@ -154,6 +155,11 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         if (tntTagPlayer != null) {
             tntTagPlayer.removeEffects(false);
             this.tntTagPlayers.remove(player.getUuid());
+        }
+
+        Player bukkitPlayer = player.getPlayer();
+        if (bukkitPlayer != null && this.roundCountdownBar != null) {
+            this.roundCountdownBar.getBossBar().removeViewer(bukkitPlayer);
         }
         return super.removeParticipant(player);
     }

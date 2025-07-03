@@ -18,7 +18,6 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumaevents.obj.Sphere;
 import dev.jsinco.luma.lumaitems.particles.ParticleDisplay;
 import dev.jsinco.luma.lumaitems.particles.Particles;
-import dev.jsinco.lumaglowapi.LumaGlowAPI;
 import dev.jsinco.lumaglowapi.colormanagers.ColorManager;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import lombok.AllArgsConstructor;
@@ -54,7 +53,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
-import javax.inject.Named;
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,11 +90,11 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     @Override
     protected void handleStart() {
         // Split participants into 2 teams
-        Couple<ColorKit, ColorKit> colorKits = ColorKits.getRandomColorKits();
+        ColorKits colorKits = ColorKits.random();
         int middle = this.participants.size() / 2;
         this.paintballTeams = List.of(
-                new PaintballTeam(this.participants.subList(0, middle), colorKits.a(), def.getTeam1SpawnLocation(), def.getTeam1BedParts()),
-                new PaintballTeam(this.participants.subList(middle, this.participants.size()), colorKits.b(), def.getTeam2SpawnLocation(), def.getTeam2BedParts())
+                new PaintballTeam(this.participants.subList(0, middle), colorKits.getTeam1(), def.getTeam1SpawnLocation(), def.getTeam1BedParts()),
+                new PaintballTeam(this.participants.subList(middle, this.participants.size()), colorKits.getTeam2(), def.getTeam2SpawnLocation(), def.getTeam2BedParts())
         );
         this.scoreboard.addScorers(this.paintballTeams);
 
@@ -242,6 +241,20 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         super.handleParticipantJoin(player);
         player.teleportAsync(def.getSpawnLocation());
         return true;
+    }
+
+    @Override
+    public boolean removeParticipant(EventPlayer participant) {
+        this.paintballTeams.stream()
+                .filter(t -> t.isMember(participant))
+                .findFirst().ifPresent(team -> team.removeMember(participant));
+
+        Player player = participant.getPlayer();
+        if (player != null) {
+            ColorManager.updatePlayersColor(player);
+            if (this.countdownBossBar != null) this.countdownBossBar.getBossBar().removeViewer(player);
+        }
+        return super.removeParticipant(participant);
     }
 
     @EventHandler
@@ -489,6 +502,11 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             return scoreMap.keySet().stream().anyMatch(member -> member.getUuid().equals(player.getUniqueId()));
         }
 
+        public void removeMember(EventPlayer player) {
+            scoreMap.remove(player);
+            killMap.remove(player);
+        }
+
         public void addScore(int points, EventPlayer player) {
             if (!scoreMap.containsKey(player)) {
                 throw new IllegalArgumentException("Player is not a member of this team.");
@@ -516,7 +534,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     }
 
     @AllArgsConstructor
-    public enum ColorKits {
+    public enum ColorKit {
 
         RED(Material.RED_WOOL, Material.RED_BED, NamedTextColor.RED, "red_dye"),
         GREEN(Material.LIME_WOOL, Material.LIME_BED, NamedTextColor.GREEN, "lime_dye"),
@@ -534,32 +552,63 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         private final String model;
         private final NamedTextColor glowColor;
 
-        ColorKits(Material material, Material bed, NamedTextColor textColor, String model) {
+        ColorKit(Material material, Material bed, NamedTextColor textColor, String model) {
             this(material, bed, textColor, model, textColor);
-        }
-
-        public static Couple<ColorKit, ColorKit> getRandomColorKits() {
-            ColorKits[] values = ColorKits.values();
-            ColorKits team1 = Util.getRandom(values);
-            ColorKits team2;
-            do {
-                team2 = Util.getRandom(values);
-            } while (team1 == team2);
-            return Couple.of(ColorKit.of(team1.material, team1.bed, team1.textColor, team1.model, team1.glowColor),
-                    ColorKit.of(team2.material, team2.bed, team2.textColor, team2.model, team2.glowColor));
         }
     }
 
+    @Getter
     @AllArgsConstructor
-    public static class ColorKit {
-        private final Material material;
-        private final Material bed;
-        private final TextColor textColor;
-        private final String model;
-        private final NamedTextColor glowColor;
+    public static class ColorKits {
 
-        public static ColorKit of(Material material, Material bed, TextColor textColor, String model, NamedTextColor glowColor) {
-            return new ColorKit(material, bed, textColor, model, glowColor);
+        public static final ColorKits A = of(ColorKit.RED, ColorKit.BLUE);
+        public static final ColorKits B = of(ColorKit.GREEN, ColorKit.ORANGE);
+        public static final ColorKits C = of(ColorKit.PINK, ColorKit.LIGHT_BLUE);
+        public static final ColorKits D = of(ColorKit.PURPLE, ColorKit.RED);
+        public static final ColorKits E = of(ColorKit.MAGENTA, ColorKit.GREEN);
+        public static final ColorKits F = of(ColorKit.BLUE, ColorKit.ORANGE);
+        public static final ColorKits G = of(ColorKit.PINK, ColorKit.BLUE);
+        public static final ColorKits H = of(ColorKit.LIGHT_BLUE, ColorKit.PURPLE);
+        public static final ColorKits I = of(ColorKit.MAGENTA, ColorKit.RED);
+        public static final ColorKits J = of(ColorKit.GREEN, ColorKit.PINK);
+        public static final ColorKits K = of(ColorKit.ORANGE, ColorKit.LIGHT_BLUE);
+        public static final ColorKits L = of(ColorKit.BLUE, ColorKit.ORANGE);
+
+
+        private final ColorKit team1;
+        private final ColorKit team2;
+
+        public static ColorKits of(ColorKit team1, ColorKit team2) {
+            return new ColorKits(team1, team2);
+        }
+
+
+        private static final Map<String, ColorKits> COLOR_KITS_MAP = new HashMap<>();
+
+        static {
+            for (Field field : ColorKits.class.getDeclaredFields()) {
+                if (field.getType() == ColorKits.class) {
+                    try {
+                        ColorKits colorKits = (ColorKits) field.get(null);
+                        COLOR_KITS_MAP.put(field.getName(), colorKits);
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+
+        public static ColorKits fromName(String name) {
+            return COLOR_KITS_MAP.get(name.toUpperCase());
+        }
+
+        public static List<ColorKits> entries() {
+            return List.copyOf(COLOR_KITS_MAP.values());
+        }
+
+        public static ColorKits random() {
+            List<ColorKits> values = entries();
+            return values.get((int) (Math.random() * values.size()));
         }
     }
 }
