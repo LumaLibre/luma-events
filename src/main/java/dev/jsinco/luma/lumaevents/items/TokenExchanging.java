@@ -22,8 +22,10 @@ public class TokenExchanging {
             }
             give(player, type, 1);
         }
+        if (amountClone <= 0) {
+            return;
+        }
         Util.sendMsg(player, "You got <yellow>" + amountClone + "</yellow> " + TokenType.OPAL.customName + "(s)!");
-
     }
 
     public static void give(Player player, TokenType type, int amount) {

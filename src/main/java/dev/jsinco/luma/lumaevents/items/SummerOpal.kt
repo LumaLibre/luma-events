@@ -5,6 +5,8 @@ import dev.jsinco.luma.lumaitems.manager.CustomItemFunctions
 import dev.jsinco.luma.lumaitems.util.tiers.Tier
 import org.bukkit.Material
 import org.bukkit.enchantments.Enchantment
+import org.bukkit.entity.Player
+import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.inventory.ItemStack
 
 class SummerOpal : CustomItemFunctions() {
@@ -25,5 +27,9 @@ class SummerOpal : CustomItemFunctions() {
             .vanillaEnchants(Enchantment.UNBREAKING to 10)
             .persistentData("summer-opal-token")
             .buildPair()
+    }
+
+    override fun onPlaceBlock(player: Player, event: BlockPlaceEvent) {
+        event.isCancelled = true
     }
 }

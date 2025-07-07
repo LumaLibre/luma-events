@@ -98,6 +98,13 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }
+
+        try {
+            Bukkit.getScheduler().runTaskLater(EventMain.getInstance(), this::onPostStop, 3L);
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+        }
+
         unregisterEvents(this);
         extraListeners.stream()
                 .filter(Objects::nonNull)
@@ -106,16 +113,6 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
             unregisterEvents(this.inventoryTampering);
         }
         this.cancel();
-
-        try {
-            if (Bukkit.isPrimaryThread()) {
-                this.onPostStop();
-            } else {
-                Bukkit.getScheduler().runTask(EventMain.getInstance(), this::onPostStop);
-            }
-        } catch (Throwable throwable) {
-            throwable.printStackTrace();
-        }
 
         this.active = false;
         this.open = false; // Should be false by now anyway :P
@@ -246,11 +243,11 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         HandlerList.unregisterAll(listener);
     }
 
-    protected Location getGameDropOffLocation() {
+    public Location getGameDropOffLocation() {
         return EventMain.getOkaeriConfig().getGameDropOffLocation();
     }
 
-    protected void sendAudienceMessage(String m) {
+    public void sendAudienceMessage(String m) {
         if (this.audience == null) {
             return;
         }

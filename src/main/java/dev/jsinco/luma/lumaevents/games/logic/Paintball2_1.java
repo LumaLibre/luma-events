@@ -352,10 +352,10 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         Entity hitEntity = event.getHitEntity();
         Block hitBlock = event.getHitBlock();
 
-        if (hitEntity != null && boundingBox.contains(hitEntity) && hitEntity instanceof Player hitPlayer) {
+        if (hitEntity != null && this.boundingBox.contains(hitEntity) && hitEntity instanceof Player hitPlayer) {
             // Check if the hit entity is standing on a block painted by the other team
             Bukkit.getAsyncScheduler().runNow(EventMain.getInstance(), (task) -> handleProjectileHitPlayer(hitPlayer, shooter, paintballTeam));
-        } else if (hitBlock != null && boundingBox.contains(hitBlock.getLocation())) {
+        } else if (hitBlock != null && this.boundingBox.contains(hitBlock.getLocation())) {
             shooter.playSound(hitBlock.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
             Bukkit.getAsyncScheduler().runNow(EventMain.getInstance(), (task) -> handleProjectileHitBlock(hitBlock, paintballTeam, eventPlayer));
         }
@@ -414,11 +414,9 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         paintballTeam.addScore(1, shooter);
         scoreboard.addScore(paintballTeam, 1);
 
-        for (EventPlayer participant : this.participants) {
-            Player player = participant.getPlayer();
-            if (player != null) {
-                player.sendBlockChange(loc, paintballTeam.getBlockData());
-            }
+        List<Player> players = this.boundingBox.getPlayers();
+        for (Player player : players) {
+            player.sendBlockChange(loc, paintballTeam.getBlockData());
         }
     }
 
