@@ -49,7 +49,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-// TODO: Test
+
 public final class BoatRace2 extends Minigame {
 
     private static final String FINISH_LINE_IDENTIFIER = "finish";

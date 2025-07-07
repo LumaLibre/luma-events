@@ -1,6 +1,7 @@
 package dev.jsinco.luma.lumaevents.games.interfaces;
 
 import dev.jsinco.luma.lumaevents.EventMain;
+import dev.jsinco.luma.lumaevents.games.events.MinigamePreventDamageListener;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.events.MinigameExitPreventionListener;
 import dev.jsinco.luma.lumaevents.games.events.MinigamePreventInventoryTampering;
@@ -34,6 +35,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
     protected final List<EventPlayer> participants = new ArrayList<>();
     protected final List<Listener> extraListeners = new ArrayList<>();
     private final MinigamePreventInventoryTampering inventoryTampering;
+    private final MinigamePreventDamageListener preventDamage;
 
     private final String name;
     private final String description;
@@ -56,6 +58,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         this.async = async;
         this.extraListeners.add(new MinigameExitPreventionListener(this));
         this.inventoryTampering = new MinigamePreventInventoryTampering(this);
+        this.preventDamage = new MinigamePreventDamageListener(this);
         registerEvents(this.inventoryTampering);
     }
 
@@ -65,13 +68,13 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         this.duration = duration;
         this.tickInterval = tickInterval;
         this.async = async;
-        if (preventExit) {
-            this.extraListeners.add(new MinigameExitPreventionListener(this));
-        }
+        if (preventExit) this.extraListeners.add(new MinigameExitPreventionListener(this));
         this.inventoryTampering = preventInventoryTampering ? new MinigamePreventInventoryTampering(this) : null;
-        if (this.inventoryTampering != null) {
-            registerEvents(this.inventoryTampering);
-        }
+        this.preventDamage = new MinigamePreventDamageListener(this);
+
+
+        if (this.inventoryTampering != null) registerEvents(this.inventoryTampering);
+        registerEvents(this.preventDamage);
     }
 
 
@@ -111,6 +114,9 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
                 .forEach(this::unregisterEvents);
         if (this.inventoryTampering != null) {
             unregisterEvents(this.inventoryTampering);
+        }
+        if (this.preventDamage != null) {
+            unregisterEvents(this.preventDamage);
         }
         this.cancel();
 

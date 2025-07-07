@@ -12,7 +12,6 @@ import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.EditMeta;
 import dev.jsinco.luma.lumaevents.utility.Util;
-import dev.jsinco.lumaglowapi.colormanagers.ColorManager;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
@@ -26,7 +25,6 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.ItemStack;
@@ -42,7 +40,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
 
-// TODO: Test
+
 public final class TNTTag extends InventoryUnifiedMinigame {
 
     private static final int ROUND_DURATION = 90;
@@ -305,19 +303,6 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         this.swapRole(tagger.getWho(), () -> new Runner(tagger.getWho(), this.scoreboard));
         this.swapRole(runner.getWho(), () -> new Tagger(runner.getWho()));
         this.sendAudienceMessage("<red>" + bukkitVictim.getName() + " is now it!");
-    }
-
-    @EventHandler
-    public void onPlayerDamaged(EntityDamageEvent event) {
-        this.ensureNotIllegal();
-        if (!(event.getEntity() instanceof Player bukkitPlayer)) {
-            return;
-        }
-
-        TNTTagPlayer victim = this.getTntTagPlayer(bukkitPlayer);
-        if (victim != null && isInBoundingBox(bukkitPlayer)) {
-            event.setDamage(0.0);
-        }
     }
 
     @EventHandler
