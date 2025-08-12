@@ -15,7 +15,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private final Location spawnLocation;
 
     public TNTRun(CylindricalMinigameDefinition def) {
-        super("TNT Run", "Don't fall down!", 480000, 20, true, true);
+        super("TNT Run", "Don't fall down!", 480000, 20, true, true, false);
         CylinderRegion r = def.getRegion();
         this.boundingBox = CylinderBoundingBox.of(r.getCenter(), r.getRadius(), r.getHeight());
         this.spawnLocation = def.getSpawnLocation();

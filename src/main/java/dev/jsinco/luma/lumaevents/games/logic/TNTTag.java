@@ -56,7 +56,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     private int roundCount = 0;
 
     public TNTTag(MinigameDefinition def) {
-        super("TNT Tag", "Don't explode!", (ROUND_DURATION * MAX_ROUNDS * 2000) /* internally double the duration for ticks */, TICK_INTERVAL, false, true);
+        super("TNT Tag", "Don't explode!", (ROUND_DURATION * MAX_ROUNDS * 2000) /* internally double the duration for ticks */, TICK_INTERVAL, false, true, true);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.tntTagPlayers = new HashMap<>();
         this.spawnPoint = def.getSpawnLocation().toCenterLocation();
@@ -306,6 +306,18 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     }
 
     @EventHandler
+    public void onPlayerDamaged(EntityDamageByEntityEvent event) {
+        this.ensureNotIllegal();
+
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+        if (isInBoundingBox(player)) {
+            event.setDamage(0.0);
+        }
+    }
+
+    @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
         this.ensureNotIllegal();
 
@@ -354,6 +366,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         public void addEffects() {
             Player player = getPlayer();
             if (player != null) {
+                player.clearActivePotionEffects();
                 player.addPotionEffect(RUNNER_SPEED);
                 player.addPotionEffect(RUNNER_GLOW);
                 if (player.getFoodLevel() < 20) {
@@ -417,6 +430,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
                 return;
             }
 
+            player.clearActivePotionEffects();
             player.addPotionEffect(TAGGER_SPEED);
             player.addPotionEffect(TAGGER_DOLPHIN);
 

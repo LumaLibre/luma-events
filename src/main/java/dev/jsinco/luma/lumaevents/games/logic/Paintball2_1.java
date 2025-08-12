@@ -46,6 +46,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Snowball;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
@@ -76,7 +77,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     private List<PaintballTeam> paintballTeams;
 
     public Paintball2_1(Paintball2_1Definition def) {
-        super("Paintball 2.1", "Cover as much area as possible.", 240000L, 20, true, true);
+        super("Paintball 2.1", "Cover as much area as possible.", 240000L, 20, true, true, false);
         this.def = def;
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.paintedLocations = new ConcurrentHashMap<>();
@@ -227,6 +228,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 Player player = member.getPlayer();
                 if (player != null) {
                     Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+                        player.clearActivePotionEffects();
                         player.addPotionEffect(REGEN);
                         player.addPotionEffect(GLOW);
                     });

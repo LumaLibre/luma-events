@@ -24,16 +24,18 @@ public class EventPlayer implements Serializable, Scorer {
 
     private final UUID uuid;
     private final Map<MinigameConstant, Integer> scores;
+    private boolean claimedCharm;
 
 
     // Initial creation
     public EventPlayer(UUID uuid) {
-        this(uuid, new HashMap<>());
+        this(uuid, new HashMap<>(), false);
     }
 
-    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores) {
+    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores, boolean claimedCharm) {
         this.uuid = uuid;
         this.scores = scores;
+        this.claimedCharm = claimedCharm;
     }
 
 

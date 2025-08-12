@@ -62,7 +62,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         registerEvents(this.inventoryTampering);
     }
 
-    protected Minigame(String name, String description, long duration, long tickInterval, boolean async, boolean preventExit, boolean preventInventoryTampering) {
+    protected Minigame(String name, String description, long duration, long tickInterval, boolean async, boolean preventExit, boolean preventInventoryTampering, boolean preventDamage) {
         this.name = name;
         this.description = description;
         this.duration = duration;
@@ -70,11 +70,11 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         this.async = async;
         if (preventExit) this.extraListeners.add(new MinigameExitPreventionListener(this));
         this.inventoryTampering = preventInventoryTampering ? new MinigamePreventInventoryTampering(this) : null;
-        this.preventDamage = new MinigamePreventDamageListener(this);
+        this.preventDamage = preventDamage ? new MinigamePreventDamageListener(this) : null;
 
 
         if (this.inventoryTampering != null) registerEvents(this.inventoryTampering);
-        registerEvents(this.preventDamage);
+        if (this.preventDamage != null) registerEvents(this.preventDamage);
     }
 
 
@@ -96,6 +96,13 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         if (!this.active) {
             return false;
         }
+        if (this.inventoryTampering != null) {
+            unregisterEvents(this.inventoryTampering);
+        }
+        if (this.preventDamage != null) {
+            unregisterEvents(this.preventDamage);
+        }
+
         try {
             this.handleStop();
         } catch (Throwable throwable) {
@@ -112,12 +119,6 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         extraListeners.stream()
                 .filter(Objects::nonNull)
                 .forEach(this::unregisterEvents);
-        if (this.inventoryTampering != null) {
-            unregisterEvents(this.inventoryTampering);
-        }
-        if (this.preventDamage != null) {
-            unregisterEvents(this.preventDamage);
-        }
         this.cancel();
 
         this.active = false;
@@ -180,6 +181,12 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
                         if (this.inventoryTampering != null) {
                             unregisterEvents(this.inventoryTampering);
                         }
+                        if (this.preventDamage != null) {
+                            unregisterEvents(this.preventDamage);
+                        }
+                        extraListeners.stream()
+                                .filter(Objects::nonNull)
+                                .forEach(this::unregisterEvents);
                         Util.broadcast("Not enough players joined to start " + this.name);
                         return;
                     }

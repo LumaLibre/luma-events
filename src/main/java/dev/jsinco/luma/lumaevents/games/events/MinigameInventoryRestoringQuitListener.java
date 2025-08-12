@@ -30,7 +30,7 @@ public class MinigameInventoryRestoringQuitListener implements Listener {
         }
         EventPlayer eplayer = EventPlayerManager.getByUUID(player.getUniqueId());
         minigame.removeParticipant(eplayer);
-        minigame.sendAudienceMessage( eplayer.getName() + " has left the minigame.");
+        //minigame.sendAudienceMessage( eplayer.getName() + " has left the minigame.");
 
         Location gameDropOffLocation = minigame.getGameDropOffLocation();
         if (gameDropOffLocation != null) {

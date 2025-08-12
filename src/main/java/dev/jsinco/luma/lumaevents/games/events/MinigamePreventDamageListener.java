@@ -20,6 +20,9 @@ public class MinigamePreventDamageListener implements Listener {
     public void onPlayerDamaged(EntityDamageEvent event) {
         minigame.ensureNotIllegal();
 
+        if (!minigame.isOpen()) {
+            return;
+        }
         if (event.getEntity() instanceof Player player && minigame.getBoundingBox().contains(player)) {
             event.setDamage(0.0);
         }

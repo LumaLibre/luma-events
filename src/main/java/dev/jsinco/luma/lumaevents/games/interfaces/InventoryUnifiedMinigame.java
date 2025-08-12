@@ -1,15 +1,12 @@
 package dev.jsinco.luma.lumaevents.games.interfaces;
 
 import dev.jsinco.luma.lumacore.utility.Logging;
-import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.games.events.MinigameInventoryRestoringQuitListener;
 import dev.jsinco.luma.lumaevents.games.obj.InventorySnapshot;
 import dev.jsinco.luma.lumaevents.games.InventorySnapshotManager;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.checkerframework.common.returnsreceiver.qual.This;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class InventoryUnifiedMinigame extends Minigame {
@@ -21,8 +18,8 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
         this.addExtraListener(quitListener);
     }
 
-    protected InventoryUnifiedMinigame(String name, String description, long duration, long tickInterval, boolean async, boolean preventExit) {
-        super(name, description, duration, tickInterval, async, preventExit, true);
+    protected InventoryUnifiedMinigame(String name, String description, long duration, long tickInterval, boolean async, boolean preventExit, boolean preventDamage) {
+        super(name, description, duration, tickInterval, async, preventExit, true, preventDamage);
         this.addExtraListener(quitListener);
     }
 
