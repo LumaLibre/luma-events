@@ -8,6 +8,7 @@ import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.MinigameManager;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.items.RefinedSummerOpal;
+import dev.jsinco.luma.lumaevents.items.StartMinigameItem;
 import dev.jsinco.luma.lumaevents.items.SummerOpal;
 import dev.jsinco.luma.lumaevents.items.LocalCustomItemManager;
 import org.bukkit.Bukkit;
@@ -36,6 +37,7 @@ public final class EventMain extends JavaPlugin {
 
         LocalCustomItemManager.addCustomItem(new SummerOpal());
         LocalCustomItemManager.addCustomItem(new RefinedSummerOpal());
+        LocalCustomItemManager.addCustomItem(new StartMinigameItem());
         LocalCustomItemManager.registerCustomItems();
     }
 
