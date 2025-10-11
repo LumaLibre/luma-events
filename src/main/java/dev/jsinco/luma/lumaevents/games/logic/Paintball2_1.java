@@ -46,7 +46,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Snowball;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
@@ -247,9 +246,11 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
     @Override
     public boolean removeParticipant(EventPlayer participant) {
-        this.paintballTeams.stream()
-                .filter(t -> t.isMember(participant))
-                .findFirst().ifPresent(team -> team.removeMember(participant));
+        if (this.paintballTeams != null) {
+            this.paintballTeams.stream()
+                    .filter(t -> t.isMember(participant))
+                    .findFirst().ifPresent(team -> team.removeMember(participant));
+        }
 
         Player player = participant.getPlayer();
         if (player != null) {

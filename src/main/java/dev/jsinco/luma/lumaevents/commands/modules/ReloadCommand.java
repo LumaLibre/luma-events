@@ -8,6 +8,7 @@ import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 import java.util.List;
 
@@ -24,6 +25,9 @@ public class ReloadCommand implements CommandModule {
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
         EventMain.getOkaeriConfig().load(true);
         Util.sendMsg(commandSender, "Reloaded config");
+        Player player = (Player) commandSender;
+
+        player.free
         return true;
     }
 
