@@ -1,10 +1,12 @@
 package dev.jsinco.luma.lumaevents.obj;
 
 import org.bukkit.Location;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public interface MinigameBoundingBox {
     boolean contains(Location location);
@@ -16,4 +18,8 @@ public interface MinigameBoundingBox {
     List<Player> getPlayers();
 
     <T extends Entity> List<T> getEntities(Class<T> clazz);
+
+    Location getCenterLocation();
+
+    void operate(Consumer<Block> consumer);
 }

@@ -25,9 +25,6 @@ public class ReloadCommand implements CommandModule {
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
         EventMain.getOkaeriConfig().load(true);
         Util.sendMsg(commandSender, "Reloaded config");
-        Player player = (Player) commandSender;
-
-        player.free
         return true;
     }
 

@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 @Getter
 @Setter
@@ -52,6 +53,12 @@ public class CylinderBoundingBox implements MinigameBoundingBox {
         return blockList;
     }
 
+    @Override
+    public void operate(Consumer<Block> consumer) {
+        for (int i = 0; i < height; i++) {
+            consumer.accept(getLayer(i).center.getBlock());
+        }
+    }
 
     public double getVolume() {
         return Math.PI * Math.pow(radius, 2) * height;
@@ -105,6 +112,11 @@ public class CylinderBoundingBox implements MinigameBoundingBox {
             }
         }
         return entities;
+    }
+
+    @Override
+    public Location getCenterLocation() {
+        return center;
     }
 
     public static CylinderBoundingBox of(Location center, int radius, int height) {

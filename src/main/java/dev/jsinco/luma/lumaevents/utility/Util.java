@@ -352,6 +352,10 @@ public final class Util {
         return (int) (millis / 1000);
     }
 
+    public static int ticksToSecs(long ticks) {
+        return Math.toIntExact(ticks / 20);
+    }
+
     public static int getInt(String str, int def) {
         try {
             return Integer.parseInt(str);

@@ -17,6 +17,7 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 @Getter
 @Setter
@@ -91,6 +92,13 @@ public class EventPlayer implements Serializable, Scorer {
     @Nullable
     public Player getPlayer() {
         return Bukkit.getPlayer(this.uuid);
+    }
+
+    public void operatePlayer(Consumer<Player> consumer) {
+        Player player = this.getPlayer();
+        if (player != null) {
+            consumer.accept(player);
+        }
     }
 
     public boolean isOnline() {

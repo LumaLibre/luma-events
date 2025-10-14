@@ -24,7 +24,7 @@ repositories {
 
 dependencies {
     compileOnly("dev.jsinco.luma.lumacore:LumaCore:776c4e4")
-    compileOnly("dev.jsinco.luma.lumaitems:LumaItems:4215be2")
+    compileOnly("dev.jsinco.luma.lumaitems:LumaItems:dec30c3")
     compileOnly("dev.jsinco.lumaglowapi:LumaGlowAPI:3cb670d")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("com.nuclyon.technicallycoded.inventoryrollback:InventoryRollbackPlus:1.7.3")

@@ -14,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Consumer;
 
 @ToString
 @Getter
@@ -44,6 +45,16 @@ public class WorldTiedBoundingBox extends BoundingBox implements MinigameBoundin
         return bL;
     }
 
+    public void operate(Consumer<Block> consumer) {
+        for (int x = (int) this.getMinX(); x <= (int) this.getMaxX(); ++x) {
+            for (int y = (int) this.getMinY(); y <= (int) this.getMaxY(); ++y) {
+                for (int z = (int) this.getMinZ(); z <= (int) this.getMaxZ(); ++z) {
+                    consumer.accept(this.world.getBlockAt(x, y, z));
+                }
+            }
+        }
+    }
+
     public Location getRandomLocation() {
         final Random rand = new Random();
         final double x = rand.nextDouble(Math.abs(this.getMaxX() - this.getMinX()) + 1) + this.getMinX();
@@ -57,6 +68,7 @@ public class WorldTiedBoundingBox extends BoundingBox implements MinigameBoundin
                 .getY() <= this.getMaxY() + marge && loc.getZ() >= this.getMinZ() - marge && loc.getZ() <= this.getMaxZ() + marge;
     }
 
+    @Override
     public Location getCenterLocation() {
         return new Location(this.getWorld(), this.getCenterX(), this.getCenterY(), this.getCenterZ());
     }
