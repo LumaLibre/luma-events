@@ -3,11 +3,13 @@ package dev.jsinco.luma.lumaevents.games.constants;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.Config;
 import dev.jsinco.luma.lumaevents.configurable.sectors.BoatRace2Definition;
+import dev.jsinco.luma.lumaevents.configurable.sectors.ManorMinigameDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.TowersDefinition;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.games.logic.BoatRace2;
+import dev.jsinco.luma.lumaevents.games.logic.Manor;
 import dev.jsinco.luma.lumaevents.games.logic.Paintball2_1;
 import dev.jsinco.luma.lumaevents.games.logic.TNTTag;
 import dev.jsinco.luma.lumaevents.games.logic.Towers;
@@ -26,7 +28,8 @@ public enum MinigameConstant {
     PAINTBALL2_1(Paintball2_1.class, "paintball2.1", "paintball2_1"),
     BOATRACE2(BoatRace2.class, "boatrace2", "boatrace"),
     TNTTAG(TNTTag.class, "tnttag"),
-    TOWERS(Towers.class, "towers")
+    TOWERS(Towers.class, "towers"),
+    MANOR(Manor.class, "manor")
     ;
 
     private final Class<? extends Minigame> minigameClass;
@@ -46,6 +49,7 @@ public enum MinigameConstant {
             case BOATRACE2 -> (Map<String, T>) cfg.getBoatRaceMaps();
             case TNTTAG -> (Map<String, T>) cfg.getTntTagMaps();
             case TOWERS -> (Map<String, T>) cfg.getTowersMaps();
+            case MANOR ->  (Map<String, T>) cfg.getManorMaps();
         };
     }
 
@@ -60,6 +64,7 @@ public enum MinigameConstant {
             case BoatRace2Definition boatRace2Definition -> () -> new BoatRace2(boatRace2Definition);
             case MinigameDefinition minigameDefinition -> () -> new TNTTag(minigameDefinition);
             case TowersDefinition towersDefinition -> () -> new Towers(towersDefinition);
+            case ManorMinigameDefinition manorMinigameDefinition -> () -> new Manor(manorMinigameDefinition);
             default -> throw new IllegalStateException("Unexpected value: " + definition);
         };
     }

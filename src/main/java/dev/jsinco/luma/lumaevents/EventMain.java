@@ -38,6 +38,11 @@ public final class EventMain extends JavaPlugin {
 
         MinigameManager.getInstance().runTaskTimerAsynchronously(this, 0, 600); // 30 seconds
 
+        LocalCustomItemManager.addCustomItem(new SummerOpal());
+        LocalCustomItemManager.addCustomItem(new RefinedSummerOpal());
+        LocalCustomItemManager.addCustomItem(new StartMinigameItem());
+        LocalCustomItemManager.registerCustomItems();
+
 //        LocalCustomItemManager.addCustomItem(new TowersKnockbackStickItem());
 //        LocalCustomItemManager.addCustomItem(new TowersFireballItem());
 //        LocalCustomItemManager.addCustomItem(new TowersSatchelItem());

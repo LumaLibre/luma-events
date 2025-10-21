@@ -87,6 +87,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     @Override
     protected void onRunnable(long timeLeft) {
         if (this.towersPlayers.getActivePlayers().size() <= 1) {
+            //this.sendAudienceMessage("minigame ended early");
             Bukkit.broadcastMessage("minigame ended early");
             this.stop();
             return;

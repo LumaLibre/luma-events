@@ -65,7 +65,6 @@ public final class BoatRace2 extends Minigame {
     private final BoatRace2TokenFormula tokenFormula;
 
 
-    private CountdownBossBar countdownBossBar;
     private int basePoints;
 
     private List<BoatRacePlayer> sortedRacers;
@@ -118,14 +117,6 @@ public final class BoatRace2 extends Minigame {
                 Util.color("<green>Go!")
         ));
 
-        // Start countdown
-        this.countdownBossBar = CountdownBossBar.builder()
-                .audience(Audience.audience()) // Empty audience
-                .miliseconds(this.getDuration())
-                .color(BossBar.Color.WHITE)
-                .title(":)")
-                .build();
-        this.countdownBossBar.start();
     }
 
     @Override
@@ -136,7 +127,7 @@ public final class BoatRace2 extends Minigame {
             if (racer.isFinished()) continue;
 
             EventPlayer player = racer.getEventPlayer();
-            player.sendActionBar("<b><gold>Position: #" + this.position(racer) + " <gray>(" + this.countdownBossBar.secondsRemaining() + "s left)");
+            player.sendActionBar("<b><gold>Position: #" + this.position(racer) + " <gray>(" + Util.millisToSecs(timeLeft) + "s left)");
         }
 
         for (EventPlayer participant : this.participants) {
@@ -161,9 +152,6 @@ public final class BoatRace2 extends Minigame {
 
         this.cleanBoats();
 
-        if (this.countdownBossBar != null) {
-            this.countdownBossBar.stop(false);
-        }
         scoreboard.handleGameEnd(this.audience, () -> {
             this.participants.stream().filter(player -> player.getPlayer() != null
             ).forEach(p -> p.getPlayer().teleportAsync(this.spawnLocation));
@@ -323,9 +311,6 @@ public final class BoatRace2 extends Minigame {
 
             if (racer.getLap() >= this.maxLaps) {
                 Player bukkitPlayer = event.getPlayer();
-                if (this.countdownBossBar != null) {
-                    this.countdownBossBar.getBossBar().removeViewer(bukkitPlayer);
-                }
                 eventPlayer.sendTitle("<green>Finished!", "<gray>You placed <gold>#" + position);
                 Util.sendMsg(this.audience, "<gold>"+bukkitPlayer.getName()+"</gold>"+ " has finished in <gold>#" + position + "</gold> place!");
                 racer.finish(position);

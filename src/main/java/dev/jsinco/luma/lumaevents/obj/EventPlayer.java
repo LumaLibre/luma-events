@@ -5,6 +5,7 @@ import dev.jsinco.luma.lumaevents.games.interfaces.Scorer;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
+import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
@@ -99,6 +100,22 @@ public class EventPlayer implements Serializable, Scorer {
         if (player != null) {
             consumer.accept(player);
         }
+    }
+
+    public void addBossBar(BossBar bossBar) {
+        Player player = this.getPlayer();
+        if (player == null) {
+            return;
+        }
+        bossBar.addViewer(player);
+    }
+
+    public void removeBossBar(BossBar bossBar) {
+        Player player = this.getPlayer();
+        if (player == null) {
+            return;
+        }
+        bossBar.removeViewer(player);
     }
 
     public boolean isOnline() {

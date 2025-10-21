@@ -7,5 +7,6 @@ depend:
   - LumaCore
   - LumaItems
   - InventoryRollbackPlus
+  - ProtocolLib
 softdepend:
   - PlaceholderAPI

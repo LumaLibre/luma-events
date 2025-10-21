@@ -1,6 +1,7 @@
 package dev.jsinco.luma.lumaevents.configurable;
 
 import dev.jsinco.luma.lumaevents.configurable.sectors.BoatRace2Definition;
+import dev.jsinco.luma.lumaevents.configurable.sectors.ManorMinigameDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.TowersDefinition;
@@ -46,8 +47,14 @@ public class Config extends OkaeriConfig {
             "default", new BoatRace2Definition()
     );
 
+    @Comment("Minigame definition for 'Towers'")
     private Map<String, TowersDefinition> towersMaps = Map.of(
             "default", new TowersDefinition()
+    );
+
+    @Comment("Minigame definition for 'Manor'")
+    private Map<String, ManorMinigameDefinition> manorMaps = Map.of(
+            "default", new ManorMinigameDefinition()
     );
 }
 

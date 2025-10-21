@@ -1,5 +1,7 @@
 package dev.jsinco.luma.lumaevents.games.interfaces;
 
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.events.PacketListener;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.games.events.MinigamePreventDamageListener;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
@@ -23,6 +25,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
@@ -33,6 +36,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
 
     protected static final Random RANDOM = Util.RANDOM;
 
+
     protected final List<EventPlayer> participants = new ArrayList<>();
     protected final List<Listener> extraListeners = new ArrayList<>();
     private final MinigamePreventInventoryTampering inventoryTampering;
@@ -40,7 +44,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
 
     private final String name;
     private final String description;
-    private final long duration;
+    private long duration;
     private final long tickInterval;
     private final boolean async;
 
@@ -120,6 +124,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         extraListeners.stream()
                 .filter(Objects::nonNull)
                 .forEach(this::unregisterEvents);
+        packetListeners().forEach(packetListener -> ProtocolLibrary.getProtocolManager().removePacketListener(packetListener));
         this.cancel();
 
         this.active = false;
@@ -185,9 +190,11 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
                         if (this.preventDamage != null) {
                             unregisterEvents(this.preventDamage);
                         }
+                        // TODO: remove this:
                         extraListeners.stream()
                                 .filter(Objects::nonNull)
                                 .forEach(this::unregisterEvents);
+                        packetListeners().forEach(packetListener -> ProtocolLibrary.getProtocolManager().removePacketListener(packetListener));
                         Util.broadcast("Not enough players joined to start " + this.name);
                         return;
                     }
@@ -201,6 +208,8 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
                     extraListeners.stream()
                             .filter(Objects::nonNull)
                             .forEach(this::registerEvents);
+
+                    packetListeners().forEach(packetListener -> ProtocolLibrary.getProtocolManager().addPacketListener(packetListener));
 
                     try {
                         this.handleStart();
@@ -317,6 +326,10 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
     protected int minimumParticipants() {
         // This method can be overridden to specify the minimum number of participants required to start the minigame
         return 1; // Default is 1 participant
+    }
+
+    protected Collection<PacketListener> packetListeners() {
+        return List.of();
     }
 
     // Minigame starts, returns true if successful

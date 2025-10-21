@@ -53,15 +53,16 @@ public class CountdownBossBar extends BukkitRunnable {
     }
 
 
-    public void start() {
+    public CountdownBossBar start() {
         if (EventMain.STOPPING) {
             if (this.callback != null) this.callback.run();
             Logging.errorLog("Cannot start CountdownBossBar, the server is stopping. This method shouldn't be called at this time.");
-            return;
+            return this;
         }
         bossBar.addViewer(audience);
         activeCountdowns.add(this);
         this.runTaskTimerAsynchronously(EventMain.getInstance(), 0, 2);
+        return this;
     }
 
 
