@@ -25,50 +25,54 @@ import java.util.List;
 public class MinigameStartCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
-        if (strings.length == 0) {
-            return false;
-        }
+       try {
+           if (strings.length == 0) {
+               return false;
+           }
 
-        MinigameConstant minigame = MinigameConstant.fromAlias(strings[0]);
-        OkaeriConfig definition;
-
-
-        if (minigame == null) {
-            Util.sendMsg(commandSender, "Invalid minigame");
-            return false;
-        }
+           MinigameConstant minigame = MinigameConstant.fromAlias(strings[0]);
+           OkaeriConfig definition;
 
 
-        int seconds = 90;
-        if (strings.length >= 2) {
-            try {
-                seconds = Integer.parseInt(strings[1]);
-            } catch (NumberFormatException e) {
-                Util.sendMsg(commandSender, "Invalid number of seconds");
-                return false;
-            }
-        }
+           if (minigame == null) {
+               Util.sendMsg(commandSender, "Invalid minigame");
+               return false;
+           }
 
-        if (strings.length >= 3) {
-            definition = minigame.getDefinitions().get(strings[2]);
-            if (definition == null) {
-                Util.sendMsg(commandSender, "Invalid minigame definition: " + strings[2]);
-                return false;
-            }
-        } else {
-            definition = Util.getRandom(minigame.getDefinitions().values());
-        }
 
-        if (MinigameManager.getInstance().tryNewMinigameSafely(minigame, definition, true, seconds)){
-            Util.sendMsg(commandSender, "Minigame started");
-        } else {
-            Util.sendMsg(commandSender, "Failed to start minigame. Is there another minigame active?");
-        }
+           int seconds = 90;
+           if (strings.length >= 2) {
+               try {
+                   seconds = Integer.parseInt(strings[1]);
+               } catch (NumberFormatException e) {
+                   Util.sendMsg(commandSender, "Invalid number of seconds");
+                   return false;
+               }
+           }
+
+           if (strings.length >= 3) {
+               definition = minigame.getDefinitions().get(strings[2]);
+               if (definition == null) {
+                   Util.sendMsg(commandSender, "Invalid minigame definition: " + strings[2]);
+                   return false;
+               }
+           } else {
+               definition = Util.getRandom(minigame.getDefinitions().values());
+           }
+
+           if (MinigameManager.getInstance().tryNewMinigameSafely(minigame, definition, true, seconds)){
+               Util.sendMsg(commandSender, "Minigame started");
+           } else {
+               Util.sendMsg(commandSender, "Failed to start minigame. Is there another minigame active?");
+           }
+       } catch (Throwable t) {
+           t.printStackTrace();
+       }
         return true;
     }
 
     @Override
     public List<String> tabComplete(EventMain eventMain, CommandSender commandSender, String[] strings) {
-        return List.of("paintball2.1", "tnttag", "boatrace2");
+        return List.of("paintball2.1", "tnttag", "boatrace2", "towers");
     }
 }

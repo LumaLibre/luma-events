@@ -31,7 +31,7 @@ dependencies {
     compileOnly("com.github.Zrips:jobs:v4.17.2")
 
 
-    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
     implementation("eu.okaeri:okaeri-configs-yaml-bukkit:5.0.5")
     implementation("eu.okaeri:okaeri-configs-serdes-bukkit:5.0.5")
 }

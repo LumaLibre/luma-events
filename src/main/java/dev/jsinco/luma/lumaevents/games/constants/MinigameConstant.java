@@ -5,10 +5,12 @@ import dev.jsinco.luma.lumaevents.configurable.Config;
 import dev.jsinco.luma.lumaevents.configurable.sectors.BoatRace2Definition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition;
+import dev.jsinco.luma.lumaevents.configurable.sectors.TowersDefinition;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.games.logic.BoatRace2;
 import dev.jsinco.luma.lumaevents.games.logic.Paintball2_1;
 import dev.jsinco.luma.lumaevents.games.logic.TNTTag;
+import dev.jsinco.luma.lumaevents.games.logic.Towers;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import eu.okaeri.configs.OkaeriConfig;
 import lombok.Getter;
@@ -23,7 +25,9 @@ public enum MinigameConstant {
     // This enum should only contain real minigames!
     PAINTBALL2_1(Paintball2_1.class, "paintball2.1", "paintball2_1"),
     BOATRACE2(BoatRace2.class, "boatrace2", "boatrace"),
-    TNTTAG(TNTTag.class, "tnttag");
+    TNTTAG(TNTTag.class, "tnttag"),
+    TOWERS(Towers.class, "towers")
+    ;
 
     private final Class<? extends Minigame> minigameClass;
     private final String[] aliases;
@@ -41,6 +45,7 @@ public enum MinigameConstant {
             case PAINTBALL2_1 -> (Map<String, T>) cfg.getPaintballMaps();
             case BOATRACE2 -> (Map<String, T>) cfg.getBoatRaceMaps();
             case TNTTAG -> (Map<String, T>) cfg.getTntTagMaps();
+            case TOWERS -> (Map<String, T>) cfg.getTowersMaps();
         };
     }
 
@@ -54,6 +59,7 @@ public enum MinigameConstant {
             case Paintball2_1Definition paintball21Definition -> () -> new Paintball2_1(paintball21Definition);
             case BoatRace2Definition boatRace2Definition -> () -> new BoatRace2(boatRace2Definition);
             case MinigameDefinition minigameDefinition -> () -> new TNTTag(minigameDefinition);
+            case TowersDefinition towersDefinition -> () -> new Towers(towersDefinition);
             default -> throw new IllegalStateException("Unexpected value: " + definition);
         };
     }

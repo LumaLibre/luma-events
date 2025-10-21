@@ -39,6 +39,10 @@ public final class Executors {
         return Bukkit.getScheduler().runTaskLater(instance, runnable, delay);
     }
 
+    public static BukkitTask repeatingSync(long period, Runnable runnable) {
+        return Bukkit.getScheduler().runTaskTimer(instance, runnable, 0, period);
+    }
+
     public static BukkitTask sync(Runnable runnable) {
         return Bukkit.getScheduler().runTask(instance, runnable);
     }

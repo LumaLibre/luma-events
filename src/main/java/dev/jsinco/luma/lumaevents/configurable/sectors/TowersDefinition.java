@@ -7,9 +7,10 @@ import org.bukkit.Location;
 
 @Getter
 @Setter
-public class TowersMinigameDefinition extends OkaeriConfig {
+public class TowersDefinition extends OkaeriConfig {
 
     private Location spawnLocation;
     private Region region = new Region();
     private Region outerRegion = new Region();
+    private TowersItems towersItems = new TowersItems();
 }

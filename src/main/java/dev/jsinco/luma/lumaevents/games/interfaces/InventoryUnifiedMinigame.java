@@ -23,6 +23,11 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
         this.addExtraListener(quitListener);
     }
 
+    protected InventoryUnifiedMinigame(String name, String description, long duration, long tickInterval, boolean async, boolean preventExit, boolean preventInvTampering, boolean preventDamage) {
+        super(name, description, duration, tickInterval, async, preventExit, preventInvTampering, preventDamage);
+        this.addExtraListener(quitListener);
+    }
+
     @Override
     protected void onPreStart() {
         for (EventPlayer participant : this.participants) {

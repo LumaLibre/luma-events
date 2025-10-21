@@ -3,6 +3,7 @@ package dev.jsinco.luma.lumaevents.configurable;
 import dev.jsinco.luma.lumaevents.configurable.sectors.BoatRace2Definition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition;
+import dev.jsinco.luma.lumaevents.configurable.sectors.TowersDefinition;
 import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.annotation.Comment;
 import lombok.Getter;
@@ -43,6 +44,10 @@ public class Config extends OkaeriConfig {
     @Comment("Minigame definition for 'Boatrace 2'")
     private Map<String, BoatRace2Definition> boatRaceMaps = Map.of(
             "default", new BoatRace2Definition()
+    );
+
+    private Map<String, TowersDefinition> towersMaps = Map.of(
+            "default", new TowersDefinition()
     );
 }
 

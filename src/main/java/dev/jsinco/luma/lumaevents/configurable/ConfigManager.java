@@ -29,6 +29,7 @@ public class ConfigManager {
 
             it.withSerdesPack(registry -> {
                 registry.register(new LocationTransformer());
+                registry.register(new MaterialCount.Transformer());
             });
             it.saveDefaults();
             it.load(true);

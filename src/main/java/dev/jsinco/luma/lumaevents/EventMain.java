@@ -11,12 +11,6 @@ import dev.jsinco.luma.lumaevents.items.RefinedSummerOpal;
 import dev.jsinco.luma.lumaevents.items.StartMinigameItem;
 import dev.jsinco.luma.lumaevents.items.SummerOpal;
 import dev.jsinco.luma.lumaevents.items.LocalCustomItemManager;
-import dev.jsinco.luma.lumaevents.items.TowersFireballItem;
-import dev.jsinco.luma.lumaevents.items.TowersKnockbackStickItem;
-import dev.jsinco.luma.lumaevents.items.TowersNearSighterItem;
-import dev.jsinco.luma.lumaevents.items.TowersProjectileResistantItem;
-import dev.jsinco.luma.lumaevents.items.TowersSatchelItem;
-import dev.jsinco.luma.lumaevents.items.TowersThornBootsItem;
 import dev.jsinco.luma.lumaitems.api.LumaItemsAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -44,12 +38,12 @@ public final class EventMain extends JavaPlugin {
 
         MinigameManager.getInstance().runTaskTimerAsynchronously(this, 0, 600); // 30 seconds
 
-        LocalCustomItemManager.addCustomItem(new TowersKnockbackStickItem());
-        LocalCustomItemManager.addCustomItem(new TowersFireballItem());
-        LocalCustomItemManager.addCustomItem(new TowersSatchelItem());
-        LocalCustomItemManager.addCustomItem(new TowersNearSighterItem());
-        LocalCustomItemManager.addCustomItem(new TowersProjectileResistantItem());
-        LocalCustomItemManager.addCustomItem(new TowersThornBootsItem());
+//        LocalCustomItemManager.addCustomItem(new TowersKnockbackStickItem());
+//        LocalCustomItemManager.addCustomItem(new TowersFireballItem());
+//        LocalCustomItemManager.addCustomItem(new TowersSatchelItem());
+//        LocalCustomItemManager.addCustomItem(new TowersNearSighterItem());
+//        LocalCustomItemManager.addCustomItem(new TowersProjectileResistantItem());
+//        LocalCustomItemManager.addCustomItem(new TowersThornBootsItem());
     }
 
     @Override

@@ -1,5 +1,6 @@
 package dev.jsinco.luma.lumaevents.items
 
+/*
 import com.destroystokyo.paper.event.entity.EntityKnockbackByEntityEvent
 import dev.jsinco.luma.lumaevents.utility.Util
 import dev.jsinco.luma.lumaitems.items.ItemFactory
@@ -196,3 +197,5 @@ class TowersThornBootsItem : TowersItemNestItem() {
             .buildPair()
     }
 }
+
+ */
