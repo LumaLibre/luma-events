@@ -32,7 +32,7 @@ public class JobsListener implements Listener {
             if (player == null) {
                 return;
             }
-            TokenExchanging.giveWithChances(player, 1);
+            TokenExchanging.give(player, TokenExchanging.TokenType.POWDER, 1);
         }
     }
 }

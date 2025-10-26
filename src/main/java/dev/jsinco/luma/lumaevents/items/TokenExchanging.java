@@ -10,22 +10,22 @@ import org.bukkit.inventory.ItemStack;
 
 public class TokenExchanging {
 
-    public static void giveWithChances(Player player, int amount) {
-        int amountClone = amount;
-        for (int i = 0; i < amount; i++) {
-            TokenType type = TokenType.OPAL;
-            if (Util.RANDOM.nextInt(101) < 3) { // 3% chance to give refined opal
-                type = TokenType.REFINED_OPAL;
-                Util.sendMsg(player, "You got <yellow>1</yellow> " + TokenType.REFINED_OPAL.customName + "!");
-                amountClone--;
-            }
-            give(player, type, 1);
-        }
-        if (amountClone <= 0) {
-            return;
-        }
-        Util.sendMsg(player, "You got <yellow>" + amountClone + "</yellow> " + TokenType.OPAL.customName + "(s)!");
-    }
+//    public static void giveWithChances(Player player, int amount) {
+//        int amountClone = amount;
+//        for (int i = 0; i < amount; i++) {
+//            TokenType type = TokenType.OPAL;
+//            if (Util.RANDOM.nextInt(101) < 3) { // 3% chance to give refined opal
+//                type = TokenType.REFINED_OPAL;
+//                Util.sendMsg(player, "You got <yellow>1</yellow> " + TokenType.REFINED_OPAL.customName + "!");
+//                amountClone--;
+//            }
+//            give(player, type, 1);
+//        }
+//        if (amountClone <= 0) {
+//            return;
+//        }
+//        Util.sendMsg(player, "You got <yellow>" + amountClone + "</yellow> " + TokenType.OPAL.customName + "(s)!");
+//    }
 
     public static void give(Player player, TokenType type, int amount) {
         if (amount < 1) {
@@ -62,8 +62,9 @@ public class TokenExchanging {
 
     @Getter
     public enum TokenType {
-        OPAL(SummerOpal.class, "Opal", "summer-opal-token"),
-        REFINED_OPAL(RefinedSummerOpal.class, "Refined Opal", "refined-summer-opal"),;
+        POWDER(HallowsPowderItem.class, "Powder", "hallows-powder"),
+        //REFINED_OPAL(RefinedSummerOpal.class, "Refined Opal", "refined-summer-opal"),
+        ;
 
         private final Class<? extends CustomItem> tokenClass;
         private final String customName;

@@ -16,6 +16,6 @@ public interface TokenFormula<C> {
             return;
         }
 
-        TokenExchanging.giveWithChances(bukkitPlayer, amount);
+        TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.POWDER, amount);
     }
 }

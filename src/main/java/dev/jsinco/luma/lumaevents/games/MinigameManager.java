@@ -5,6 +5,7 @@ import dev.jsinco.luma.lumaevents.configurable.Config;
 import dev.jsinco.luma.lumaevents.configurable.MinigameState;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameAlreadyStartedException;
+import dev.jsinco.luma.lumaevents.games.exceptions.NoAvailableMinigames;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.games.logic.NonActiveMinigame;
 import dev.jsinco.luma.lumaevents.utility.Util;
@@ -65,7 +66,11 @@ public final class MinigameManager extends BukkitRunnable {
 
     public boolean newMinigame(boolean force, int seconds) throws GameAlreadyStartedException {
         // Random minigame selection
-        return this.newMinigame(MinigameConstant.random(), force, seconds);
+        List<MinigameConstant> minigames = cfg.getEnabledAutomaticMinigames();
+        if (minigames.isEmpty()) {
+            throw new NoAvailableMinigames("Cannot start random minigame: No available minigames configured!");
+        }
+        return this.newMinigame(Util.getRandom(minigames), force, seconds);
     }
 
     public boolean tryNewMinigameSafely(MinigameConstant game, boolean ignoreCooldown, int seconds) {
@@ -142,8 +147,15 @@ public final class MinigameManager extends BukkitRunnable {
         }
 
 
-        List<MinigameConstant> availableMinigames = List.of(MinigameConstant.values());
+        List<MinigameConstant> availableMinigames = cfg.getEnabledAutomaticMinigames();
+        if (availableMinigames.isEmpty()) {
+            throw new NoAvailableMinigames("Cannot start automatic minigame: No available minigames configured!");
+        }
+
         int lastIndex = availableMinigames.indexOf(this.minigameState.getLastMinigame());
+        if (lastIndex == -1) {
+            lastIndex = 0; // Start from the beginning if the last minigame is not found
+        }
         MinigameConstant nextMinigame = availableMinigames.get((lastIndex + 1) % availableMinigames.size());
 
         this.minigameState.setLastGameLaunchTime(System.currentTimeMillis());

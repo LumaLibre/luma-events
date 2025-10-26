@@ -5,12 +5,14 @@ import dev.jsinco.luma.lumaevents.configurable.sectors.ManorMinigameDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.TowersDefinition;
+import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.annotation.Comment;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
 
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -31,6 +33,13 @@ public class Config extends OkaeriConfig {
 
     @Comment("Game drop-off location for minigames")
     private Location gameDropOffLocation;
+
+    @Comment("Enabled minigames for automatic selection")
+    private List<MinigameConstant> enabledAutomaticMinigames = List.of(
+            MinigameConstant.MANOR,
+            MinigameConstant.TOWERS,
+            MinigameConstant.PAINTBALL2_1
+    );
 
     @Comment("Minigame definition for 'Paintball 2.1'")
     private Map<String, Paintball2_1Definition> paintballMaps = Map.of(

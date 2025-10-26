@@ -65,6 +65,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         this.inventoryTampering = new MinigamePreventInventoryTampering(this);
         this.preventDamage = new MinigamePreventDamageListener(this);
         registerEvents(this.inventoryTampering);
+        registerEvents(this.preventDamage);
     }
 
     protected Minigame(String name, String description, long duration, long tickInterval, boolean async, boolean preventExit, boolean preventInventoryTampering, boolean preventDamage) {
@@ -115,7 +116,11 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         }
 
         try {
-            Bukkit.getScheduler().runTaskLater(EventMain.getInstance(), this::onPostStop, 3L);
+            if (!EventMain.STOPPING) {
+                this.onPostStop();
+            } else {
+                Bukkit.getScheduler().runTaskLater(EventMain.getInstance(), this::onPostStop, 3L);
+            }
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }

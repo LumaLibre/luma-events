@@ -13,6 +13,8 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumaitems.LumaItems;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
+import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -28,7 +30,6 @@ import org.bukkit.inventory.EquipmentSlotGroup;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,6 +40,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
 
+
+// TODO: Tokens, invisibility for spectators, gameplay loop improvements
 public final class Manor extends InventoryUnifiedMinigame {
 
     private static final int TICK_INTERVAL = 2;
@@ -47,10 +50,10 @@ public final class Manor extends InventoryUnifiedMinigame {
     private final Location startLocation;
 
     private final ManorPlayerMap manorPlayers;
-    private final BossBar bossBar;
     private final Scoreboard<EventPlayer> scoreboard;
     private final ManorTokenFormula tokenFormula;
 
+    private BossBar bossBar;
     private CountdownBossBar countdownBossBar;
 
 
@@ -61,12 +64,6 @@ public final class Manor extends InventoryUnifiedMinigame {
         this.startLocation = def.getStartLocation();
 
         this.manorPlayers = new ManorPlayerMap();
-        this.bossBar = BossBar.bossBar(
-                Util.color("<b>Remaining Players: " + (this.getParticipants().size() - 1)),
-                1.0f,
-                BossBar.Color.WHITE,
-                BossBar.Overlay.PROGRESS
-        );
         this.scoreboard = new Scoreboard<>();
         this.tokenFormula = new ManorTokenFormula();
     }
@@ -102,8 +99,20 @@ public final class Manor extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStart() {
+        this.bossBar = BossBar.bossBar(
+                Util.color("<b>Remaining Players: " + (this.getParticipants().size() - 1)),
+                1.0f,
+                BossBar.Color.WHITE,
+                BossBar.Overlay.PROGRESS
+        );
+
         for (EventPlayer participant : this.getParticipants()) {
             this.manorPlayers.add(new Runner(participant, this));
+            participant.operatePlayer(player -> {
+                if (player.getGameMode() != GameMode.SURVIVAL) {
+                    Executors.sync(() -> player.setGameMode(GameMode.SURVIVAL));
+                }
+            });
         }
         // Assign a random hunter
         EventPlayer initialHunter = Util.getRandom(this.manorPlayers.getRunners()).getEventPlayer();
@@ -220,6 +229,7 @@ public final class Manor extends InventoryUnifiedMinigame {
     // TODO: Do something about hunter possibly being afk
     private boolean ensureHunterAssigned() {
         Hunter hunter = this.manorPlayers.getHunter();
+
         if (hunter != null && hunter.getEventPlayer().getPlayer() != null) {
             return true;
         }
@@ -248,8 +258,9 @@ public final class Manor extends InventoryUnifiedMinigame {
     private abstract static class ManorPlayer {
 
         protected static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 200, 0, false, true, true);
-        protected static final PotionEffect BLINDNESS = new PotionEffect(PotionEffectType.BLINDNESS, 200, 0, false, false, true);
-        protected static final PotionEffect GLOWING = new PotionEffect(PotionEffectType.GLOWING, 45, 0, false, false, true);
+        protected static final PotionEffect DARKNESS = new PotionEffect(PotionEffectType.DARKNESS, 300, 0, false, false, true);
+        protected static final PotionEffect GLOWING = new PotionEffect(PotionEffectType.GLOWING, 300, 0, false, false, true);
+        protected static final PotionEffect SPEED = new PotionEffect(PotionEffectType.SPEED, 300, 0, false, false, true);
 
         protected final EventPlayer eventPlayer;
         protected final Manor context;
@@ -285,7 +296,32 @@ public final class Manor extends InventoryUnifiedMinigame {
             return null;
         }
 
+        protected void hideFromOthers(ManorPlayer... players) {
+            hideFromOthers(List.of(players));
+        }
+
+        protected void showToOthers(ManorPlayer... players) {
+            showToOthers(List.of(players));
+        }
+
+
         protected <T extends ManorPlayer> void hideFromOthers(Iterable<T> players) {
+            if (!Bukkit.isPrimaryThread()) {
+                Executors.sync(() -> hideIntl(players));
+            } else {
+                hideIntl(players);
+            }
+        }
+
+        protected <T extends ManorPlayer> void showToOthers(Iterable<T> players) {
+            if (!Bukkit.isPrimaryThread()) {
+                Executors.sync(() -> showIntl(players));
+            } else {
+                showIntl(players);
+            }
+        }
+
+        private <T extends ManorPlayer> void hideIntl(Iterable<T> players) {
             Player me = this.eventPlayer.getPlayer();
             if (me == null) return;
 
@@ -298,7 +334,7 @@ public final class Manor extends InventoryUnifiedMinigame {
             }
         }
 
-        protected <T extends ManorPlayer> void showToOthers(Iterable<T> players) {
+        private <T extends ManorPlayer> void showIntl(Iterable<T> players) {
             Player me = this.eventPlayer.getPlayer();
             if (me == null) return;
 
@@ -319,7 +355,8 @@ public final class Manor extends InventoryUnifiedMinigame {
 
     private static class Hunter extends ManorPlayer {
 
-        private final List<BukkitTask> revealTasks = new ArrayList<>();
+        private static final int POTION_EFFECTS_TICK_SPEED = 100;
+        private int potionEffectTicksElapsed = POTION_EFFECTS_TICK_SPEED;
 
         public Hunter(EventPlayer eventPlayer, Manor context) {
             super(eventPlayer, context);
@@ -329,36 +366,48 @@ public final class Manor extends InventoryUnifiedMinigame {
 
         @Override
         public void onTick(long timeLeft) {
-            this.revealTasks.removeIf(BukkitTask::isCancelled);
             this.broadcastHeartbeatSound();
 
             this.showToOthers(this.context.manorPlayers.getSpectators());
 
+            Player hunterPlayer = this.eventPlayer.getPlayer();
+            if (hunterPlayer == null) return;
+
             for (Runner runner : this.context.manorPlayers.getRunners()) {
-                if (this.isWithinDistance(runner, 3.0)) {
-                    runner.revealLocation();
-                    this.revealLocation(runner, 20);
+                Player runnerPlayer = runner.eventPlayer.getPlayer();
+                if (runnerPlayer == null) continue;
+                Double distance = this.distanceTo(runner);
+                if (distance == null) continue;
+
+                if (distance <= 3.0 || (distance <= 7.0 && runnerPlayer.hasLineOfSight(hunterPlayer))) {
+                    this.showToOthers(runner);
+                } else {
+                    this.hideFromOthers(runner);
                 }
+
+                if (distance >= 15.0 || distance <= 6.0) {
+                    runner.showToOthers(this);
+                } else {
+                    runner.hideFromOthers(this);
+                }
+
+            }
+
+            if (++this.potionEffectTicksElapsed >= POTION_EFFECTS_TICK_SPEED) {
+                this.potionEffectTicksElapsed = 0;
+                this.eventPlayer.operatePlayer(player -> {
+                    player.addPotionEffect(GLOWING);
+                });
             }
 
             this.eventPlayer.sendActionBar("<red>Catch <b>everyone</b> to win. <gray>Time Left: %ds".formatted(Util.millisToSecs(timeLeft)));
-            this.eventPlayer.operatePlayer(player -> {
-                player.addPotionEffect(INVISIBILITY);
-            });
         }
 
         @Override
         public void onRemove() {
-            for (BukkitTask task : this.revealTasks) {
-                task.cancel();
-            }
-            this.revealTasks.clear();
             this.showToOthers(this.context.manorPlayers);
-
-            this.eventPlayer.operatePlayer(player -> {
-                player.removePotionEffect(PotionEffectType.INVISIBILITY);
-            });
             this.eventPlayer.removeBossBar(this.context.bossBar);
+
         }
 
         @Override
@@ -375,14 +424,6 @@ public final class Manor extends InventoryUnifiedMinigame {
             throw new UnsupportedOperationException("Not yet implemented"); // TODO
         }
 
-        private void revealLocation(Runner runner, long ticks) {
-            this.showToOthers(List.of(runner));
-            BukkitTask task = Executors.delayedSync(ticks, () -> {
-                this.hideFromOthers(List.of(runner));
-            });
-            this.revealTasks.add(task);
-        }
-
         private void broadcastHeartbeatSound() {
             // Broadcast heartbeat sound to all runners
             // increase volume and frequency of heartbeat the closer they are to the hunter
@@ -395,16 +436,16 @@ public final class Manor extends InventoryUnifiedMinigame {
 
 
                 if (runnerPlayer == null || distance == null || distance > 30.0) continue;
-                final int maxFreezeTicks = runnerPlayer.getMaxFreezeTicks();
 
 
                 double proximity = Math.max(0, 1 - (distance / 30.0));
-                long delay = (long) (40L - (proximity * 30L)); // 40 ticks (2s) → 10 ticks (0.5s)
+                int delay = (int) (20 - (proximity * 14));
                 float volume = (float) (0.4 + proximity * 1.6); // 0.4 to 2.0
                 float pitch = (float) (0.8 + proximity * 0.4);  // slight pitch rise near hunter
-                int freezeTicks = (int) (proximity * maxFreezeTicks); // TODO
 
-                runner.scheduleHeartbeat(delay, volume, pitch, freezeTicks);
+
+                runner.updateHeartbeatTickSpeed(delay);
+                runner.playHeartbeatIfAble(volume, pitch);
             }
         }
 
@@ -417,10 +458,16 @@ public final class Manor extends InventoryUnifiedMinigame {
             NamespacedKey key = new NamespacedKey(LumaItems.getInstance(), "manor_runner_boots");
             meta.addAttributeModifier(Attribute.SCALE, new AttributeModifier(key, -0.5, AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.FEET));
         });
-        private static final int SCORE_REQUIREMENT = 40;
+        private static final int SCORE_REQUIREMENT = 800; // 40s per token
+        private static final int POTION_EFFECTS_TICK_SPEED = 100;
 
-        private BukkitTask heartbeatTask;
-        private int timeElapsed;
+
+        private int tokenTicksElapsed;
+
+        private int heartbeatTicksElapsed;
+        private int heartbeatTickSpeed;
+
+        private int potionEffectTicksElapsed = POTION_EFFECTS_TICK_SPEED;
 
         public Runner(EventPlayer eventPlayer, Manor context) {
             super(eventPlayer, context);
@@ -430,16 +477,19 @@ public final class Manor extends InventoryUnifiedMinigame {
         @Override
         public void onTick(long timeLeft) {
             this.eventPlayer.sendActionBar("<light_purple>Do not get <b>caught</b>. <gray>Time Left: %ds".formatted(Util.millisToSecs(timeLeft)));
-            this.eventPlayer.operatePlayer(player -> {
-                player.addPotionEffect(BLINDNESS);
-            });
-            this.eventPlayer.removeBossBar(this.context.bossBar);
+            if (++this.potionEffectTicksElapsed >= POTION_EFFECTS_TICK_SPEED) {
+                this.potionEffectTicksElapsed = 0;
+                this.eventPlayer.operatePlayer(player -> {
+                    player.addPotionEffect(DARKNESS);
+                    player.addPotionEffect(GLOWING);
+                });
+            }
 
-            if (timeElapsed >= SCORE_REQUIREMENT) {
+            if (tokenTicksElapsed >= SCORE_REQUIREMENT) {
                 this.context.scoreboard.addScore(this.eventPlayer, 1);
-                timeElapsed = 0;
+                tokenTicksElapsed = 0;
             } else {
-                timeElapsed += TICK_INTERVAL;
+                tokenTicksElapsed += TICK_INTERVAL;
             }
         }
 
@@ -452,22 +502,36 @@ public final class Manor extends InventoryUnifiedMinigame {
 
 
             this.context.sendAudienceMessage(this.eventPlayer.getName() + " was caught by " + attacker.getEventPlayer().getName() + "!");
+
+            if (this.context.manorPlayers.getRunners().isEmpty()) {
+                this.context.sendAudienceMessage("The hunter has caught all runners. The hunter wins...");
+                this.context.stop();
+                return;
+            }
+
             // Add 15 secs for each caught runner
             this.context.setDuration(this.context.getDuration() + Util.secsToMillis(15));
             this.context.sendAudienceMessage("15 seconds have been added to the game time.");
 
             int current = this.context.manorPlayers.getRunners().size();
             int total = this.context.getParticipants().size() - 1; // exclude hunter
-            float progress = 1.0f - ((float) current / total);
+            float t = ((float) current / total);
+            float progress = t == 0f ? 0f : 1.0f - t;
 
             this.context.bossBar.progress(progress);
             this.context.bossBar.name(Util.color("<b>Remaining Players: " + current));
+
         }
 
         @Override
         public void onRemove() {
             this.removeBoots();
-            this.stopHeartbeatTask();
+            this.showToOthers(this.context.manorPlayers);
+            this.eventPlayer.removeBossBar(this.context.bossBar);
+            this.eventPlayer.operatePlayer(player -> {
+                player.removePotionEffect(PotionEffectType.DARKNESS);
+                player.removePotionEffect(PotionEffectType.GLOWING);
+            });
         }
 
         @Override
@@ -478,34 +542,35 @@ public final class Manor extends InventoryUnifiedMinigame {
             }
 
             event.setDamage(30.0); // Ensure instant kill when attacked by hunter
+            this.context.scoreboard.addScore(attacker.getEventPlayer(), 3); // Hunter gets 3 points per catch
         }
 
-        public void revealLocation() {
-            this.eventPlayer.sendActionBar("<b><red>YOUR LOCATION HAS BEEN REVEALED");
-            Player player = this.eventPlayer.getPlayer();
-            if (player != null) {
-                player.addPotionEffect(GLOWING);
+
+
+        public boolean updateHeartbeatTickSpeed(int tickSpeed) {
+            if (this.heartbeatTickSpeed != tickSpeed) {
+                this.heartbeatTickSpeed = tickSpeed;
+                return true;
             }
+            return false;
         }
 
-        public void scheduleHeartbeat(long delay, float volume, float pitch, int freezeTicks) {
-            this.stopHeartbeatTask();
+        public boolean canPlayHeartbeat() {
+            return this.heartbeatTicksElapsed >= this.heartbeatTickSpeed;
+        }
 
-            this.heartbeatTask = Executors.repeatingSync(delay, () -> {
+        public void playHeartbeatIfAble(float volume, float pitch) {
+            if (this.canPlayHeartbeat()) {
                 Player player = this.eventPlayer.getPlayer();
                 if (player != null) {
                     player.playSound(player.getLocation(), Sound.ENTITY_WARDEN_HEARTBEAT, volume, pitch);
-                    player.setFreezeTicks(freezeTicks);
                 }
-            });
-        }
-
-        public void stopHeartbeatTask() {
-            if (this.heartbeatTask != null) {
-                this.heartbeatTask.cancel();
-                this.heartbeatTask = null;
+                this.heartbeatTicksElapsed = 0;
+            } else {
+                this.heartbeatTicksElapsed += TICK_INTERVAL;
             }
         }
+
 
         private void addBoots() {
             this.eventPlayer.operatePlayer(player -> player.getInventory().setBoots(BOOTS));
@@ -530,17 +595,17 @@ public final class Manor extends InventoryUnifiedMinigame {
         @Override
         public void onTick(long timeLeft) {
             this.eventPlayer.sendActionBar("<yellow>You're spectating, quit with <b>/event quit</b>. <gray>(%ds left)".formatted(Util.millisToSecs(timeLeft)));
-            this.eventPlayer.operatePlayer(player -> {
-                player.addPotionEffect(INVISIBILITY);
-            });
+//            this.eventPlayer.operatePlayer(player -> {
+//                player.addPotionEffect(INVISIBILITY);
+//            });
         }
 
         @Override
         public void onRemove() {
             this.showToOthers(this.context.manorPlayers);
-            this.eventPlayer.operatePlayer(player -> {
-                player.removePotionEffect(PotionEffectType.INVISIBILITY);
-            });
+//            this.eventPlayer.operatePlayer(player -> {
+//                player.removePotionEffect(PotionEffectType.INVISIBILITY);
+//            });
             this.eventPlayer.removeBossBar(this.context.bossBar);
         }
 
