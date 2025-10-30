@@ -242,6 +242,10 @@ public final class Util {
         throw new RuntimeException("Failed to remove: " + amount + "/" + namespacedKey + " from " + player.getName() + "'s inventory!");
     }
 
+    public static String getTextColor() {
+        return "<" + TEXT_COLOR + ">";
+    }
+
 
 //    public static void giveItem(Player player, ItemStack item) {
 //        PlayerInventory inventory = player.getInventory();

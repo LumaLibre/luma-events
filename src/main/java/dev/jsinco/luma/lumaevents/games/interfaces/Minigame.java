@@ -289,6 +289,13 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         this.audience.sendMessage(Util.color(Util.PREFIX).append(m).colorIfAbsent(TextColor.fromHexString(Util.TEXT_COLOR)));
     }
 
+    public void sendAudienceTitle(String title, String subtitle) {
+        if (this.audience == null) {
+            return;
+        }
+        this.audience.showTitle(Util.title(Util.getTextColor() + title, Util.getTextColor() + subtitle));
+    }
+
     protected boolean isParticipant(EventPlayer... players) {
         for (EventPlayer p : players) {
             if (!this.participants.contains(p)) {

@@ -261,6 +261,7 @@ public final class Manor extends InventoryUnifiedMinigame {
         protected static final PotionEffect DARKNESS = new PotionEffect(PotionEffectType.DARKNESS, 300, 0, false, false, true);
         protected static final PotionEffect GLOWING = new PotionEffect(PotionEffectType.GLOWING, 300, 0, false, false, true);
         protected static final PotionEffect SPEED = new PotionEffect(PotionEffectType.SPEED, 300, 0, false, false, true);
+        protected static final PotionEffect NIGHT_VISION = new PotionEffect(PotionEffectType.NIGHT_VISION, 300, 0, false, false, true);
 
         protected final EventPlayer eventPlayer;
         protected final Manor context;
@@ -397,6 +398,8 @@ public final class Manor extends InventoryUnifiedMinigame {
                 this.potionEffectTicksElapsed = 0;
                 this.eventPlayer.operatePlayer(player -> {
                     player.addPotionEffect(GLOWING);
+                    player.addPotionEffect(NIGHT_VISION);
+                    player.addPotionEffect(SPEED);
                 });
             }
 
@@ -407,7 +410,11 @@ public final class Manor extends InventoryUnifiedMinigame {
         public void onRemove() {
             this.showToOthers(this.context.manorPlayers);
             this.eventPlayer.removeBossBar(this.context.bossBar);
-
+            this.eventPlayer.operatePlayer(player -> {
+                player.removePotionEffect(PotionEffectType.GLOWING);
+                player.removePotionEffect(PotionEffectType.NIGHT_VISION);
+                player.removePotionEffect(PotionEffectType.SPEED);
+            });
         }
 
         @Override
@@ -482,6 +489,7 @@ public final class Manor extends InventoryUnifiedMinigame {
                 this.eventPlayer.operatePlayer(player -> {
                     player.addPotionEffect(DARKNESS);
                     player.addPotionEffect(GLOWING);
+                    player.addPotionEffect(NIGHT_VISION);
                 });
             }
 
@@ -531,6 +539,7 @@ public final class Manor extends InventoryUnifiedMinigame {
             this.eventPlayer.operatePlayer(player -> {
                 player.removePotionEffect(PotionEffectType.DARKNESS);
                 player.removePotionEffect(PotionEffectType.GLOWING);
+                player.removePotionEffect(PotionEffectType.NIGHT_VISION);
             });
         }
 
