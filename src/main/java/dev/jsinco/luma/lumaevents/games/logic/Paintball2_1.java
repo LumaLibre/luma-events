@@ -227,6 +227,10 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 Player player = member.getPlayer();
                 if (player != null) {
                     Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+                        if (player.isInWater()) {
+                            player.setHealth(0.0); // Eliminate player if in water
+                        }
+
                         player.clearActivePotionEffects();
                         player.addPotionEffect(REGEN);
                         player.addPotionEffect(GLOW);
@@ -381,7 +385,8 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     }
 
     private void handleProjectileHitBlock(Block blockHit, PaintballTeam paintballTeam, EventPlayer shooter) {
-        if (this.blacklistedMaterials.contains(blockHit.getType())) {
+        Material blockTypeAbove = blockHit.getLocation().add(0, 1, 0).getBlock().getType();
+        if (this.blacklistedMaterials.contains(blockHit.getType()) || blockTypeAbove == Material.WATER) {
             return;
         }
         this.paint(blockHit.getLocation(), paintballTeam, shooter, 1);
