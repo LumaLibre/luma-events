@@ -58,7 +58,7 @@ public final class Manor extends InventoryUnifiedMinigame {
 
 
     public Manor(ManorMinigameDefinition def) {
-        super("Manor", "Don't get caught!", 130000, TICK_INTERVAL, false, true, false);
+        super("Manor", "Don't get caught!", 135000, TICK_INTERVAL, false, true, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.spawnLocation = def.getSpawnLocation();
         this.startLocation = def.getStartLocation();
@@ -126,7 +126,7 @@ public final class Manor extends InventoryUnifiedMinigame {
 
         this.countdownBossBar = CountdownBossBar.builder()
                 .title("<red><b>Hunter spawns in: %s")
-                .seconds(10)
+                .seconds(15)
                 .audience(this.audience)
                 .color(BossBar.Color.RED)
                 .callback(() -> {
@@ -168,6 +168,11 @@ public final class Manor extends InventoryUnifiedMinigame {
     @Override
     protected void handleStop() {
         this.countdownBossBar.stop(false);
+
+        this.manorPlayers.getRunners().forEach(runner -> {
+            this.scoreboard.addScore(runner.getEventPlayer(), 3); // 3 points for surviving
+        });
+
         this.manorPlayers.forEach(ManorPlayer::onRemove);
         this.sendAudienceMessage("This minigame has concluded.");
 
@@ -550,7 +555,7 @@ public final class Manor extends InventoryUnifiedMinigame {
                 attacker.sendMessage("You cannot attack this player.");
             }
 
-            event.setDamage(30.0); // Ensure instant kill when attacked by hunter
+            event.setDamage(90.0); // Ensure instant kill when attacked by hunter
             this.context.scoreboard.addScore(attacker.getEventPlayer(), 3); // Hunter gets 3 points per catch
         }
 
@@ -593,6 +598,10 @@ public final class Manor extends InventoryUnifiedMinigame {
 
     private static class Spectator extends ManorPlayer {
 
+        private static final int POTION_EFFECTS_TICK_SPEED = 100;
+
+        private int potionEffectTicksElapsed = POTION_EFFECTS_TICK_SPEED;
+
         public Spectator(EventPlayer eventPlayer, Manor context) {
             super(eventPlayer, context);
 
@@ -604,17 +613,20 @@ public final class Manor extends InventoryUnifiedMinigame {
         @Override
         public void onTick(long timeLeft) {
             this.eventPlayer.sendActionBar("<yellow>You're spectating, quit with <b>/event quit</b>. <gray>(%ds left)".formatted(Util.millisToSecs(timeLeft)));
-//            this.eventPlayer.operatePlayer(player -> {
-//                player.addPotionEffect(INVISIBILITY);
-//            });
+            if (++this.potionEffectTicksElapsed >= POTION_EFFECTS_TICK_SPEED) {
+                this.potionEffectTicksElapsed = 0;
+                this.eventPlayer.operatePlayer(player -> {
+                    player.addPotionEffect(INVISIBILITY);
+                });
+            }
         }
 
         @Override
         public void onRemove() {
             this.showToOthers(this.context.manorPlayers);
-//            this.eventPlayer.operatePlayer(player -> {
-//                player.removePotionEffect(PotionEffectType.INVISIBILITY);
-//            });
+            this.eventPlayer.operatePlayer(player -> {
+                player.removePotionEffect(PotionEffectType.INVISIBILITY);
+            });
             this.eventPlayer.removeBossBar(this.context.bossBar);
         }
 

@@ -17,16 +17,23 @@ import dev.jsinco.luma.lumaevents.utility.Executors;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.entity.Egg;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
@@ -91,6 +98,15 @@ public final class Towers extends InventoryUnifiedMinigame {
         for (EventPlayer eventPlayer : this.participants) {
             ActivePlayer towersPlayer = new ActivePlayer(eventPlayer, this);
             this.towersPlayers.put(eventPlayer.getUuid(), towersPlayer);
+            eventPlayer.operatePlayer(player -> {
+                player.setHealth(20);
+                player.setFoodLevel(20);
+                player.setSaturation(5);
+                player.setAllowFlight(false);
+                if (player.getGameMode() != GameMode.SURVIVAL) {
+                    Executors.runSync(() -> player.setGameMode(GameMode.SURVIVAL));
+                }
+            });
         }
 
         List<Location> locations = generateSpawnLocations(this.participants.size());
@@ -237,7 +253,40 @@ public final class Towers extends InventoryUnifiedMinigame {
         if (towersPlayer instanceof Spectator) {
             Util.sendMsg(bukkitPlayer, "You cannot interact while spectating.");
             event.setCancelled(true);
+            return;
         }
+
+        ItemStack itemStack = event.getItem();
+
+        if (event.getAction() == Action.RIGHT_CLICK_AIR && itemStack != null && itemStack.getType().name().contains("_SPAWN_EGG")) {
+            Egg egg = bukkitPlayer.launchProjectile(Egg.class);
+            egg.setItem(itemStack);
+            String entityType = itemStack.getType().name().replace("_SPAWN_EGG", "");
+            Util.setPersistentKey(egg, "spawn_egg", PersistentDataType.STRING, entityType);
+            itemStack.setAmount(itemStack.getAmount() - 1);
+            EquipmentSlot hand = event.getHand();
+            if (hand != null) {
+                bukkitPlayer.swingHand(hand);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onProjectileLand(ProjectileHitEvent event) {
+        this.ensureNotIllegal();
+        if (!(event.getEntity() instanceof Egg egg)) {
+            return;
+        }
+        String entityType = Util.getPersistentKey(egg, "spawn_egg", PersistentDataType.STRING);
+        if (entityType == null) {
+            return;
+        }
+        EntityType type = Util.getEnumFromString(EntityType.class, entityType);
+        if (type == null) {
+            return;
+        }
+        Location hitLocation = event.getHitBlock() != null ? event.getHitBlock().getLocation() : egg.getLocation();
+        hitLocation.getWorld().spawnEntity(hitLocation.add(0, 1, 0), type);
     }
 
     @EventHandler
@@ -340,8 +389,8 @@ public final class Towers extends InventoryUnifiedMinigame {
         double jitterZ = Math.min(spacingZ * 0.4, (spacingZ - minSpacing) / 2);
 
         // Generate grid of locations with randomness
-        double startX = tiedBoundingBox.getMinX();
-        double startZ = tiedBoundingBox.getMinZ();
+        double startX = tiedBoundingBox.getCenterX();
+        double startZ = tiedBoundingBox.getCenterZ();
 
         int generatedPoints = 0;
         for (int x = 0; x < pointsX && generatedPoints < desiredPoints; x++) {
