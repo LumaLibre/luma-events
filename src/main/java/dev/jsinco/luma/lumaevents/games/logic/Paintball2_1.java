@@ -293,14 +293,14 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     public void onPlayerDeath(PlayerDeathEvent event) {
         this.ensureNotIllegal();
         Player player = event.getPlayer();
-        if (!boundingBox.contains(player) || event.getDamageSource().getCausingEntity() == null || !(event.getDamageSource().getCausingEntity() instanceof Player shooter)) {
+        if (/*!boundingBox.contains(player) ||*/ event.getDamageSource().getCausingEntity() == null || !(event.getDamageSource().getCausingEntity() instanceof Player shooter)) {
             return; // Player is not in the bounding box, ignore
         }
 
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
         EventPlayer shooterEventPlayer = EventPlayerManager.getByUUID(shooter.getUniqueId());
         if (!this.participants.contains(eventPlayer)) {
-            eventPlayer.sendMessage("You are not participating in this minigame.");
+            //eventPlayer.sendMessage("You are not participating in this minigame.");
             return;
         }
 

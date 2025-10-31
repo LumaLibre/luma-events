@@ -11,5 +11,5 @@ public class MinigameState extends OkaeriConfig {
 
     private long lastGameLaunchTime = System.currentTimeMillis();
 
-    private MinigameConstant lastMinigame = MinigameConstant.TNTTAG;
+    private MinigameConstant lastMinigame = MinigameConstant.MANOR;
 }

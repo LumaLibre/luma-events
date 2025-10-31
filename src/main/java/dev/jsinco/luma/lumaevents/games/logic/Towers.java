@@ -68,7 +68,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     private boolean started = false;
 
     public Towers(TowersDefinition def) {
-        super("Towers", "Don't fall.", 600000, TICK_INTERVAL, false, true, false, false);
+        super("Towers", "Don't fall.", 240000, TICK_INTERVAL, false, true, false, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.outerRegion = WorldTiedBoundingBox.of(def.getOuterRegion().getLoc1(), def.getOuterRegion().getLoc2());
         this.spawnLocation = def.getSpawnLocation().toCenterLocation();
@@ -228,18 +228,12 @@ public final class Towers extends InventoryUnifiedMinigame {
     @EventHandler
     public void onPlayerDamagedByEntity(EntityDamageByEntityEvent event) {
         this.ensureNotIllegal();
-        if (!(event.getEntity() instanceof Player victim)) {
-            return;
-        }
         if (!(event.getDamager() instanceof Player attacker)) {
             return;
         }
 
-        TowersPlayer victimTowersPlayer = this.towersPlayers.get(victim.getUniqueId());
+
         TowersPlayer attackerTowersPlayer = this.towersPlayers.get(attacker.getUniqueId());
-        if (victimTowersPlayer == null || attackerTowersPlayer == null) {
-            return;
-        }
 
         if (attackerTowersPlayer instanceof Spectator spectator) {
             spectator.getEventPlayer().sendMessage("You cannot attack players while spectating.");
@@ -547,8 +541,10 @@ public final class Towers extends InventoryUnifiedMinigame {
 
         @Override
         public void cleanup() {
-            this.eventPlayer.operatePlayer(player -> {
-                player.getInventory().clear();
+            Executors.sync(() -> {
+                this.eventPlayer.operatePlayer(player -> {
+                    player.getInventory().clear();
+                });
             });
         }
     }
@@ -563,7 +559,6 @@ public final class Towers extends InventoryUnifiedMinigame {
             super(eventPlayer, context);
             this.respawnLocation = respawnLocation;
             this.hidePlayer();
-            this.eventPlayer.operatePlayer(player -> player.setAllowFlight(true));
         }
 
         public void hidePlayer() {
@@ -604,6 +599,14 @@ public final class Towers extends InventoryUnifiedMinigame {
             eventPlayer.operatePlayer(
                     player -> player.addPotionEffect(INVISIBILITY)
             );
+
+            this.eventPlayer.operatePlayer(player -> {
+                Executors.runSync(() -> {
+                    if (!player.getAllowFlight()) {
+                        player.setAllowFlight(true);
+                    }
+                });
+            });
         }
 
         @Override
@@ -616,9 +619,11 @@ public final class Towers extends InventoryUnifiedMinigame {
         @Override
         public void cleanup() {
             this.showPlayer();
-            this.eventPlayer.operatePlayer(player -> {
-                player.teleportAsync(this.context.spawnLocation);
-                player.setAllowFlight(false);
+            Executors.sync(() -> {
+                this.eventPlayer.operatePlayer(player -> {
+                    player.teleportAsync(this.context.spawnLocation);
+                    player.setAllowFlight(false);
+                });
             });
         }
     }

@@ -110,7 +110,7 @@ public final class Manor extends InventoryUnifiedMinigame {
             this.manorPlayers.add(new Runner(participant, this));
             participant.operatePlayer(player -> {
                 if (player.getGameMode() != GameMode.SURVIVAL) {
-                    Executors.sync(() -> player.setGameMode(GameMode.SURVIVAL));
+                    Executors.runSync(() -> player.setGameMode(GameMode.SURVIVAL));
                 }
             });
         }
@@ -385,7 +385,7 @@ public final class Manor extends InventoryUnifiedMinigame {
                 Double distance = this.distanceTo(runner);
                 if (distance == null) continue;
 
-                if (distance <= 3.0 || (distance <= 7.0 && runnerPlayer.hasLineOfSight(hunterPlayer))) {
+                if (distance <= 7.0) {
                     this.showToOthers(runner);
                 } else {
                     this.hideFromOthers(runner);
@@ -414,11 +414,13 @@ public final class Manor extends InventoryUnifiedMinigame {
         @Override
         public void onRemove() {
             this.showToOthers(this.context.manorPlayers);
-            this.eventPlayer.removeBossBar(this.context.bossBar);
-            this.eventPlayer.operatePlayer(player -> {
-                player.removePotionEffect(PotionEffectType.GLOWING);
-                player.removePotionEffect(PotionEffectType.NIGHT_VISION);
-                player.removePotionEffect(PotionEffectType.SPEED);
+            Executors.runSync(() -> {
+                this.eventPlayer.removeBossBar(this.context.bossBar);
+                this.eventPlayer.operatePlayer(player -> {
+                    player.removePotionEffect(PotionEffectType.GLOWING);
+                    player.removePotionEffect(PotionEffectType.NIGHT_VISION);
+                    player.removePotionEffect(PotionEffectType.SPEED);
+                });
             });
         }
 
@@ -541,10 +543,12 @@ public final class Manor extends InventoryUnifiedMinigame {
             this.removeBoots();
             this.showToOthers(this.context.manorPlayers);
             this.eventPlayer.removeBossBar(this.context.bossBar);
-            this.eventPlayer.operatePlayer(player -> {
-                player.removePotionEffect(PotionEffectType.DARKNESS);
-                player.removePotionEffect(PotionEffectType.GLOWING);
-                player.removePotionEffect(PotionEffectType.NIGHT_VISION);
+            Executors.runSync(() -> {
+                this.eventPlayer.operatePlayer(player -> {
+                    player.removePotionEffect(PotionEffectType.DARKNESS);
+                    player.removePotionEffect(PotionEffectType.GLOWING);
+                    player.removePotionEffect(PotionEffectType.NIGHT_VISION);
+                });
             });
         }
 
@@ -556,7 +560,7 @@ public final class Manor extends InventoryUnifiedMinigame {
             }
 
             event.setDamage(90.0); // Ensure instant kill when attacked by hunter
-            this.context.scoreboard.addScore(attacker.getEventPlayer(), 3); // Hunter gets 3 points per catch
+            this.context.scoreboard.addScore(attacker.getEventPlayer(), 1); // Hunter gets 1 points per catch
         }
 
 
@@ -624,10 +628,12 @@ public final class Manor extends InventoryUnifiedMinigame {
         @Override
         public void onRemove() {
             this.showToOthers(this.context.manorPlayers);
-            this.eventPlayer.operatePlayer(player -> {
-                player.removePotionEffect(PotionEffectType.INVISIBILITY);
+            Executors.runSync(() -> {
+                this.eventPlayer.operatePlayer(player -> {
+                    player.removePotionEffect(PotionEffectType.INVISIBILITY);
+                });
+                this.eventPlayer.removeBossBar(this.context.bossBar);
             });
-            this.eventPlayer.removeBossBar(this.context.bossBar);
         }
 
         @Override
@@ -701,7 +707,9 @@ public final class Manor extends InventoryUnifiedMinigame {
         public  <T extends ManorPlayer> T swapRole(EventPlayer eventPlayer, Supplier<? extends ManorPlayer> newRoleSupplier) {
             ManorPlayer currentRole = this.get(eventPlayer.getUuid());
             if (currentRole != null) {
-                currentRole.onRemove();
+                Executors.runSync(() -> {
+                    currentRole.onRemove();
+                });
             }
             ManorPlayer newRole = newRoleSupplier.get();
             this.put(newRole.getUUID(), newRole);
