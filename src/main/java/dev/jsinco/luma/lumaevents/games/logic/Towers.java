@@ -30,6 +30,8 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -250,6 +252,8 @@ public final class Towers extends InventoryUnifiedMinigame {
         this.ensureNotIllegal();
         Player bukkitPlayer = event.getPlayer();
         TowersPlayer towersPlayer = this.towersPlayers.get(bukkitPlayer.getUniqueId());
+        if (towersPlayer == null) return;
+
         if (towersPlayer instanceof Spectator) {
             Util.sendMsg(bukkitPlayer, "You cannot interact while spectating.");
             event.setCancelled(true);
@@ -294,6 +298,22 @@ public final class Towers extends InventoryUnifiedMinigame {
         this.ensureNotIllegal();
         if (!this.started) {
             event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onInventoryOpen(InventoryOpenEvent event) {
+        this.ensureNotIllegal();
+        TowersPlayer towersPlayer = this.towersPlayers.get(event.getPlayer().getUniqueId());
+        if (towersPlayer == null) return;
+        if (towersPlayer instanceof Spectator) {
+            return;
+        }
+
+        InventoryType type = event.getInventory().getType();
+        if (type != InventoryType.PLAYER && type != InventoryType.CREATIVE && type != InventoryType.CRAFTING) {
+            event.setCancelled(true);
+            towersPlayer.getEventPlayer().sendMessage("You cannot open this type of inventory during this game.");
         }
     }
 

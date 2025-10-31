@@ -17,7 +17,7 @@ import org.bukkit.entity.Player;
 
 import java.util.List;
 
-@AutoRegister(RegisterType.SUBCOMMAND)
+//@AutoRegister(RegisterType.SUBCOMMAND)
 @CommandInfo(
         name = "claim",
         permission = "lumaevents.default",
