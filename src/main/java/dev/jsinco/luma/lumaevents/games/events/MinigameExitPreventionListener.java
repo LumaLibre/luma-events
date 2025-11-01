@@ -41,7 +41,11 @@ public class MinigameExitPreventionListener implements Listener {
 
         Player player = event.getPlayer();
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
-        if (minigame.getParticipants().contains(eventPlayer) && minigame.getBoundingBox().contains(player) && !player.hasPermission("lumaevents.bypass")) {
+        if (minigame.getParticipants().contains(eventPlayer)
+                && minigame.getBoundingBox().contains(player)
+                && !player.hasPermission("lumaevents.bypass")
+                && !event.getMessage().contains("quit") // super lazy check to allow quitting
+        ) {
             event.setCancelled(true);
             eventPlayer.sendMessage("You can't use commands while participating in this minigame. Use /event quit to leave.");
         }
