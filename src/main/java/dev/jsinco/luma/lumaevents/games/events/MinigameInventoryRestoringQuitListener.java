@@ -25,7 +25,7 @@ public class MinigameInventoryRestoringQuitListener implements Listener {
         Player player = event.getPlayer();
         InventorySnapshot inventorySnapshot = InventorySnapshotManager.INSTANCE.getSnapshotByOwner(player.getUniqueId());
         if (inventorySnapshot != null) {
-            inventorySnapshot.restore();
+            inventorySnapshot.restore(player);
             InventorySnapshotManager.INSTANCE.unregisterSnapshot(inventorySnapshot);
         }
         EventPlayer eplayer = EventPlayerManager.getByUUID(player.getUniqueId());
@@ -34,7 +34,7 @@ public class MinigameInventoryRestoringQuitListener implements Listener {
 
         Location gameDropOffLocation = minigame.getGameDropOffLocation();
         if (gameDropOffLocation != null) {
-            player.teleportAsync(gameDropOffLocation);
+            player.teleport(gameDropOffLocation);
         }
     }
 }

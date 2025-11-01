@@ -160,14 +160,15 @@ public final class Towers extends InventoryUnifiedMinigame {
             this.positionalBasedPoints(remaining.getEventPlayer());
         });
 
-        this.towersPlayers.values().forEach(towersPlayer -> {
-            towersPlayer.cleanup();
-            towersPlayer.getEventPlayer().operatePlayer(player -> {
-                player.setFallDistance(0f);
-                player.teleportAsync(this.spawnLocation);
-            });
-        });
         Executors.runSync(() -> {
+            this.towersPlayers.values().forEach(towersPlayer -> {
+                towersPlayer.cleanup();
+                towersPlayer.getEventPlayer().operatePlayer(player -> {
+                    player.setFallDistance(0f);
+                    player.teleportAsync(this.spawnLocation);
+                });
+            });
+
             this.outerRegion.operate(block -> {
                 if (!block.isEmpty()) {
                     block.setType(Material.AIR);
@@ -541,11 +542,7 @@ public final class Towers extends InventoryUnifiedMinigame {
 
         @Override
         public void cleanup() {
-            Executors.sync(() -> {
-                this.eventPlayer.operatePlayer(player -> {
-                    player.getInventory().clear();
-                });
-            });
+
         }
     }
 
@@ -585,7 +582,7 @@ public final class Towers extends InventoryUnifiedMinigame {
                     continue;
                 }
                 participant.operatePlayer(pPlayer -> {
-                    Executors.sync(() -> {
+                    Executors.runSync(() -> {
                         pPlayer.showPlayer(EventMain.getInstance(), player);
                     });
                 });
@@ -618,8 +615,8 @@ public final class Towers extends InventoryUnifiedMinigame {
 
         @Override
         public void cleanup() {
-            this.showPlayer();
-            Executors.sync(() -> {
+            Executors.runSync(() -> {
+                this.showPlayer();
                 this.eventPlayer.operatePlayer(player -> {
                     player.teleportAsync(this.context.spawnLocation);
                     player.setAllowFlight(false);
