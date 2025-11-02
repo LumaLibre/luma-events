@@ -38,6 +38,7 @@ public class TokenExchanging {
             return;
         }
         Util.giveItem(player, itemStack, amount);
+        Util.sendMsg(player, "You got <gold>" + amount + "</gold> " + type.customName + "(s)!");
 
     }
 

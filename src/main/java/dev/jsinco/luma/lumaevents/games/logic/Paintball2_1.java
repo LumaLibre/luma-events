@@ -293,25 +293,36 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     public void onPlayerDeath(PlayerDeathEvent event) {
         this.ensureNotIllegal();
         Player player = event.getPlayer();
-        if (/*!boundingBox.contains(player) ||*/ event.getDamageSource().getCausingEntity() == null || !(event.getDamageSource().getCausingEntity() instanceof Player shooter)) {
-            return; // Player is not in the bounding box, ignore
-        }
 
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
-        EventPlayer shooterEventPlayer = EventPlayerManager.getByUUID(shooter.getUniqueId());
+
         if (!this.participants.contains(eventPlayer)) {
-            //eventPlayer.sendMessage("You are not participating in this minigame.");
             return;
         }
+
+        PaintballTeam victimTeam = this.paintballTeams.stream()
+                .filter(team -> team.isMember(eventPlayer))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Victim is not a member of any team."));
+
+        if (event.getDamageSource().getCausingEntity() == null || !(event.getDamageSource().getCausingEntity() instanceof Player shooter)) {
+
+            event.setCancelled(true);
+            event.setReviveHealth(20.0);
+            event.setDeathSound(Sound.ITEM_TOTEM_USE);
+            player.teleportAsync(victimTeam.getSpawnPoint().toCenterLocation());
+            return;
+        }
+
+        EventPlayer shooterEventPlayer = EventPlayerManager.getByUUID(shooter.getUniqueId());
+
+
 
         PaintballTeam paintballTeam = this.paintballTeams.stream()
                 .filter(team -> team.isMember(shooterEventPlayer))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Player is not a member of any team."));
-        PaintballTeam victimTeam = this.paintballTeams.stream()
-                .filter(team -> team.isMember(eventPlayer))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Victim is not a member of any team."));
+
 
 
         this.paint(player.getLocation().add(0, -1, 0), paintballTeam, shooterEventPlayer, 3);

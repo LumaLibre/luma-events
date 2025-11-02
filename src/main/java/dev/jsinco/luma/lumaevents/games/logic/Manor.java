@@ -262,11 +262,11 @@ public final class Manor extends InventoryUnifiedMinigame {
     @Getter
     private abstract static class ManorPlayer {
 
-        protected static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 200, 0, false, true, true);
-        protected static final PotionEffect DARKNESS = new PotionEffect(PotionEffectType.DARKNESS, 300, 0, false, false, true);
-        protected static final PotionEffect GLOWING = new PotionEffect(PotionEffectType.GLOWING, 300, 0, false, false, true);
-        protected static final PotionEffect SPEED = new PotionEffect(PotionEffectType.SPEED, 300, 0, false, false, true);
-        protected static final PotionEffect NIGHT_VISION = new PotionEffect(PotionEffectType.NIGHT_VISION, 300, 0, false, false, true);
+        protected static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 600, 0, false, true, true);
+        protected static final PotionEffect DARKNESS = new PotionEffect(PotionEffectType.DARKNESS, 600, 0, false, false, true);
+        protected static final PotionEffect GLOWING = new PotionEffect(PotionEffectType.GLOWING, 600, 0, false, false, true);
+        protected static final PotionEffect SPEED = new PotionEffect(PotionEffectType.SPEED, 600, 0, false, false, true);
+        protected static final PotionEffect NIGHT_VISION = new PotionEffect(PotionEffectType.NIGHT_VISION, 600, 0, false, false, true);
 
         protected final EventPlayer eventPlayer;
         protected final Manor context;
