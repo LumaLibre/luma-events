@@ -22,14 +22,17 @@ import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Egg;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
@@ -42,6 +45,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
@@ -59,6 +63,7 @@ import java.util.function.Supplier;
 public final class Towers extends InventoryUnifiedMinigame {
 
     private static final int TICK_INTERVAL = 2;
+    private static final String KEY_STRING = "towers_game";
 
 
     private final WorldTiedBoundingBox outerRegion;
@@ -236,11 +241,26 @@ public final class Towers extends InventoryUnifiedMinigame {
     @EventHandler
     public void onPlayerDamagedByEntity(EntityDamageByEntityEvent event) {
         this.ensureNotIllegal();
-        if (!(event.getDamageSource().getCausingEntity() instanceof Player attacker)) {
+        if (!(event.getDamageSource().getCausingEntity() instanceof LivingEntity entity)) {
             return;
         }
 
-        TowersPlayer attackerTowersPlayer = this.towersPlayers.get(attacker.getUniqueId());
+        // super lazy checks but i'm in a rush to add this
+        UUID unboxedAttacker;
+
+        if (entity instanceof Player attackingPlayer) {
+            unboxedAttacker = attackingPlayer.getUniqueId();
+        } else {
+            String unboxedUUID = Util.getPersistentKey(entity, KEY_STRING, PersistentDataType.STRING);
+            if (unboxedUUID == null) return;
+            unboxedAttacker = UUID.fromString(unboxedUUID);
+        }
+
+        TowersPlayer attackerTowersPlayer = this.towersPlayers.get(unboxedAttacker);
+        if ((attackerTowersPlayer == null || attackerTowersPlayer instanceof Spectator) && !(entity instanceof Player)) {
+            entity.setHealth(0);
+            return;
+        }
 
         if (attackerTowersPlayer instanceof Spectator spectator) {
             spectator.getEventPlayer().sendMessage("You cannot attack players while spectating.");
@@ -254,7 +274,7 @@ public final class Towers extends InventoryUnifiedMinigame {
 
         TowersPlayer victimTowersPlayer = this.towersPlayers.get(victim.getUniqueId());
         if (victimTowersPlayer instanceof ActivePlayer activePlayer) {
-            activePlayer.setLastAttacker(attacker.getUniqueId());
+            activePlayer.setLastAttacker(unboxedAttacker);
         }
     }
 
@@ -289,7 +309,8 @@ public final class Towers extends InventoryUnifiedMinigame {
     @EventHandler
     public void onProjectileLand(ProjectileHitEvent event) {
         this.ensureNotIllegal();
-        if (!(event.getEntity() instanceof Egg egg)) {
+        UUID ownerUuid = event.getEntity().getOwnerUniqueId();
+        if (!(event.getEntity() instanceof Egg egg) || ownerUuid == null) {
             return;
         }
         String entityType = Util.getPersistentKey(egg, "spawn_egg", PersistentDataType.STRING);
@@ -301,7 +322,8 @@ public final class Towers extends InventoryUnifiedMinigame {
             return;
         }
         Location hitLocation = event.getHitBlock() != null ? event.getHitBlock().getLocation() : egg.getLocation();
-        hitLocation.getWorld().spawnEntity(hitLocation.add(0, 1, 0), type);
+        Entity entity = hitLocation.getWorld().spawnEntity(hitLocation.add(0, 1, 0), type);
+        Util.setPersistentKey(entity, KEY_STRING, PersistentDataType.STRING, ownerUuid.toString());
     }
 
     @EventHandler
@@ -366,14 +388,19 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
     }
 
-    private void positionalBasedPoints(EventPlayer eventPlayer) {
-        // players before this one is removed
-        int remainingPlayers = this.getActivePlayers().size();
-
-        // grant points based on how few players are left
-        int position = this.initialPlayerCount - remainingPlayers;
-        this.scoreboard.addScore(eventPlayer, position + 1);
+    @EventHandler
+    public void onPlayerAddPotionEffect(EntityPotionEffectEvent event) {
+        this.ensureNotIllegal();
+        if (!(event.getEntity() instanceof Player targetPlayer)) {
+            return;
+        }
+        TowersPlayer towersPlayer = this.towersPlayers.get(targetPlayer.getUniqueId());
+        if (towersPlayer instanceof Spectator) {
+            event.setCancelled(true);
+        }
     }
+
+
 
     private <T extends TowersPlayer> T swapRole(Class<? extends TowersPlayer> ifRole, TowersPlayer towersPlayer, Supplier<? extends TowersPlayer> newRoleSupplier) {
         if (ifRole.isInstance(towersPlayer)) {
