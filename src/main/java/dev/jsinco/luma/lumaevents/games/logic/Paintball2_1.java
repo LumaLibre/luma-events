@@ -384,7 +384,8 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         PaintballTeam paintballTeam2 = this.paintballTeams.stream()
                 .filter(team -> team.isMember(hitPlayer))
                 .findFirst()
-                .orElseThrow();
+                .orElse(null);
+        if (paintballTeam2 == null) return;
 
         if (!boundingBox.contains(hitPlayer.getLocation()) || paintballTeam == paintballTeam2) {
             return; // Shooter is not in the bounding box or hit player is not in the bounding box or shooter hit their own teammate

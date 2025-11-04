@@ -5,6 +5,6 @@ import dev.jsinco.luma.lumaevents.games.interfaces.TokenFormula;
 public class TowersTokenFormula implements TokenFormula<Integer> {
     @Override
     public int tokens(Integer context) {
-        return Math.min(context + 1, 15); // Max 15 tokens
+        return Math.min(context, 15); // Max 15 tokens
     }
 }

@@ -172,6 +172,10 @@ public final class Manor extends InventoryUnifiedMinigame {
         this.manorPlayers.getRunners().forEach(runner -> {
             this.scoreboard.addScore(runner.getEventPlayer(), 3); // 3 points for surviving
         });
+        Hunter hunter = this.manorPlayers.getHunter();
+        if (hunter != null) {
+            this.scoreboard.addScore(hunter.getEventPlayer(), 2);
+        }
 
         this.manorPlayers.forEach(ManorPlayer::onRemove);
         this.sendAudienceMessage("This minigame has concluded.");
@@ -219,7 +223,13 @@ public final class Manor extends InventoryUnifiedMinigame {
         ManorPlayer victim = this.manorPlayers.get(victimPlayer.getUniqueId());
         ManorPlayer attacker = this.manorPlayers.get(attackerPlayer.getUniqueId());
         if (victim == null || attacker == null) return;
-        victim.onAttacked(event, attacker);
+
+        if (attacker instanceof Hunter hunter) {
+            victim.onAttacked(event, hunter);
+        } else {
+            event.setCancelled(true);
+            attacker.sendMessage("You cannot attack this player.");
+        }
     }
 
     @EventHandler

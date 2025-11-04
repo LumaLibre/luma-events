@@ -23,7 +23,7 @@ public class MinigameExitPreventionListener implements Listener {
     public void onPlayerTeleport(PlayerTeleportEvent event) {
         minigame.ensureNotIllegal(); // Ensure active. Should be unregistered if not active
         MinigameBoundingBox bb = minigame.getBoundingBox();
-        if (!bb.contains(event.getFrom()) || bb.contains(event.getTo())) { // Ensure player is in minigame
+        if (!bb.contains(event.getFrom()) || bb.contains(event.getTo()) || event.getCause() == PlayerTeleportEvent.TeleportCause.ENDER_PEARL) { // Ensure player is in minigame
             return;
         }
 
@@ -42,7 +42,6 @@ public class MinigameExitPreventionListener implements Listener {
         Player player = event.getPlayer();
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
         if (minigame.getParticipants().contains(eventPlayer)
-                && minigame.getBoundingBox().contains(player)
                 && !player.hasPermission("lumaevents.bypass")
                 && !event.getMessage().contains("quit") // super lazy check to allow quitting
         ) {

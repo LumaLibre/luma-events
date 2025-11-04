@@ -16,7 +16,9 @@ import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Executors;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
+import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
+import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -28,10 +30,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -39,8 +43,6 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -71,7 +73,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     private boolean started = false;
 
     public Towers(TowersDefinition def) {
-        super("Towers", "Don't fall.", 300000, TICK_INTERVAL, false, true, false, false);
+        super("Towers", "Don't fall.", 480000, TICK_INTERVAL, false, true, false, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.outerRegion = WorldTiedBoundingBox.of(def.getOuterRegion().getLoc1(), def.getOuterRegion().getLoc2());
         this.spawnLocation = def.getSpawnLocation().toCenterLocation();
@@ -160,6 +162,9 @@ public final class Towers extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStop() {
+        this.getActivePlayers().forEach(activePlayer -> {
+            this.scoreboard.addScore(activePlayer.getEventPlayer(), 2);
+        });
 
         Executors.runSync(() -> {
             this.towersPlayers.values().forEach(towersPlayer -> {
@@ -222,14 +227,8 @@ public final class Towers extends InventoryUnifiedMinigame {
             Util.sendMsg(bukkitPlayer, "You are not participating in this minigame.");
             return;
         }
-        TowersPlayer attacker = null;
 
-        if (event.getDamageSource().getCausingEntity() instanceof Player damager) {
-            attacker = this.towersPlayers.get(damager.getUniqueId());
-        }
-
-
-        towersPlayer.onDeath(event, attacker);
+        towersPlayer.onDeath(event);
         this.swapRole(ActivePlayer.class, towersPlayer, () -> new Spectator(towersPlayer.getEventPlayer(), this, towersPlayer.getRespawnLocation()));
     }
 
@@ -237,16 +236,25 @@ public final class Towers extends InventoryUnifiedMinigame {
     @EventHandler
     public void onPlayerDamagedByEntity(EntityDamageByEntityEvent event) {
         this.ensureNotIllegal();
-        if (!(event.getDamager() instanceof Player attacker)) {
+        if (!(event.getDamageSource().getCausingEntity() instanceof Player attacker)) {
             return;
         }
-
 
         TowersPlayer attackerTowersPlayer = this.towersPlayers.get(attacker.getUniqueId());
 
         if (attackerTowersPlayer instanceof Spectator spectator) {
             spectator.getEventPlayer().sendMessage("You cannot attack players while spectating.");
             event.setCancelled(true);
+        }
+
+
+        if (!(event.getEntity() instanceof Player victim)) {
+            return;
+        }
+
+        TowersPlayer victimTowersPlayer = this.towersPlayers.get(victim.getUniqueId());
+        if (victimTowersPlayer instanceof ActivePlayer activePlayer) {
+            activePlayer.setLastAttacker(attacker.getUniqueId());
         }
     }
 
@@ -314,12 +322,49 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
 
         InventoryType type = event.getInventory().getType();
-        if (type != InventoryType.PLAYER && type != InventoryType.CREATIVE && type != InventoryType.CRAFTING) {
+        if (type != InventoryType.PLAYER && type != InventoryType.CREATIVE && type != InventoryType.CRAFTING && type != InventoryType.WORKBENCH) {
             event.setCancelled(true);
             towersPlayer.getEventPlayer().sendMessage("You cannot open this type of inventory during this game.");
         }
     }
 
+
+    @EventHandler
+    public void onEntityTarget(EntityTargetLivingEntityEvent event) {
+        this.ensureNotIllegal();
+        if (!(event.getTarget() instanceof Player targetPlayer)) {
+            return;
+        }
+        TowersPlayer towersPlayer = this.towersPlayers.get(targetPlayer.getUniqueId());
+        if (towersPlayer instanceof Spectator) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onEntityDamage(EntityDamageByEntityEvent event) {
+        this.ensureNotIllegal();
+        if (!(event.getEntity() instanceof Player targetPlayer)) {
+            return;
+        }
+        TowersPlayer towersPlayer = this.towersPlayers.get(targetPlayer.getUniqueId());
+        if (towersPlayer instanceof Spectator) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerDropItem(PlayerDropItemEvent event) {
+        this.ensureNotIllegal();
+        Player bukkitPlayer = event.getPlayer();
+        TowersPlayer towersPlayer = this.towersPlayers.get(bukkitPlayer.getUniqueId());
+        if (towersPlayer == null) return;
+
+        if (towersPlayer instanceof Spectator) {
+            Util.sendMsg(bukkitPlayer, "You cannot drop items while spectating.");
+            event.setCancelled(true);
+        }
+    }
 
     private void positionalBasedPoints(EventPlayer eventPlayer) {
         // players before this one is removed
@@ -411,14 +456,18 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
 
         public abstract void onTick(long timeLeft);
-        public abstract void onDeath(PlayerDeathEvent event, @Nullable TowersPlayer attacker);
+        public abstract void onDeath(PlayerDeathEvent event);
         public abstract void cleanup();
     }
 
 
+    @Getter
+    @Setter
     private static class ActivePlayer extends TowersPlayer {
 
         private static final int MINECRAFT_MIN_Y = -63;
+        private UUID lastAttacker = null;
+        private int kills = 0;
 
         public ActivePlayer(EventPlayer eventPlayer, Towers context) {
             super(eventPlayer, context);
@@ -452,19 +501,28 @@ public final class Towers extends InventoryUnifiedMinigame {
                 return;
             }
 
-            player.sendActionBar(Text.mm("<yellow>Time left: " + Util.millisToSecs(timeLeft) + "s"));
+            player.sendActionBar(Text.mm("<yellow>Time left: " + Util.millisToSecs(timeLeft) + "s | <green>Kills: " + this.kills));
         }
 
         @Override
-        public void onDeath(PlayerDeathEvent event, @Nullable TowersPlayer attacker) {
+        public void onDeath(PlayerDeathEvent event) {
             event.setCancelled(true);
             this.context.sendAudienceMessage(event.deathMessage());
             if (this.respawnLocation != null) {
                 this.eventPlayer.teleportAsync(this.respawnLocation);
             }
 
-            if (attacker != null) {
-                this.context.scoreboard.addScore(attacker.getEventPlayer(), 1);
+            this.context.scoreboard.addScore(this.eventPlayer, 2);
+
+
+            if (this.lastAttacker == null) {
+                return;
+            }
+
+            TowersPlayer attackerPlayer = this.context.towersPlayers.get(this.lastAttacker);
+            this.context.scoreboard.addScore(attackerPlayer.getEventPlayer(), 2);
+            if (attackerPlayer instanceof ActivePlayer activePlayer) {
+                activePlayer.kills++;
             }
         }
 
@@ -535,9 +593,15 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
 
         @Override
-        public void onDeath(PlayerDeathEvent event, @Nullable TowersPlayer attacker) {
+        public void onDeath(PlayerDeathEvent event) {
             event.setCancelled(true);
-            this.eventPlayer.teleportAsync(this.respawnLocation);
+            this.eventPlayer.operatePlayer(player -> {
+                player.teleport(this.context.boundingBox.getCenterLocation());
+                if (!player.getAllowFlight()) {
+                    player.setAllowFlight(true);
+                }
+                player.setFlying(true);
+            });
         }
 
 
