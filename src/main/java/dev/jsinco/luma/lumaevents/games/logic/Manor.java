@@ -169,14 +169,6 @@ public final class Manor extends InventoryUnifiedMinigame {
     protected void handleStop() {
         this.countdownBossBar.stop(false);
 
-        this.manorPlayers.getRunners().forEach(runner -> {
-            this.scoreboard.addScore(runner.getEventPlayer(), 3); // 3 points for surviving
-        });
-        Hunter hunter = this.manorPlayers.getHunter();
-        if (hunter != null) {
-            this.scoreboard.addScore(hunter.getEventPlayer(), 2);
-        }
-
         this.manorPlayers.forEach(ManorPlayer::onRemove);
         this.sendAudienceMessage("This minigame has concluded.");
 
@@ -232,14 +224,6 @@ public final class Manor extends InventoryUnifiedMinigame {
         }
     }
 
-    @EventHandler
-    public void onPlayerDamaged(EntityDamageEvent event) {
-        this.ensureNotIllegal();
-        if (!(event.getEntity() instanceof Player victim)) return;
-        if (this.manorPlayers.containsKey(victim.getUniqueId()) && event.getCause() == EntityDamageEvent.DamageCause.FREEZE) {
-            event.setCancelled(true);
-        }
-    }
 
     // TODO: Do something about hunter possibly being afk
     private boolean ensureHunterAssigned() {
@@ -292,15 +276,6 @@ public final class Manor extends InventoryUnifiedMinigame {
 
         public void sendMessage(String message) {
             this.eventPlayer.sendMessage(message);
-        }
-
-        protected boolean isWithinDistance(ManorPlayer manorPlayer, double distance) {
-            Player me = this.eventPlayer.getPlayer();
-            Player you = manorPlayer.eventPlayer.getPlayer();
-            if (me != null && you != null) {
-                return me.getLocation().distanceSquared(you.getLocation()) <= distance * distance;
-            }
-            return false;
         }
 
         protected Double distanceTo(ManorPlayer manorPlayer) {
@@ -527,6 +502,7 @@ public final class Manor extends InventoryUnifiedMinigame {
 
 
             this.context.sendAudienceMessage(this.eventPlayer.getName() + " was caught by " + attacker.getEventPlayer().getName() + "!");
+            this.context.scoreboard.addScore(attacker.getEventPlayer(), 1); // Hunter gets 1 points per catch
 
             if (this.context.manorPlayers.getRunners().isEmpty()) {
                 this.context.sendAudienceMessage("The hunter has caught all runners. The hunter wins...");
@@ -567,10 +543,10 @@ public final class Manor extends InventoryUnifiedMinigame {
             if (!(attacker instanceof Hunter)) {
                 event.setCancelled(true);
                 attacker.sendMessage("You cannot attack this player.");
+                return;
             }
 
             event.setDamage(90.0); // Ensure instant kill when attacked by hunter
-            this.context.scoreboard.addScore(attacker.getEventPlayer(), 1); // Hunter gets 1 points per catch
         }
 
 

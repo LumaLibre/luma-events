@@ -3,6 +3,7 @@ package dev.jsinco.luma.lumaevents.games.logic;
 import com.destroystokyo.paper.event.player.PlayerJumpEvent;
 import dev.jsinco.luma.lumacore.utility.Text;
 import dev.jsinco.luma.lumaevents.EventMain;
+import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.configurable.MaterialCount;
 import dev.jsinco.luma.lumaevents.configurable.sectors.TowersDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.TowersItems;
@@ -38,6 +39,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
@@ -78,7 +80,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     private boolean started = false;
 
     public Towers(TowersDefinition def) {
-        super("Towers", "Don't fall.", 480000, TICK_INTERVAL, false, true, false, false);
+        super("Towers", "Don't fall.", 480000, TICK_INTERVAL, false, false, false, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.outerRegion = WorldTiedBoundingBox.of(def.getOuterRegion().getLoc1(), def.getOuterRegion().getLoc2());
         this.spawnLocation = def.getSpawnLocation().toCenterLocation();
@@ -395,8 +397,23 @@ public final class Towers extends InventoryUnifiedMinigame {
             return;
         }
         TowersPlayer towersPlayer = this.towersPlayers.get(targetPlayer.getUniqueId());
-        if (towersPlayer instanceof Spectator) {
+        if (towersPlayer instanceof Spectator && event.getModifiedType() != PotionEffectType.INVISIBILITY) {
             event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
+        this.ensureNotIllegal();
+
+        Player player = event.getPlayer();
+        EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
+        if (this.getParticipants().contains(eventPlayer)
+                && !player.hasPermission("lumaevents.bypass")
+                && !event.getMessage().contains("quit") // super lazy check to allow quitting
+        ) {
+            event.setCancelled(true);
+            eventPlayer.sendMessage("You can't use commands while participating in this minigame. Use /event quit to leave.");
         }
     }
 

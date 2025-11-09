@@ -16,7 +16,7 @@ import org.bukkit.inventory.ItemStack
 class StartMinigameItem : CustomItemFunctions() {
     override fun createItem(): Pair<String, ItemStack> {
         fun grad(s: String): String {
-            return "<gradient:#ff4e50:#fc913a:#f9d62e:#eae374:#97c753>$s</gradient>"
+            return "<gradient:#2c272c:#842e5e:#bc6997:#f87626:#f7a425:#83b14f>$s</gradient>"
         }
 
         return ItemFactory.builder()
@@ -30,8 +30,8 @@ class StartMinigameItem : CustomItemFunctions() {
                 "<red>Cooldown: 1h</red>",
             )
             .material(Material.BLAZE_POWDER)
-            .persistentData("summer-start-minigame")
-            .tier(Tier.SUMMER_2025)
+            .persistentData("halloween-start-minigame")
+            .tier(Tier.HALLOWEEN_2025)
             .buildPair()
     }
 
