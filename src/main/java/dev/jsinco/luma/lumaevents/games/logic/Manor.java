@@ -93,7 +93,9 @@ public final class Manor extends InventoryUnifiedMinigame {
     @Override
     public boolean removeParticipant(EventPlayer participant) {
         ManorPlayer manorPlayer = this.manorPlayers.remove(participant.getUuid());
-        manorPlayer.onRemove();
+        if (manorPlayer != null) {
+            manorPlayer.onRemove();
+        }
         return super.removeParticipant(participant);
     }
 

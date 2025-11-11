@@ -19,7 +19,7 @@ public class MinigameExitPreventionListener implements Listener {
         this.minigame = minigame;
     }
 
-    @EventHandler
+    //@EventHandler too much work to deal with right now
     public void onPlayerTeleport(PlayerTeleportEvent event) {
         minigame.ensureNotIllegal(); // Ensure active. Should be unregistered if not active
         MinigameBoundingBox bb = minigame.getBoundingBox();
