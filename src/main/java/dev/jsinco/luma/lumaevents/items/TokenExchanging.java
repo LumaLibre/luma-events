@@ -1,5 +1,6 @@
 package dev.jsinco.luma.lumaevents.items;
 
+import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumaitems.LumaItems;
 import dev.jsinco.luma.lumaitems.manager.CustomItem;
@@ -31,14 +32,15 @@ public class TokenExchanging {
         if (amount < 1) {
             return;
         }
+        final int finalAmount = (int) Math.ceil(EventMain.getOkaeriConfig().getTokenMultiplier() * amount);
 
         ItemStack itemStack = LocalCustomItemManager.getCustomItemStack(type.tokenClass);
         if (itemStack == null) {
-            Util.log("<red>Could not give NULL token: " + type.name() + " amount: " + amount + " to: " + player.getName());
+            Util.log("<red>Could not give NULL token: " + type.name() + " amount: " + finalAmount + " to: " + player.getName());
             return;
         }
-        Util.giveItem(player, itemStack, amount);
-        Util.sendMsg(player, "You got <gold>" + amount + "</gold> " + type.customName + "(s)!");
+        Util.giveItem(player, itemStack, finalAmount);
+        Util.sendMsg(player, "You got <gold>" + finalAmount + "</gold> " + type.customName + "(s)!");
 
     }
 

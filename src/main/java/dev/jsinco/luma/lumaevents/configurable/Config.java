@@ -28,6 +28,9 @@ public class Config extends OkaeriConfig {
     @Comment("Automatic minigame cooldown in milliseconds")
     private long automaticMinigameCooldown = 7200000L;
 
+    @Comment("Token multiplier")
+    private double tokenMultiplier = 1.0;
+
     @Comment("Location for /event")
     private Location eventSpawnLocation;
 

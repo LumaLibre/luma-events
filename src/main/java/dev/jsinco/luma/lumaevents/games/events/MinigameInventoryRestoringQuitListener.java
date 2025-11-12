@@ -24,10 +24,11 @@ public class MinigameInventoryRestoringQuitListener implements Listener {
         minigame.ensureNotIllegal();
         Player player = event.getPlayer();
         InventorySnapshot inventorySnapshot = InventorySnapshotManager.INSTANCE.getSnapshotByOwner(player.getUniqueId());
-        if (inventorySnapshot != null) {
-            inventorySnapshot.restore(player);
-            InventorySnapshotManager.INSTANCE.unregisterSnapshot(inventorySnapshot);
+        if (inventorySnapshot == null) {
+            return;
         }
+        inventorySnapshot.restore(player);
+        InventorySnapshotManager.INSTANCE.unregisterSnapshot(inventorySnapshot);
         EventPlayer eplayer = EventPlayerManager.getByUUID(player.getUniqueId());
         minigame.removeParticipant(eplayer);
         //minigame.sendAudienceMessage( eplayer.getName() + " has left the minigame.");
