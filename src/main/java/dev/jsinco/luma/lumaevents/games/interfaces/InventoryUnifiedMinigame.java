@@ -5,9 +5,14 @@ import dev.jsinco.luma.lumaevents.games.events.MinigameInventoryRestoringQuitLis
 import dev.jsinco.luma.lumaevents.games.obj.InventorySnapshot;
 import dev.jsinco.luma.lumaevents.games.InventorySnapshotManager;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import dev.jsinco.luma.lumaevents.utility.Executors;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class InventoryUnifiedMinigame extends Minigame {
 
@@ -30,21 +35,34 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
 
     @Override
     protected void onPreStart() {
+        List<EventPlayer> removed = new ArrayList<>();
         for (EventPlayer participant : this.participants) {
             Player player = participant.getPlayer();
             if (player == null) {
-                this.removeParticipant(participant);
+                removed.add(participant);
                 continue;
             }
 
-            InventorySnapshot inventorySnapshot = new InventorySnapshot(participant.getUuid(), player.getInventory().getContents());
-            inventorySnapshot.backup();
-            InventorySnapshotManager.INSTANCE.registerSnapshot(inventorySnapshot);
-            player.getInventory().clear();
+            Executors.sync(() -> {
+                InventorySnapshot inventorySnapshot = new InventorySnapshot(participant.getUuid(), player.getInventory().getContents());
+                inventorySnapshot.backup();
+                InventorySnapshotManager.INSTANCE.registerSnapshot(inventorySnapshot);
+                player.getInventory().clear();
 
-            if (this.defaultItem() != null) {
-                player.getInventory().setItemInMainHand(this.defaultItem());
-            }
+                InventoryView openInv = player.getOpenInventory();
+                if (!openInv.getCursor().isEmpty()) {
+                    openInv.setCursor(null);
+                }
+                player.closeInventory();
+
+                if (this.defaultItem() != null) {
+                    player.getInventory().setItemInMainHand(this.defaultItem());
+                }
+            });
+        }
+
+        for (EventPlayer p : removed) {
+            this.removeParticipant(p);
         }
     }
 

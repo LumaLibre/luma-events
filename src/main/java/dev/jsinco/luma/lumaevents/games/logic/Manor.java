@@ -45,6 +45,7 @@ import java.util.function.Supplier;
 public final class Manor extends InventoryUnifiedMinigame {
 
     private static final int TICK_INTERVAL = 2;
+    public static final NamespacedKey key = new NamespacedKey(LumaItems.getInstance(), "manor_runner_boots");
 
     private final Location spawnLocation;
     private final Location startLocation;
@@ -456,7 +457,6 @@ public final class Manor extends InventoryUnifiedMinigame {
     private static class Runner extends ManorPlayer {
 
         private static final ItemStack BOOTS = Util.editMeta(ItemStack.of(Material.LEATHER_BOOTS), meta -> {
-            NamespacedKey key = new NamespacedKey(LumaItems.getInstance(), "manor_runner_boots");
             meta.addAttributeModifier(Attribute.SCALE, new AttributeModifier(key, -0.5, AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.FEET));
         });
         private static final int SCORE_REQUIREMENT = 800; // 40s per token
@@ -579,11 +579,17 @@ public final class Manor extends InventoryUnifiedMinigame {
 
 
         private void addBoots() {
-            this.eventPlayer.operatePlayer(player -> player.getInventory().setBoots(BOOTS));
+            Player player = this.eventPlayer.getPlayer();
+            if (player != null) {
+                player.getInventory().setBoots(BOOTS);
+            }
         }
 
         private void removeBoots() {
-            this.eventPlayer.operatePlayer(player -> player.getInventory().setBoots(null));
+            Player player = this.eventPlayer.getPlayer();
+            if (player != null) {
+                player.getInventory().setBoots(null);
+            }
         }
     }
 

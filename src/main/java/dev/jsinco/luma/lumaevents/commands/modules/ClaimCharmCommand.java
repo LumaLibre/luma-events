@@ -40,7 +40,7 @@ public class ClaimCharmCommand implements CommandModule {
             return true;
         }
 
-        CustomItem customItem = LumaItemsAPI.getInstance().getCustomItem("lumalympics-charm");
+        CustomItem customItem = LumaItemsAPI.getInstance().getCustomItem("lumaween-charm");
         if (customItem == null) {
             Util.sendMsg(player, "Something went wrong trying to execute this command.");
             return true;

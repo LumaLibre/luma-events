@@ -39,6 +39,7 @@ public class InventorySnapshot {
     }
 
     public void restore(Player player) {
+        player.getInventory().clear();
         player.getInventory().setContents(contents);
     }
 
