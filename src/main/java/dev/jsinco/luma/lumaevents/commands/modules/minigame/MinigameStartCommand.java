@@ -12,6 +12,7 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import eu.okaeri.configs.OkaeriConfig;
 import org.bukkit.command.CommandSender;
 
+import java.util.Arrays;
 import java.util.List;
 
 @AutoRegister(RegisterType.SUBCOMMAND)
@@ -69,6 +70,8 @@ public class MinigameStartCommand implements CommandModule {
 
     @Override
     public List<String> tabComplete(EventMain eventMain, CommandSender commandSender, String[] strings) {
-        return List.of("paintball2.1", "tnttag", "boatrace2", "towers", "manor");
+        return Arrays.stream(MinigameConstant.values())
+                .flatMap(c -> Arrays.stream(c.getAliases()))
+                .toList();
     }
 }

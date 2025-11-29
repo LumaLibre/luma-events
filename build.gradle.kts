@@ -19,6 +19,7 @@ repositories {
     maven("https://repo.codemc.io/repository/maven-public/")
     maven("https://repo.md-5.net/content/groups/public/")
     maven("https://maven.enginehub.org/repo/")
+    maven("https://repo.md-5.net/content/groups/public/")
 }
 
 
@@ -33,6 +34,10 @@ dependencies {
 
 
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
+    compileOnly("me.libraryaddict.disguises:libsdisguises:11.0.0")
+
+    implementation("dev.thorinwasher.schem:schem-reader:1.0.0")
+
     implementation("eu.okaeri:okaeri-configs-yaml-bukkit:5.0.5")
     implementation("eu.okaeri:okaeri-configs-serdes-bukkit:5.0.5")
 }

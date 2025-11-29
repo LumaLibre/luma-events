@@ -80,8 +80,8 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
             } else {
                 Logging.errorLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found.");
             }
+            this.tokenHandler(participant);
         }
-        this.handleTokens();
     }
 
     @Override
@@ -103,6 +103,7 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
                 Logging.errorLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found.");
             }
         }
+        this.tokenHandler(participant);
         return super.removeParticipant(participant);
     }
 
@@ -111,5 +112,5 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
         return null;
     }
 
-    protected abstract void handleTokens();
+    protected abstract void tokenHandler(EventPlayer participant);
 }

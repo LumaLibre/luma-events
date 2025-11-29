@@ -65,11 +65,6 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     }
 
     @Override
-    protected int minimumParticipants() {
-        return 2;
-    }
-
-    @Override
     protected void handleStart() {
         this.scoreboard.addScorers(this.participants);
         for (EventPlayer participant : this.participants) {
@@ -131,13 +126,10 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     }
 
     @Override
-    protected void handleTokens() {
-        for (TNTTagPlayer player : this.tntTagPlayers.values()) {
-            EventPlayer eventPlayer = player.getWho();
-            int finalScore = this.scoreboard.getScore(eventPlayer);
-            tokenFormula.giveTokens(eventPlayer, finalScore);
-            eventPlayer.addPermanentScore(MinigameConstant.TNTTAG, finalScore);
-        }
+    protected void tokenHandler(EventPlayer eventPlayer) {
+        int finalScore = this.scoreboard.getScore(eventPlayer);
+        tokenFormula.giveTokens(eventPlayer, finalScore);
+        eventPlayer.addPermanentScore(MinigameConstant.TNTTAG, finalScore);
     }
 
     @Override

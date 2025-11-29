@@ -84,17 +84,63 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
     }
 
 
-    public boolean start() {
-        return this.start(90);
+    public boolean timedStart() {
+        return this.timedStart(90);
     }
 
-    public boolean start(int seconds) {
+    public boolean timedStart(int seconds) {
         if (this.active) {
             return false;
         }
         this.active = true;
         this.open = true;
         this.openQueue(seconds);
+        return true;
+    }
+
+    public boolean start() {
+        if (this.participants.size() < this.minimumParticipants()) {
+            // Nothing has happened at this point other than these values
+            // being changed to true, so we can just set them to false and return
+            this.active = false;
+            this.open = false;
+            if (this.inventoryTampering != null) {
+                unregisterEvents(this.inventoryTampering);
+            }
+            if (this.preventDamage != null) {
+                unregisterEvents(this.preventDamage);
+            }
+            // TODO: remove this:
+            extraListeners.stream()
+                    .filter(Objects::nonNull)
+                    .forEach(this::unregisterEvents);
+            packetListeners().forEach(packetListener -> ProtocolLibrary.getProtocolManager().removePacketListener(packetListener));
+            Util.broadcast("Not enough players joined to start " + this.name);
+            return false;
+        }
+        this.onPreStart();
+
+        registerEvents(this);
+        this.audience = Audience.audience(participants.stream()
+                .map(EventPlayer::getPlayer).filter(Objects::nonNull).toList());
+        this.open = false;
+        this.startTime = System.currentTimeMillis();
+        extraListeners.stream()
+                .filter(Objects::nonNull)
+                .forEach(this::registerEvents);
+
+        packetListeners().forEach(packetListener -> ProtocolLibrary.getProtocolManager().addPacketListener(packetListener));
+
+        try {
+            this.handleStart();
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+        }
+        if (async) {
+            this.runTaskTimerAsynchronously(EventMain.getInstance(), 0, this.tickInterval);
+        } else {
+            this.runTaskTimer(EventMain.getInstance(), 0, this.tickInterval);
+        }
         return true;
     }
 
@@ -165,9 +211,6 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
     }
 
     public boolean removeParticipant(EventPlayer player) {
-        if (!this.active) {
-            return false;
-        }
         this.participants.remove(player);
         Location loc = this.getGameDropOffLocation();
         Player bukkitPlayer = player.getPlayer();
@@ -183,50 +226,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
                 .title("<aqua><b>" + name + " Starting in</b><gray>:</gray> <b>%ss</b></aqua>")
                 .seconds(seconds)
                 .color(BossBar.Color.BLUE)
-                .callback(() -> {
-                    if (this.participants.size() < this.minimumParticipants()) {
-                        // Nothing has happened at this point other than these values
-                        // being changed to true, so we can just set them to false and return
-                        this.active = false;
-                        this.open = false;
-                        if (this.inventoryTampering != null) {
-                            unregisterEvents(this.inventoryTampering);
-                        }
-                        if (this.preventDamage != null) {
-                            unregisterEvents(this.preventDamage);
-                        }
-                        // TODO: remove this:
-                        extraListeners.stream()
-                                .filter(Objects::nonNull)
-                                .forEach(this::unregisterEvents);
-                        packetListeners().forEach(packetListener -> ProtocolLibrary.getProtocolManager().removePacketListener(packetListener));
-                        Util.broadcast("Not enough players joined to start " + this.name);
-                        return;
-                    }
-                    this.onPreStart();
-
-                    registerEvents(this);
-                    this.audience = Audience.audience(participants.stream()
-                                    .map(EventPlayer::getPlayer).filter(Objects::nonNull).toList());
-                    this.open = false;
-                    this.startTime = System.currentTimeMillis();
-                    extraListeners.stream()
-                            .filter(Objects::nonNull)
-                            .forEach(this::registerEvents);
-
-                    packetListeners().forEach(packetListener -> ProtocolLibrary.getProtocolManager().addPacketListener(packetListener));
-
-                    try {
-                        this.handleStart();
-                    } catch (Throwable throwable) {
-                        throwable.printStackTrace();
-                    }
-                    if (async) {
-                        this.runTaskTimerAsynchronously(EventMain.getInstance(), 0, this.tickInterval);
-                    } else {
-                        this.runTaskTimer(EventMain.getInstance(), 0, this.tickInterval);
-                    }
-                })
+                .callback(this::start)
                 .global(true)
                 .build()
                 .start();
@@ -337,7 +337,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
 
     protected int minimumParticipants() {
         // This method can be overridden to specify the minimum number of participants required to start the minigame
-        return 1; // Default is 1 participant
+        return 2; // Default is 2 participants
     }
 
     protected Collection<PacketListener> packetListeners() {

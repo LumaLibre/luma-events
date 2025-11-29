@@ -18,9 +18,10 @@ public class CountdownBossBar extends BukkitRunnable {
     @Getter
     private final BossBar bossBar;
     private final String title;
-    private final float seconds;
     private final Runnable callback;
     private final boolean global;
+
+    private float seconds;
 
     @Getter
     private float secondsRemaining;
@@ -79,6 +80,10 @@ public class CountdownBossBar extends BukkitRunnable {
         return String.format("%.0f", secondsRemaining);
     }
 
+    public void addSeconds(float seconds) {
+        this.seconds += seconds;
+        this.secondsRemaining += seconds;
+    }
 
     @Override
     public void run() {

@@ -2,15 +2,11 @@ package dev.jsinco.luma.lumaevents.games.constants;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.Config;
-import dev.jsinco.luma.lumaevents.configurable.sectors.BoatRace2Definition;
-import dev.jsinco.luma.lumaevents.configurable.sectors.ManorMinigameDefinition;
-import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
-import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition;
-import dev.jsinco.luma.lumaevents.configurable.sectors.TowersDefinition;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.games.logic.BoatRace2;
 import dev.jsinco.luma.lumaevents.games.logic.Manor;
 import dev.jsinco.luma.lumaevents.games.logic.Paintball2_1;
+import dev.jsinco.luma.lumaevents.games.logic.PropHunt;
 import dev.jsinco.luma.lumaevents.games.logic.TNTTag;
 import dev.jsinco.luma.lumaevents.games.logic.Towers;
 import dev.jsinco.luma.lumaevents.utility.Util;
@@ -19,24 +15,24 @@ import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
-import java.util.function.Supplier;
 
 @Getter
 public enum MinigameConstant {
 
     // This enum should only contain real minigames!
-    PAINTBALL2_1(Paintball2_1.class, "paintball2.1", "paintball2_1"),
-    BOATRACE2(BoatRace2.class, "boatrace2", "boatrace"),
-    TNTTAG(TNTTag.class, "tnttag"),
-    TOWERS(Towers.class, "towers"),
-    MANOR(Manor.class, "manor")
+    PAINTBALL2_1(Paintball2_1::new, "paintball2.1", "paintball2_1"),
+    BOATRACE2(BoatRace2::new,"boatrace2", "boatrace"),
+    TNTTAG(TNTTag::new, "tnttag"),
+    TOWERS(Towers::new, "towers"),
+    MANOR(Manor::new, "manor"),
+    PROP_HUNT(PropHunt::new, "prophunt", "prop_hunt")
     ;
 
-    private final Class<? extends Minigame> minigameClass;
+    private final MinigameSupplier<?> supplier;
     private final String[] aliases;
 
-    MinigameConstant(Class<? extends Minigame> minigameClass, String... aliases) {
-        this.minigameClass = minigameClass;
+    <T extends OkaeriConfig> MinigameConstant(MinigameSupplier<T> supplier, String... aliases) {
+        this.supplier = supplier;
         this.aliases = aliases;
     }
 
@@ -50,36 +46,21 @@ public enum MinigameConstant {
             case TNTTAG -> (Map<String, T>) cfg.getTntTagMaps();
             case TOWERS -> (Map<String, T>) cfg.getTowersMaps();
             case MANOR ->  (Map<String, T>) cfg.getManorMaps();
+            case PROP_HUNT -> (Map<String, T>) cfg.getPropHuntMaps();
         };
     }
 
-    public Supplier<Minigame> getSupplier() {
+    public Minigame instantiateWithRandomDefinition() {
         var randomDefinition = Util.getRandom(getDefinitions().values());
-        return getSupplier(randomDefinition);
+        return instantiate(randomDefinition);
     }
 
-    public <T extends OkaeriConfig> Supplier<Minigame> getSupplier(T definition) {
-        return switch (definition) {
-            case Paintball2_1Definition paintball21Definition -> () -> new Paintball2_1(paintball21Definition);
-            case BoatRace2Definition boatRace2Definition -> () -> new BoatRace2(boatRace2Definition);
-            case MinigameDefinition minigameDefinition -> () -> new TNTTag(minigameDefinition);
-            case TowersDefinition towersDefinition -> () -> new Towers(towersDefinition);
-            case ManorMinigameDefinition manorMinigameDefinition -> () -> new Manor(manorMinigameDefinition);
-            default -> throw new IllegalStateException("Unexpected value: " + definition);
-        };
+    public <T extends OkaeriConfig> Minigame instantiate(T definition) {
+        return ((MinigameSupplier<T>) this.supplier).supply(definition);
     }
 
     public static MinigameConstant random() {
         return Util.getRandom(values());
-    }
-
-    public static MinigameConstant fromClass(Class<? extends Minigame> gameClass) {
-        for (MinigameConstant constant : values()) {
-            if (constant.getMinigameClass().equals(gameClass)) {
-                return constant;
-            }
-        }
-        throw new IllegalArgumentException("No MinigameConstant found for class: " + gameClass.getCanonicalName());
     }
 
     @Nullable
@@ -92,5 +73,10 @@ public enum MinigameConstant {
             }
         }
         return null;
+    }
+
+    @FunctionalInterface
+    private interface MinigameSupplier<T extends OkaeriConfig> {
+        Minigame supply(T definition);
     }
 }

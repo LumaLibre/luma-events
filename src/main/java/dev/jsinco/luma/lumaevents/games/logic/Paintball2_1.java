@@ -166,7 +166,17 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     }
 
     @Override
-    protected void handleTokens() {
+    protected void tokenHandler(EventPlayer participant) {
+        // Handled in onPostStop
+    }
+
+    @Override
+    public void onPostStop() {
+        super.onPostStop();
+        this.handleTokens();
+    }
+
+    private void handleTokens() {
         PaintballTeam winningTeam = this.scoreboard.getTopScorer();
 
         for (PaintballTeam team : this.paintballTeams) {

@@ -2,9 +2,9 @@ package dev.jsinco.luma.lumaevents.games.tokenformula;
 
 import dev.jsinco.luma.lumaevents.games.interfaces.TokenFormula;
 
-public class ManorTokenFormula extends TokenFormula<Integer> {
+public class PropHuntTokenFormula extends TokenFormula<Integer> {
     @Override
     public int tokens(Integer context) {
-        return Math.min(context + 2, 15);
+        return Math.max(2, Math.min(context, 15));
     }
 }

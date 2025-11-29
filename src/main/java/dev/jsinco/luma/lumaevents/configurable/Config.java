@@ -68,5 +68,10 @@ public class Config extends OkaeriConfig {
     private Map<String, ManorMinigameDefinition> manorMaps = Map.of(
             "default", new ManorMinigameDefinition()
     );
+
+    @Comment("Minigame definition for 'Prop Hunt'")
+    private Map<String, ManorMinigameDefinition> propHuntMaps = Map.of(
+            "default", new ManorMinigameDefinition()
+    );
 }
 

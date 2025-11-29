@@ -24,7 +24,6 @@ import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.EquipmentSlotGroup;
 import org.bukkit.inventory.ItemStack;
@@ -69,20 +68,13 @@ public final class Manor extends InventoryUnifiedMinigame {
         this.tokenFormula = new ManorTokenFormula();
     }
 
-    @Override
-    protected int minimumParticipants() {
-        return 2;
-    }
 
     @Override
-    protected void handleTokens() {
-        for (ManorPlayer manorPlayer : this.manorPlayers) {
-            EventPlayer eventPlayer = manorPlayer.getEventPlayer();
-            int finalScore = this.scoreboard.getScore(eventPlayer);
+    protected void tokenHandler(EventPlayer eventPlayer) {
+        int finalScore = this.scoreboard.getScore(eventPlayer);
 
-            this.tokenFormula.giveTokens(eventPlayer, finalScore);
-            eventPlayer.addPermanentScore(MinigameConstant.MANOR, finalScore);
-        }
+        this.tokenFormula.giveTokens(eventPlayer, finalScore);
+        eventPlayer.addPermanentScore(MinigameConstant.MANOR, finalScore);
     }
 
     @Override

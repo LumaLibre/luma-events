@@ -40,15 +40,16 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     }
 
-    @Override
-    protected void handleTokens() {
-
-    }
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
         super.handleParticipantJoin(player);
         return true;
+    }
+
+    @Override
+    protected void tokenHandler(EventPlayer participant) {
+
     }
 
 

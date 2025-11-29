@@ -52,8 +52,8 @@ public final class MinigameManager extends BukkitRunnable {
             player.playSound(player.getLocation(), Sound.ENTITY_EVOKER_PREPARE_WOLOLO, 1f, 0.75f);
         });
 
-        this.current = game.getSupplier(definition).get();
-        return this.current.start(seconds);
+        this.current = game.instantiate(definition);
+        return this.current.timedStart(seconds);
     }
 
     public boolean newMinigame(MinigameConstant game, boolean force) throws GameAlreadyStartedException {

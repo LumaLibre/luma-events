@@ -91,19 +91,11 @@ public final class Towers extends InventoryUnifiedMinigame {
     }
 
     @Override
-    protected int minimumParticipants() {
-        return 2;
-    }
+    protected void tokenHandler(EventPlayer participant) {
+        int finalScore = this.scoreboard.getScore(participant);
 
-    @Override
-    protected void handleTokens() {
-        for (TowersPlayer towersPlayer : this.towersPlayers.values()) {
-            EventPlayer eventPlayer = towersPlayer.getEventPlayer();
-            int finalScore = this.scoreboard.getScore(eventPlayer);
-
-            this.tokenFormula.giveTokens(eventPlayer, finalScore);
-            eventPlayer.addPermanentScore(MinigameConstant.TOWERS, finalScore);
-        }
+        this.tokenFormula.giveTokens(participant, finalScore);
+        participant.addPermanentScore(MinigameConstant.TOWERS, finalScore);
     }
 
     @Override

@@ -38,6 +38,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 
 public final class Util {
@@ -494,5 +495,23 @@ public final class Util {
             return chatColor;
         }
         return ChatColor.GRAY;
+    }
+
+    public static boolean isAssignableFromAny(Class<?> target, Class<?>... candidates) {
+        for (Class<?> candidate : candidates) {
+            if (target.isAssignableFrom(candidate)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static <T> boolean isAssignableFromAny(Class<?> target, Set<Class<T>> candidates) {
+        for (Class<?> candidate : candidates) {
+            if (target.isAssignableFrom(candidate)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

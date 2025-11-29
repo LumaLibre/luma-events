@@ -1,7 +1,6 @@
 package dev.jsinco.luma.lumaevents.games.obj;
 
 import dev.jsinco.luma.lumaevents.games.interfaces.Scorer;
-import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
