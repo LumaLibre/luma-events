@@ -12,11 +12,6 @@ public final class UpAndUp extends InventoryUnifiedMinigame {
     }
 
     @Override
-    protected void handleTokens() {
-
-    }
-
-    @Override
     protected void handleStart() {
 
     }
@@ -34,5 +29,10 @@ public final class UpAndUp extends InventoryUnifiedMinigame {
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
         return false;
+    }
+
+    @Override
+    protected void tokenHandler(EventPlayer participant) {
+
     }
 }

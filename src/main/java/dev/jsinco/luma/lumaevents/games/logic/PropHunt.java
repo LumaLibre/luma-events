@@ -1,6 +1,7 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
 import com.google.common.base.Preconditions;
+import dev.jsinco.luma.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.ManorMinigameDefinition;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
@@ -21,9 +22,13 @@ import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -38,6 +43,7 @@ import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -109,6 +115,9 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                 .callback(() -> {
                     Preconditions.checkNotNull(this.countdownBossBar, "Countdown boss bar should not be null when initial countdown ends.");
                     this.countdownBossBar.start();
+                    firstSeeker.getEventPlayer().teleportAsync(this.startLocation);
+                    firstSeeker.getEventPlayer().sendMessage("<red>The game has started. Find and catch all the Hiders!");
+
                     this.propHuntPlayers.forEach(propHuntPlayer -> {
                         Player player = propHuntPlayer.bukkitPlayer();
                         if (player != null) {
@@ -164,10 +173,10 @@ public final class PropHunt extends InventoryUnifiedMinigame {
     @Override
     protected void handleStop() {
         if (this.initialBossBar != null && !this.initialBossBar.isCancelled()) {
-            this.initialBossBar.stop(false);
+            unsafe(() -> this.initialBossBar.stop(false));
         }
         if (this.countdownBossBar != null && !this.countdownBossBar.isCancelled()) {
-            this.countdownBossBar.stop(false);
+            unsafe(() -> this.countdownBossBar.stop(false));
         }
 
         Executors.runSync(() -> {
@@ -214,14 +223,26 @@ public final class PropHunt extends InventoryUnifiedMinigame {
     public void onBlockInteract(PlayerInteractEvent event) {
         this.ensureNotIllegal();
         Block clickedBlock = event.getClickedBlock();
-        if (clickedBlock == null) return;
+
 
         PropHuntPlayer propHuntPlayer = this.propHuntPlayers.get(event.getPlayer().getUniqueId());
 
-        if (propHuntPlayer != null) {
+        if (propHuntPlayer == null) return;
+
+        Entity clickedEntity = event.getPlayer().getTargetEntity(6);
+        if (clickedEntity instanceof Player p) {
+            Hider hider = this.propHuntPlayers.as(p.getUniqueId(), Hider.class);
+            if (hider != null && !hider.isLocked()) {
+                propHuntPlayer.onEntityInteract(event, p, hider);
+                return;
+            }
+        }
+
+        if (clickedBlock != null) {
             propHuntPlayer.onBlockInteract(event, clickedBlock);
         }
     }
+
 
 
     @EventHandler
@@ -238,12 +259,8 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             Util.sendMsg(attacker, "You cannot damage that entity.");
             event.setCancelled(true);
         } else {
-            // Full charge attack = one hit kill
-            // Half charge attack = 50% health
-            // Minimum damage = 10% health
-            // If default damage from the weapon is greater than calculated damage, use that instead
-            double finalDamage = Math.max(22 * Math.max(attacker.getAttackCooldown(), 0.1), event.getDamage());
-            event.setDamage(finalDamage);
+            // Always instantly kill hiders when damaged by seekers
+            event.setDamage(40);
         }
     }
 
@@ -254,8 +271,9 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         PropHuntPlayer propHuntPlayer = this.propHuntPlayers.get(event.getEntity().getUniqueId());
         if (propHuntPlayer == null) return;
 
+        event.setCancelled(true);
+
         if (!(propHuntPlayer instanceof Hider hider)) {
-            event.setCancelled(true);
             return;
         }
 
@@ -264,14 +282,12 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
         if (!(event.getDamageSource().getCausingEntity() instanceof Player bukkitAttacker)) {
             propHuntPlayer.getEventPlayer().sendMessage(preventedDeath);
-            event.setCancelled(true);
             return;
         }
 
         Seeker seeker = this.propHuntPlayers.as(bukkitAttacker.getUniqueId(), Seeker.class);
         if (seeker == null) {
             propHuntPlayer.getEventPlayer().sendMessage(preventedDeath);
-            event.setCancelled(true);
             return;
         }
 
@@ -290,10 +306,10 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         hider.unlock();
     }
 
-    @EventHandler
+    //@EventHandler
     public void onPlayerCrouch(PlayerToggleSneakEvent event) {
         this.ensureNotIllegal();
-        if (!event.isSneaking()) return;
+        if (event.isSneaking()) return;
 
         Hider hider = this.propHuntPlayers.as(event.getPlayer().getUniqueId(), Hider.class);
         if (hider != null && !hider.isLocked()) {
@@ -315,6 +331,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         public abstract void cleanup();
         public abstract void onTick();
         public abstract void onBlockInteract(PlayerInteractEvent event, Block clickedBlock);
+        public abstract void onEntityInteract(PlayerInteractEvent event, Player clickedEntity, Hider hider);
 
         @Nullable
         public Player bukkitPlayer() {
@@ -328,7 +345,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                 Player otherPlayer = other.getEventPlayer().getPlayer();
                 Player selfPlayer = this.getEventPlayer().getPlayer();
                 if (otherPlayer != null && selfPlayer != null) {
-                    otherPlayer.hidePlayer(EventMain.getInstance(), selfPlayer);
+                    Executors.runSync(() -> otherPlayer.hidePlayer(EventMain.getInstance(), selfPlayer));
                 }
             }
             this.hidden = true;
@@ -341,7 +358,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                 Player otherPlayer = other.getEventPlayer().getPlayer();
                 Player selfPlayer = this.getEventPlayer().getPlayer();
                 if (otherPlayer != null && selfPlayer != null) {
-                    otherPlayer.showPlayer(EventMain.getInstance(), selfPlayer);
+                    Executors.runSync(() -> otherPlayer.showPlayer(EventMain.getInstance(), selfPlayer));
                 }
             }
             this.hidden = false;
@@ -354,13 +371,13 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         private static final int DISGUISE_COOLDOWN = 450; // in ticks
         private static final int SCOREBOARD_POINT_INTERVAL = 800;
 
-        private MiscDisguise disguise;
-        private ArmorStand lockStand;
-        private Block lockedBlock;
-        private Material material;
+        private MiscDisguise disguise = null;
+        private ArmorStand lockStand = null;
+        private Block lockedBlock = null;
+        private Material material = null;
 
-        private int disguiseCooldownCounter;
-        private int scoreboardPointCounter;
+        private int disguiseCooldownCounter = 0;
+        private int scoreboardPointCounter = 0;
 
         public Hider(PropHunt context, EventPlayer eventPlayer) {
             super(context, eventPlayer);
@@ -369,24 +386,27 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         @Override
         public void cleanup() {
             this.removeBlockDisguise();
+            this.show(PropHuntPlayer.class);
         }
 
         @Override
         public void onTick() {
             Player player = this.bukkitPlayer();
-            if (this.isLocked() && player != null) {
+            if (player == null) return;
+            if (this.isLocked()) {
                 player.addPotionEffect(INVISIBILITY);
             }
 
-            String msg;
+            String msg = "<green>You can disguise yourself by left-clicking a block.";
 
             if (this.disguiseCooldownCounter > 0) {
                 this.disguiseCooldownCounter = Math.max(0, this.disguiseCooldownCounter - (int) TICK_INTERVAL);
+            }
+
+            if (!this.isLocked() && this.material != null) {
+                msg = "<green>You are disguised as a <yellow>" + Util.formatMaterialName(this.material.toString()) + "</yellow> block. Right-click to lock into place.";
+            } else if (this.disguiseCooldownCounter > 0 && this.isLocked()) {
                 msg = "<yellow>Disguise Cooldown: <red>" + Util.ticksToSecs(this.disguiseCooldownCounter) + "s</red>";
-            } else if (!this.isLocked()) {
-                msg = "<green>You are disguised as a <yellow>" + Util.formatMaterialName(this.material.toString()) + "</yellow> block. Sneak to lock in place.";
-            } else {
-                msg = "<green>You can disguise yourself by right-clicking a block.";
             }
 
             this.scoreboardPointCounter += (int) TICK_INTERVAL;
@@ -396,11 +416,36 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             }
 
             this.getEventPlayer().sendActionBar(msg);
+
+            // particles
+            if (!this.isLocked()) {
+                return;
+            }
+
+            Location location;
+            BlockData blockData;
+            if (this.lockedBlock != null) {
+                location = this.lockedBlock.getLocation().toCenterLocation();
+                blockData = this.lockedBlock.getBlockData();
+            } else {
+                location = player.getLocation();
+                blockData = Material.STONE.createBlockData();
+
+                Logging.errorLog("Locked block is inappropriately null for locked Hider " + this.getEventPlayer().getName());
+                Thread.dumpStack();
+            }
+
+            location.getWorld().spawnParticle(Particle.BLOCK, location, 1, 0.6, 0.5, 0.6, 0.1, blockData);
         }
 
         @Override
         public void onBlockInteract(PlayerInteractEvent event, Block clickedBlock) {
-            if (!event.getAction().isRightClick()) {
+            if (event.getAction().isRightClick()) {
+                // moved
+                Hider hider = this.context.propHuntPlayers.as(event.getPlayer().getUniqueId(), Hider.class);
+                if (hider != null && !hider.isLocked()) {
+                    hider.lock();
+                }
                 return;
             } else if (this.disguiseCooldownCounter > 0) {
                 this.getEventPlayer().sendMessage("You must wait <red>" + Util.ticksToSecs(this.disguiseCooldownCounter) + "s</red> before disguising again.");
@@ -411,6 +456,12 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             this.disguiseCooldownCounter = DISGUISE_COOLDOWN;
 
             this.getEventPlayer().sendMessage("You have disguised yourself as a <yellow>" + Util.formatMaterialName(clickedBlock.getType().toString()) + "</yellow> block.");
+        }
+
+        @Override
+        public void onEntityInteract(PlayerInteractEvent event, Player clickedEntity, Hider hider) {
+            // No op
+
         }
 
         public void disguiseAsBlock(Material material) {
@@ -427,7 +478,8 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             disguise.setEntity(player);
             disguise.setNotifyBar(DisguiseConfig.NotifyBar.NONE);
             disguise.setViewSelfDisguise(true);
-            disguise.setScalePlayerToDisguise(true);
+            disguise.setHidePlayer(false);
+            //disguise.setScalePlayerToDisguise(true);
             //disguise.setVelocitySent(false);
             disguise.startDisguise();
             this.disguise = disguise;
@@ -450,11 +502,15 @@ public final class PropHunt extends InventoryUnifiedMinigame {
          * @return true if the player was successfully locked, false if they were already locked.
          */
         public boolean lock() {
-            if (lockStand != null || material == null) return false;
+            Preconditions.checkState(lockStand == null || !lockStand.isValid(), "Lock stand should be null when locking.");
+            Preconditions.checkNotNull(material, "Material should not be null when locking.");
 
             Player player = this.bukkitPlayer();
             if (player == null) return false;
-            ArmorStand stand = player.getWorld().spawn(player.getLocation(), ArmorStand.class);
+            Block block = player.getLocation().getBlock();
+            block.setType(material);
+
+            ArmorStand stand = player.getWorld().spawn(this.tryFindBestAirPocket(block), ArmorStand.class);
             stand.setVisible(false);
             stand.setSmall(true);
             stand.setInvisible(true);
@@ -463,11 +519,9 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             stand.setInvulnerable(true);
             stand.setMarker(true);
             stand.setGravity(false);
+            stand.setPersistent(false);
             stand.addPassenger(player);
 
-
-            Block block = player.getLocation().getBlock();
-            block.setType(material);
 
             if (this.disguise != null) {
                 this.disguise.stopDisguise(); // Just stop the disguise since we're locking in place
@@ -476,18 +530,25 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             this.hide(Seeker.class);
 
             this.getEventPlayer().sendMessage("You have locked yourself in place as a block. Sneak to unlock.");
-
             this.lockStand = stand;
             this.lockedBlock = block;
             return true;
         }
 
         public boolean unlock() {
-            if (lockStand == null) return false;
+            Player player = this.bukkitPlayer();
+            Preconditions.checkNotNull(lockStand, "Lock stand should not be null when unlocking.");
+            Preconditions.checkNotNull(player, "Player should not be null when unlocking.");
 
-            lockStand.remove();
+            player.leaveVehicle();
+            player.removePotionEffect(PotionEffectType.INVISIBILITY);
             if (lockedBlock != null) {
+                player.teleportAsync(lockedBlock.getLocation().toCenterLocation());
                 lockedBlock.setType(Material.AIR);
+            }
+
+            if (lockStand != null) {
+                lockStand.remove();
             }
 
             if (this.disguise != null) {
@@ -495,12 +556,6 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             }
             // Show the player to all seekers when unlocked
             this.show(Seeker.class);
-
-            Player player = this.bukkitPlayer();
-            if (player != null) {
-                player.removePotionEffect(PotionEffectType.INVISIBILITY);
-            }
-
             this.lockStand = null;
             this.lockedBlock = null;
             return true;
@@ -508,11 +563,35 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
 
         public boolean isLocked() {
-            return lockStand != null;
+            return lockStand != null && lockStand.isValid();
         }
 
+        // FIXME
         public boolean isDisguised() {
             return disguise != null;
+        }
+
+        private Block centerBlock(Player player) {
+            return player.getLocation().add(0, 1, 0).getBlock();
+        }
+
+        private Location tryFindBestAirPocket(Block origin) {
+            // Try to find the nearest air block. The top block is preferred, then sides, then bottom.
+            BlockFace[] faces = {
+                    BlockFace.UP,
+                    BlockFace.NORTH,
+                    BlockFace.EAST,
+                    BlockFace.SOUTH,
+                    BlockFace.WEST,
+                    BlockFace.DOWN
+            };
+            for (BlockFace face : faces) {
+                Block adjacent = origin.getRelative(face);
+                if (adjacent.isEmpty()) {
+                    return adjacent.getLocation().toCenterLocation();
+                }
+            }
+            return origin.getLocation().toCenterLocation();
         }
     }
 
@@ -567,7 +646,6 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             if (!event.getAction().isLeftClick()) return;
             Player attacker = event.getPlayer();
 
-
             Seeker seeker = this.context.propHuntPlayers.as(attacker.getUniqueId(), Seeker.class);
             Hider hider = this.context.propHuntPlayers.fromLockedBlock(clickedBlock);
 
@@ -580,6 +658,11 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             if (victim != null) {
                 attacker.attack(victim);
             }
+        }
+
+        @Override
+        public void onEntityInteract(PlayerInteractEvent event, Player victim, Hider hider) {
+            event.getPlayer().attack(victim);
         }
 
         public void catchHider(@NotNull Hider hider) {
@@ -640,12 +723,14 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
         public Spectator(PropHunt context, EventPlayer eventPlayer) {
             super(context, eventPlayer);
-            this.hide(Seeker.class, Hider.class);
+            Executors.runSync(() -> {
+                this.hide(Seeker.class, Hider.class);
+            });
         }
 
         @Override
         public void cleanup() {
-            this.show(Seeker.class, Hider.class);
+            this.show(PropHuntPlayer.class);
             Player player = this.bukkitPlayer();
             if (player != null) {
                 player.removePotionEffect(PotionEffectType.INVISIBILITY);
@@ -663,6 +748,11 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
         @Override
         public void onBlockInteract(PlayerInteractEvent event, Block clickedBlock) {
+
+        }
+
+        @Override
+        public void onEntityInteract(PlayerInteractEvent event, Player clickedEntity, Hider hider) {
 
         }
     }
@@ -698,6 +788,9 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         }
 
         public List<PropHuntPlayer> getPlayers(Class<? extends PropHuntPlayer>... types) {
+            if (Arrays.stream(types).anyMatch(type -> type == PropHuntPlayer.class)) {
+                return this.values().stream().toList();
+            }
             return this.values().stream()
                     .filter(player -> Util.isAssignableFromAny(player.getClass(), types))
                     .toList();

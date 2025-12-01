@@ -4,12 +4,10 @@ import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.games.interfaces.Microgame;
 import dev.jsinco.luma.lumaevents.games.interfaces.structures.Structure;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
-import lombok.Builder;
 import org.bukkit.entity.Player;
 
 import java.util.List;
 
-@Builder
 public class LastManStanding extends Microgame {
 
     public LastManStanding(List<EventPlayer> eventPlayers, Structure structure, Runnable onEnd, long timeLimit, int padding) {

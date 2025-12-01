@@ -15,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
+import org.bukkit.event.HandlerList;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
@@ -52,7 +53,14 @@ public final class MinigameManager extends BukkitRunnable {
             player.playSound(player.getLocation(), Sound.ENTITY_EVOKER_PREPARE_WOLOLO, 1f, 0.75f);
         });
 
-        this.current = game.instantiate(definition);
+        try {
+            this.current = game.instantiate(definition);
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+            HandlerList.unregisterAll(this.current);
+            this.current = new NonActiveMinigame();
+            return false;
+        }
         return this.current.timedStart(seconds);
     }
 

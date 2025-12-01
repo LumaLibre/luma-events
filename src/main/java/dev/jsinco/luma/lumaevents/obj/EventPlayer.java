@@ -2,6 +2,7 @@ package dev.jsinco.luma.lumaevents.obj;
 
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.interfaces.Scorer;
+import dev.jsinco.luma.lumaevents.utility.Executors;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
@@ -98,7 +99,7 @@ public class EventPlayer implements Serializable, Scorer {
     public void operatePlayer(Consumer<Player> consumer) {
         Player player = this.getPlayer();
         if (player != null) {
-            consumer.accept(player);
+            Executors.runSync(() -> consumer.accept(player));
         }
     }
 

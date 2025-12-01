@@ -11,7 +11,6 @@ import org.bukkit.entity.Player;
 import java.util.List;
 
 @Setter
-@Builder
 public class ReachGoal extends Microgame {
 
     private WorldTiedBoundingBox goalBox = null;

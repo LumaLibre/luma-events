@@ -3,7 +3,7 @@ package dev.jsinco.luma.lumaevents.games.tokenformula;
 import dev.jsinco.luma.lumaevents.games.interfaces.TokenFormula;
 import dev.jsinco.luma.lumaevents.utility.Couple;
 
-public class Paintball2_1TokenFormula implements TokenFormula<Couple<Integer, Boolean>> {
+public class Paintball2_1TokenFormula extends TokenFormula<Couple<Integer, Boolean>> {
 
     private static final int PRIORITY_POSITIONS = 5;
 

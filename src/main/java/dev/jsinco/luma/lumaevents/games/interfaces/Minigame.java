@@ -325,6 +325,14 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         return true;
     }
 
+    protected void unsafe(Runnable block) {
+        try {
+            block.run();
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+        }
+    }
+
     protected void onPreStart() {
         // This method can be overridden to perform actions before the minigame starts
         // For example, setting up the environment, clearing inventories, etc.
