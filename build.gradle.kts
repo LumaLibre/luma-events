@@ -33,7 +33,7 @@ dependencies {
     compileOnly("net.dmulloy2:ProtocolLib:5.4.0")
 
 
-    compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.10-R0.1-SNAPSHOT")
     compileOnly("me.libraryaddict.disguises:libsdisguises:11.0.0")
 
     implementation("dev.thorinwasher.schem:schem-reader:1.0.0")

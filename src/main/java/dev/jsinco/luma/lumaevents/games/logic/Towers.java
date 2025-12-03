@@ -19,11 +19,11 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
-import org.bukkit.Bukkit;
+import org.bukkit.Color;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
+import org.bukkit.Particle;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Egg;
 import org.bukkit.entity.Entity;
@@ -47,7 +47,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
@@ -66,6 +65,7 @@ public final class Towers extends InventoryUnifiedMinigame {
 
     private static final int TICK_INTERVAL = 2;
     private static final String KEY_STRING = "towers_game";
+    private static final Particle.DustTransition DUST_TRANSITION = new Particle.DustTransition(Color.AQUA, Color.BLUE, 3.0f);
 
 
     private final WorldTiedBoundingBox outerRegion;
@@ -76,18 +76,26 @@ public final class Towers extends InventoryUnifiedMinigame {
     private final TowersTokenFormula tokenFormula;
 
     private CountdownBossBar newItemTimer;
-    private int initialPlayerCount;
     private boolean started = false;
+
+    private double forceGameArenaYLevel;
+    private List<Location> gridLocations;
 
     public Towers(TowersDefinition def) {
         super("Towers", "Don't fall.", 480000, TICK_INTERVAL, false, false, false, false);
+        Location outerLoc1 = def.getOuterRegion().getLoc1();
+        Location outerLoc2 = def.getOuterRegion().getLoc2();
+
+
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
-        this.outerRegion = WorldTiedBoundingBox.of(def.getOuterRegion().getLoc1(), def.getOuterRegion().getLoc2());
+        this.outerRegion = WorldTiedBoundingBox.of(outerLoc1, outerLoc2);
         this.spawnLocation = def.getSpawnLocation().toCenterLocation();
         this.towersItems = def.getTowersItems();
         this.towersPlayers = new HashMap<>();
         this.scoreboard = new Scoreboard<>();
         this.tokenFormula = new TowersTokenFormula();
+
+        this.forceGameArenaYLevel = ((WorldTiedBoundingBox) this.boundingBox).getMinY() - 10;
     }
 
     @Override
@@ -100,7 +108,6 @@ public final class Towers extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStart() {
-        this.initialPlayerCount = this.participants.size();
         for (EventPlayer eventPlayer : this.participants) {
             ActivePlayer towersPlayer = new ActivePlayer(eventPlayer, this);
             this.towersPlayers.put(eventPlayer.getUuid(), towersPlayer);
@@ -116,8 +123,8 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
 
         SpawnLocationGenerator generator = new SpawnLocationGenerator((WorldTiedBoundingBox) this.boundingBox, 10, 15);
-        List<Location> locations = generator.generateSpawnLocations(this.participants.size());
-
+        this.gridLocations = generator.generateSpawnLocations(this.participants.size());
+        List<Location> locations = new ArrayList<>(this.gridLocations);
 
         for (TowersPlayer towersPlayer : this.towersPlayers.values()) {
             Location spawnLoc = locations.removeFirst();
@@ -151,6 +158,13 @@ public final class Towers extends InventoryUnifiedMinigame {
 
         for (TowersPlayer towersPlayer : towersPlayers.values()) {
             towersPlayer.onTick(timeLeft);
+        }
+
+        for (Location location : this.gridLocations) {
+            Location locationAtYLevel = location.clone();
+            locationAtYLevel.setY(this.forceGameArenaYLevel);
+
+            locationAtYLevel.getWorld().spawnParticle(Particle.DUST_COLOR_TRANSITION, locationAtYLevel, 300, 20, 0.0, 20, 0.1, DUST_TRANSITION);
         }
 
         if (this.newItemTimer == null || this.newItemTimer.isCancelled()) {
@@ -228,7 +242,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
 
         towersPlayer.onDeath(event);
-        this.swapRole(ActivePlayer.class, towersPlayer, () -> new Spectator(towersPlayer.getEventPlayer(), this, towersPlayer.getRespawnLocation()));
+        this.swapRole(ActivePlayer.class, towersPlayer, () -> new Spectator(towersPlayer.getEventPlayer(), this));
     }
 
 
@@ -443,7 +457,12 @@ public final class Towers extends InventoryUnifiedMinigame {
                 .seconds(9)
                 .color(BossBar.Color.YELLOW)
                 .audience(this.audience)
-                .callback(() -> Executors.runSync(this::newItem))
+                .callback(() -> {
+                    Executors.runSync(this::newItem);
+                    // update batch block
+                    this.forceGameArenaYLevel++;
+                    this.sendAudienceMessage("Updating lava level...");
+                })
                 .build();
     }
 
@@ -537,7 +556,12 @@ public final class Towers extends InventoryUnifiedMinigame {
                 return;
             }
 
-            player.sendActionBar(Text.mm("<yellow>Time left: " + Util.millisToSecs(timeLeft) + "s | <green>Kills: " + this.kills));
+            if (player.getLocation().getY() <= this.context.forceGameArenaYLevel) {
+                player.damage(5.0);
+            }
+
+            String floorString = ((int)player.getLocation().getY()) + "/" + ((int) this.context.forceGameArenaYLevel);
+            player.sendActionBar(Text.mm("<yellow>Time left: " + Util.millisToSecs(timeLeft) + "s | <green>Kills: " + this.kills + " <yellow>| <aqua>Floor: " + floorString));
         }
 
         @Override
@@ -574,10 +598,12 @@ public final class Towers extends InventoryUnifiedMinigame {
 
         private boolean hidden = false;
 
-        public Spectator(EventPlayer eventPlayer, Towers context, Location respawnLocation) {
+        public Spectator(EventPlayer eventPlayer, Towers context) {
             super(eventPlayer, context);
-            this.respawnLocation = respawnLocation;
             this.hidePlayer();
+            this.eventPlayer.operatePlayer(player -> Executors.runSync(() -> {
+                player.getInventory().clear();
+            }));
         }
 
         public void hidePlayer() {
@@ -588,7 +614,7 @@ public final class Towers extends InventoryUnifiedMinigame {
                     continue;
                 }
                 participant.operatePlayer(pPlayer -> {
-                    Executors.sync(() -> {
+                    Executors.runSync(() -> {
                         pPlayer.hidePlayer(EventMain.getInstance(), player);
                     });
                 });
@@ -632,7 +658,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         public void onDeath(PlayerDeathEvent event) {
             event.setCancelled(true);
             this.eventPlayer.operatePlayer(player -> {
-                player.teleport(this.context.boundingBox.getCenterLocation());
+                player.teleportAsync(this.context.boundingBox.getCenterLocation());
                 if (!player.getAllowFlight()) {
                     player.setAllowFlight(true);
                 }
@@ -653,6 +679,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: use dedicated classes
     public static class SpawnLocationGenerator {
 
         private static final Random RANDOM = Util.RANDOM;
