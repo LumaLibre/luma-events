@@ -451,10 +451,15 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                 return;
             }
 
-            this.disguiseAsBlock(clickedBlock.getType());
-            this.disguiseCooldownCounter = DISGUISE_COOLDOWN;
+            Material type = clickedBlock.getType();
+            if (type.isSolid()) {
+                this.disguiseAsBlock(clickedBlock.getType());
+                this.disguiseCooldownCounter = DISGUISE_COOLDOWN;
 
-            this.getEventPlayer().sendMessage("You have disguised yourself as a <yellow>" + Util.formatMaterialName(clickedBlock.getType().toString()) + "</yellow> block.");
+                this.getEventPlayer().sendMessage("You have disguised yourself as a <yellow>" + Util.formatMaterialName(clickedBlock.getType().toString()) + "</yellow> block.");
+            } else {
+                this.getEventPlayer().sendMessage("You can only disguise as solid blocks.");
+            }
         }
 
         @Override
@@ -586,7 +591,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             };
             for (BlockFace face : faces) {
                 Block adjacent = origin.getRelative(face);
-                if (adjacent.isEmpty()) {
+                if (adjacent.isEmpty() && adjacent.getRelative(BlockFace.UP).isEmpty()) {
                     return adjacent.getLocation().toCenterLocation();
                 }
             }
@@ -633,9 +638,10 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             this.clueTickCounter += (int) TICK_INTERVAL;
             if (this.clueTickCounter >= SEEKER_CLUE_INTERVAL) {
                 this.clueTickCounter = 0;
+                // TODO: Volume scale based on distance to closest hider
                 this.closestHider(
-                        (closest, closestPlayer) -> player.playSound(closestPlayer.getLocation(), Sound.ENTITY_WARDEN_LISTENING, 1.0f, 1.0f),
-                        (other, otherPlayer) -> player.playSound(otherPlayer.getLocation(), Sound.ENTITY_WARDEN_TENDRIL_CLICKS, 1.0f, 1.0f)
+                        (closest, closestPlayer) -> player.playSound(closestPlayer.getLocation(), Sound.ENTITY_WARDEN_LISTENING, 0.8f, 1.0f),
+                        (other, otherPlayer) -> player.playSound(otherPlayer.getLocation(), Sound.ENTITY_WARDEN_TENDRIL_CLICKS, 2.0f, 1.0f)
                 );
             }
         }

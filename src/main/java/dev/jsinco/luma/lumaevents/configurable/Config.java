@@ -39,7 +39,6 @@ public class Config extends OkaeriConfig {
 
     @Comment("Enabled minigames for automatic selection")
     private List<MinigameConstant> enabledAutomaticMinigames = List.of(
-            MinigameConstant.MANOR,
             MinigameConstant.TOWERS,
             MinigameConstant.PAINTBALL2_1
     );

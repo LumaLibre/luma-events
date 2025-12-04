@@ -82,7 +82,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     private List<Location> gridLocations;
 
     public Towers(TowersDefinition def) {
-        super("Towers", "Don't fall.", 480000, TICK_INTERVAL, false, false, false, false);
+        super("Towers & Floors", "Don't fall.", 480000, TICK_INTERVAL, false, false, false, false);
         Location outerLoc1 = def.getOuterRegion().getLoc1();
         Location outerLoc2 = def.getOuterRegion().getLoc2();
 
