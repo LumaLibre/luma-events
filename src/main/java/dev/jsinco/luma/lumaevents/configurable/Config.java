@@ -32,25 +32,16 @@ public class Config extends OkaeriConfig {
     private double tokenMultiplier = 1.0;
 
     @Comment("Location for /event")
-    private Location eventSpawnLocation;
+    private Location eventSpawnLocation = null;
 
     @Comment("Game drop-off location for minigames")
-    private Location gameDropOffLocation;
+    private Location gameDropOffLocation = null;
 
     @Comment("Enabled minigames for automatic selection")
     private List<MinigameConstant> enabledAutomaticMinigames = List.of(
+            MinigameConstant.BOATRACE2,
             MinigameConstant.TOWERS,
-            MinigameConstant.PAINTBALL2_1
-    );
-
-    @Comment("Minigame definition for 'Paintball 2.1'")
-    private Map<String, Paintball2_1Definition> paintballMaps = Map.of(
-            "default", new Paintball2_1Definition()
-    );
-
-    @Comment("Minigame definition for 'TNT Tag'")
-    private Map<String, MinigameDefinition> tntTagMaps = Map.of(
-            "default", new MinigameDefinition()
+            MinigameConstant.PROP_HUNT
     );
 
     @Comment("Minigame definition for 'Boatrace 2'")
@@ -63,14 +54,24 @@ public class Config extends OkaeriConfig {
             "default", new TowersDefinition()
     );
 
-    @Comment("Minigame definition for 'Manor'")
-    private Map<String, ManorMinigameDefinition> manorMaps = Map.of(
-            "default", new ManorMinigameDefinition()
-    );
-
     @Comment("Minigame definition for 'Prop Hunt'")
     private Map<String, ManorMinigameDefinition> propHuntMaps = Map.of(
             "default", new ManorMinigameDefinition()
     );
+
+    @Comment("Minigame definition for 'Paintball 2.1'")
+    private Map<String, Paintball2_1Definition> paintballMaps = Map.of(
+            "default", new Paintball2_1Definition()
+    );
+
+
+
+    @Comment("Minigame definition for 'TNT Tag'")
+    private Map<String, MinigameDefinition> tntTagMaps = Map.of();
+
+
+    @Comment("Minigame definition for 'Manor'")
+    private Map<String, ManorMinigameDefinition> manorMaps = Map.of();
+
 }
 

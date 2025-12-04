@@ -151,7 +151,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         }
 
         if (!this.propHuntPlayers.ensureAtLeast(Seeker.class, eventPlayer -> new Seeker(this, eventPlayer), 1, Hider.class)) {
-            this.sendAudienceMessage("Not enough players to promote to a Seeker. Ending game.");
+            this.sendAudienceMessage("Not enough players to promote a Seeker. Ending game.");
             this.stop();
             return;
         }

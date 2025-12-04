@@ -12,8 +12,6 @@ import dev.jsinco.luma.lumaevents.items.StartMinigameItem;
 import dev.jsinco.luma.lumaevents.items.HallowsPowderItem;
 import dev.jsinco.luma.lumaevents.items.LocalCustomItemManager;
 import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class EventMain extends JavaPlugin {
