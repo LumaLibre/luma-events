@@ -1,5 +1,6 @@
 package dev.jsinco.luma.lumaevents.items;
 
+import dev.jsinco.luma.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumaitems.LumaItems;
@@ -36,7 +37,7 @@ public class TokenExchanging {
 
         ItemStack itemStack = LocalCustomItemManager.getCustomItemStack(type.tokenClass);
         if (itemStack == null) {
-            Util.log("<red>Could not give NULL token: " + type.name() + " amount: " + finalAmount + " to: " + player.getName());
+            Logging.log("<red>Could not give NULL token: " + type.name() + " amount: " + finalAmount + " to: " + player.getName());
             return;
         }
         Util.giveItem(player, itemStack, finalAmount);

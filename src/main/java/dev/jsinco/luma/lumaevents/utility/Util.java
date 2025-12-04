@@ -5,6 +5,7 @@ import com.destroystokyo.paper.profile.ProfileProperty;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.jsinco.luma.lumaevents.EventMain;
+import dev.jsinco.luma.lumaevents.archives.Challenge;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -45,16 +46,13 @@ public final class Util {
 
     public static final Gson GSON = new GsonBuilder()
             .excludeFieldsWithModifiers(Modifier.STATIC)
+            .registerTypeAdapter(Challenge.class, new Challenge.TypeAdapter())
             .setPrettyPrinting()
             .create();
     public static final Random RANDOM = new Random();
-    public static final String PREFIX = "<b><gradient:#602749:#b14623:#f6921d>Event</gradient></b> <dark_gray>»</dark_gray> ";
-    public static final String TEXT_COLOR = "#92356D";
+    public static final String PREFIX = "<b><gradient:#1d7240:#5e9f52:#e4ba58:#f2b054:#f06f3f:#ee4631:#e4352b:#a61e20>Christmas</gradient></b> <dark_gray>»</dark_gray> ";
+    public static final String TEXT_COLOR = "#CBB6E9";
 
-
-    public static void log(String msg) {
-        sendMsg(Bukkit.getConsoleSender(), msg);
-    }
 
     public static void sendMsg(CommandSender receiver, String message) {
         if (receiver == null) {

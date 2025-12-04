@@ -25,7 +25,7 @@ repositories {
 
 dependencies {
     compileOnly("dev.jsinco.luma.lumacore:LumaCore:776c4e4")
-    compileOnly("dev.jsinco.luma.lumaitems:LumaItems:5e7e999")
+    compileOnly("dev.jsinco.luma.lumaitems:LumaItems:4c7b569")
     compileOnly("dev.jsinco.lumaglowapi:LumaGlowAPI:3cb670d")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("com.nuclyon.technicallycoded.inventoryrollback:InventoryRollbackPlus:1.7.3")
@@ -35,6 +35,9 @@ dependencies {
 
     compileOnly("io.papermc.paper:paper-api:1.21.10-R0.1-SNAPSHOT")
     compileOnly("me.libraryaddict.disguises:libsdisguises:11.0.0")
+    compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
+        exclude(group = "org.bukkit")
+    }
 
     implementation("dev.thorinwasher.schem:schem-reader:1.0.0")
 

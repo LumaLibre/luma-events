@@ -7,10 +7,13 @@ import dev.jsinco.luma.lumaevents.configurable.MinigameState;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.MinigameManager;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
+import dev.jsinco.luma.lumaevents.items.PresentItem;
 import dev.jsinco.luma.lumaevents.items.StartMinigameItem;
 import dev.jsinco.luma.lumaevents.items.HallowsPowderItem;
 import dev.jsinco.luma.lumaevents.items.LocalCustomItemManager;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class EventMain extends JavaPlugin {
@@ -36,14 +39,8 @@ public final class EventMain extends JavaPlugin {
 
         LocalCustomItemManager.addCustomItem(new HallowsPowderItem());
         LocalCustomItemManager.addCustomItem(new StartMinigameItem());
+        LocalCustomItemManager.addCustomItem(new PresentItem());
         LocalCustomItemManager.registerCustomItems();
-
-//        LocalCustomItemManager.addCustomItem(new TowersKnockbackStickItem());
-//        LocalCustomItemManager.addCustomItem(new TowersFireballItem());
-//        LocalCustomItemManager.addCustomItem(new TowersSatchelItem());
-//        LocalCustomItemManager.addCustomItem(new TowersNearSighterItem());
-//        LocalCustomItemManager.addCustomItem(new TowersProjectileResistantItem());
-//        LocalCustomItemManager.addCustomItem(new TowersThornBootsItem());
     }
 
     @Override

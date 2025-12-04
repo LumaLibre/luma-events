@@ -65,7 +65,7 @@ public final class Towers extends InventoryUnifiedMinigame {
 
     private static final int TICK_INTERVAL = 2;
     private static final String KEY_STRING = "towers_game";
-    private static final Particle.DustTransition DUST_TRANSITION = new Particle.DustTransition(Color.AQUA, Color.BLUE, 3.0f);
+    private static final Particle.DustTransition DUST_TRANSITION = new Particle.DustTransition(Color.ORANGE, Color.RED, 4.0f);
 
 
     private final WorldTiedBoundingBox outerRegion;
@@ -164,7 +164,7 @@ public final class Towers extends InventoryUnifiedMinigame {
             Location locationAtYLevel = location.clone();
             locationAtYLevel.setY(this.forceGameArenaYLevel);
 
-            locationAtYLevel.getWorld().spawnParticle(Particle.DUST_COLOR_TRANSITION, locationAtYLevel, 300, 20, 0.0, 20, 0.1, DUST_TRANSITION);
+            locationAtYLevel.getWorld().spawnParticle(Particle.DUST_COLOR_TRANSITION, locationAtYLevel, 400, 40, 0.0, 40, 0.1, DUST_TRANSITION);
         }
 
         if (this.newItemTimer == null || this.newItemTimer.isCancelled()) {
@@ -453,15 +453,13 @@ public final class Towers extends InventoryUnifiedMinigame {
 
     private CountdownBossBar newItemTimer() {
         return CountdownBossBar.builder()
-                .title("<b>Next drop in: %s")
+                .title("<b><yellow>Next drop in: %s | The floor will rise!")
                 .seconds(9)
                 .color(BossBar.Color.YELLOW)
                 .audience(this.audience)
                 .callback(() -> {
                     Executors.runSync(this::newItem);
-                    // update batch block
                     this.forceGameArenaYLevel++;
-                    this.sendAudienceMessage("Updating lava level...");
                 })
                 .build();
     }

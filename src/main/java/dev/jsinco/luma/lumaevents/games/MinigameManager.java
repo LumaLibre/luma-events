@@ -57,6 +57,7 @@ public final class MinigameManager extends BukkitRunnable {
             this.current = game.instantiate(definition);
         } catch (Throwable throwable) {
             throwable.printStackTrace();
+            // FIXME
             HandlerList.unregisterAll(this.current);
             this.current = new NonActiveMinigame();
             return false;

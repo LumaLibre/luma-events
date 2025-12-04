@@ -21,10 +21,10 @@ public class CountdownBossBar extends BukkitRunnable {
     private final Runnable callback;
     private final boolean global;
 
-    private float seconds;
-
+    private volatile float seconds;
     @Getter
-    private float secondsRemaining;
+    private volatile float secondsRemaining;
+
     private Audience audience;
 
 

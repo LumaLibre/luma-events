@@ -1,5 +1,6 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
+import dev.jsinco.luma.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition;
@@ -504,7 +505,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                         bed.setFacing(BlockFaces.yawToFace(l.getYaw(), false).getOppositeFace());
                         blockState.setBlockData(bed);
                     } else {
-                        Util.log("<red>Failed to set bed data for team: " + shortName() + " at location: " + l);
+                        Logging.log("<red>Failed to set bed data for team: " + shortName() + " at location: " + l);
                     }
                     blockState.update(true, false);
                 }

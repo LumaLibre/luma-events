@@ -52,12 +52,11 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 // TODO:
-//  - Cues for seekers
-//  - Glowing effect for all players as a spectator -> ehhh
-//  - Find a way to make locked blocks glow
+//  - better cues for seekers
+//  - debug
 public final class PropHunt extends InventoryUnifiedMinigame {
 
-    private static final long STANDARD_DURATION = 180000; // in milliseconds
+    private static final long STANDARD_DURATION = 300000; // in milliseconds
     private static final long TICK_INTERVAL = 10; // in ticks
 
     private final PropHuntPlayerMap propHuntPlayers;
@@ -743,7 +742,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             if (player != null) {
                 player.addPotionEffect(INVISIBILITY);
             }
-            this.getEventPlayer().sendActionBar("<yellow>You are spectating. <gray>|</gray> <aqua>Use <blue>/event quit</blue> to quit. <dark_gray>(You'll get your tokens!)");
+            this.getEventPlayer().sendActionBar("<yellow>You are spectating. <gray>|</gray> <aqua>Use <blue>/event quit</blue> to quit.");
         }
 
         @Override
