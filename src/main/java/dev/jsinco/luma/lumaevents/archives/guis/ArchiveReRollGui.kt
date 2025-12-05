@@ -59,6 +59,7 @@ class ArchiveReRollGui : AbstractGui() {
             ))
             meta.addItemFlags(ItemFlag.HIDE_ENCHANTS)
             meta.addEnchant(Enchantment.UNBREAKING, 1, true)
+            meta.persistentDataContainer.set(GUI_ITEM_KEY, PersistentDataType.SHORT, 1)
         }
     }
 

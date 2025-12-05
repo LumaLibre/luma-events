@@ -9,7 +9,7 @@ import dev.jsinco.luma.lumaevents.games.MinigameManager;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.items.PresentItem;
 import dev.jsinco.luma.lumaevents.items.StartMinigameItem;
-import dev.jsinco.luma.lumaevents.items.HallowsPowderItem;
+import dev.jsinco.luma.lumaevents.items.WinterStampItem;
 import dev.jsinco.luma.lumaevents.items.LocalCustomItemManager;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -35,7 +35,7 @@ public final class EventMain extends JavaPlugin {
 
         MinigameManager.getInstance().runTaskTimerAsynchronously(this, 0, 600); // 30 seconds
 
-        LocalCustomItemManager.addCustomItem(new HallowsPowderItem());
+        LocalCustomItemManager.addCustomItem(new WinterStampItem());
         LocalCustomItemManager.addCustomItem(new StartMinigameItem());
         LocalCustomItemManager.addCustomItem(new PresentItem());
         LocalCustomItemManager.registerCustomItems();

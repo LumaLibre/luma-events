@@ -109,7 +109,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         this.initialBossBar = CountdownBossBar.builder()
                 .title("<red>Seeker spawns in: %ss")
                 .color(BossBar.Color.RED)
-                .seconds(15) // TODO: change to 30
+                .seconds(40) // TODO: change to 30
                 .audience(this.audience)
                 .callback(() -> {
                     Preconditions.checkNotNull(this.countdownBossBar, "Countdown boss bar should not be null when initial countdown ends.");
@@ -672,12 +672,22 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
         public void catchHider(@NotNull Hider hider) {
             EventPlayer hiderEventPlayer = hider.getEventPlayer();
-            this.context.propHuntPlayers.swapRole(hider, () -> new Spectator(this.context, hiderEventPlayer));
-            hiderEventPlayer.teleportAsync(this.context.startLocation);
-            hiderEventPlayer.sendMessage("You have been caught by " + this.getEventPlayer().getName() + "! You are now a Spectator.");
+            this.context.sendAudienceMessage("<yellow>" + this.getEventPlayer().getName() + "</yellow> has caught <yellow>" + hiderEventPlayer.getName()+ "</yellow>!");
+            hiderEventPlayer.sendMessage("You have been caught by <yellow>" + this.getEventPlayer().getName() + "</yellow>!");
 
-            // TODO: Announce catch, give points, etc.
-            this.context.sendAudienceMessage(this.getEventPlayer().getName() + " has caught " + hiderEventPlayer.getName()+ "!");
+            Supplier<PropHuntPlayer> newRoleSupplier;
+            if (RANDOM.nextInt(101) < 20) {
+                newRoleSupplier = () -> new Seeker(this.context, hiderEventPlayer);
+                hiderEventPlayer.sendMessage("You have become a Seeker. Catch the remaining Hiders!");
+                this.context.sendAudienceMessage("<yellow>" + hiderEventPlayer.getName() + "</yellow> has become a Seeker. Don't let them catch you!");
+            } else {
+                newRoleSupplier = () -> new Spectator(this.context, hiderEventPlayer);
+                hiderEventPlayer.sendMessage("You have become a spectator. Watch the rest of the game or quit with <yellow>/event quit</yellow>.");
+            }
+
+            this.context.propHuntPlayers.swapRole(hider, newRoleSupplier);
+            hiderEventPlayer.teleportAsync(this.context.startLocation);
+
 
             this.kills++;
             int amt = Util.RANDOM.nextBoolean() ? 1 : 2;

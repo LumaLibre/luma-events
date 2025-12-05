@@ -22,6 +22,6 @@ public abstract class TokenFormula<C> {
         }
 
         dirty.add(player.getUuid());
-        TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.POWDER, amount);
+        TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.STAMP, amount);
     }
 }

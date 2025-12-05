@@ -19,7 +19,7 @@ import java.util.List;
         name = "reroll",
         permission = "lumaevent.admin",
         usage = "/<command> reroll <player>",
-        playerOnly = true
+        playerOnly = false
 )
 public class OpenArchiveRerollGui implements CommandModule {
     @Override

@@ -7,23 +7,23 @@ import org.bukkit.Material
 import org.bukkit.enchantments.Enchantment
 import org.bukkit.inventory.ItemStack
 
-class HallowsPowderItem : CustomItemFunctions() {
+class WinterStampItem : CustomItemFunctions() {
 
     override fun createItem(): Pair<String, ItemStack> {
         return ItemFactory.builder()
-            .name("<b><gradient:#602749:#b14623:#f6921d>Hallows Powder</gradient></b>")
+            .name("<b><gradient:#1d7240:#a61e20>Winter Stamp</gradient></b>")
             .lore(
-                "Shimmering dust garnered",
-                "from lanterns lit on",
-                "Halloween.",
+                "A neat little stamp",
+                "to mark your holiday",
+                "packages with!",
                 "",
-                "Trade enough of it for",
-                "rare rewards."
+                "Trade enough of these",
+                "in for special rewards."
             )
-            .material(Material.GLOWSTONE_DUST)
-            .tier(Tier.HALLOWEEN_2025)
+            .material(Material.RED_DYE)
+            .tier(Tier.CHRISTMAS_2025)
             .vanillaEnchants(Enchantment.UNBREAKING to 10)
-            .persistentData("hallows-powder")
+            .persistentData("winter-stamp")
             .buildPair()
     }
 

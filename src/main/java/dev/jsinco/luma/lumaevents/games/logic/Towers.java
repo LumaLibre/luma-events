@@ -82,7 +82,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     private List<Location> gridLocations;
 
     public Towers(TowersDefinition def) {
-        super("Towers & Floors", "Don't fall.", 480000, TICK_INTERVAL, false, false, false, false);
+        super("Escalation Towers", "Don't fall.", 480000, TICK_INTERVAL, false, false, false, false);
         Location outerLoc1 = def.getOuterRegion().getLoc1();
         Location outerLoc2 = def.getOuterRegion().getLoc2();
 
@@ -537,6 +537,8 @@ public final class Towers extends InventoryUnifiedMinigame {
                     player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 100, false, false, true));
                     Executors.runDelayedAsync(300, TimeUnit.MILLISECONDS, (taks) -> {
                         player.teleportAsync(spawnLocation.add(0, 1, 0).toCenterLocation());
+                        player.setFlying(false);
+                        player.setAllowFlight(false);
                     });
                 });
             });
@@ -572,6 +574,8 @@ public final class Towers extends InventoryUnifiedMinigame {
 
             this.context.scoreboard.addScore(this.eventPlayer, 2);
 
+            Player victimBukkit = event.getEntity();
+            victimBukkit.getInventory().clear();
 
             if (this.lastAttacker == null) {
                 return;
@@ -581,6 +585,13 @@ public final class Towers extends InventoryUnifiedMinigame {
             this.context.scoreboard.addScore(attackerPlayer.getEventPlayer(), 2);
             if (attackerPlayer instanceof ActivePlayer activePlayer) {
                 activePlayer.kills++;
+                Player bukkitAttacker = activePlayer.getEventPlayer().getPlayer();
+                if (bukkitAttacker != null) {
+                    for (ItemStack victimItem : victimBukkit.getInventory().getContents()) {
+                        if (victimItem == null) continue;
+                        bukkitAttacker.getWorld().dropItem(bukkitAttacker.getLocation(), victimItem);
+                    }
+                }
             }
         }
 

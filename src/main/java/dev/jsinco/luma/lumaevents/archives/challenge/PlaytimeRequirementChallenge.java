@@ -28,7 +28,9 @@ public class PlaytimeRequirementChallenge extends Challenge {
         Player player = who.getPlayer();
         if (player == null || this.currentStage >= 1) return;
 
-        int playtimeDays = Util.getInt(PlaceholderAPI.setPlaceholders(player, "%jetsantiafkpro_session_timeplayed_days%"), -1);
+        // should have chosen a better anti-afk plugin -- dev note:
+        // JetsAntiAFK doesn't have an actual API so this is the best I can do is this unless It's direct database calls
+        int playtimeDays = Util.getInt(PlaceholderAPI.setPlaceholders(player, "%jetsantiafkpro_timeplayed_days%"), -1);
         if (playtimeDays < 0) {
             Logging.errorLog("Bad playtime days for " + player.getName() + ": " + playtimeDays);
         }

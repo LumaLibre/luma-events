@@ -66,7 +66,7 @@ public class TokenExchanging {
 
     @Getter
     public enum TokenType {
-        POWDER(HallowsPowderItem.class, "Powder", "hallows-powder"),
+        STAMP(WinterStampItem.class, "Stamp", "winter-stamp"),
         //REFINED_OPAL(RefinedSummerOpal.class, "Refined Opal", "refined-summer-opal"),
         ;
 

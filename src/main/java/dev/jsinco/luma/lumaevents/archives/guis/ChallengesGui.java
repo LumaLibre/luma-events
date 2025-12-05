@@ -28,7 +28,7 @@ public class ChallengesGui extends AbstractGui {
         borderItems.put(Material.LIGHT_BLUE_STAINED_GLASS_PANE, List.of(0, 8, 18, 26));
         borderItems.put(Material.BLUE_ICE, List.of(1, 7, 19, 25));
         borderItems.put(Material.SNOWBALL, List.of(2, 6, 9, 17, 20, 24));
-        borderItems.put(Material.CORNFLOWER, List.of(3, 5, 21, 23));
+        borderItems.put(Material.CORNFLOWER, List.of(3, 5, 10, 21, 23));
         borderItems.put(Material.TORCHFLOWER, List.of(4, 22));
     }
 
@@ -37,7 +37,7 @@ public class ChallengesGui extends AbstractGui {
 
     public ChallengesGui(EventPlayer eventPlayer) {
         this.eventPlayer = eventPlayer;
-        this.inventory = Bukkit.createInventory(this, 27, Util.color("<b>Christmas Challenges"));
+        this.inventory = Bukkit.createInventory(this, 27, Util.color("<b><#b986f9>Christmas Challenges"));
         init();
     }
 
