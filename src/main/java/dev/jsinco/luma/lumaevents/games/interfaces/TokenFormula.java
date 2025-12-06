@@ -11,17 +11,37 @@ import java.util.UUID;
 public abstract class TokenFormula<C> {
 
     private final Set<UUID> dirty = new HashSet<>();
+    private final boolean makeDirty;
+
+    public TokenFormula() {
+        this(true);
+    }
+
+    public TokenFormula(boolean makeDirty) {
+        this.makeDirty = makeDirty;
+    }
 
     protected abstract int tokens(C context);
 
     public void giveTokens(EventPlayer player, C context) {
         int amount = tokens(context);
         Player bukkitPlayer = player.getPlayer();
-        if (amount < 1 || bukkitPlayer == null || dirty.contains(player.getUuid())) {
+        UUID uuid = player.getUuid();
+        if (amount < 1 || bukkitPlayer == null || isDirty(uuid)) {
             return;
         }
 
-        dirty.add(player.getUuid());
+        makeDirty(uuid);
         TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.STAMP, amount);
+    }
+
+    private boolean isDirty(UUID uuid) {
+        return makeDirty && dirty.contains(uuid);
+    }
+
+    private void makeDirty(UUID uuid) {
+        if (makeDirty) {
+            dirty.add(uuid);
+        }
     }
 }

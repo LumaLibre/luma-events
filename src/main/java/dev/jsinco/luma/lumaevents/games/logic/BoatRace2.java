@@ -66,6 +66,8 @@ public final class BoatRace2 extends Minigame {
 
     private int basePoints;
 
+    // Here for caching/performance reasons
+    // TODO: Use one list of racers that is kept sorted rather than sorting every tick?
     private List<BoatRacePlayer> sortedRacers;
 
     public BoatRace2(BoatRace2Definition def) {
@@ -78,7 +80,7 @@ public final class BoatRace2 extends Minigame {
         this.spectateLocation = def.getSpectateLocation().toCenterLocation();
         this.scoreboard = new Scoreboard<>();
         this.maxLaps = def.getMaxLaps();
-        this.tokenFormula = new BoatRace2TokenFormula();
+        this.tokenFormula = new BoatRace2TokenFormula(false);
 
         def.getCheckpoints().stream()
                 .map(region -> WorldTiedBoundingBox.of(region.getLoc1(), region.getLoc2()))
