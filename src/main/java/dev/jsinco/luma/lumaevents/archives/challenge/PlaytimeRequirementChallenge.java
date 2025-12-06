@@ -36,7 +36,7 @@ public class PlaytimeRequirementChallenge extends Challenge {
         }
 
         if (playtimeDays >= 1) {
-            this.currentStage = 1;
+            this.addStage(1);
         }
     }
 }

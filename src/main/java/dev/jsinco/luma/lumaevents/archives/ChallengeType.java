@@ -29,13 +29,13 @@ public enum ChallengeType {
             "<red>Progress: %s/%s"
     ), 12, "<gold><b>Complete the Parkour"),
     FIND_HEADS(FindHeadsChallenge.class, List.of(
-            "<gray>Find every head located",
+            "<gray>Find every pudding located",
             "<gray>on the Christmas map and",
             "<gray>right-click them to complete",
             "<gray>this challenge!",
             "",
             "<red>Progress: %s/%s"
-    ), 13, "<gold><b>Locate all the Heads"),
+    ), 13, "<gold><b>Locate all the Puddings"),
     BRING_ITEMS(BringItemsChallenge.class, List.of(
             "<gray>Speak to frosty and bring him",
             "<gray>the items he requests to",

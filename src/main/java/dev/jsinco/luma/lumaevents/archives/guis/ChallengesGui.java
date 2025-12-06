@@ -50,9 +50,9 @@ public class ChallengesGui extends AbstractGui {
         }
 
         for (ChallengeType challengeEnum : ChallengeType.values()) {
-            Challenge challenge = eventPlayer.getChallenge(challengeEnum, false);
-            inventory.setItem(challengeEnum.getInvLoc(), challengeEnum.icon(challenge));
+            Challenge challenge = eventPlayer.getChallenge(challengeEnum, true);
             challenge.passiveImpl(eventPlayer);
+            inventory.setItem(challengeEnum.getInvLoc(), challengeEnum.icon(challenge));
         }
 
         ItemStack complete = Util.createBasicItem(

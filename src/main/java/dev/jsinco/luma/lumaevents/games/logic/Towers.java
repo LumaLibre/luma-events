@@ -575,9 +575,10 @@ public final class Towers extends InventoryUnifiedMinigame {
             this.context.scoreboard.addScore(this.eventPlayer, 2);
 
             Player victimBukkit = event.getEntity();
+            ItemStack[] victimItems = victimBukkit.getInventory().getContents();
             victimBukkit.getInventory().clear();
 
-            if (this.lastAttacker == null) {
+            if (this.lastAttacker == null || this.lastAttacker.equals(this.getUuid())) {
                 return;
             }
 
@@ -587,7 +588,7 @@ public final class Towers extends InventoryUnifiedMinigame {
                 activePlayer.kills++;
                 Player bukkitAttacker = activePlayer.getEventPlayer().getPlayer();
                 if (bukkitAttacker != null) {
-                    for (ItemStack victimItem : victimBukkit.getInventory().getContents()) {
+                    for (ItemStack victimItem : victimItems) {
                         if (victimItem == null) continue;
                         bukkitAttacker.getWorld().dropItem(bukkitAttacker.getLocation(), victimItem);
                     }

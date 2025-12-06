@@ -58,6 +58,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
     private static final long STANDARD_DURATION = 300000; // in milliseconds
     private static final long TICK_INTERVAL = 10; // in ticks
+    private static final int HIDE_DURATION = 40; // in seconds/
 
     private final PropHuntPlayerMap propHuntPlayers;
     private final Scoreboard<EventPlayer> scoreboard;
@@ -109,10 +110,11 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         this.initialBossBar = CountdownBossBar.builder()
                 .title("<red>Seeker spawns in: %ss")
                 .color(BossBar.Color.RED)
-                .seconds(40) // TODO: change to 30
+                .seconds(HIDE_DURATION) // TODO: change to 30
                 .audience(this.audience)
                 .callback(() -> {
                     Preconditions.checkNotNull(this.countdownBossBar, "Countdown boss bar should not be null when initial countdown ends.");
+                    this.setDuration(this.getDuration() - Util.secsToMillis(HIDE_DURATION));
                     this.countdownBossBar.start();
                     firstSeeker.getEventPlayer().teleportAsync(this.startLocation);
                     firstSeeker.getEventPlayer().sendMessage("<red>The game has started. Find and catch all the Hiders!");
@@ -138,7 +140,10 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                 .color(BossBar.Color.GREEN)
                 .miliseconds(this.getDuration())
                 .audience(this.audience)
-                .callback(this::stop)
+                .callback(() -> {
+                    this.stop();
+                    this.sendAudienceMessage("Time is up! Hiders win!");
+                })
                 .build();
     }
 
@@ -171,12 +176,16 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStop() {
-        if (this.initialBossBar != null && !this.initialBossBar.isCancelled()) {
-            unsafe(() -> this.initialBossBar.stop(false));
-        }
-        if (this.countdownBossBar != null && !this.countdownBossBar.isCancelled()) {
-            unsafe(() -> this.countdownBossBar.stop(false));
-        }
+        unsafe(() -> {
+            if (this.initialBossBar != null && !this.initialBossBar.isCancelled()) {
+                this.initialBossBar.stop(false);
+            }
+        });
+        unsafe(() -> {
+            if (this.countdownBossBar != null && !this.countdownBossBar.isCancelled()) {
+                this.countdownBossBar.stop(false);
+            }
+        });
 
         Executors.runSync(() -> {
             for (PropHuntPlayer propHuntPlayer : this.propHuntPlayers) {
@@ -434,7 +443,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                 Thread.dumpStack();
             }
 
-            location.getWorld().spawnParticle(Particle.BLOCK, location, 1, 0.6, 0.5, 0.6, 0.1, blockData);
+            location.getWorld().spawnParticle(Particle.BLOCK, location, 2, 0.6, 0.5, 0.6, 0.1, blockData);
         }
 
         @Override
@@ -693,10 +702,9 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             int amt = Util.RANDOM.nextBoolean() ? 1 : 2;
             this.context.scoreboard.addScore(this.getEventPlayer(), amt);
 
-            // Add 15 seconds to the game time for each catch
-            this.context.sendAudienceMessage("15 seconds have been added to the game time!");
-            this.context.setDuration(this.context.getDuration() + Util.secsToMillis(15));
-            this.context.countdownBossBar.addSeconds(15);
+            this.context.sendAudienceMessage("30 seconds have been added to the game time!");
+            this.context.setDuration(this.context.getDuration() + Util.secsToMillis(30));
+            this.context.countdownBossBar.addSeconds(30);
         }
 
 
