@@ -118,6 +118,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                     this.countdownBossBar.start();
                     firstSeeker.getEventPlayer().teleportAsync(this.startLocation);
                     firstSeeker.getEventPlayer().sendMessage("<red>The game has started. Find and catch all the Hiders!");
+                    firstSeeker.getEventPlayer().sendTitle("<red>Volume Up!!", "Audio cues are important!");
 
                     this.propHuntPlayers.forEach(propHuntPlayer -> {
                         Player player = propHuntPlayer.bukkitPlayer();
@@ -699,12 +700,11 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
 
             this.kills++;
-            int amt = Util.RANDOM.nextBoolean() ? 1 : 2;
-            this.context.scoreboard.addScore(this.getEventPlayer(), amt);
+            this.context.scoreboard.addScore(this.getEventPlayer(), 2);
 
-            this.context.sendAudienceMessage("30 seconds have been added to the game time!");
-            this.context.setDuration(this.context.getDuration() + Util.secsToMillis(30));
-            this.context.countdownBossBar.addSeconds(30);
+//            this.context.sendAudienceMessage("30 seconds have been added to the game time!");
+//            this.context.setDuration(this.context.getDuration() + Util.secsToMillis(30));
+//            this.context.countdownBossBar.addSeconds(30);
         }
 
 

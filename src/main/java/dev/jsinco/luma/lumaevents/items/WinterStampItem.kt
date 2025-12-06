@@ -11,7 +11,7 @@ class WinterStampItem : CustomItemFunctions() {
 
     override fun createItem(): Pair<String, ItemStack> {
         return ItemFactory.builder()
-            .name("<b><gradient:#1d7240:#a61e20>Winter Stamp</gradient></b>")
+            .name("<b><gradient:#1d7240:#5e9f52:#e4ba58:#f2b054:#f06f3f:#ee4631:#e4352b:#a61e20>Winter Stamp</gradient></b>")
             .lore(
                 "A neat little stamp",
                 "to mark your holiday",
