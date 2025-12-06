@@ -114,7 +114,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                 .audience(this.audience)
                 .callback(() -> {
                     Preconditions.checkNotNull(this.countdownBossBar, "Countdown boss bar should not be null when initial countdown ends.");
-                    this.setDuration(this.getDuration() - Util.secsToMillis(HIDE_DURATION));
+                    this.setDuration(this.getDuration() + Util.secsToMillis(HIDE_DURATION));
                     this.countdownBossBar.start();
                     firstSeeker.getEventPlayer().teleportAsync(this.startLocation);
                     firstSeeker.getEventPlayer().sendMessage("<red>The game has started. Find and catch all the Hiders!");
