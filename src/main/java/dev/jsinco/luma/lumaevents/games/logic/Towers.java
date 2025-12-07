@@ -19,6 +19,7 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -199,6 +200,13 @@ public final class Towers extends InventoryUnifiedMinigame {
             this.newItemTimer.stop(false);
         }
 
+        Executors.runSync(() -> {
+            for (EventPlayer participant : this.participants) {
+                releaseHidden(participant.getPlayer());
+            }
+        });
+
+
         this.scoreboard.handleGameEnd(this.audience, () -> {
             CountdownBossBar.builder()
                     .audience(this.audience)
@@ -228,6 +236,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         if (towersPlayer != null) {
             towersPlayer.cleanup();
         }
+        Executors.runSync(() -> releaseHidden(participant.getPlayer()));
         return super.removeParticipant(participant);
     }
 
@@ -489,6 +498,13 @@ public final class Towers extends InventoryUnifiedMinigame {
             final ItemStack finalItemStack = itemStack;
             activePlayer.getEventPlayer().sendMessage("You got: " + Util.formatMaterialName(itemStack.getType().toString()) + " x" + itemStack.getAmount());
             activePlayer.giveItem(finalItemStack);
+        }
+    }
+
+    public void releaseHidden(Player player) {
+        if (player == null) return;
+        for (Player other : Bukkit.getOnlinePlayers()) {
+            other.showPlayer(EventMain.getInstance(), player);
         }
     }
 
