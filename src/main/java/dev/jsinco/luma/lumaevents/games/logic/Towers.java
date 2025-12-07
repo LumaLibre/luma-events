@@ -560,6 +560,11 @@ public final class Towers extends InventoryUnifiedMinigame {
                 player.damage(5.0);
             }
 
+            if (player.getAllowFlight()) {
+                player.setAllowFlight(false);
+                player.setFlying(false);
+            }
+
             String floorString = ((int)player.getLocation().getY()) + "/" + ((int) this.context.forceGameArenaYLevel);
             player.sendActionBar(Text.mm("<yellow>Time left: " + Util.millisToSecs(timeLeft) + "s | <green>Kills: " + this.kills + " <yellow>| <aqua>Floor: " + floorString));
         }
