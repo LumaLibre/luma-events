@@ -516,12 +516,19 @@ public final class PropHunt extends InventoryUnifiedMinigame {
          * @return true if the player was successfully locked, false if they were already locked.
          */
         public boolean lock() {
+            if (material == null) return false;
+
             Preconditions.checkState(lockStand == null || !lockStand.isValid(), "Lock stand should be null when locking.");
             Preconditions.checkNotNull(material, "Material should not be null when locking.");
 
             Player player = this.bukkitPlayer();
             if (player == null) return false;
             Block block = player.getLocation().getBlock();
+            if (!block.isEmpty()) {
+                this.getEventPlayer().sendMessage("You can only lock in place in an empty space.");
+                return false;
+            }
+
             block.setType(material);
 
             ArmorStand stand = player.getWorld().spawn(this.tryFindBestAirPocket(block), ArmorStand.class);
