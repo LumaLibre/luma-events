@@ -9,6 +9,7 @@ import dev.jsinco.luma.lumaevents.utility.Util
 import dev.jsinco.luma.lumaitems.LumaItems
 import dev.jsinco.luma.lumaitems.api.LumaItemsAPI
 import dev.jsinco.luma.lumaitems.items.misc.jobs.ArchiveOfAstralisItemNest
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import net.milkbowl.vault.economy.Economy
 import org.bukkit.Bukkit
 import org.bukkit.Material
@@ -107,7 +108,7 @@ class ArchiveReRollGui : AbstractGui() {
                 break
             }
         }
-        if (jobType == null) {
+        if (jobType == null || archive.isOldArchive()) {
             Util.sendMsg(player, "You must have a valid <red>Archive</red> in the left slot.")
             return
         }
@@ -172,6 +173,18 @@ class ArchiveReRollGui : AbstractGui() {
         val container = meta.persistentDataContainer
         val currentRolls = container.get(ARCHIVE_ROLLS_KEY, PersistentDataType.SHORT) ?: 0
         return currentRolls.toInt()
+    }
+
+    private fun ItemStack.isOldArchive(): Boolean {
+        val meta = this.itemMeta ?: return false
+        // bad checks but this is all i have
+        val lore = meta.lore()?.map{ PlainTextComponentSerializer.plainText().serialize(it) } ?: return false
+        for (string in lore) {
+            if (string.contains("Winter 2024")) {
+                return true
+            }
+        }
+        return false
     }
 
 }

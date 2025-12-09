@@ -5,6 +5,8 @@ import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 
 import java.util.List;
 
@@ -22,6 +24,10 @@ public interface PlaceholderModule extends AbstractPlaceholder<EventMain> {
         if (eventPlayer == null) {
             return "#" + position + " Unknown - 0";
         }
-        return "#" + position + " " + eventPlayer.getName() + " - " + String.format("%,d", eventPlayer.getPermanentScore(minigameConstant));
+
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(eventPlayer.getUuid());
+        String name = offlinePlayer.getName() != null ? offlinePlayer.getName() : offlinePlayer.getUniqueId().toString();
+
+        return "#" + position + " " + name + " - " + String.format("%,d", eventPlayer.getPermanentScore(minigameConstant));
     }
 }

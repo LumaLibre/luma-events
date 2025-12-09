@@ -560,7 +560,9 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
 
         public void giveItem(ItemStack itemStack) {
-            this.eventPlayer.operatePlayer(player -> Util.giveItem(player, itemStack));
+            this.eventPlayer.operatePlayer(player -> {
+                player.getWorld().dropItem(player.getEyeLocation(), itemStack);
+            });
         }
 
         @Override
