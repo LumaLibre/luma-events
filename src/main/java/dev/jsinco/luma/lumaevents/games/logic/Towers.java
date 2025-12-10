@@ -249,7 +249,6 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
 
         towersPlayer.onDeath(event);
-        this.swapRole(ActivePlayer.class, towersPlayer, () -> new Spectator(towersPlayer.getEventPlayer(), this));
     }
 
 
@@ -535,6 +534,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         private static final int MINECRAFT_MIN_Y = -63;
         private UUID lastAttacker = null;
         private int kills = 0;
+        private boolean dirty = false;
 
         public ActivePlayer(EventPlayer eventPlayer, Towers context) {
             super(eventPlayer, context);
@@ -587,13 +587,18 @@ public final class Towers extends InventoryUnifiedMinigame {
 
         @Override
         public void onDeath(PlayerDeathEvent event) {
+            this.context.swapRole(ActivePlayer.class, this, () -> new Spectator(this.getEventPlayer(), this.context));
+
+            if (!dirty) {
+                this.dirty = true;
+                this.context.scoreboard.addScore(this.eventPlayer, 2);
+            }
+
             event.setCancelled(true);
             this.context.sendAudienceMessage(event.deathMessage());
             if (this.respawnLocation != null) {
                 this.eventPlayer.teleportAsync(this.respawnLocation);
             }
-
-            this.context.scoreboard.addScore(this.eventPlayer, 2);
 
             Player victimBukkit = event.getEntity();
             ItemStack[] victimItems = victimBukkit.getInventory().getContents();

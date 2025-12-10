@@ -557,6 +557,10 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         }
 
         public boolean unlock() {
+            if (!isLocked()) {
+                return false;
+            }
+
             Player player = this.bukkitPlayer();
             Preconditions.checkNotNull(lockStand, "Lock stand should not be null when unlocking.");
             Preconditions.checkNotNull(player, "Player should not be null when unlocking.");
