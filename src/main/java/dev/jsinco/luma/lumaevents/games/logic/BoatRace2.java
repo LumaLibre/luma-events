@@ -39,6 +39,8 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -105,7 +107,10 @@ public final class BoatRace2 extends Minigame {
         float yaw = this.overFlowPoint.getYaw();
         float pitch = this.overFlowPoint.getPitch();
 
-        for (EventPlayer participant : this.participants) {
+        List<EventPlayer> shuffledParticipants = new ArrayList<>(this.participants);
+        Collections.shuffle(shuffledParticipants);
+
+        for (EventPlayer participant : shuffledParticipants) {
             Player player = participant.getPlayer();
             if (player == null) continue;
 

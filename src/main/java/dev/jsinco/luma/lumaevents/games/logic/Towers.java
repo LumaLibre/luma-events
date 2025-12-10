@@ -53,6 +53,7 @@ import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -107,7 +108,9 @@ public final class Towers extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStart() {
-        for (EventPlayer eventPlayer : this.participants) {
+        List<EventPlayer> shuffledParticipants = new ArrayList<>(this.participants);
+        Collections.shuffle(shuffledParticipants);
+        for (EventPlayer eventPlayer : shuffledParticipants) {
             ActivePlayer towersPlayer = new ActivePlayer(eventPlayer, this);
             this.towersPlayers.put(eventPlayer.getUuid(), towersPlayer);
             eventPlayer.operatePlayer(player -> {
