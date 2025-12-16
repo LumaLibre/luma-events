@@ -288,7 +288,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(shooter.getUniqueId());
         if (!this.participants.contains(eventPlayer)) {
-            eventPlayer.sendMessage("You are not participating in this minigame.");
+            //eventPlayer.sendMessage("You are not participating in this minigame.");
             return;
         }
 

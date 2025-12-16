@@ -36,14 +36,14 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
     @Override
     protected void onPreStart() {
         List<EventPlayer> removed = new ArrayList<>();
-        for (EventPlayer participant : this.participants) {
-            Player player = participant.getPlayer();
-            if (player == null) {
-                removed.add(participant);
-                continue;
-            }
+        Executors.runSync(() -> {
+            for (EventPlayer participant : this.participants) {
+                Player player = participant.getPlayer();
+                if (player == null) {
+                    removed.add(participant);
+                    continue;
+                }
 
-            Executors.sync(() -> {
                 InventorySnapshot inventorySnapshot = new InventorySnapshot(participant.getUuid(), player.getInventory().getContents());
                 inventorySnapshot.backup();
                 InventorySnapshotManager.INSTANCE.registerSnapshot(inventorySnapshot);
@@ -58,12 +58,13 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
                 if (this.defaultItem() != null) {
                     player.getInventory().setItemInMainHand(this.defaultItem());
                 }
-            });
-        }
 
-        for (EventPlayer p : removed) {
-            this.removeParticipant(p);
-        }
+            }
+
+            for (EventPlayer p : removed) {
+                this.removeParticipant(p);
+            }
+        });
     }
 
     @Override

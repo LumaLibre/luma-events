@@ -11,7 +11,10 @@ import dev.jsinco.luma.lumaevents.items.PresentItem;
 import dev.jsinco.luma.lumaevents.items.StartMinigameItem;
 import dev.jsinco.luma.lumaevents.items.WinterStampItem;
 import dev.jsinco.luma.lumaevents.items.LocalCustomItemManager;
+import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class EventMain extends JavaPlugin {
@@ -52,6 +55,10 @@ public final class EventMain extends JavaPlugin {
             current.stop();
         }
         CountdownBossBar.stopAll(false);
+
+        for (BossBar bossBar : CountdownBossBar.activeCountdowns.stream().map(CountdownBossBar::getBossBar).toList()) {
+            bossBar.removeViewer(Audience.audience(Bukkit.getOnlinePlayers()));
+        }
     }
 
     @SuppressWarnings("")

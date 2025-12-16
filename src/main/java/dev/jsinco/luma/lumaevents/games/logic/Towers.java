@@ -1,6 +1,7 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
 import com.destroystokyo.paper.event.player.PlayerJumpEvent;
+import dev.jsinco.luma.lumacore.utility.Logging;
 import dev.jsinco.luma.lumacore.utility.Text;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
@@ -41,6 +42,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.player.PlayerAttemptPickupItemEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -108,6 +110,7 @@ public final class Towers extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStart() {
+        Logging.log("[Towers] Game started with " + this.participants.size() + " participants.");
         List<EventPlayer> shuffledParticipants = new ArrayList<>(this.participants);
         Collections.shuffle(shuffledParticipants);
         for (EventPlayer eventPlayer : shuffledParticipants) {
@@ -406,6 +409,19 @@ public final class Towers extends InventoryUnifiedMinigame {
     }
 
     @EventHandler
+    public void onPlayerPickupItem(PlayerAttemptPickupItemEvent event) {
+        this.ensureNotIllegal();
+        Player bukkitPlayer = event.getPlayer();
+        TowersPlayer towersPlayer = this.towersPlayers.get(bukkitPlayer.getUniqueId());
+        if (towersPlayer == null) return;
+
+        if (towersPlayer instanceof Spectator) {
+            event.setCancelled(true);
+        }
+    }
+
+
+    @EventHandler
     public void onPlayerAddPotionEffect(EntityPotionEffectEvent event) {
         this.ensureNotIllegal();
         if (!(event.getEntity() instanceof Player targetPlayer)) {
@@ -493,7 +509,7 @@ public final class Towers extends InventoryUnifiedMinigame {
                         .filter(Material::isItem)
                         .filter(Material::isSolid)
                         .toList());
-                itemStack = ItemStack.of(material, RANDOM.nextInt(1, 5));
+                itemStack = ItemStack.of(material, RANDOM.nextInt(3, 5));
             }
             final ItemStack finalItemStack = itemStack;
             activePlayer.getEventPlayer().sendMessage("You got: " + Util.formatMaterialName(itemStack.getType().toString()) + " x" + itemStack.getAmount());

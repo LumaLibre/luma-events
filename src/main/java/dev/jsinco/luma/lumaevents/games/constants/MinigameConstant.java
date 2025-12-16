@@ -8,6 +8,7 @@ import dev.jsinco.luma.lumaevents.games.logic.Manor;
 import dev.jsinco.luma.lumaevents.games.logic.Paintball2_1;
 import dev.jsinco.luma.lumaevents.games.logic.PropHunt;
 import dev.jsinco.luma.lumaevents.games.logic.TNTTag;
+import dev.jsinco.luma.lumaevents.games.logic.TheNabbits;
 import dev.jsinco.luma.lumaevents.games.logic.Towers;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import eu.okaeri.configs.OkaeriConfig;
@@ -25,7 +26,8 @@ public enum MinigameConstant {
     TNTTAG(TNTTag::new, "tnttag"),
     TOWERS(Towers::new, "towers"),
     MANOR(Manor::new, "manor"),
-    PROP_HUNT(PropHunt::new, "prophunt", "prop_hunt")
+    PROP_HUNT(PropHunt::new, "prophunt", "prop_hunt"),
+    THE_NABBITS(TheNabbits::new, "thenabbits", "the_nabbits")
     ;
 
     private final MinigameSupplier<?> supplier;
@@ -47,6 +49,7 @@ public enum MinigameConstant {
             case TOWERS -> (Map<String, T>) cfg.getTowersMaps();
             case MANOR ->  (Map<String, T>) cfg.getManorMaps();
             case PROP_HUNT -> (Map<String, T>) cfg.getPropHuntMaps();
+            case THE_NABBITS -> (Map<String, T>) cfg.getTheNabbitsMaps();
         };
     }
 

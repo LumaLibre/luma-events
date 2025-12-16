@@ -227,7 +227,6 @@ public final class TNTTag extends InventoryUnifiedMinigame {
                 .seconds(ROUND_DURATION)
                 .color(BossBar.Color.YELLOW)
                 .title("<yellow><b>Round ends in: %ss <gray>| <yellow>Round: " + (this.roundCount + 1) + "/" + MAX_ROUNDS)
-                .global(false)
                 .audience(this.audience)
                 .callback(() -> {
                     this.endRound();

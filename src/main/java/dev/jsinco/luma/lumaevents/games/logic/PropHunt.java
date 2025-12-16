@@ -3,6 +3,7 @@ package dev.jsinco.luma.lumaevents.games.logic;
 import com.google.common.base.Preconditions;
 import dev.jsinco.luma.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.EventMain;
+import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.configurable.sectors.ManorMinigameDefinition;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
@@ -24,6 +25,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
@@ -34,12 +36,14 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDismountEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.util.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -70,7 +74,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
     private CountdownBossBar countdownBossBar;
 
     public PropHunt(ManorMinigameDefinition def) {
-        super("Prop Hunt", "Find all the disguised blocks.", STANDARD_DURATION, TICK_INTERVAL, true, false, false);
+        super("Prop Hunt", "Find all the disguised blocks.", STANDARD_DURATION, TICK_INTERVAL, true, true, false);
         this.propHuntPlayers = new PropHuntPlayerMap();
         this.scoreboard = new Scoreboard<>();
         this.tokenFormula = new PropHuntTokenFormula();
@@ -641,7 +645,6 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             Player player = this.bukkitPlayer();
             if (player != null) {
                 player.removePotionEffect(PotionEffectType.SPEED);
-                player.getInventory().setItemInMainHand(null);
             }
         }
 
