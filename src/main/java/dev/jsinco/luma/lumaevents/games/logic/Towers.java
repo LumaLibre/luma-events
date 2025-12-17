@@ -112,7 +112,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     protected void handleStart() {
         Logging.log("[Towers] Game started with " + this.participants.size() + " participants.");
         List<EventPlayer> shuffledParticipants = new ArrayList<>(this.participants);
-        Collections.shuffle(shuffledParticipants);
+        Collections.shuffle(shuffledParticipants, RANDOM);
         for (EventPlayer eventPlayer : shuffledParticipants) {
             ActivePlayer towersPlayer = new ActivePlayer(eventPlayer, this);
             this.towersPlayers.put(eventPlayer.getUuid(), towersPlayer);
@@ -128,13 +128,16 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
 
         BoundCircularStructureGrid grid = new BoundCircularStructureGrid(this.centerPoint, this.maxRadius, 20, 22);
-        this.gridLocations = grid.generateSpawnLocations(this.participants.size());
+        this.gridLocations = grid.generateSpawnLocations(this.towersPlayers.size());
         List<Location> locations = new ArrayList<>(this.gridLocations);
 
         for (TowersPlayer towersPlayer : this.towersPlayers.values()) {
+            if (!(towersPlayer instanceof ActivePlayer activePlayer)) {
+                Logging.errorLog("Expected all players to be an ActivePlayer at game start.");
+                continue;
+            }
             Location spawnLoc = locations.removeFirst();
-            ActivePlayer newInstance = this.swapRole(Spectator.class, towersPlayer, () -> new ActivePlayer(towersPlayer.getEventPlayer(), this));
-            newInstance.onNewRound(spawnLoc);
+            activePlayer.onNewRound(spawnLoc);
         }
 
         AtomicInteger count = new AtomicInteger(3);
