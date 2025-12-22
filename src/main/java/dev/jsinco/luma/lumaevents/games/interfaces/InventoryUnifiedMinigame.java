@@ -101,10 +101,12 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
                 snapshot.restore(player);
                 InventorySnapshotManager.INSTANCE.unregisterSnapshot(snapshot);
             } else {
-                Logging.errorLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found.");
+                Logging.warningLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found. (Participant removal)");
             }
         }
-        this.tokenHandler(participant);
+        if (!this.isOpen()) {
+            this.tokenHandler(participant);
+        }
         return super.removeParticipant(participant);
     }
 
