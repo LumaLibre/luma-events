@@ -1,6 +1,6 @@
 package dev.jsinco.luma.lumaevents;
 
-import dev.jsinco.luma.lumacore.manager.modules.ModuleManager;
+import dev.lumas.lumacore.manager.modules.ModuleManager;
 import dev.jsinco.luma.lumaevents.configurable.Config;
 import dev.jsinco.luma.lumaevents.configurable.ConfigManager;
 import dev.jsinco.luma.lumaevents.configurable.MinigameState;

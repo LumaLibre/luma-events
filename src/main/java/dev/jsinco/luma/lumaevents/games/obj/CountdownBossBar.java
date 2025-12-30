@@ -1,6 +1,6 @@
 package dev.jsinco.luma.lumaevents.games.obj;
 
-import dev.jsinco.luma.lumacore.utility.Logging;
+import dev.lumas.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;

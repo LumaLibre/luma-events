@@ -1,8 +1,8 @@
 package dev.jsinco.luma.lumaevents.placeholders;
 
-import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
-import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
-import dev.jsinco.luma.lumacore.manager.placeholder.PlaceholderInfo;
+import dev.lumas.lumacore.manager.modules.AutoRegister;
+import dev.lumas.lumacore.manager.modules.RegisterType;
+import dev.lumas.lumacore.manager.placeholder.PlaceholderInfo;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.Config;
 import dev.jsinco.luma.lumaevents.configurable.MinigameState;

@@ -1,6 +1,6 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
-import dev.jsinco.luma.lumacore.utility.Logging;
+import dev.lumas.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;

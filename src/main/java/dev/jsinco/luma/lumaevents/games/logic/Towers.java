@@ -1,8 +1,8 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
 import com.destroystokyo.paper.event.player.PlayerJumpEvent;
-import dev.jsinco.luma.lumacore.utility.Logging;
-import dev.jsinco.luma.lumacore.utility.Text;
+import dev.lumas.lumacore.utility.Logging;
+import dev.lumas.lumacore.utility.Text;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.configurable.MaterialCount;

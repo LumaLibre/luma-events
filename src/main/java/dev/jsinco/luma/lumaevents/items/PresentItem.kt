@@ -1,13 +1,13 @@
 package dev.jsinco.luma.lumaevents.items
 
-import dev.jsinco.luma.lumacore.utility.Text
+import dev.lumas.lumacore.utility.Text
 import dev.jsinco.luma.lumaevents.archives.ArchivePercentChance
 import dev.jsinco.luma.lumaevents.utility.MonoUpperFont
 import dev.jsinco.luma.lumaevents.utility.Util
-import dev.jsinco.luma.lumaitems.api.LumaItemsAPI
-import dev.jsinco.luma.lumaitems.items.misc.jobs.ArchiveOfAstralisItemNest
-import dev.jsinco.luma.lumaitems.manager.CustomItemFunctions
-import dev.jsinco.luma.lumaitems.util.tiers.Tier
+import dev.lumas.lumaitems.api.LumaItemsAPI
+import dev.lumas.lumaitems.items.misc.jobs.ArchiveOfAstralisItemNest
+import dev.lumas.lumaitems.manager.CustomItemFunctions
+import dev.lumas.lumaitems.util.tiers.Tier
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.event.HoverEvent
 import org.bukkit.Bukkit

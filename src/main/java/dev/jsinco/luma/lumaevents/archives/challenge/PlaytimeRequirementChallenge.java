@@ -1,6 +1,6 @@
 package dev.jsinco.luma.lumaevents.archives.challenge;
 
-import dev.jsinco.luma.lumacore.utility.Logging;
+import dev.lumas.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.archives.Challenge;
 import dev.jsinco.luma.lumaevents.archives.ChallengeType;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;

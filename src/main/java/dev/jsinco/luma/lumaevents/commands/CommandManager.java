@@ -1,10 +1,10 @@
 package dev.jsinco.luma.lumaevents.commands;
 
 import dev.jsinco.luma.lumaevents.EventMain;
-import dev.jsinco.luma.lumacore.manager.commands.AbstractCommandManager;
-import dev.jsinco.luma.lumacore.manager.commands.CommandInfo;
-import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
-import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
+import dev.lumas.lumacore.manager.commands.AbstractCommandManager;
+import dev.lumas.lumacore.manager.commands.CommandInfo;
+import dev.lumas.lumacore.manager.modules.AutoRegister;
+import dev.lumas.lumacore.manager.modules.RegisterType;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;

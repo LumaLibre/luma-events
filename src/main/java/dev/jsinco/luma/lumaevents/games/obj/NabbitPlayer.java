@@ -4,7 +4,7 @@ import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.games.interfaces.Scorer;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.utility.Util;
-import dev.jsinco.lumaglowapi.colormanagers.ColorManager;
+import dev.lumas.glowapi.colormanagers.ColorManager;
 import lombok.Getter;
 import me.libraryaddict.disguise.DisguiseConfig;
 import me.libraryaddict.disguise.disguisetypes.DisguiseType;

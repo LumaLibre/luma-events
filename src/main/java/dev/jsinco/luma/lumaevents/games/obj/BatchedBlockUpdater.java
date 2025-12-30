@@ -1,7 +1,7 @@
 package dev.jsinco.luma.lumaevents.games.obj;
 
 import com.gamingmesh.jobs.commands.list.log;
-import dev.jsinco.luma.lumacore.utility.Logging;
+import dev.lumas.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Executors;
 import lombok.Getter;

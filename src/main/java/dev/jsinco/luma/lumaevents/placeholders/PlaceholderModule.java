@@ -1,6 +1,6 @@
 package dev.jsinco.luma.lumaevents.placeholders;
 
-import dev.jsinco.luma.lumacore.manager.placeholder.AbstractPlaceholder;
+import dev.lumas.lumacore.manager.placeholder.AbstractPlaceholder;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;

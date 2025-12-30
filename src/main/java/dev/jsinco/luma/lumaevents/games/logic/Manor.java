@@ -10,7 +10,7 @@ import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Executors;
 import dev.jsinco.luma.lumaevents.utility.Util;
-import dev.jsinco.luma.lumaitems.LumaItems;
+import dev.lumas.lumaitems.LumaItems;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;

@@ -1,7 +1,7 @@
 package dev.jsinco.luma.lumaevents.obj;
 
-import dev.jsinco.luma.lumaitems.particles.ParticleDisplay;
-import dev.jsinco.luma.lumaitems.particles.Particles;
+import dev.lumas.lumaitems.particles.ParticleDisplay;
+import dev.lumas.lumaitems.particles.Particles;
 import lombok.Getter;
 import org.bukkit.Location;
 import org.bukkit.block.Block;

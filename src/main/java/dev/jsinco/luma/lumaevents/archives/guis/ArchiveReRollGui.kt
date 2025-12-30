@@ -1,14 +1,14 @@
 package dev.jsinco.luma.lumaevents.archives.guis
 
-import dev.jsinco.luma.lumacore.manager.guis.AbstractGui
-import dev.jsinco.luma.lumacore.utility.Logging
-import dev.jsinco.luma.lumacore.utility.Text
+import dev.lumas.lumacore.manager.guis.AbstractGui
+import dev.lumas.lumacore.utility.Logging
+import dev.lumas.lumacore.utility.Text
 import dev.jsinco.luma.lumaevents.EventMain
 import dev.jsinco.luma.lumaevents.archives.ArchivePercentChance
 import dev.jsinco.luma.lumaevents.utility.Util
-import dev.jsinco.luma.lumaitems.LumaItems
-import dev.jsinco.luma.lumaitems.api.LumaItemsAPI
-import dev.jsinco.luma.lumaitems.items.misc.jobs.ArchiveOfAstralisItemNest
+import dev.lumas.lumaitems.LumaItems
+import dev.lumas.lumaitems.api.LumaItemsAPI
+import dev.lumas.lumaitems.items.misc.jobs.ArchiveOfAstralisItemNest
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import net.milkbowl.vault.economy.Economy
 import org.bukkit.Bukkit

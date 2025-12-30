@@ -4,7 +4,7 @@ import dev.jsinco.luma.lumaevents.archives.Challenge;
 import dev.jsinco.luma.lumaevents.archives.ChallengeType;
 import dev.jsinco.luma.lumaevents.items.PresentItem;
 import dev.jsinco.luma.lumaevents.utility.Util;
-import dev.jsinco.luma.lumacore.manager.guis.AbstractGui;
+import dev.lumas.lumacore.manager.guis.AbstractGui;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;

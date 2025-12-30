@@ -1,6 +1,6 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
-import dev.jsinco.luma.lumacore.utility.Logging;
+import dev.lumas.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition;
@@ -17,9 +17,9 @@ import dev.jsinco.luma.lumaevents.utility.BlockFaces;
 import dev.jsinco.luma.lumaevents.utility.Couple;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumaevents.obj.Sphere;
-import dev.jsinco.luma.lumaitems.particles.ParticleDisplay;
-import dev.jsinco.luma.lumaitems.particles.Particles;
-import dev.jsinco.lumaglowapi.colormanagers.ColorManager;
+import dev.lumas.lumaitems.particles.ParticleDisplay;
+import dev.lumas.lumaitems.particles.Particles;
+import dev.lumas.glowapi.colormanagers.ColorManager;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
