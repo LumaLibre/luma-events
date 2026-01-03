@@ -47,7 +47,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class MineBattle extends InventoryUnifiedMinigame {
 
-    private static final long HEARTBEAT = 10; // tick every 0.5 seconds
+    private static final long HEARTBEAT = 5; // tick every 0.25 seconds
 
     private final long maxDurationMillis;
     private final Location lobbyLocation;
@@ -65,8 +65,10 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private CountdownBossBar gameTimerBossBar;
     private ArenaRegions arenaRegions;
     private List<Location> pocketCenters = List.of();
-    private Scoreboard<EventPlayer> scoreboard;
+    private final Scoreboard<EventPlayer> scoreboard;
     private final Set<UUID> eliminated = new HashSet<>();
+    private final Map<UUID, Set<UUID>> hiddenByViewer = new HashMap<>();
+    private final Map<UUID, Map<UUID, Long>> forceVisibleUntil = new HashMap<>();
 
     public MineBattle(MineBattleDefinition def) {
         super("MineBattle", "Break ores, gear up, and fight!", def.getMaxDurationMillis(), HEARTBEAT, true, true, false, false);
@@ -143,6 +145,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     @Override
     protected void onRunnable(long timeLeft) {
         if (!this.arenaReady) return;
+        Executors.runSync(this::updateLineOfSightVisibility);
         if (aliveCount() <= 1) this.stop();
     }
 
@@ -154,6 +157,23 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     @Override
     public boolean removeParticipant(EventPlayer participant) {
+        UUID uuid = participant.getUuid();
+        eliminated.add(uuid);
+        Executors.runSync(() -> {
+            Player leaving = participant.getPlayer();
+            if (leaving != null) {
+                for (EventPlayer ep : this.participants) {
+                    Player viewer = ep.getPlayer();
+                    if (viewer != null && !viewer.getUniqueId().equals(uuid)) {
+                        viewer.showPlayer(EventMain.getInstance(), leaving);
+                    }
+                }
+            }
+            hiddenByViewer.remove(uuid);
+            for (Set<UUID> set : hiddenByViewer.values()) set.remove(uuid);
+            forceVisibleUntil.remove(uuid);
+            for (Map<UUID, Long> m : forceVisibleUntil.values()) m.remove(uuid);
+        });
         return super.removeParticipant(participant);
     }
 
@@ -179,6 +199,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 }
             }
         });
+        forceVisibleUntil.clear();
+        hiddenByViewer.clear();
 
         ArenaRegions regions = this.arenaRegions;
         if (regions != null) {
@@ -381,6 +403,85 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    private void updateLineOfSightVisibility() {
+        if (!arenaReady) return;
+
+        for (EventPlayer viewerEp : this.participants) {
+            UUID viewerId = viewerEp.getUuid();
+            if (eliminated.contains(viewerId)) continue;
+
+            Player viewer = viewerEp.getPlayer();
+            if (viewer == null) continue;
+            if (viewer.getGameMode() != GameMode.SURVIVAL) continue;
+
+            Set<UUID> hidden = hiddenByViewer.computeIfAbsent(viewerId, k -> new HashSet<>());
+
+            for (EventPlayer targetEp : this.participants) {
+                UUID targetId = targetEp.getUuid();
+                if (viewerId.equals(targetId)) continue;
+                if (eliminated.contains(targetId)) continue;
+
+                Player target = targetEp.getPlayer();
+                if (target == null) continue;
+                if (target.getGameMode() != GameMode.SURVIVAL) continue;
+
+                if (viewer.getWorld() != target.getWorld()) {
+                    if (hidden.add(targetId)) {
+                        viewer.hidePlayer(EventMain.getInstance(), target);
+                    }
+                    continue;
+                }
+
+                if (isForceVisible(viewerId, targetId)) {
+                    if (hidden.remove(targetId)) {
+                        viewer.showPlayer(EventMain.getInstance(), target);
+                    }
+                    continue;
+                }
+
+                boolean canSee = viewer.hasLineOfSight(target);
+
+                if (canSee) {
+                    if (hidden.remove(targetId)) {
+                        viewer.showPlayer(EventMain.getInstance(), target);
+                    }
+                } else {
+                    if (hidden.add(targetId)) {
+                        viewer.hidePlayer(EventMain.getInstance(), target);
+                    }
+                }
+            }
+        }
+    }
+
+    private void forceShowFor(UUID viewerId, UUID targetId, long durationMs) {
+        long until = System.currentTimeMillis() + durationMs;
+        forceVisibleUntil
+                .computeIfAbsent(viewerId, k -> new HashMap<>())
+                .merge(targetId, until, Math::max);
+        Set<UUID> hidden = hiddenByViewer.computeIfAbsent(viewerId, k -> new HashSet<>());
+        hidden.remove(targetId);
+        Player viewer = Bukkit.getPlayer(viewerId);
+        Player target = Bukkit.getPlayer(targetId);
+        if (viewer != null && target != null) {
+            viewer.showPlayer(EventMain.getInstance(), target);
+        }
+    }
+
+    private boolean isForceVisible(UUID viewerId, UUID targetId) {
+        Map<UUID, Long> map = forceVisibleUntil.get(viewerId);
+        if (map == null) return false;
+        Long until = map.get(targetId);
+        if (until == null) return false;
+
+        if (until < System.currentTimeMillis()) {
+            map.remove(targetId);
+            if (map.isEmpty()) forceVisibleUntil.remove(viewerId);
+            return false;
+        }
+        return true;
+    }
+
     private void cleanPlayer(Player player) {
         player.setGameMode(GameMode.SURVIVAL);
         player.clearActivePotionEffects();
@@ -476,6 +577,11 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                     finalKiller.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 100, 2));
                 }
             }
+
+            hiddenByViewer.remove(deadId);
+            for (Set<UUID> set : hiddenByViewer.values()) set.remove(deadId);
+            forceVisibleUntil.remove(deadId);
+            for (Map<UUID, Long> m : forceVisibleUntil.values()) m.remove(deadId);
 
             cleanPlayer(dead);
             hideFromOtherPlayers(dead);
@@ -633,6 +739,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                         .forEach(ep -> ep.operatePlayer(p -> {
                             if (p.getGameMode() != GameMode.SURVIVAL) return;
                             if (p.getLocation().distanceSquared(player.getLocation()) > 25*25) return;
+                            forceShowFor(player.getUniqueId(), p.getUniqueId(), 3_000); // (= 60 ticks)
                             if (p.hasPotionEffect(PotionEffectType.GLOWING)) p.removePotionEffect(PotionEffectType.GLOWING);
                             p.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 0));
                             p.playSound(p, Sound.ENTITY_WITHER_SPAWN, 1, 1);
