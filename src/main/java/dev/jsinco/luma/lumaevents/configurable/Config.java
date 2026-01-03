@@ -1,10 +1,6 @@
 package dev.jsinco.luma.lumaevents.configurable;
 
-import dev.jsinco.luma.lumaevents.configurable.sectors.BoatRace2Definition;
-import dev.jsinco.luma.lumaevents.configurable.sectors.ManorMinigameDefinition;
-import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
-import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition;
-import dev.jsinco.luma.lumaevents.configurable.sectors.TowersDefinition;
+import dev.jsinco.luma.lumaevents.configurable.sectors.*;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.annotation.Comment;
@@ -59,11 +55,21 @@ public class Config extends OkaeriConfig {
             "default", new ManorMinigameDefinition()
     );
 
+    @Comment("Minigame definition for 'MineBattle'")
+    private Map<String, MineBattleDefinition> mineBattleMaps = Map.of(
+            "default", new MineBattleDefinition()
+    );
+
     @Comment("Minigame definition for 'Paintball 2.1'")
     private Map<String, Paintball2_1Definition> paintballMaps = Map.of(
             "default", new Paintball2_1Definition()
     );
 
+
+    @Comment("Minigame definition for 'The Nabbits'")
+    private Map<String, TheNabbitsMinigameDefinition> theNabbitsMaps = Map.of(
+            "default", new TheNabbitsMinigameDefinition()
+    );
 
 
     @Comment("Minigame definition for 'TNT Tag'")

@@ -6,31 +6,35 @@ import dev.lumas.lumacore.manager.modules.RegisterType;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
-import dev.jsinco.luma.lumaevents.items.LocalCustomItemManager;
+import dev.jsinco.luma.lumaevents.games.interfaces.structures.BoundCircularStructureGrid;
 import dev.jsinco.luma.lumaevents.utility.Util;
+import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffectType;
 
 import java.util.List;
 
 @AutoRegister(RegisterType.SUBCOMMAND)
 @CommandInfo(
-        name = "customitemregister",
-        aliases = {"register"},
+        name = "debug",
         permission = "lumaevents.admin",
-        description = "re-register lumaitems",
         parent = CommandManager.class,
-        usage = "/<command> customitemregister"
+        usage = "/<command> debug"
 )
-public class RegisterCustomItemsCommand implements CommandModule {
+public class DebugCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
-        LocalCustomItemManager.registerCustomItems();
-        Util.sendMsg(commandSender, "Re-registered all custom items.");
+        Player player = (Player) commandSender;
+        player.removePotionEffect(PotionEffectType.INVISIBILITY);
+        Util.sendMsg(commandSender, "Done");
         return true;
     }
 
     @Override
     public List<String> tabComplete(EventMain eventMain, CommandSender commandSender, String[] strings) {
-        return List.of();
+        return List.of("<int>");
     }
 }
+

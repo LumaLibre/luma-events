@@ -1,6 +1,6 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
-import dev.jsinco.luma.lumacore.utility.Logging;
+import dev.lumas.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
@@ -10,6 +10,7 @@ import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.BoatRace2Definition;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
+import dev.jsinco.luma.lumaevents.utility.Executors;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
@@ -38,6 +39,8 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -57,15 +60,19 @@ public final class BoatRace2 extends Minigame {
     private final Set<BoatRaceCheckpoint> checkpoints;
     private final Set<BoatRacePlayer> racers;
     private final Location spawnLocation;
-    private final Location startLocation;
     private final Location spectateLocation;
     private final Scoreboard<EventPlayer> scoreboard;
     private final int maxLaps;
     private final BoatRace2TokenFormula tokenFormula;
 
+    private final List<Location> spawnPoints;
+    private final Location overFlowPoint;
+
 
     private int basePoints;
 
+    // Here for caching/performance reasons
+    // TODO: Use one list of racers that is kept sorted rather than sorting every tick?
     private List<BoatRacePlayer> sortedRacers;
 
     public BoatRace2(BoatRace2Definition def) {
@@ -74,11 +81,12 @@ public final class BoatRace2 extends Minigame {
         this.checkpoints = new HashSet<>();
         this.racers = new HashSet<>();
         this.spawnLocation = def.getSpawnLocation().toCenterLocation();
-        this.startLocation = def.getStartLocation().toCenterLocation();
         this.spectateLocation = def.getSpectateLocation().toCenterLocation();
         this.scoreboard = new Scoreboard<>();
         this.maxLaps = def.getMaxLaps();
-        this.tokenFormula = new BoatRace2TokenFormula();
+        this.tokenFormula = new BoatRace2TokenFormula(false);
+        this.spawnPoints = def.getSpawnPoints();
+        this.overFlowPoint = def.getOverFlowPoint();
 
         def.getCheckpoints().stream()
                 .map(region -> WorldTiedBoundingBox.of(region.getLoc1(), region.getLoc2()))
@@ -92,15 +100,34 @@ public final class BoatRace2 extends Minigame {
     protected void handleStart() {
         this.basePoints = this.participants.size() + 1;
         this.scoreboard.addScorers(this.participants);
-        for (EventPlayer participant : this.participants) {
+
+        int index = 0;
+
+        // Keep yaw/pitch consistent
+        float yaw = this.overFlowPoint.getYaw();
+        float pitch = this.overFlowPoint.getPitch();
+
+        List<EventPlayer> shuffledParticipants = new ArrayList<>(this.participants);
+        Collections.shuffle(shuffledParticipants);
+
+        for (EventPlayer participant : shuffledParticipants) {
             Player player = participant.getPlayer();
-            if (player == null) {
-                continue;
+            if (player == null) continue;
+
+            Location loc;
+
+            if (index < this.spawnPoints.size()) {
+                loc = this.spawnPoints.get(index).toCenterLocation();
+                loc.setYaw(yaw);
+                loc.setPitch(pitch);
+                index++;
+            } else {
+                loc = this.overFlowPoint.toCenterLocation().add(RANDOM.nextDouble(6), 0, RANDOM.nextDouble(6));
             }
-            Location loc = this.startLocation.clone().add(RANDOM.nextDouble(6), 0, RANDOM.nextDouble(6));
+
             player.teleportAsync(loc).whenComplete((v, b) -> {
                 // Synchronize
-                Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+                Executors.sync(() -> {
                     BoatRaceBoatType boatType = BoatRaceBoatType.BAMBOO; // Util.getRandom(BoatRaceBoatType.values());
                     Boat boat = player.getWorld().spawn(loc, boatType.getBoatType());
                     boat.addPassenger(player);
@@ -159,11 +186,12 @@ public final class BoatRace2 extends Minigame {
                     .color(BossBar.Color.RED)
                     .title("<red><b>Game Over</b></red>")
                     .seconds(15)
-                    .callback(() -> this.boundingBox.getPlayers().forEach(player -> {
-                                player.teleportAsync(this.getGameDropOffLocation());
-                                Util.sendMsg(player, "This minigame has concluded.");
-                            }
-                    ))
+                    .callback(() -> {
+                        this.participants.forEach(player -> {
+                            player.teleportAsync(this.getGameDropOffLocation());
+                            player.sendMessage("This minigame has concluded.");
+                        });
+                    })
                     .build()
                     .start();
         });
@@ -385,11 +413,9 @@ public final class BoatRace2 extends Minigame {
     }
 
     private void cleanBoats() {
-        if (Bukkit.isPrimaryThread()) {
+        Executors.runSync(() -> {
             this.boundingBox.getEntities(Boat.class).forEach(Boat::remove);
-        } else {
-            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> this.boundingBox.getEntities(Boat.class).forEach(Boat::remove));
-        }
+        });
     }
 
 

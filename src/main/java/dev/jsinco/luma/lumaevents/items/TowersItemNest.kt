@@ -3,9 +3,9 @@ package dev.jsinco.luma.lumaevents.items
 /*
 import com.destroystokyo.paper.event.entity.EntityKnockbackByEntityEvent
 import dev.jsinco.luma.lumaevents.utility.Util
-import dev.jsinco.luma.lumaitems.items.ItemFactory
-import dev.jsinco.luma.lumaitems.manager.CustomItemFunctions
-import dev.jsinco.luma.lumaitems.util.Executors
+import dev.lumas.lumaitems.items.ItemFactory
+import dev.lumas.lumaitems.manager.CustomItemFunctions
+import dev.lumas.lumaitems.util.Executors
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound

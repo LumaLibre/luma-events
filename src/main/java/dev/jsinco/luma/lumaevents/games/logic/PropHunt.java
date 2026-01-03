@@ -1,7 +1,7 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
 import com.google.common.base.Preconditions;
-import dev.jsinco.luma.lumacore.utility.Logging;
+import dev.lumas.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.ManorMinigameDefinition;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
@@ -52,8 +52,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 // TODO:
-//  - better cues for seekers
+//  - better cues for seekers (some particles also when not locked in place? Cues on distance to the nearest hidden player?)
 //  - debug
+//  - Player shouldn't be able to disguise as barriers, signs, and other transparent blocks
+//  - Player's blockInteractionRange attribute should be 0 so they can't interact with the map
 public final class PropHunt extends InventoryUnifiedMinigame {
 
     private static final long STANDARD_DURATION = 300000; // in milliseconds
@@ -70,7 +72,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
     private CountdownBossBar countdownBossBar;
 
     public PropHunt(ManorMinigameDefinition def) {
-        super("Prop Hunt", "Find all the disguised blocks.", STANDARD_DURATION, TICK_INTERVAL, true, false, false);
+        super("Prop Hunt", "Find all the disguised blocks.", STANDARD_DURATION, TICK_INTERVAL, true, true, false);
         this.propHuntPlayers = new PropHuntPlayerMap();
         this.scoreboard = new Scoreboard<>();
         this.tokenFormula = new PropHuntTokenFormula();
@@ -114,10 +116,11 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                 .audience(this.audience)
                 .callback(() -> {
                     Preconditions.checkNotNull(this.countdownBossBar, "Countdown boss bar should not be null when initial countdown ends.");
-                    this.setDuration(this.getDuration() - Util.secsToMillis(HIDE_DURATION));
+                    this.setDuration(this.getDuration() + Util.secsToMillis(HIDE_DURATION));
                     this.countdownBossBar.start();
                     firstSeeker.getEventPlayer().teleportAsync(this.startLocation);
                     firstSeeker.getEventPlayer().sendMessage("<red>The game has started. Find and catch all the Hiders!");
+                    firstSeeker.getEventPlayer().sendTitle("<red>Volume Up!!", "Audio cues are important!");
 
                     this.propHuntPlayers.forEach(propHuntPlayer -> {
                         Player player = propHuntPlayer.bukkitPlayer();
@@ -515,12 +518,19 @@ public final class PropHunt extends InventoryUnifiedMinigame {
          * @return true if the player was successfully locked, false if they were already locked.
          */
         public boolean lock() {
+            if (material == null) return false;
+
             Preconditions.checkState(lockStand == null || !lockStand.isValid(), "Lock stand should be null when locking.");
             Preconditions.checkNotNull(material, "Material should not be null when locking.");
 
             Player player = this.bukkitPlayer();
             if (player == null) return false;
             Block block = player.getLocation().getBlock();
+            if (!block.isEmpty()) {
+                this.getEventPlayer().sendMessage("You can only lock in place in an empty space.");
+                return false;
+            }
+
             block.setType(material);
 
             ArmorStand stand = player.getWorld().spawn(this.tryFindBestAirPocket(block), ArmorStand.class);
@@ -549,6 +559,10 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         }
 
         public boolean unlock() {
+            if (!isLocked()) {
+                return false;
+            }
+
             Player player = this.bukkitPlayer();
             Preconditions.checkNotNull(lockStand, "Lock stand should not be null when unlocking.");
             Preconditions.checkNotNull(player, "Player should not be null when unlocking.");
@@ -629,7 +643,6 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             Player player = this.bukkitPlayer();
             if (player != null) {
                 player.removePotionEffect(PotionEffectType.SPEED);
-                player.getInventory().setItemInMainHand(null);
             }
         }
 
@@ -699,12 +712,11 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
 
             this.kills++;
-            int amt = Util.RANDOM.nextBoolean() ? 1 : 2;
-            this.context.scoreboard.addScore(this.getEventPlayer(), amt);
+            this.context.scoreboard.addScore(this.getEventPlayer(), 2);
 
-            this.context.sendAudienceMessage("30 seconds have been added to the game time!");
-            this.context.setDuration(this.context.getDuration() + Util.secsToMillis(30));
-            this.context.countdownBossBar.addSeconds(30);
+//            this.context.sendAudienceMessage("30 seconds have been added to the game time!");
+//            this.context.setDuration(this.context.getDuration() + Util.secsToMillis(30));
+//            this.context.countdownBossBar.addSeconds(30);
         }
 
 

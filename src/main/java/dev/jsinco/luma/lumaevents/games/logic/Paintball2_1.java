@@ -1,6 +1,6 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
-import dev.jsinco.luma.lumacore.utility.Logging;
+import dev.lumas.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition;
@@ -17,9 +17,9 @@ import dev.jsinco.luma.lumaevents.utility.BlockFaces;
 import dev.jsinco.luma.lumaevents.utility.Couple;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.jsinco.luma.lumaevents.obj.Sphere;
-import dev.jsinco.luma.lumaitems.particles.ParticleDisplay;
-import dev.jsinco.luma.lumaitems.particles.Particles;
-import dev.jsinco.lumaglowapi.colormanagers.ColorManager;
+import dev.lumas.lumaitems.particles.ParticleDisplay;
+import dev.lumas.lumaitems.particles.Particles;
+import dev.lumas.glowapi.colormanagers.ColorManager;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -142,24 +142,18 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 player.teleportAsync(def.getSpawnLocation());
                 ColorManager.updatePlayersColor(player);
             });
+            Location loc = this.getGameDropOffLocation();
+
             CountdownBossBar.builder()
                     .audience(this.audience)
                     .color(BossBar.Color.RED)
                     .title("<red><b>Game Over")
                     .seconds(15)
-                    .callback(() -> this.boundingBox.getPlayers().forEach(player -> {
-                        Location loc = this.getGameDropOffLocation();
+                    .callback(() -> this.participants.forEach(eventPlayer -> {
                         if (loc != null) {
-                            player.teleportAsync(loc);
+                            eventPlayer.teleportAsync(loc);
                         }
-                        Util.sendMsg(player, "This minigame has concluded.");
-
-                        if (this.isInBoundingBox(player)) {
-                            for (Location location : paintedLocations.keySet()) {
-                                Block block = location.getBlock();
-                                player.sendBlockChange(location, block.getBlockData());
-                            }
-                        }
+                        eventPlayer.sendMessage("This minigame has concluded.");
                     }))
                     .build()
                     .start();
@@ -288,7 +282,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(shooter.getUniqueId());
         if (!this.participants.contains(eventPlayer)) {
-            eventPlayer.sendMessage("You are not participating in this minigame.");
+            //eventPlayer.sendMessage("You are not participating in this minigame.");
             return;
         }
 
@@ -363,7 +357,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(shooter.getUniqueId());
 
         if (!this.participants.contains(eventPlayer)) {
-            eventPlayer.sendMessage("You are not participating in this minigame.");
+            //eventPlayer.sendMessage("You are not participating in this minigame.");
             return;
         }
 

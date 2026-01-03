@@ -1,6 +1,6 @@
 package dev.jsinco.luma.lumaevents.games.interfaces;
 
-import dev.jsinco.luma.lumacore.utility.Logging;
+import dev.lumas.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.games.events.MinigameInventoryRestoringQuitListener;
 import dev.jsinco.luma.lumaevents.games.obj.InventorySnapshot;
 import dev.jsinco.luma.lumaevents.games.InventorySnapshotManager;
@@ -36,14 +36,14 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
     @Override
     protected void onPreStart() {
         List<EventPlayer> removed = new ArrayList<>();
-        for (EventPlayer participant : this.participants) {
-            Player player = participant.getPlayer();
-            if (player == null) {
-                removed.add(participant);
-                continue;
-            }
+        Executors.runSync(() -> {
+            for (EventPlayer participant : this.participants) {
+                Player player = participant.getPlayer();
+                if (player == null) {
+                    removed.add(participant);
+                    continue;
+                }
 
-            Executors.sync(() -> {
                 InventorySnapshot inventorySnapshot = new InventorySnapshot(participant.getUuid(), player.getInventory().getContents());
                 inventorySnapshot.backup();
                 InventorySnapshotManager.INSTANCE.registerSnapshot(inventorySnapshot);
@@ -58,12 +58,13 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
                 if (this.defaultItem() != null) {
                     player.getInventory().setItemInMainHand(this.defaultItem());
                 }
-            });
-        }
 
-        for (EventPlayer p : removed) {
-            this.removeParticipant(p);
-        }
+            }
+
+            for (EventPlayer p : removed) {
+                this.removeParticipant(p);
+            }
+        });
     }
 
     @Override
@@ -100,10 +101,12 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
                 snapshot.restore(player);
                 InventorySnapshotManager.INSTANCE.unregisterSnapshot(snapshot);
             } else {
-                Logging.errorLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found.");
+                Logging.warningLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found. (Participant removal)");
             }
         }
-        this.tokenHandler(participant);
+        if (!this.isOpen()) {
+            this.tokenHandler(participant);
+        }
         return super.removeParticipant(participant);
     }
 

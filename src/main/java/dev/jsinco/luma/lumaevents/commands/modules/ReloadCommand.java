@@ -1,8 +1,8 @@
 package dev.jsinco.luma.lumaevents.commands.modules;
 
-import dev.jsinco.luma.lumacore.manager.commands.CommandInfo;
-import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
-import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
+import dev.lumas.lumacore.manager.commands.CommandInfo;
+import dev.lumas.lumacore.manager.modules.AutoRegister;
+import dev.lumas.lumacore.manager.modules.RegisterType;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;

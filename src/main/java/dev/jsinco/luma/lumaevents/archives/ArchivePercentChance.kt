@@ -1,6 +1,6 @@
 package dev.jsinco.luma.lumaevents.archives
 
-import dev.jsinco.luma.lumacore.utility.Logging
+import dev.lumas.lumacore.utility.Logging
 
 // TODO: Move to LumaItems?
 enum class ArchivePercentChance(val weight: Int, val actualPercent: Int) {

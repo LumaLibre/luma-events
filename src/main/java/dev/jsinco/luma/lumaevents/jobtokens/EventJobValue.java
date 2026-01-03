@@ -7,19 +7,19 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum EventJobValue {
 
-    ALCHEMIST(50000, 10),
-    BLACKSMITH(50000, 15),
-    BUILDER(50000, 17),
-    COOK(50000, 15),
-    DIGGER(50000, 8),
-    FARMER(50000, 9),
-    FISHERMAN(50000, 364),
-    HUNTER(50000, 17),
-    LUMBERJACK(50000, 10),
-    MINER(50000, 9);
+    ALCHEMIST(10),
+    BLACKSMITH(15),
+    BUILDER(17),
+    COOK(15),
+    DIGGER( 8),
+    FARMER(9),
+    FISHERMAN(364),
+    HUNTER(17),
+    LUMBERJACK(10),
+    MINER(9);
 
 
-    private final int bound;
+    private final int bound = 90_000;
     private final int chance;
 
 }

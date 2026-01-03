@@ -5,13 +5,13 @@ import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
 
+import java.util.List;
+
 @Getter
 @Setter
-public class TowersDefinition extends OkaeriConfig {
+public class TheNabbitsMinigameDefinition extends OkaeriConfig {
 
     private Location spawnLocation;
     private Region region = new Region();
-    private int maxRadius = 250;
-    private Location centerPoint;
-    private TowersItems towersItems = new TowersItems();
+    private List<Region> playAreas = List.of(new Region(), new Region());
 }

@@ -4,7 +4,6 @@ import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.MinigameBoundingBox;
-import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;

@@ -1,8 +1,8 @@
 package dev.jsinco.luma.lumaevents.archives.modules
 
-import dev.jsinco.luma.lumacore.manager.commands.CommandInfo
-import dev.jsinco.luma.lumacore.manager.modules.AutoRegister
-import dev.jsinco.luma.lumacore.manager.modules.RegisterType
+import dev.lumas.lumacore.manager.commands.CommandInfo
+import dev.lumas.lumacore.manager.modules.AutoRegister
+import dev.lumas.lumacore.manager.modules.RegisterType
 import dev.jsinco.luma.lumaevents.EventMain
 import dev.jsinco.luma.lumaevents.EventPlayerManager
 import dev.jsinco.luma.lumaevents.archives.ChallengeType
@@ -17,7 +17,7 @@ import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-import dev.jsinco.luma.lumaitems.util.Util as LumaItemsUtil
+import dev.lumas.lumaitems.util.Util as LumaItemsUtil
 
 @AutoRegister(RegisterType.SUBCOMMAND)
 @CommandInfo(

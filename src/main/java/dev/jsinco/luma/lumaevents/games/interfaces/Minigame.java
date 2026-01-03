@@ -224,6 +224,8 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
             bukkitPlayer.teleportAsync(loc);
             Util.sendMsg(bukkitPlayer, "You have been removed from the active minigame!");
         }
+        this.audience = Audience.audience(participants.stream()
+                .map(EventPlayer::getPlayer).filter(Objects::nonNull).toList());
         return true;
     }
 
@@ -233,7 +235,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
                 .seconds(seconds)
                 .color(BossBar.Color.BLUE)
                 .callback(this::start)
-                .global(true)
+                .audience(Audience.audience(Bukkit.getOnlinePlayers()))
                 .build()
                 .start();
     }

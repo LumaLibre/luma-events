@@ -144,6 +144,10 @@ public class EventPlayer implements Serializable, Scorer {
         this.scores.put(minigame, this.scores.getOrDefault(minigame, 0) + score);
     }
 
+    public void setPermanentScore(MinigameConstant minigame, int score) {
+        this.scores.put(minigame, score);
+    }
+
     public int getPermanentScore(MinigameConstant minigame) {
         return this.scores.getOrDefault(minigame, 0);
     }

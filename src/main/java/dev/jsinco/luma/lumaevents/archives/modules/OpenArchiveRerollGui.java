@@ -1,8 +1,9 @@
 package dev.jsinco.luma.lumaevents.archives.modules;
 
-import dev.jsinco.luma.lumacore.manager.commands.CommandInfo;
-import dev.jsinco.luma.lumacore.manager.modules.AutoRegister;
-import dev.jsinco.luma.lumacore.manager.modules.RegisterType;
+import dev.jsinco.luma.lumaevents.utility.Util;
+import dev.lumas.lumacore.manager.commands.CommandInfo;
+import dev.lumas.lumacore.manager.modules.AutoRegister;
+import dev.lumas.lumacore.manager.modules.RegisterType;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.commands.CommandManager;
 import dev.jsinco.luma.lumaevents.commands.CommandModule;
@@ -24,7 +25,12 @@ import java.util.List;
 public class OpenArchiveRerollGui implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
-        Player playerFromArgs = Bukkit.getPlayerExact(strings[0]);
+        if (strings.length < 1 && !(commandSender instanceof Player)) {
+            Util.sendMsg(commandSender, "Provide a player when executing this command from console.");
+            return true;
+        }
+
+        Player playerFromArgs = strings.length > 0 ? Bukkit.getPlayerExact(strings[0]) : (Player) commandSender;
         if (playerFromArgs == null) {
             return false;
         }

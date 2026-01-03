@@ -1,10 +1,10 @@
 package dev.jsinco.luma.lumaevents.items;
 
-import dev.jsinco.luma.lumacore.utility.Logging;
+import dev.lumas.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.utility.Util;
-import dev.jsinco.luma.lumaitems.LumaItems;
-import dev.jsinco.luma.lumaitems.manager.CustomItem;
+import dev.lumas.lumaitems.LumaItems;
+import dev.lumas.lumaitems.manager.CustomItem;
 import lombok.Getter;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;

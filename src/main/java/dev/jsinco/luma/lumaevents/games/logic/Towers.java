@@ -1,7 +1,8 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
 import com.destroystokyo.paper.event.player.PlayerJumpEvent;
-import dev.jsinco.luma.lumacore.utility.Text;
+import dev.lumas.lumacore.utility.Logging;
+import dev.lumas.lumacore.utility.Text;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.configurable.MaterialCount;
@@ -9,6 +10,7 @@ import dev.jsinco.luma.lumaevents.configurable.sectors.TowersDefinition;
 import dev.jsinco.luma.lumaevents.configurable.sectors.TowersItems;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
+import dev.jsinco.luma.lumaevents.games.interfaces.structures.BoundCircularStructureGrid;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
 import dev.jsinco.luma.lumaevents.games.tokenformula.TowersTokenFormula;
@@ -19,6 +21,7 @@ import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -39,6 +42,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.player.PlayerAttemptPickupItemEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -51,10 +55,10 @@ import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -68,9 +72,10 @@ public final class Towers extends InventoryUnifiedMinigame {
     private static final Particle.DustTransition DUST_TRANSITION = new Particle.DustTransition(Color.ORANGE, Color.RED, 4.0f);
 
 
-    private final WorldTiedBoundingBox outerRegion;
     private final Location spawnLocation;
     private final TowersItems towersItems;
+    private final int maxRadius;
+    private final Location centerPoint;
     private final Map<UUID, TowersPlayer> towersPlayers;
     private final Scoreboard<EventPlayer> scoreboard;
     private final TowersTokenFormula tokenFormula;
@@ -83,19 +88,16 @@ public final class Towers extends InventoryUnifiedMinigame {
 
     public Towers(TowersDefinition def) {
         super("Escalation Towers", "Don't fall.", 480000, TICK_INTERVAL, false, false, false, false);
-        Location outerLoc1 = def.getOuterRegion().getLoc1();
-        Location outerLoc2 = def.getOuterRegion().getLoc2();
-
 
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
-        this.outerRegion = WorldTiedBoundingBox.of(outerLoc1, outerLoc2);
         this.spawnLocation = def.getSpawnLocation().toCenterLocation();
         this.towersItems = def.getTowersItems();
+        this.maxRadius = def.getMaxRadius();
+        this.centerPoint = def.getCenterPoint();
         this.towersPlayers = new HashMap<>();
         this.scoreboard = new Scoreboard<>();
         this.tokenFormula = new TowersTokenFormula();
-
-        this.forceGameArenaYLevel = ((WorldTiedBoundingBox) this.boundingBox).getMinY() - 10;
+        this.forceGameArenaYLevel = this.centerPoint.getY() - 10;
     }
 
     @Override
@@ -108,7 +110,10 @@ public final class Towers extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStart() {
-        for (EventPlayer eventPlayer : this.participants) {
+        Logging.log("[Towers] Game started with " + this.participants.size() + " participants.");
+        List<EventPlayer> shuffledParticipants = new ArrayList<>(this.participants);
+        Collections.shuffle(shuffledParticipants, RANDOM);
+        for (EventPlayer eventPlayer : shuffledParticipants) {
             ActivePlayer towersPlayer = new ActivePlayer(eventPlayer, this);
             this.towersPlayers.put(eventPlayer.getUuid(), towersPlayer);
             eventPlayer.operatePlayer(player -> {
@@ -117,19 +122,22 @@ public final class Towers extends InventoryUnifiedMinigame {
                 player.setSaturation(5);
                 player.setAllowFlight(false);
                 if (player.getGameMode() != GameMode.SURVIVAL) {
-                    Executors.runSync(() -> player.setGameMode(GameMode.SURVIVAL));
+                    player.setGameMode(GameMode.SURVIVAL);
                 }
             });
         }
 
-        SpawnLocationGenerator generator = new SpawnLocationGenerator((WorldTiedBoundingBox) this.boundingBox, 10, 15);
-        this.gridLocations = generator.generateSpawnLocations(this.participants.size());
+        BoundCircularStructureGrid grid = new BoundCircularStructureGrid(this.centerPoint, this.maxRadius, 20, 22);
+        this.gridLocations = grid.generateSpawnLocations(this.towersPlayers.size());
         List<Location> locations = new ArrayList<>(this.gridLocations);
 
         for (TowersPlayer towersPlayer : this.towersPlayers.values()) {
+            if (!(towersPlayer instanceof ActivePlayer activePlayer)) {
+                Logging.errorLog("Expected all players to be an ActivePlayer at game start.");
+                continue;
+            }
             Location spawnLoc = locations.removeFirst();
-            ActivePlayer newInstance = this.swapRole(Spectator.class, towersPlayer, () -> new ActivePlayer(towersPlayer.getEventPlayer(), this));
-            newInstance.onNewRound(spawnLoc);
+            activePlayer.onNewRound(spawnLoc);
         }
 
         AtomicInteger count = new AtomicInteger(3);
@@ -164,7 +172,7 @@ public final class Towers extends InventoryUnifiedMinigame {
             Location locationAtYLevel = location.clone();
             locationAtYLevel.setY(this.forceGameArenaYLevel);
 
-            locationAtYLevel.getWorld().spawnParticle(Particle.DUST_COLOR_TRANSITION, locationAtYLevel, 400, 40, 0.0, 40, 0.1, DUST_TRANSITION);
+            locationAtYLevel.getWorld().spawnParticle(Particle.DUST_COLOR_TRANSITION, locationAtYLevel, 300, 40, 0.0, 40, 0.1, DUST_TRANSITION);
         }
 
         if (this.newItemTimer == null || this.newItemTimer.isCancelled()) {
@@ -188,16 +196,23 @@ public final class Towers extends InventoryUnifiedMinigame {
                 });
             });
 
-            this.outerRegion.operate(block -> {
+            this.boundingBox.operate(block -> {
                 if (!block.isEmpty()) {
                     block.setType(Material.AIR);
                 }
             });
-            this.outerRegion.getEntities(Entity.class).stream().filter(it -> !(it instanceof Player)).forEach(Entity::remove);
+            this.boundingBox.getEntities(Entity.class).stream().filter(it -> !(it instanceof Player)).forEach(Entity::remove);
         });
         if (this.newItemTimer != null) {
             this.newItemTimer.stop(false);
         }
+
+        Executors.runSync(() -> {
+            for (EventPlayer participant : this.participants) {
+                releaseHidden(participant.getPlayer());
+            }
+        });
+
 
         this.scoreboard.handleGameEnd(this.audience, () -> {
             CountdownBossBar.builder()
@@ -228,6 +243,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         if (towersPlayer != null) {
             towersPlayer.cleanup();
         }
+        Executors.runSync(() -> releaseHidden(participant.getPlayer()));
         return super.removeParticipant(participant);
     }
 
@@ -242,7 +258,6 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
 
         towersPlayer.onDeath(event);
-        this.swapRole(ActivePlayer.class, towersPlayer, () -> new Spectator(towersPlayer.getEventPlayer(), this));
     }
 
 
@@ -397,6 +412,19 @@ public final class Towers extends InventoryUnifiedMinigame {
     }
 
     @EventHandler
+    public void onPlayerPickupItem(PlayerAttemptPickupItemEvent event) {
+        this.ensureNotIllegal();
+        Player bukkitPlayer = event.getPlayer();
+        TowersPlayer towersPlayer = this.towersPlayers.get(bukkitPlayer.getUniqueId());
+        if (towersPlayer == null) return;
+
+        if (towersPlayer instanceof Spectator) {
+            event.setCancelled(true);
+        }
+    }
+
+
+    @EventHandler
     public void onPlayerAddPotionEffect(EntityPotionEffectEvent event) {
         this.ensureNotIllegal();
         if (!(event.getEntity() instanceof Player targetPlayer)) {
@@ -484,11 +512,18 @@ public final class Towers extends InventoryUnifiedMinigame {
                         .filter(Material::isItem)
                         .filter(Material::isSolid)
                         .toList());
-                itemStack = ItemStack.of(material, RANDOM.nextInt(1, 5));
+                itemStack = ItemStack.of(material, RANDOM.nextInt(3, 5));
             }
             final ItemStack finalItemStack = itemStack;
             activePlayer.getEventPlayer().sendMessage("You got: " + Util.formatMaterialName(itemStack.getType().toString()) + " x" + itemStack.getAmount());
             activePlayer.giveItem(finalItemStack);
+        }
+    }
+
+    public void releaseHidden(Player player) {
+        if (player == null) return;
+        for (Player other : Bukkit.getOnlinePlayers()) {
+            other.showPlayer(EventMain.getInstance(), player);
         }
     }
 
@@ -521,6 +556,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         private static final int MINECRAFT_MIN_Y = -63;
         private UUID lastAttacker = null;
         private int kills = 0;
+        private boolean dirty = false;
 
         public ActivePlayer(EventPlayer eventPlayer, Towers context) {
             super(eventPlayer, context);
@@ -546,7 +582,9 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
 
         public void giveItem(ItemStack itemStack) {
-            this.eventPlayer.operatePlayer(player -> Util.giveItem(player, itemStack));
+            this.eventPlayer.operatePlayer(player -> {
+                player.getWorld().dropItem(player.getEyeLocation(), itemStack);
+            });
         }
 
         @Override
@@ -560,19 +598,29 @@ public final class Towers extends InventoryUnifiedMinigame {
                 player.damage(5.0);
             }
 
+            if (player.getAllowFlight()) {
+                player.setAllowFlight(false);
+                player.setFlying(false);
+            }
+
             String floorString = ((int)player.getLocation().getY()) + "/" + ((int) this.context.forceGameArenaYLevel);
             player.sendActionBar(Text.mm("<yellow>Time left: " + Util.millisToSecs(timeLeft) + "s | <green>Kills: " + this.kills + " <yellow>| <aqua>Floor: " + floorString));
         }
 
         @Override
         public void onDeath(PlayerDeathEvent event) {
+            this.context.swapRole(ActivePlayer.class, this, () -> new Spectator(this.getEventPlayer(), this.context));
+
+            if (!dirty) {
+                this.dirty = true;
+                this.context.scoreboard.addScore(this.eventPlayer, 2);
+            }
+
             event.setCancelled(true);
             this.context.sendAudienceMessage(event.deathMessage());
             if (this.respawnLocation != null) {
                 this.eventPlayer.teleportAsync(this.respawnLocation);
             }
-
-            this.context.scoreboard.addScore(this.eventPlayer, 2);
 
             Player victimBukkit = event.getEntity();
             ItemStack[] victimItems = victimBukkit.getInventory().getContents();
@@ -604,7 +652,7 @@ public final class Towers extends InventoryUnifiedMinigame {
 
     private static class Spectator extends TowersPlayer {
 
-        private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, TICK_INTERVAL * 3, 0, false, true, true);
+        private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 300, 0, false, true, true);
 
         private boolean hidden = false;
 
@@ -659,6 +707,10 @@ public final class Towers extends InventoryUnifiedMinigame {
                         player.setAllowFlight(true);
                     }
 
+                    if (!player.isFlying()) {
+                        player.setFlying(true);
+                    }
+
                     player.sendActionBar(Text.mm("<yellow>Time left: " + Util.millisToSecs(timeLeft) + "s"));
                 });
             });
@@ -668,7 +720,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         public void onDeath(PlayerDeathEvent event) {
             event.setCancelled(true);
             this.eventPlayer.operatePlayer(player -> {
-                player.teleportAsync(this.context.boundingBox.getCenterLocation());
+                player.teleportAsync(this.context.centerPoint);
                 if (!player.getAllowFlight()) {
                     player.setAllowFlight(true);
                 }
@@ -684,165 +736,10 @@ public final class Towers extends InventoryUnifiedMinigame {
                 this.eventPlayer.operatePlayer(player -> {
                     player.teleportAsync(this.context.spawnLocation);
                     player.setAllowFlight(false);
+                    player.removePotionEffect(PotionEffectType.INVISIBILITY);
                 });
             });
         }
-    }
-
-    // TODO: use dedicated classes
-    public static class SpawnLocationGenerator {
-
-        private static final Random RANDOM = Util.RANDOM;
-        private static final int MAX_REPOSITION_ATTEMPTS = 10;
-
-        private final WorldTiedBoundingBox boundingBox;
-        private final int minSpacing;
-        private final int maxSpacing;
-
-        public SpawnLocationGenerator(WorldTiedBoundingBox boundingBox, int minSpacing, int maxSpacing) {
-            this.boundingBox = boundingBox;
-            this.minSpacing = minSpacing;
-            this.maxSpacing = maxSpacing;
-        }
-
-        public List<Location> generateSpawnLocations(int desiredPoints) {
-            Location center = boundingBox.getCenterLocation();
-            List<Location> locations = new ArrayList<>();
-
-            double width = boundingBox.getMaxX() - boundingBox.getMinX();
-            double length = boundingBox.getMaxZ() - boundingBox.getMinZ();
-
-            GridDimensions grid = calculateGridDimensions(desiredPoints, width, length);
-
-            validateSpacing(grid, width, length, desiredPoints);
-
-            grid = optimizeGridSpacing(grid, width, length, desiredPoints);
-
-            // random offset within cell
-            double spacingX = (grid.x > 1) ? width / (grid.x - 1) : 0;
-            double spacingZ = (grid.z > 1) ? length / (grid.z - 1) : 0;
-            double jitterX = Math.min(spacingX * 0.4, (spacingX - minSpacing) / 2);
-            double jitterZ = Math.min(spacingZ * 0.4, (spacingZ - minSpacing) / 2);
-
-            generateLocations(locations, center, grid, width, length, jitterX, jitterZ, desiredPoints);
-
-            return locations;
-        }
-
-        private GridDimensions calculateGridDimensions(int desiredPoints, double width, double length) {
-            int pointsX = (int) Math.ceil(Math.sqrt(desiredPoints * (width / length)));
-            int pointsZ = (int) Math.ceil((double) desiredPoints / pointsX);
-
-            // if we overshot the desired count
-            while (pointsX * pointsZ > desiredPoints && pointsZ > 1) {
-                pointsZ--;
-            }
-
-            return new GridDimensions(pointsX, pointsZ);
-        }
-
-        private void validateSpacing(GridDimensions grid, double width, double length, int desiredPoints) {
-            double spacingX = (grid.x > 1) ? width / (grid.x - 1) : 0;
-            double spacingZ = (grid.z > 1) ? length / (grid.z - 1) : 0;
-
-            if ((spacingX < minSpacing && grid.x > 1) || (spacingZ < minSpacing && grid.z > 1)) {
-                throw new IllegalStateException(
-                        String.format("Cannot fit %d spawn points with minimum %d block spacing. " +
-                                        "Bounding box is too small (%dx%d blocks). Maximum points: %d",
-                                desiredPoints, minSpacing, (int)width, (int)length,
-                                ((int)(width/minSpacing) + 1) * ((int)(length/minSpacing) + 1))
-                );
-            }
-        }
-
-        private GridDimensions optimizeGridSpacing(GridDimensions grid, double width, double length, int desiredPoints) {
-            int pointsX = grid.x;
-            int pointsZ = grid.z;
-            double spacingX = (pointsX > 1) ? width / (pointsX - 1) : 0;
-            double spacingZ = (pointsZ > 1) ? length / (pointsZ - 1) : 0;
-
-            // increase grid density while spacing is too large
-            while ((spacingX > maxSpacing || spacingZ > maxSpacing) && (pointsX * pointsZ < desiredPoints * 4)) {
-                if (spacingX > maxSpacing && spacingX >= spacingZ) {
-                    pointsX++;
-                } else if (spacingZ > maxSpacing) {
-                    pointsZ++;
-                } else {
-                    break;
-                }
-
-                spacingX = (pointsX > 1) ? width / (pointsX - 1) : 0;
-                spacingZ = (pointsZ > 1) ? length / (pointsZ - 1) : 0;
-            }
-
-            return new GridDimensions(pointsX, pointsZ);
-        }
-
-        private void generateLocations(List<Location> locations, Location center, GridDimensions grid,
-                                       double width, double length, double jitterX, double jitterZ, int desiredPoints) {
-            double spacingX = (grid.x > 1) ? width / (grid.x - 1) : 0;
-            double spacingZ = (grid.z > 1) ? length / (grid.z - 1) : 0;
-            double startX = boundingBox.getMinX();
-            double startZ = boundingBox.getMinZ();
-
-            int generatedPoints = 0;
-
-            for (int x = 0; x < grid.x && generatedPoints < desiredPoints; x++) {
-                for (int z = 0; z < grid.z && generatedPoints < desiredPoints; z++) {
-                    Location spawnLoc = null;
-
-                    // fix players spawning past minSpacing by repositioning within our cell
-                    for (int attempt = 0; attempt < MAX_REPOSITION_ATTEMPTS; attempt++) {
-                        Location candidateLoc = candidateLoc(x, z, startX, startZ, spacingX, spacingZ, jitterX, jitterZ, center);
-
-                        if (isValidLocation(candidateLoc, locations)) {
-                            spawnLoc = candidateLoc;
-                            break;
-                        }
-                    }
-
-                    // Couldn't find one, just place it without jitter
-                    if (spawnLoc == null) {
-                        spawnLoc = candidateLoc(x, z, startX, startZ, spacingX, spacingZ, 0, 0, center);
-                    }
-
-                    locations.add(spawnLoc);
-                    generatedPoints++;
-                }
-            }
-        }
-
-        private Location candidateLoc(int x, int z, double startX, double startZ, double spacingX,
-                                      double spacingZ, double jitterX, double jitterZ, Location center) {
-            double locX = startX + (x * spacingX);
-            double locZ = startZ + (z * spacingZ);
-
-            // Add jitter
-            double offsetX = (RANDOM.nextDouble() * 2 - 1) * jitterX;
-            double offsetZ = (RANDOM.nextDouble() * 2 - 1) * jitterZ;
-
-            // clamp down to bounding box
-            locX = Math.max(boundingBox.getMinX(), Math.min(boundingBox.getMaxX(), locX + offsetX));
-            locZ = Math.max(boundingBox.getMinZ(), Math.min(boundingBox.getMaxZ(), locZ + offsetZ));
-
-            return new Location(center.getWorld(), locX, center.getY(), locZ);
-        }
-
-        private boolean isValidLocation(Location candidate, List<Location> existing) {
-            double minDistanceSquared = minSpacing * minSpacing;
-
-            for (Location loc : existing) {
-                double distanceSquared = loc.distanceSquared(candidate); // TODO: Can this method be called async?
-
-                if (distanceSquared < minDistanceSquared) {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        private record GridDimensions(int x, int z) {}
     }
 
 }
