@@ -47,9 +47,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class MineBattle extends InventoryUnifiedMinigame {
 
-    private static final long HEARTBEAT = 5; // tick every 0.25 seconds
-
-    private final long maxDurationMillis;
     private final Location lobbyLocation;
     private final Location arenaOrigin;
     private final int arenaHeight;
@@ -71,7 +68,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private final Map<UUID, Map<UUID, Long>> forceVisibleUntil = new HashMap<>();
 
     public MineBattle(MineBattleDefinition def) {
-        super("MineBattle", "Break ores, gear up, and fight!", def.getMaxDurationMillis(), HEARTBEAT, true, true, false, false);
+        super("MineBattle", "Break ores, gear up, and fight!", def.getTimeLimitSeconds() * 1000, def.getHeartbeatTicks(), true, true, false, false);
         this.lobbyLocation = def.getLobbyLocation();
         this.arenaOrigin = def.getArenaOrigin();
         this.arenaHeight = def.getArenaHeight();
@@ -83,7 +80,6 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         this.minPocketSpacing = def.getMinPocketSpacing();
         this.wallPadding = def.getWallPadding();
         this.scoreboard = new Scoreboard<>();
-        this.maxDurationMillis = def.getMaxDurationMillis();
         this.boundingBox = computeBoundingBox(arenaOrigin, maxRadius, arenaHeight);
     }
 
