@@ -6,6 +6,7 @@ plugins {
     id("io.freefair.lombok") version "8.10"
 }
 
+// TODO: Change package name on next event
 group = "dev.jsinco.luma.lumaevents"
 version = "1.0-SNAPSHOT"
 
@@ -20,13 +21,14 @@ repositories {
     maven("https://repo.md-5.net/content/groups/public/")
     maven("https://maven.enginehub.org/repo/")
     maven("https://repo.md-5.net/content/groups/public/")
+    maven("https://mvn.lib.co.nz/public/")
 }
 
 
 dependencies {
-    compileOnly("dev.jsinco.luma.lumacore:LumaCore:776c4e4")
-    compileOnly("dev.jsinco.luma.lumaitems:LumaItems:4c7b569")
-    compileOnly("dev.jsinco.lumaglowapi:LumaGlowAPI:3cb670d")
+    compileOnly("dev.lumas.lumacore:LumaCore:d56563b")
+    compileOnly("dev.lumas.lumaitems:LumaItems:d55b35f")
+    compileOnly("dev.lumas.glowapi:LumaGlowAPI:c57567c")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("com.nuclyon.technicallycoded.inventoryrollback:InventoryRollbackPlus:1.7.3")
     compileOnly("com.github.Zrips:jobs:v4.17.2")
@@ -34,7 +36,7 @@ dependencies {
 
 
     compileOnly("io.papermc.paper:paper-api:1.21.10-R0.1-SNAPSHOT")
-    compileOnly("me.libraryaddict.disguises:libsdisguises:11.0.0")
+    compileOnly("me.libraryaddict.disguises:libsdisguises:11.0.13")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
         exclude(group = "org.bukkit")
     }
@@ -43,6 +45,10 @@ dependencies {
 
     implementation("eu.okaeri:okaeri-configs-yaml-bukkit:5.0.5")
     implementation("eu.okaeri:okaeri-configs-serdes-bukkit:5.0.5")
+
+    implementation(platform("com.intellectualsites.bom:bom-newest:1.55")) // Ref: https://github.com/IntellectualSites/bom
+    compileOnly("com.fastasyncworldedit:FastAsyncWorldEdit-Core")
+    compileOnly("com.fastasyncworldedit:FastAsyncWorldEdit-Bukkit") { isTransitive = false }
 }
 
 java {
