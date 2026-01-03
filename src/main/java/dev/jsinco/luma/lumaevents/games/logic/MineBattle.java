@@ -22,12 +22,25 @@ import dev.jsinco.luma.lumaevents.utility.Executors;
 import dev.jsinco.luma.lumaevents.utility.Logger;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.*;
-import org.bukkit.entity.Player;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockExpEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.*;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.EnchantmentStorageMeta;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -56,7 +69,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private final Set<UUID> eliminated = new HashSet<>();
 
     public MineBattle(MineBattleDefinition def) {
-        super("MineBattle", "Break ores, gear up, and fight!", def.getMaxDurationMillis(), HEARTBEAT, true, true, false);
+        super("MineBattle", "Break ores, gear up, and fight!", def.getMaxDurationMillis(), HEARTBEAT, true, true, false, false);
         this.lobbyLocation = def.getLobbyLocation();
         this.arenaOrigin = def.getArenaOrigin();
         this.arenaHeight = def.getArenaHeight();
@@ -105,7 +118,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     protected void handleStart() {
         this.arenaReady = false;
         int playerCount = Math.max(1, this.participants.size());
-        this.sendAudienceMessage("<gray>Generating arena for " + playerCount + " players...</gray>");
+        Logger.log("Generating arena for " + playerCount + " players...");
         int radius = computeRadiusForPlayers(playerCount);
         this.pocketCenters = generatePocketCenters(this.arenaOrigin, radius, this.arenaHeight, playerCount);
         this.arenaRegions = ArenaRegions.of(this.arenaOrigin, radius, this.arenaHeight);
@@ -363,6 +376,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         for (int i = 0; i < n; i++) {
             this.participants.get(i).operatePlayer(this::cleanPlayer);
             this.participants.get(i).teleportAsync(this.pocketCenters.get(i));
+            this.participants.get(i).operatePlayer(this::equip);
             this.participants.get(i).sendMessage("<green>You have been placed into your mining pocket!</green>");
         }
     }
@@ -370,6 +384,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private void cleanPlayer(Player player) {
         player.setGameMode(GameMode.SURVIVAL);
         player.clearActivePotionEffects();
+        AttributeInstance attr = player.getAttribute(Attribute.MAX_HEALTH);
+        if (attr != null) attr.setBaseValue(20.0);
         player.setHealth(20.0);
         player.setFireTicks(0);
         player.setFoodLevel(20);
@@ -380,20 +396,55 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     }
 
     private void equip(Player player) {
-
+        ItemStack sword = new ItemStack(Material.STONE_SWORD);
+        sword.addUnsafeEnchantment(Enchantment.VANISHING_CURSE, 1);
+        player.getInventory().addItem(sword);
+        ItemStack pickaxe = new ItemStack(Material.DIAMOND_PICKAXE);
+        pickaxe.addUnsafeEnchantment(Enchantment.UNBREAKING, 10);
+        pickaxe.addUnsafeEnchantment(Enchantment.EFFICIENCY, 3);
+        player.getInventory().addItem(pickaxe);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION, PotionEffect.INFINITE_DURATION, 0));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, PotionEffect.INFINITE_DURATION, 0));
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onEntityDamagedByEntityEvent(EntityDamageByEntityEvent event) {
         this.ensureNotIllegal();
-        if (!(event.getEntity() instanceof Player player)) return;
+        if (!(event.getEntity() instanceof Player)) return;
         if (!(event.getDamager() instanceof Player damager)) return;
         if (eliminated.contains(damager.getUniqueId())) {
-            event.setCancelled(true);
+            event.setCancelled(true); // Eliminated players shouldn't be able to hit others
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onEntityDamageEvent(EntityDamageEvent event) {
+        this.ensureNotIllegal();
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (eliminated.contains(player.getUniqueId())) {
+            event.setCancelled(true); // Eliminated players should be invincible
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onPlayerPickupItem(EntityPickupItemEvent event) {
+        this.ensureNotIllegal();
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (eliminated.contains(player.getUniqueId())) {
+            event.setCancelled(true); // Eliminated players shouldn't be able to pick up items
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onPlayerPickupItem(EntityDropItemEvent event) {
+        this.ensureNotIllegal();
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (eliminated.contains(player.getUniqueId())) {
+            event.setCancelled(true); // Eliminated players shouldn't be able to drop items
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onPlayerDeath(PlayerDeathEvent event) {
         this.ensureNotIllegal();
         Player dead = event.getEntity();
@@ -420,6 +471,10 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             eliminated.add(deadId);
             if (finalKiller != null) {
                 awardKill(finalKiller.getUniqueId(), deadId);
+                if (finalKiller.getGameMode() == GameMode.SURVIVAL) {
+                    if (finalKiller.hasPotionEffect(PotionEffectType.REGENERATION)) finalKiller.removePotionEffect(PotionEffectType.REGENERATION);
+                    finalKiller.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 100, 2));
+                }
             }
 
             cleanPlayer(dead);
@@ -466,18 +521,18 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         Location loc = dead.getLocation();
         for (ItemStack item : dead.getInventory().getContents()) {
             if (item == null || item.getType().isAir()) continue;
+            if (item.getEnchantmentLevel(Enchantment.VANISHING_CURSE) > 0) continue;
             w.dropItemNaturally(loc, item.clone());
         }
-        /*
         for (ItemStack item : dead.getInventory().getArmorContents()) {
             if (item == null || item.getType().isAir()) continue;
+            if (item.getEnchantmentLevel(Enchantment.VANISHING_CURSE) > 0) continue;
             w.dropItemNaturally(loc, item.clone());
         }
         ItemStack off = dead.getInventory().getItemInOffHand();
-        if (off != null && !off.getType().isAir()) {
+        if (!off.getType().isAir() && off.getEnchantmentLevel(Enchantment.VANISHING_CURSE) <= 0) {
             w.dropItemNaturally(loc, off.clone());
         }
-        */
 
         dead.getInventory().clear();
         dead.updateInventory();
@@ -492,6 +547,348 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             scoreboard.addScore(killerEp, 1);
             killerEp.sendMessage("<green>+1 kill</green> <gray>(" + scoreboard.getScore(killerEp) + " total)</gray>");
         }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onTntExplode(EntityExplodeEvent event) {
+        this.ensureNotIllegal();
+        if (event.getEntityType() != EntityType.TNT) return;
+        event.setYield(0.0f); // prevent block drops
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onEntitySpawn(EntitySpawnEvent event) {
+        if (event.getEntity() instanceof ExperienceOrb) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onBlockExp(BlockExpEvent event) {
+        this.ensureNotIllegal();
+        event.setExpToDrop(0);
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onBlockPlace(BlockPlaceEvent event) {
+        this.ensureNotIllegal();
+
+        Player player = event.getPlayer();
+        Material blockType = event.getBlock().getType();
+
+        if (blockType == Material.TNT) {
+            Location location = event.getBlock().getLocation();
+            event.setCancelled(true);
+            player.getInventory().removeItem(new ItemStack(Material.TNT, 1));
+            TNTPrimed tnt = location.getWorld().spawn(location.add(0.5, 0.5, 0.5), TNTPrimed.class);
+            tnt.setFuseTicks(40);
+            tnt.setSource(player);
+            Executors.delayedSync(120L, tnt::remove);
+        }
+
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onBlockBreak(BlockBreakEvent event) {
+        this.ensureNotIllegal();
+
+        Player player = event.getPlayer();
+        Material blockType = event.getBlock().getType();
+        Random random = new Random();
+        event.setDropItems(false);
+        event.setExpToDrop(0);
+
+        switch (blockType) {
+            case DEEPSLATE_COAL_ORE -> {
+                player.playSound(player, Sound.BLOCK_BEEHIVE_EXIT, 1, 1);
+                giveOrDrop(player, new ItemStack(switch (random.nextInt(4)) {
+                    case 0 -> Material.CHAINMAIL_HELMET;
+                    case 1 -> Material.CHAINMAIL_CHESTPLATE;
+                    case 2 -> Material.CHAINMAIL_LEGGINGS;
+                    default -> Material.CHAINMAIL_BOOTS;
+                }));
+            }
+            case DEEPSLATE_IRON_ORE -> {
+                player.playSound(player, Sound.BLOCK_BEEHIVE_EXIT, 1, 1);
+                giveOrDrop(player, new ItemStack(switch (random.nextInt(5)) {
+                    case 0 -> Material.IRON_HELMET;
+                    case 1 -> Material.IRON_CHESTPLATE;
+                    case 2 -> Material.IRON_LEGGINGS;
+                    case 3 -> Material.IRON_BOOTS;
+                    default -> Material.IRON_SWORD;
+                }));
+            }
+            case DEEPSLATE_REDSTONE_ORE -> {
+                player.playSound(player, Sound.ENTITY_CREEPER_DEATH, 1, 1);
+                giveOrDrop(player, new ItemStack(Material.TNT));
+            }
+            case DEEPSLATE_COPPER_ORE -> {
+                player.playSound(player, Sound.ENTITY_ILLUSIONER_CAST_SPELL, 1, 1);
+                handleCopper(player);
+            }
+            case DEEPSLATE_GOLD_ORE -> {
+                player.playSound(player, Sound.ENTITY_ILLUSIONER_PREPARE_MIRROR, 1, 1);
+                this.getParticipants().stream()
+                        .filter(ep -> !Objects.equals(ep.getUuid(), player.getUniqueId()))
+                        .forEach(ep -> ep.operatePlayer(p -> {
+                            if (p.getGameMode() != GameMode.SURVIVAL) return;
+                            if (p.getLocation().distanceSquared(player.getLocation()) > 25*25) return;
+                            if (p.hasPotionEffect(PotionEffectType.GLOWING)) p.removePotionEffect(PotionEffectType.GLOWING);
+                            p.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 0));
+                            p.playSound(p, Sound.ENTITY_WITHER_SPAWN, 1, 1);
+                        }));
+            }
+            case DEEPSLATE_LAPIS_ORE -> {
+                player.playSound(player, Sound.BLOCK_AMETHYST_BLOCK_HIT, 1, 1);
+                ItemStack reward = new ItemStack(Material.ENCHANTED_BOOK);
+                EnchantmentStorageMeta rewardMeta = (EnchantmentStorageMeta) reward.getItemMeta();
+                switch (random.nextInt(14)) {
+                    case 0  -> rewardMeta.addStoredEnchant(Enchantment.SHARPNESS, 1, true);
+                    case 1  -> rewardMeta.addStoredEnchant(Enchantment.SHARPNESS, 2, true);
+                    case 2  -> rewardMeta.addStoredEnchant(Enchantment.FEATHER_FALLING, 3, true);
+                    case 3  -> rewardMeta.addStoredEnchant(Enchantment.PROTECTION, 1, true);
+                    case 4  -> rewardMeta.addStoredEnchant(Enchantment.PROTECTION, 2, true);
+                    case 5  -> rewardMeta.addStoredEnchant(Enchantment.BLAST_PROTECTION, 1, true);
+                    case 6  -> rewardMeta.addStoredEnchant(Enchantment.BLAST_PROTECTION, 2, true);
+                    case 7  -> rewardMeta.addStoredEnchant(Enchantment.BLAST_PROTECTION, 3, true);
+                    case 8  -> rewardMeta.addStoredEnchant(Enchantment.KNOCKBACK, 1, true);
+                    case 9  -> rewardMeta.addStoredEnchant(Enchantment.KNOCKBACK, 2, true);
+                    case 10 -> rewardMeta.addStoredEnchant(Enchantment.THORNS, 1, true);
+                    case 11 -> rewardMeta.addStoredEnchant(Enchantment.THORNS, 2, true);
+                    case 12 -> rewardMeta.addStoredEnchant(Enchantment.THORNS, 3, true);
+                    default -> rewardMeta.addStoredEnchant(Enchantment.VANISHING_CURSE, 1, true);
+                }
+                reward.setItemMeta(rewardMeta);
+                giveOrDrop(player, reward);
+            }
+            case DEEPSLATE_EMERALD_ORE -> {
+                player.playSound(player, Sound.ENTITY_ILLUSIONER_PREPARE_BLINDNESS, 1, 1);
+                handleEmerald(player);
+            }
+            case DEEPSLATE_DIAMOND_ORE -> {
+                player.playSound(player, Sound.BLOCK_BEEHIVE_EXIT, 1, 1);
+                giveOrDrop(player, new ItemStack(switch (random.nextInt(5)) {
+                    case 0 -> Material.DIAMOND_HELMET;
+                    case 1 -> Material.DIAMOND_CHESTPLATE;
+                    case 2 -> Material.DIAMOND_LEGGINGS;
+                    case 3 -> Material.DIAMOND_BOOTS;
+                    default -> Material.DIAMOND_SWORD;
+                }));
+            }
+            case ANCIENT_DEBRIS -> {
+                player.playSound(player, Sound.BLOCK_BEEHIVE_EXIT, 1, 1);
+                giveOrDrop(player, new ItemStack(switch (random.nextInt(5)) {
+                    case 0 -> Material.NETHERITE_HELMET;
+                    case 1 -> Material.NETHERITE_CHESTPLATE;
+                    case 2 -> Material.NETHERITE_LEGGINGS;
+                    case 3 -> Material.NETHERITE_BOOTS;
+                    default -> Material.NETHERITE_SWORD;
+                }));
+            }
+            case RAW_GOLD_BLOCK -> {
+                player.playSound(player, Sound.BLOCK_BEEHIVE_EXIT, 1, 1);
+                giveOrDrop(player, new ItemStack(Material.GOLDEN_APPLE));
+            }
+            default -> {}
+        }
+
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onSlotChange(InventoryClickEvent event) {
+        this.ensureNotIllegal();
+
+        ItemStack current = event.getCurrentItem();
+        ItemStack cursor = event.getCursor();
+
+        if (current == null) return;
+        if (cursor.getType() != Material.ENCHANTED_BOOK) return;
+        if (!isSword(current) && !isArmor(current)) return;
+
+        HumanEntity human = event.getWhoClicked();
+        if (!(human instanceof Player player)) return;
+
+        handleEnchantment(event, player, Enchantment.SHARPNESS, 5);
+        handleEnchantment(event, player, Enchantment.KNOCKBACK, 2);
+        handleEnchantment(event, player, Enchantment.FEATHER_FALLING, 4);
+        handleEnchantment(event, player, Enchantment.PROTECTION, 4);
+        handleEnchantment(event, player, Enchantment.BLAST_PROTECTION, 4);
+        handleEnchantment(event, player, Enchantment.THORNS, 3);
+        handleEnchantment(event, player, Enchantment.VANISHING_CURSE, 1);
+
+        event.setCancelled(true);
+    }
+
+    private static void handleCopper(Player player) {
+        AttributeInstance attr = player.getAttribute(Attribute.MAX_HEALTH);
+        if (attr == null) return;
+
+        double currentMax = attr.getBaseValue();
+        double delta = ThreadLocalRandom.current().nextBoolean() ? 2.0 : -2.0;
+        double newMax = currentMax + delta;
+        attr.setBaseValue(newMax);
+
+        if (player.getHealth() > newMax) {
+            player.setHealth(newMax);
+        }
+    }
+
+    private static void handleEmerald(Player player) {
+
+        // Define effects and their max amplifier (0-based, so 2 = level 3)
+        Map<PotionEffectType, Integer> effectLimits = new HashMap<>();
+        effectLimits.put(PotionEffectType.ABSORPTION, 4);
+        effectLimits.put(PotionEffectType.HASTE, 2);
+        effectLimits.put(PotionEffectType.RESISTANCE, 1);
+        effectLimits.put(PotionEffectType.STRENGTH, 0);
+        effectLimits.put(PotionEffectType.FIRE_RESISTANCE, 0);
+        effectLimits.put(PotionEffectType.INVISIBILITY, 0);
+        effectLimits.put(PotionEffectType.JUMP_BOOST, 0);
+        effectLimits.put(PotionEffectType.SPEED, 0);
+
+        boolean hasAllEffectsAtMax = effectLimits.entrySet().stream().allMatch(entry -> {
+            PotionEffectType type = entry.getKey();
+            int maxAmp = entry.getValue();
+            return player.getActivePotionEffects().stream()
+                    .anyMatch(effect -> effect.getType().equals(type) && effect.getAmplifier() >= maxAmp);
+        });
+
+        if (!hasAllEffectsAtMax) {
+            Random random = new Random();
+            List<PotionEffectType> keys = new ArrayList<>(effectLimits.keySet());
+
+            while (true) {
+                PotionEffectType randomEffect = keys.get(random.nextInt(keys.size()));
+                int maxAmp = effectLimits.get(randomEffect);
+
+                PotionEffect current = player.getPotionEffect(randomEffect);
+                if (current == null) {
+                    player.addPotionEffect(new PotionEffect(randomEffect, -1, 0, false, false)); // Level 1
+                    break;
+                } else if (current.getAmplifier() < maxAmp) {
+                    player.addPotionEffect(new PotionEffect(randomEffect, -1, current.getAmplifier() + 1, false, false));
+                    break;
+                }
+            }
+
+            hasAllEffectsAtMax = effectLimits.entrySet().stream().allMatch(entry -> {
+                PotionEffectType type = entry.getKey();
+                int maxAmp = entry.getValue();
+                return player.getActivePotionEffects().stream()
+                        .anyMatch(effect -> effect.getType().equals(type) && effect.getAmplifier() >= maxAmp);
+            });
+
+            if (hasAllEffectsAtMax) {
+                Util.sendMsg(player, "<red><bold>Caution!</bold></red> <red>Your body can't handle so many effects. If you get one more, you'll die</red>");
+            }
+
+        } else {
+            player.setHealth(0.0);
+            Util.sendMsg(player, "<red>Better listen to our warnings in the future");
+        }
+    }
+
+    private static void giveOrDrop(Player player, ItemStack toGive) {
+        if (player == null || toGive == null || toGive.getType().isAir() || toGive.getAmount() <= 0) return;
+
+        PlayerInventory inv = player.getInventory();
+        ItemStack remaining = toGive.clone();
+
+        // Fill partial stacks of similar items
+        for (int slot = 0; slot < 36 && remaining.getAmount() > 0; slot++) {
+            ItemStack existing = inv.getItem(slot);
+            if (existing == null || existing.getType().isAir()) continue;
+            if (!existing.isSimilar(remaining)) continue;
+
+            int max = existing.getMaxStackSize();
+            int space = max - existing.getAmount();
+            if (space <= 0) continue;
+
+            int move = Math.min(space, remaining.getAmount());
+            existing.setAmount(existing.getAmount() + move);
+            remaining.setAmount(remaining.getAmount() - move);
+            inv.setItem(slot, existing);
+        }
+
+        // Put into empty slots
+        for (int slot = 0; slot < 36 && remaining.getAmount() > 0; slot++) {
+            ItemStack existing = inv.getItem(slot);
+            if (existing != null && !existing.getType().isAir()) continue;
+
+            int max = remaining.getMaxStackSize();
+            int move = Math.min(max, remaining.getAmount());
+
+            ItemStack stack = remaining.clone();
+            stack.setAmount(move);
+            inv.setItem(slot, stack);
+
+            remaining.setAmount(remaining.getAmount() - move);
+        }
+
+        // Drop any leftover
+        if (remaining.getAmount() > 0) {
+            player.getWorld().dropItemNaturally(player.getLocation(), remaining);
+        }
+
+        player.updateInventory();
+    }
+
+    private void handleEnchantment(InventoryClickEvent event, Player player, Enchantment enchantment, int maxLevel) {
+        EnchantmentStorageMeta enchantmentStorageMeta = (EnchantmentStorageMeta) event.getCursor().getItemMeta();
+        if (enchantmentStorageMeta == null) return;
+        if (!enchantmentStorageMeta.hasStoredEnchant(enchantment)) return;
+        if (event.getCurrentItem() == null) return;
+
+        // preconditions
+        if (List.of(Enchantment.SHARPNESS, Enchantment.KNOCKBACK).contains(enchantment) && !isSword(event.getCurrentItem())) {
+            player.sendActionBar(enchantment.displayName(1).color(NamedTextColor.RED)
+                    .append(Component.text(" may only be applied to swords!").color(NamedTextColor.RED)));
+            return;
+        }
+        if (List.of(Enchantment.FEATHER_FALLING).contains(enchantment) && !isBoots(event.getCurrentItem())) {
+            player.sendActionBar(enchantment.displayName(1).color(NamedTextColor.RED)
+                    .append(Component.text(" may only be applied to boots!").color(NamedTextColor.RED)));
+            return;
+        }
+        if (List.of(Enchantment.PROTECTION, Enchantment.BLAST_PROTECTION, Enchantment.THORNS).contains(enchantment) && !isArmor(event.getCurrentItem())) {
+            player.sendActionBar(enchantment.displayName(1).color(NamedTextColor.RED)
+                    .append(Component.text(" may only be applied to armor!").color(NamedTextColor.RED)));
+            return;
+        }
+
+        // compute target level
+        int bookLevel = enchantmentStorageMeta.getStoredEnchantLevel(enchantment);
+        int itemLevel = event.getCurrentItem().getEnchantmentLevel(enchantment);
+        int resultLevel = Math.max(bookLevel, itemLevel);
+        if (bookLevel > 0 && bookLevel == itemLevel) {
+            resultLevel++; // equal levels combine to +1 (Luma exclusive as a replacement for crafting them together)
+        }
+        resultLevel = Math.min(maxLevel, resultLevel);
+
+        // don't enchant if the level wouldn't increase
+        if (event.getCurrentItem().getEnchantmentLevel(enchantment) >= resultLevel) {
+            player.sendActionBar(Component.text("This item is already enchanted with a higher level!").color(NamedTextColor.RED));
+            return;
+        }
+
+        // enchant
+        event.getCurrentItem().addUnsafeEnchantment(enchantment, resultLevel);
+        event.getWhoClicked().setItemOnCursor(new ItemStack(Material.AIR));
+        player.playSound (player, Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1, 1);
+    }
+
+    private boolean isSword(ItemStack item) {
+        return item.getType().name().toUpperCase().contains("_SWORD");
+    }
+
+    private boolean isArmor(ItemStack item) {
+        String name = item.getType().name().toUpperCase();
+        return name.contains("_HELMET") || name.contains("_CHESTPLATE")
+                || name.contains("_LEGGINGS") || name.contains("_BOOTS");
+    }
+
+    private boolean isBoots(ItemStack item) {
+        return item.getType().name().toUpperCase().contains("_BOOTS");
     }
 
     private record ArenaRegions(World world, CuboidRegion inner, CuboidRegion shell, CuboidRegion outer) {

@@ -99,7 +99,6 @@ public final class MinigameManager extends BukkitRunnable {
 
     public boolean tryNewMinigameSafely(MinigameConstant game, OkaeriConfig definition, boolean ignoreCooldown, int seconds) {
         if (!this.canSafelyStartMinigame(ignoreCooldown)) {
-            Logger.logWrn("Cannot safely start minigame!");
             return false;
         }
 
@@ -136,10 +135,6 @@ public final class MinigameManager extends BukkitRunnable {
 
     public boolean canSafelyStartMinigame(boolean ignoreCooldown) {
         if (this.current.isActive() || this.current.isOpen() || !cfg.isAutomaticMinigames()) {
-            Logger.logWrn("Cannot safely start minigame:");
-            Logger.logWrn("isActive: " + this.current.isActive());
-            Logger.logWrn("isOpen: " + this.current.isOpen());
-            Logger.logWrn("isAutomaticMinigames: " + cfg.isAutomaticMinigames());
             return false; // We can't start another minigame if one is active or has a queue open!
         }
 
