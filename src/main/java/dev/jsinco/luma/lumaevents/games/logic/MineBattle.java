@@ -27,6 +27,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
 import org.bukkit.event.Event;
@@ -481,7 +482,10 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private void cleanPlayer(Player player) {
         player.clearActivePotionEffects();
         AttributeInstance attr = player.getAttribute(Attribute.MAX_HEALTH);
-        if (attr != null) attr.setBaseValue(20.0);
+        if (attr != null) { // Set max health back to 20HP (= 10 hearts)
+            AttributeModifier existing = attr.getModifier(COPPER_MAX_HEALTH_KEY());
+            if (existing != null) attr.removeModifier(existing);
+        }
         player.setHealth(20.0);
         player.setFireTicks(0);
         player.setFoodLevel(20);
@@ -848,17 +852,28 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         event.setCancelled(true);
     }
 
+    private static NamespacedKey COPPER_MAX_HEALTH_KEY() {
+        return new NamespacedKey(EventMain.getInstance(), "minebattle_copper_max_health");
+    }
+
     private static void handleCopper(Player player) {
         AttributeInstance attr = player.getAttribute(Attribute.MAX_HEALTH);
         if (attr == null) return;
 
-        double currentMax = attr.getBaseValue();
-        double delta = ThreadLocalRandom.current().nextBoolean() ? 2.0 : -2.0;
-        double newMax = currentMax + delta;
-        attr.setBaseValue(newMax);
+        NamespacedKey key = COPPER_MAX_HEALTH_KEY();
 
-        if (player.getHealth() > newMax) {
-            player.setHealth(newMax);
+        AttributeModifier existing = attr.getModifier(key);
+        double currentDelta = existing != null ? existing.getAmount() : 0.0;
+
+        double step = ThreadLocalRandom.current().nextBoolean() ? 2.0 : -2.0;
+        double newDelta = currentDelta + step;
+
+        if (existing != null) attr.removeModifier(existing);
+        attr.addTransientModifier(new AttributeModifier(key, newDelta, AttributeModifier.Operation.ADD_NUMBER));
+
+        double maxNow = attr.getValue();
+        if (player.getHealth() > maxNow) {
+            player.setHealth(maxNow);
         }
     }
 
