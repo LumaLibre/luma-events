@@ -29,13 +29,13 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockExpEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.*;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
@@ -479,7 +479,6 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     }
 
     private void cleanPlayer(Player player) {
-        player.setGameMode(GameMode.SURVIVAL);
         player.clearActivePotionEffects();
         AttributeInstance attr = player.getAttribute(Attribute.MAX_HEALTH);
         if (attr != null) attr.setBaseValue(20.0);
@@ -510,7 +509,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         if (!(event.getEntity() instanceof Player)) return;
         if (!(event.getDamager() instanceof Player damager)) return;
         if (eliminated.contains(damager.getUniqueId())) {
-            event.setCancelled(true); // Eliminated players shouldn't be able to hit others
+            event.setCancelled(true);
         }
     }
 
@@ -519,7 +518,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         this.ensureNotIllegal();
         if (!(event.getEntity() instanceof Player player)) return;
         if (eliminated.contains(player.getUniqueId())) {
-            event.setCancelled(true); // Eliminated players should be invincible
+            event.setCancelled(true);
         }
     }
 
@@ -528,7 +527,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         this.ensureNotIllegal();
         if (!(event.getEntity() instanceof Player player)) return;
         if (eliminated.contains(player.getUniqueId())) {
-            event.setCancelled(true); // Eliminated players shouldn't be able to pick up items
+            event.setCancelled(true);
         }
     }
 
@@ -537,7 +536,29 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         this.ensureNotIllegal();
         if (!(event.getEntity() instanceof Player player)) return;
         if (eliminated.contains(player.getUniqueId())) {
-            event.setCancelled(true); // Eliminated players shouldn't be able to drop items
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onStartBreaking(PlayerInteractEvent event) {
+        this.ensureNotIllegal();
+
+        if (event.getAction() != Action.LEFT_CLICK_BLOCK) return;
+        if (event.getClickedBlock() == null) return;
+
+        if (eliminated.contains(event.getPlayer().getUniqueId())) {
+            event.setUseInteractedBlock(Event.Result.DENY);
+            event.setUseItemInHand(Event.Result.DENY);
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onBlockDamage(BlockDamageEvent event) {
+        this.ensureNotIllegal();
+        if (eliminated.contains(event.getPlayer().getUniqueId())) {
+            event.setCancelled(true);
         }
     }
 
@@ -568,10 +589,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             eliminated.add(deadId);
             if (finalKiller != null) {
                 awardKill(finalKiller.getUniqueId(), deadId);
-                if (finalKiller.getGameMode() == GameMode.SURVIVAL) {
-                    if (finalKiller.hasPotionEffect(PotionEffectType.REGENERATION)) finalKiller.removePotionEffect(PotionEffectType.REGENERATION);
-                    finalKiller.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 100, 2));
-                }
+                if (finalKiller.hasPotionEffect(PotionEffectType.REGENERATION)) finalKiller.removePotionEffect(PotionEffectType.REGENERATION);
+                finalKiller.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 100, 2));
             }
 
             hiddenByViewer.remove(deadId);
@@ -581,7 +600,6 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
             cleanPlayer(dead);
             hideFromOtherPlayers(dead);
-            dead.setGameMode(GameMode.ADVENTURE);
             dead.getWorld().playSound(dead.getLocation(), Sound.ENTITY_ALLAY_DEATH, SoundCategory.MASTER, 1.0f, 1.0f);
             Util.sendMsg(dead, "<red>You have been eliminated!");
         });
@@ -675,6 +693,10 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     public void onBlockPlace(BlockPlaceEvent event) {
         this.ensureNotIllegal();
 
+        if (eliminated.contains(event.getPlayer().getUniqueId())) {
+            event.setCancelled(true);
+        }
+
         Player player = event.getPlayer();
         Material blockType = event.getBlock().getType();
 
@@ -693,6 +715,10 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         this.ensureNotIllegal();
+
+        if (eliminated.contains(event.getPlayer().getUniqueId())) {
+            event.setCancelled(true);
+        }
 
         Player player = event.getPlayer();
         Material blockType = event.getBlock().getType();
