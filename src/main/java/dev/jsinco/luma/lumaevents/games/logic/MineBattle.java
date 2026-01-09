@@ -5,11 +5,18 @@ import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extension.input.InputParseException;
 import com.sk89q.worldedit.extension.input.ParserContext;
+import com.sk89q.worldedit.extent.clipboard.Clipboard;
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat;
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
+import com.sk89q.worldedit.function.operation.Operation;
+import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.function.pattern.Pattern;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.regions.CuboidRegion;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.regions.Region;
+import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.world.World;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MineBattleDefinition;
@@ -42,12 +49,19 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 
 public final class MineBattle extends InventoryUnifiedMinigame {
 
+    private final long timeLimitMillis;
+    private final boolean doPeriodicReveal;
+    private final boolean useWorldBorder;
     private final Location lobbyLocation;
     private final Location arenaOrigin;
     private final int arenaHeight;
@@ -67,9 +81,19 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private final Set<UUID> eliminated = new HashSet<>();
     private final Map<UUID, Set<UUID>> hiddenByViewer = new HashMap<>();
     private final Map<UUID, Map<UUID, Long>> forceVisibleUntil = new HashMap<>();
+    private final File schematicsFolder =
+            new File(EventMain.getInstance().getDataFolder(), "assets/minebattle-schematics");
+    private final Map<UUID, Location> assignedSpawn = new HashMap<>();
+    private final List<Location> structureLocations = new ArrayList<>();
+    private WorldBorderSnapshot savedBorder = null;
+    private long lastRevealAtMillis = 0L;
+    private int periodicRevealStep = 0;
 
     public MineBattle(MineBattleDefinition def) {
-        super("MineBattle", "Break ores, gear up, and fight!", def.getTimeLimitSeconds() * 1000, def.getHeartbeatTicks(), true, true, false, false);
+        super("MineBattle", "Break ores, gear up, and fight!", def.getTimeLimitSeconds() * 1000L, def.getHeartbeatTicks(), true, true, false, false);
+        this.timeLimitMillis = def.getTimeLimitSeconds() * 1000L;
+        this.doPeriodicReveal = def.isDoPeriodicReveal();
+        this.useWorldBorder = def.isUseWorldBorder();
         this.lobbyLocation = def.getLobbyLocation();
         this.arenaOrigin = def.getArenaOrigin();
         this.arenaHeight = def.getArenaHeight();
@@ -116,25 +140,39 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     @Override
     protected void handleStart() {
         this.arenaReady = false;
+        this.eliminated.clear();
+        this.hiddenByViewer.clear();
+        this.forceVisibleUntil.clear();
+        this.lastRevealAtMillis = 0L;
         int playerCount = Math.max(1, this.participants.size());
-        Logger.log("Generating arena for " + playerCount + " players...");
         int radius = computeRadiusForPlayers(playerCount);
-        this.pocketCenters = generatePocketCenters(this.arenaOrigin, radius, this.arenaHeight, playerCount);
+        Logger.log("Generating arena for " + playerCount + " players (r=" + radius + ")...");
+        rollStructuresAndAssignSpawns(radius);
         this.arenaRegions = ArenaRegions.of(this.arenaOrigin, radius, this.arenaHeight);
         Executors.runAsync(() -> {
             try {
                 buildArenaFAWE(this.arenaRegions);
                 carvePocketsFAWE(this.arenaRegions.world(), this.pocketCenters);
+                for (Location loc : this.structureLocations) {
+                    File file = pickRandomSchematicFile();
+                    if (file == null) {
+                        Logger.logWrn("No schematics found in " + schematicsFolder.getPath());
+                        break;
+                    }
+                    pasteSchematic(this.arenaRegions.world(), loc, file);
+                }
             } catch (Throwable t) {
                 Logger.logErr(t);
             }
             Executors.runSync(() -> {
                 if (this.isCancelled()) return;
                 this.arenaReady = true;
-                teleportPlayersToPockets();
-                Logger.log("Duration remaining when arena ready: " + this.getDuration());
-                startGameTimerBossBar();
-                this.sendAudienceMessage("<green>MineBattle started!</green>");
+                if (useWorldBorder) setupWorldBorderSafe(radius);
+                teleportPlayersToAssignedSpawnsThen(() -> {
+                    if (useWorldBorder) armAndShrinkWorldBorder();
+                    startGameTimerBossBar();
+                    this.sendAudienceMessage("<green>MineBattle started!</green>");
+                });
             });
         });
     }
@@ -142,7 +180,10 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     @Override
     protected void onRunnable(long timeLeft) {
         if (!this.arenaReady) return;
-        Executors.runSync(this::updateLineOfSightVisibility);
+        Executors.runSync(() -> {
+            updateLineOfSightVisibility();
+            tickPeriodicReveal(timeLeft);
+        });
         if (aliveCount() <= 1) this.stop();
     }
 
@@ -209,12 +250,13 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 }
             });
         }
+        Executors.runSync(this::restoreWorldBorder);
 
         this.scoreboard.handleGameEnd(this.audience, () -> {
             CountdownBossBar.builder()
                     .audience(this.audience)
                     .color(BossBar.Color.BLUE)
-                    .title("<blue><b>Game Over")
+                    .title("<aqua><b>Game Over")
                     .seconds(10)
                     .callback(() -> {
                         this.participants.forEach(eventPlayer -> {
@@ -378,7 +420,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             pockets.add(new Location(bw, cx + 0.5 + off, cy + 2.1, cz + 0.5));
         }
 
-        return pockets;
+        return pockets.stream().map(l -> l.add(0.0, -1.0, 0.0)).toList();
     }
 
     private static CuboidRegion pocketRegion(World weWorld, Location center) {
@@ -390,13 +432,16 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         return new CuboidRegion(weWorld, min, max);
     }
 
-    private void teleportPlayersToPockets() {
-        int n = Math.min(this.participants.size(), this.pocketCenters.size());
-        for (int i = 0; i < n; i++) {
-            this.participants.get(i).operatePlayer(this::cleanPlayer);
-            this.participants.get(i).teleportAsync(this.pocketCenters.get(i));
-            this.participants.get(i).operatePlayer(this::equip);
-            this.participants.get(i).sendMessage("<green>You have been placed into your mining pocket!</green>");
+    private void teleportPlayersToAssignedSpawns() {
+        for (EventPlayer ep : this.participants) {
+            ep.operatePlayer(this::cleanPlayer);
+
+            Location spawn = assignedSpawn.get(ep.getUuid());
+            if (spawn == null) spawn = this.pocketCenters.getFirst(); // Fallback, imagine the chaos lol
+
+            ep.teleportAsync(spawn);
+            ep.operatePlayer(this::equip);
+            ep.sendMessage("<green>You have been placed into your mining pocket!</green>");
         }
     }
 
@@ -479,6 +524,198 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         return true;
     }
 
+    private static final class PeriodicRevealStep {
+        final int num;
+        final int den;
+        final long durationMs; // 0 = no reveal, -1 = until the end
+        PeriodicRevealStep(int num, int den, long durationMs) {
+            this.num = num;
+            this.den = den;
+            this.durationMs = durationMs;
+        }
+    }
+
+    // Reveal for 3s at half-time, 5s at 3/4, 10s at 7/8 and permanently at 15/16
+    private static final PeriodicRevealStep[] REVEAL_SCHEDULE = new PeriodicRevealStep[] {
+            new PeriodicRevealStep(1, 2,  3_000),
+            new PeriodicRevealStep(2, 3,  0),
+            new PeriodicRevealStep(3, 4,  5_000),
+            new PeriodicRevealStep(4, 5,  0),
+            new PeriodicRevealStep(5, 6,  0),
+            new PeriodicRevealStep(6, 7,  0),
+            new PeriodicRevealStep(7, 8, 10_000),
+            new PeriodicRevealStep(15,16, -1)
+    };
+
+    private void tickPeriodicReveal(long timeLeftMillis) {
+        if (!doPeriodicReveal) return;
+        if (!arenaReady) return;
+
+        while (periodicRevealStep < REVEAL_SCHEDULE.length) {
+            PeriodicRevealStep step = REVEAL_SCHEDULE[periodicRevealStep];
+            long threshold = (timeLimitMillis * (step.den - step.num)) / step.den;
+            if (timeLeftMillis > threshold) break;
+            periodicRevealStep++;
+
+            if (step.durationMs == 0) {
+                continue;
+            }
+
+            long durationMs;
+            if (step.durationMs < 0) {
+                durationMs = Math.max(0L, timeLeftMillis);
+            } else {
+                durationMs = step.durationMs;
+            }
+
+            long now = System.currentTimeMillis();
+            if (now - lastRevealAtMillis < 500) return;
+            lastRevealAtMillis = now;
+
+            revealAllPlayers(durationMs);
+            double durationSecs = durationMs / 1000.0;
+            if (step.durationMs < 0) {
+                this.sendAudienceMessage("<yellow>All players revealed until the end!</yellow>");
+            } else {
+                this.sendAudienceMessage("<yellow>All players revealed for " + String.format("%.0f", durationSecs) + " seconds!</yellow>");
+            }
+        }
+    }
+
+    private void revealAllPlayers(long durationMs) {
+        int ticks = (int) Math.max(20, (durationMs / 50));
+
+        for (EventPlayer ep : this.participants) {
+            if (eliminated.contains(ep.getUuid())) continue;
+            Player p = ep.getPlayer();
+            if (p == null) continue;
+            if (p.getGameMode() != GameMode.SURVIVAL) continue;
+
+            if (p.hasPotionEffect(PotionEffectType.GLOWING)) p.removePotionEffect(PotionEffectType.GLOWING);
+            p.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, ticks, 0, false, false));
+            p.playSound(p, Sound.ENTITY_WITHER_SPAWN, 1, 1);
+        }
+
+        for (EventPlayer viewerEp : this.participants) {
+            UUID viewerId = viewerEp.getUuid();
+            if (eliminated.contains(viewerId)) continue;
+            Player viewer = viewerEp.getPlayer();
+            if (viewer == null || viewer.getGameMode() != GameMode.SURVIVAL) continue;
+
+            for (EventPlayer targetEp : this.participants) {
+                UUID targetId = targetEp.getUuid();
+                if (viewerId.equals(targetId)) continue;
+                if (eliminated.contains(targetId)) continue;
+
+                Player target = targetEp.getPlayer();
+                if (target == null || target.getGameMode() != GameMode.SURVIVAL) continue;
+
+                forceShowFor(viewerId, targetId, durationMs);
+            }
+        }
+    }
+
+    private record WorldBorderSnapshot(
+            Location center,
+            double size,
+            double damageAmount,
+            double damageBuffer,
+            int warningDistance,
+            int warningTime
+    ) {}
+
+    private void setupWorldBorderSafe(int radius) {
+        org.bukkit.World bw = arenaOrigin.getWorld();
+        if (bw == null) return;
+
+        WorldBorder border = bw.getWorldBorder();
+
+        savedBorder = new WorldBorderSnapshot(
+                border.getCenter(),
+                border.getSize(),
+                border.getDamageAmount(),
+                border.getDamageBuffer(),
+                border.getWarningDistance(),
+                border.getWarningTime()
+        );
+
+        double start = (radius + 1) * 2.0 + 6.0; // diameter
+
+        border.setCenter(arenaOrigin);
+        border.setSize(start);
+
+        border.setDamageAmount(0.0); // don't (h)arm yet
+        border.setDamageBuffer(1000000.0);
+
+        border.setWarningDistance(5);
+        border.setWarningTime(5);
+    }
+
+    private void armAndShrinkWorldBorder() {
+        org.bukkit.World bw = arenaOrigin.getWorld();
+        if (bw == null) return;
+
+        WorldBorder border = bw.getWorldBorder();
+
+        border.setDamageBuffer(0.0);
+        border.setDamageAmount(3.5);
+
+        long seconds = Math.max(1, timeLimitMillis / 1000L);
+        border.setSize(5.0 /*end diameter*/, seconds);
+    }
+
+    private void teleportPlayersToAssignedSpawnsThen(Runnable afterAllTeleports) {
+        List<CompletableFuture<Boolean>> futures = new ArrayList<>();
+
+        for (EventPlayer ep : this.participants) {
+            ep.operatePlayer(this::cleanPlayer);
+
+            Location spawn = assignedSpawn.get(ep.getUuid());
+            if (spawn == null) spawn = this.pocketCenters.getFirst();
+
+            CompletableFuture<Boolean> tp = ep.teleportAsync(spawn);
+            if (tp == null) {
+                Logger.logWrn("[MineBattle] teleportAsync returned null for " + ep.getUuid());
+                tp = CompletableFuture.completedFuture(false);
+            } else {
+                tp = tp.exceptionally(err -> {
+                    Logger.logErr(err);
+                    return false;
+                });
+            }
+
+            CompletableFuture<Boolean> finalTp = tp;
+            tp.thenAccept(ok -> {
+                if (ok) ep.operatePlayer(this::equip);
+                else Logger.logWrn("[MineBattle] teleport failed for " + ep.getUuid());
+            });
+
+            futures.add(finalTp);
+        }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenRun(() -> Executors.runSync(() -> Executors.delayedSync(20L, afterAllTeleports)));
+    }
+
+    private void restoreWorldBorder() {
+        if (!useWorldBorder) return;
+        if (savedBorder == null) return;
+
+        org.bukkit.World bw = arenaOrigin.getWorld();
+        if (bw == null) return;
+
+        WorldBorder border = bw.getWorldBorder();
+
+        border.setCenter(savedBorder.center());
+        border.setSize(savedBorder.size());
+        border.setDamageAmount(savedBorder.damageAmount());
+        border.setDamageBuffer(savedBorder.damageBuffer());
+        border.setWarningDistance(savedBorder.warningDistance());
+        border.setWarningTime(savedBorder.warningTime());
+
+        savedBorder = null;
+    }
+
     private void cleanPlayer(Player player) {
         player.clearActivePotionEffects();
         AttributeInstance attr = player.getAttribute(Attribute.MAX_HEALTH);
@@ -500,6 +737,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         sword.addUnsafeEnchantment(Enchantment.VANISHING_CURSE, 1);
         player.getInventory().addItem(sword);
         ItemStack pickaxe = new ItemStack(Material.DIAMOND_PICKAXE);
+        pickaxe.addUnsafeEnchantment(Enchantment.VANISHING_CURSE, 1);
         pickaxe.addUnsafeEnchantment(Enchantment.UNBREAKING, 10);
         pickaxe.addUnsafeEnchantment(Enchantment.EFFICIENCY, 3);
         player.getInventory().addItem(pickaxe);
@@ -1033,6 +1271,71 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     private boolean isBoots(ItemStack item) {
         return item.getType().name().toUpperCase().contains("_BOOTS");
+    }
+
+    private void rollStructuresAndAssignSpawns(int radius) {
+        structureLocations.clear();
+        assignedSpawn.clear();
+
+        Random random = new Random();
+        int players = this.participants.size();
+        List<EventPlayer> structurePlayers = new ArrayList<>();
+        boolean structuresEnabled = pickRandomSchematicFile() != null;
+        for (EventPlayer ep : this.participants) {
+            if (random.nextBoolean() && structuresEnabled) structurePlayers.add(ep);
+        }
+
+        int structureCount = structurePlayers.size();
+        this.pocketCenters = generatePocketCenters(this.arenaOrigin, radius, this.arenaHeight, players + structureCount);
+        int extraIdx = 0;
+
+        Set<UUID> structureSet = new HashSet<>();
+        for (EventPlayer ep : structurePlayers) structureSet.add(ep.getUuid());
+
+        for (int i = 0; i < players; i++) {
+            EventPlayer ep = this.participants.get(i);
+            Location normalPocket = pocketCenters.get(i);
+            if (!structureSet.contains(ep.getUuid())) {
+                assignedSpawn.put(ep.getUuid(), normalPocket);
+            } else {
+                structureLocations.add(normalPocket);
+                Location extraPocket = pocketCenters.get(players + extraIdx);
+                extraIdx++;
+                assignedSpawn.put(ep.getUuid(), extraPocket);
+            }
+        }
+    }
+
+    private @Nullable File pickRandomSchematicFile() {
+        if (!schematicsFolder.exists()) schematicsFolder.mkdirs();
+        File[] files = schematicsFolder.listFiles(f ->
+                f.isFile() && (f.getName().endsWith(".schem") || f.getName().endsWith(".schematic"))
+        );
+        if (files == null || files.length == 0) return null;
+        return files[new Random().nextInt(files.length)];
+    }
+
+    private void pasteSchematic(World weWorld, Location pasteAt, File file) throws Exception {
+        ClipboardFormat format = ClipboardFormats.findByFile(file);
+        if (format == null) throw new IllegalArgumentException("Unknown schematic format: " + file.getName());
+
+        Clipboard clipboard;
+        try (ClipboardReader reader = format.getReader(new FileInputStream(file))) {
+            clipboard = reader.read();
+        }
+
+        BlockVector3 to = BlockVector3.at(pasteAt.getBlockX(), pasteAt.getBlockY(), pasteAt.getBlockZ());
+
+        try (EditSession session = WorldEdit.getInstance().newEditSession(weWorld)) {
+            Operation op = new ClipboardHolder(clipboard)
+                    .createPaste(session)
+                    .to(to)
+                    .ignoreAirBlocks(true)
+                    .build();
+
+            Operations.complete(op);
+            session.flushQueue();
+        }
     }
 
     private record ArenaRegions(World world, CuboidRegion inner, CuboidRegion shell, CuboidRegion outer) {

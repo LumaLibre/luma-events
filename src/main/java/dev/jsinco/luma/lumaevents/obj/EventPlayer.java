@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 @Getter
@@ -89,14 +90,13 @@ public class EventPlayer implements Serializable, Scorer {
         player.showTitle(Title.title(Util.color(title), Util.color(subtitle)));
     }
 
-    public void teleportAsync(Location location) {
+    public CompletableFuture<Boolean> teleportAsync(Location location) {
         Player player = this.getPlayer();
         if (player == null) {
-            return;
+            return null;
         }
-        player.teleportAsync(location);
+        return player.teleportAsync(location);
     }
-
 
     @Nullable
     public Player getPlayer() {
