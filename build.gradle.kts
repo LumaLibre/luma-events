@@ -20,7 +20,6 @@ repositories {
     maven("https://repo.codemc.io/repository/maven-public/")
     maven("https://repo.md-5.net/content/groups/public/")
     maven("https://maven.enginehub.org/repo/")
-    maven("https://repo.md-5.net/content/groups/public/")
     maven("https://mvn.lib.co.nz/public/")
 }
 

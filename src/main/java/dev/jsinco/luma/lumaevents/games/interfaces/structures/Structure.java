@@ -7,7 +7,7 @@ import lombok.Getter;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.block.data.type.Leaves;
+import org.bukkit.block.data.BlockData;
 import org.joml.Matrix3d;
 import org.joml.Vector3i;
 
@@ -15,11 +15,15 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 
 // TODO: Maybe swap this out for FAWE because these schematics can get big
 @Getter
 public class Structure {
 
+    private static final Path SCHEMATIC_DIR = EventMain.getInstance().getDataPath().resolve("/schematics/");
+    private static final BlockData AIR_BLOCK_DATA = Material.AIR.createBlockData();
     Matrix3d transformation = new Matrix3d();
 
     private final Location origin;
@@ -27,7 +31,7 @@ public class Structure {
 
     public Structure(Location origin, String localSchemPath) {
         this.origin = origin;
-        Path path = EventMain.getInstance().getDataPath().resolve("/schematics/").resolve(localSchemPath);
+        Path path = SCHEMATIC_DIR.resolve(localSchemPath);
         if (!path.toFile().exists()) {
             throw new IllegalArgumentException("Schematic file does not exist at path: " + path);
         }
@@ -40,36 +44,57 @@ public class Structure {
 
     // Liberally borrowed from ThorinWasher in Garden
 
-    public void paste() {
+    public void paste(BiPredicate<Vector3i, BlockData> prePastePredicate) {
         Vector3i size = schematic.size(transformation);
         Vector3i offset = new Vector3i(size.x() / 2, 0, size.z() / 2);
         World world = origin.getWorld();
         schematic.apply(transformation, (vector3i, blockData) -> {
-            if (blockData.getMaterial().isAir()) {
-                return;
-            }
-            if (blockData instanceof Leaves leaves) {
-                leaves.setPersistent(false);
-            }
+            if (blockData.getMaterial().isAir()) return;
+
             vector3i.sub(offset);
+
+            if (!prePastePredicate.test(vector3i, blockData)) return;
             Location posToReplace = new Location(world, origin.getX(), origin.getY(), origin.getZ()).add(vector3i.x, vector3i.y, vector3i.z);
 
             world.setBlockData(posToReplace, blockData);
         });
     }
 
-    public void remove() {
+    public void remove(BiPredicate<Vector3i, BlockData> preRemovePredicate) {
         Vector3i size = schematic.size(transformation);
         Vector3i offset = new Vector3i(size.x() / 2, 0, size.z() / 2);
         World world = origin.getWorld();
         schematic.apply(transformation, (vector3i, blockData) -> {
-            if (blockData.getMaterial().isAir()) {
-                return;
-            }
+            if (blockData.getMaterial().isAir()) return;
+
             vector3i.sub(offset);
+            if (!preRemovePredicate.test(vector3i, blockData)) return;
             Location location = new Location(world, origin.getX(), origin.getY(), origin.getZ()).add(vector3i.x, vector3i.y, vector3i.z);
 
-            location.getBlock().setType(Material.AIR);
+            location.getBlock().setBlockData(AIR_BLOCK_DATA);
         });
+    }
+
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+
+        Structure structure = (Structure) obj;
+
+        if (!origin.equals(structure.origin)) return false;
+        return schematic.equals(structure.schematic);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = origin.hashCode();
+        result = 31 * result + schematic.hashCode();
+        return result;
+    }
+
+    static {
+        SCHEMATIC_DIR.toFile().mkdirs();
     }
 }
