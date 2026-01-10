@@ -17,7 +17,7 @@ import org.bukkit.entity.Player;
 
 import java.util.List;
 
-//@AutoRegister(RegisterType.SUBCOMMAND)
+@AutoRegister(RegisterType.SUBCOMMAND)
 @CommandInfo(
         name = "claim",
         permission = "lumaevents.default",
@@ -26,6 +26,9 @@ import java.util.List;
         playerOnly = true
 )
 public class ClaimCharmCommand implements CommandModule {
+
+    private static final String ID = "christmas-charm";
+
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
         Player player = (Player) commandSender;
@@ -40,7 +43,7 @@ public class ClaimCharmCommand implements CommandModule {
             return true;
         }
 
-        CustomItem customItem = LumaItemsAPI.getInstance().getCustomItem("lumaween-charm");
+        CustomItem customItem = LumaItemsAPI.getInstance().getCustomItem(ID);
         if (customItem == null) {
             Util.sendMsg(player, "Something went wrong trying to execute this command.");
             return true;
