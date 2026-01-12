@@ -50,7 +50,7 @@ public abstract class Microgame implements Listener {
         this.startTime = System.currentTimeMillis();
         this.registerEvents(this);
 
-        this.structure.paste();
+        //this.structure.paste();
 
         // should probably delegate but oh well
         for (EventPlayer eventPlayer : this.eventPlayers) {
@@ -65,7 +65,7 @@ public abstract class Microgame implements Listener {
         this.unregisterEvents(this);
         unsafe(this.delegateOnEnd); // assume this has teleports and such
 
-        this.structure.remove();
+        //this.structure.remove();
     }
 
 

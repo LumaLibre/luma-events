@@ -9,6 +9,7 @@ import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRoleMap;
 import dev.jsinco.luma.lumaevents.games.interfaces.structures.Structure;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import dev.jsinco.luma.lumaevents.utility.Executors;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Location;
@@ -39,7 +40,7 @@ public class PanelParty extends InventoryUnifiedMinigame {
     private int totalRounds;
     private CountdownBossBar countdownBossBar;
 
-    protected PanelParty(PanelPartyMinigameDefinition def) {
+    public PanelParty(PanelPartyMinigameDefinition def) {
         super("Panel Party", "Stand on the correct color!", DURATION, TICK_INTERVAL, true);
         this.boundingBox = def.getRegion().toWorldTiedBoundingBox();
         this.spawnLocation = def.getSpawnLocation();
@@ -51,6 +52,11 @@ public class PanelParty extends InventoryUnifiedMinigame {
         this.currentBlockDataCount = new HashMap<>();
         this.round = 0;
         this.totalRounds = panels.size();
+    }
+
+    @Override
+    protected int minimumParticipants() {
+        return 1;
     }
 
     @Override
@@ -71,7 +77,9 @@ public class PanelParty extends InventoryUnifiedMinigame {
         }
 
 
-        this.nextRound();
+        Executors.sync(() -> {
+            this.nextRound();
+        });
     }
 
     @Override
@@ -87,12 +95,14 @@ public class PanelParty extends InventoryUnifiedMinigame {
 
     public boolean nextRound() {
         // check if more rounds are available
-        if (this.round + 1 >= this.totalRounds) {
+        System.out.println("Current round: " + this.round + ", Total rounds: " + this.totalRounds);
+        if (this.round + 1 > this.totalRounds) {
             return false;
         }
 
         // paste the next panel and count block data
         Structure panel = this.panels.get(this.round);
+        System.out.println("Pasting panel for round " + (this.round + 1));
         panel.paste((vector3i, blockData) -> {
             Integer count = currentBlockDataCount.getOrDefault(blockData, 0);
             currentBlockDataCount.put(blockData, count + 1);
@@ -121,9 +131,11 @@ public class PanelParty extends InventoryUnifiedMinigame {
                 .callback(() -> {
                     Preconditions.checkNotNull(this.chosenBlockData, "Chosen block data cannot be null during countdown callback.");
                     // remove panel
-                    panel.remove((vector3i, blockData) ->
-                            !blockData.getMaterial().equals(this.chosenBlockData.getMaterial())
-                    );
+                    Executors.sync(() -> {
+                        panel.remove((vector3i, blockData) ->
+                                !blockData.getMaterial().equals(this.chosenBlockData.getMaterial())
+                        );
+                    });
 
                     // recursively start next round
                     CountdownBossBar.builder()
@@ -132,9 +144,11 @@ public class PanelParty extends InventoryUnifiedMinigame {
                             .audience(this.getAudience())
                             .color(BossBar.Color.YELLOW)
                             .callback(() -> {
-                                if (!this.nextRound()) {
-                                    this.stop();
-                                }
+                                Executors.sync(() -> {
+                                    if (!this.nextRound()) {
+                                        this.stop();
+                                    }
+                                });
                             })
                             .build()
                             .start();

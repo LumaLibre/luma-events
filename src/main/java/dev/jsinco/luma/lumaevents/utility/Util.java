@@ -5,7 +5,6 @@ import com.destroystokyo.paper.profile.ProfileProperty;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.jsinco.luma.lumaevents.EventMain;
-import dev.jsinco.luma.lumaevents.archives.Challenge;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -46,7 +45,6 @@ public final class Util {
 
     public static final Gson GSON = new GsonBuilder()
             .excludeFieldsWithModifiers(Modifier.STATIC)
-            .registerTypeAdapter(Challenge.class, new Challenge.TypeAdapter())
             .setPrettyPrinting()
             .create();
     public static final Random RANDOM = new Random();

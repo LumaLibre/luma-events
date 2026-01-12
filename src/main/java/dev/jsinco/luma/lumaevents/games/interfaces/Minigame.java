@@ -3,8 +3,6 @@ package dev.jsinco.luma.lumaevents.games.interfaces;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketListener;
 import dev.jsinco.luma.lumaevents.EventMain;
-import dev.jsinco.luma.lumaevents.archives.Challenge;
-import dev.jsinco.luma.lumaevents.archives.ChallengeType;
 import dev.jsinco.luma.lumaevents.games.events.MinigamePreventDamageListener;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.events.MinigameExitPreventionListener;
@@ -139,14 +137,6 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         } else {
             this.runTaskTimer(EventMain.getInstance(), 0, this.tickInterval);
         }
-
-        // TODO: Winter event challenged -- remove later
-        unsafe(() -> {
-            for (EventPlayer participant : participants) {
-                Challenge challenge = participant.getChallenge(ChallengeType.PLAY_MINIGAMES, true);
-                challenge.addStage(1);
-            }
-        });
         return true;
     }
 

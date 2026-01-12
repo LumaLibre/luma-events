@@ -7,7 +7,6 @@ import dev.jsinco.luma.lumaevents.configurable.MinigameState;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.MinigameManager;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
-import dev.jsinco.luma.lumaevents.items.PresentItem;
 import dev.jsinco.luma.lumaevents.items.StartMinigameItem;
 import dev.jsinco.luma.lumaevents.items.WinterStampItem;
 import dev.jsinco.luma.lumaevents.items.LocalCustomItemManager;
@@ -40,7 +39,6 @@ public final class EventMain extends JavaPlugin {
 
         LocalCustomItemManager.addCustomItem(new WinterStampItem());
         LocalCustomItemManager.addCustomItem(new StartMinigameItem());
-        LocalCustomItemManager.addCustomItem(new PresentItem());
         LocalCustomItemManager.registerCustomItems();
     }
 

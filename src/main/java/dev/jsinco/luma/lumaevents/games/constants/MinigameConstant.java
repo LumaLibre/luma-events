@@ -6,6 +6,7 @@ import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.games.logic.BoatRace2;
 import dev.jsinco.luma.lumaevents.games.logic.Manor;
 import dev.jsinco.luma.lumaevents.games.logic.Paintball2_1;
+import dev.jsinco.luma.lumaevents.games.logic.PanelParty;
 import dev.jsinco.luma.lumaevents.games.logic.PropHunt;
 import dev.jsinco.luma.lumaevents.games.logic.TNTTag;
 import dev.jsinco.luma.lumaevents.games.logic.TheNabbits;
@@ -27,7 +28,8 @@ public enum MinigameConstant {
     TOWERS(Towers::new, "towers"),
     MANOR(Manor::new, "manor"),
     PROP_HUNT(PropHunt::new, "prophunt", "prop_hunt"),
-    THE_NABBITS(TheNabbits::new, "thenabbits", "the_nabbits")
+    THE_NABBITS(TheNabbits::new, "thenabbits", "the_nabbits"),
+    PANEL_PARTY(PanelParty::new, "panelparty", "panel_party")
     ;
 
     private final MinigameSupplier<?> supplier;
@@ -50,6 +52,7 @@ public enum MinigameConstant {
             case MANOR ->  (Map<String, T>) cfg.getManorMaps();
             case PROP_HUNT -> (Map<String, T>) cfg.getPropHuntMaps();
             case THE_NABBITS -> (Map<String, T>) cfg.getTheNabbitsMaps();
+            case PANEL_PARTY -> (Map<String, T>) cfg.getPanelPartyMaps();
         };
     }
 

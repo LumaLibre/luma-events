@@ -22,7 +22,7 @@ import java.util.function.BiPredicate;
 @Getter
 public class Structure {
 
-    private static final Path SCHEMATIC_DIR = EventMain.getInstance().getDataPath().resolve("/schematics/");
+    private static final Path SCHEMATIC_DIR = EventMain.getInstance().getDataPath().resolve("schematics");
     private static final BlockData AIR_BLOCK_DATA = Material.AIR.createBlockData();
     Matrix3d transformation = new Matrix3d();
 
@@ -33,7 +33,7 @@ public class Structure {
         this.origin = origin;
         Path path = SCHEMATIC_DIR.resolve(localSchemPath);
         if (!path.toFile().exists()) {
-            throw new IllegalArgumentException("Schematic file does not exist at path: " + path);
+            throw new IllegalArgumentException("Schematic file does not exist at path: " + path.toAbsolutePath());
         }
         try (InputStream inputStream = new FileInputStream(path.toFile())) {
             this.schematic = new SchematicReader().read(inputStream);
