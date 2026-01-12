@@ -61,6 +61,16 @@ public class Config extends OkaeriConfig {
             "default", new ManorMinigameDefinition()
     );
 
+    @Comment("Minigame definition for 'MineBattle'")
+    private Map<String, MineBattleDefinition> mineBattleMaps = Map.of(
+            "default", new MineBattleDefinition()
+    );
+
+    @Comment("Minigame definition for 'TNTRun'")
+    private Map<String, TNTRunDefinition> tntRunMaps = Map.of(
+            "default", new TNTRunDefinition()
+    );
+
     @Comment("Minigame definition for 'Paintball 2.1'")
     private Map<String, Paintball2_1Definition> paintballMaps = Map.of(
             "default", new Paintball2_1Definition()

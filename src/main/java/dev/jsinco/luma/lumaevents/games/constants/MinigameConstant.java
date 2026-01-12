@@ -29,7 +29,9 @@ public enum MinigameConstant {
     MANOR(Manor::new, "manor"),
     PROP_HUNT(PropHunt::new, "prophunt", "prop_hunt"),
     THE_NABBITS(TheNabbits::new, "thenabbits", "the_nabbits"),
-    PANEL_PARTY(PanelParty::new, "panelparty", "panel_party")
+    PANEL_PARTY(PanelParty::new, "panelparty", "panel_party"),
+    MINEBATTLE(MineBattle::new, "minebattle", "mine_battle"),
+    TNTRUN(TNTRun::new, "tntrun", "tnt_run")
     ;
 
     private final MinigameSupplier<?> supplier;
@@ -53,6 +55,8 @@ public enum MinigameConstant {
             case PROP_HUNT -> (Map<String, T>) cfg.getPropHuntMaps();
             case THE_NABBITS -> (Map<String, T>) cfg.getTheNabbitsMaps();
             case PANEL_PARTY -> (Map<String, T>) cfg.getPanelPartyMaps();
+            case MINEBATTLE -> (Map<String, T>) cfg.getMineBattleMaps();
+            case TNTRUN -> (Map<String, T>) cfg.getTntRunMaps();
         };
     }
 

@@ -52,8 +52,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 // TODO:
-//  - better cues for seekers
+//  - better cues for seekers (some particles also when not locked in place? Cues on distance to the nearest hidden player?)
 //  - debug
+//  - Player shouldn't be able to disguise as barriers, signs, and other transparent blocks
+//  - Player's blockInteractionRange attribute should be 0 so they can't interact with the map
 public final class PropHunt extends InventoryUnifiedMinigame {
 
     private static final long STANDARD_DURATION = 300000; // in milliseconds
