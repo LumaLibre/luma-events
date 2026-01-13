@@ -19,6 +19,7 @@ import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -98,6 +99,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         for (EventPlayer eventPlayer : this.participants) {
             ActiveTNTRunPlayer role = new ActiveTNTRunPlayer(eventPlayer, this);
             this.roleMap.put(role);
+
+            eventPlayer.operatePlayer(LivingEntity::clearActivePotionEffects);
         }
 
 
