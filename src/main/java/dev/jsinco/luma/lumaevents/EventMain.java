@@ -13,7 +13,6 @@ import dev.jsinco.luma.lumaevents.items.LocalCustomItemManager;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class EventMain extends JavaPlugin {

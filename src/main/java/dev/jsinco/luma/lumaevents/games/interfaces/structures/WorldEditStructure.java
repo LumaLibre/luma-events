@@ -97,8 +97,8 @@ public class WorldEditStructure extends Structure {
     }
 
     public WorldTiedBoundingBox getBoundingBox() {
-        BlockVector3 clipMin = clipboard.getRegion().getMinimumPoint();
-        BlockVector3 clipMax = clipboard.getRegion().getMaximumPoint();
+        BlockVector3 clipMin = cuboidRegion.getMinimumPoint();
+        BlockVector3 clipMax = cuboidRegion.getMaximumPoint();
         World world = origin.getWorld();
 
 

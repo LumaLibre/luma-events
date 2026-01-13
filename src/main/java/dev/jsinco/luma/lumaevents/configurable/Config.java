@@ -1,12 +1,6 @@
 package dev.jsinco.luma.lumaevents.configurable;
 
-import dev.jsinco.luma.lumaevents.configurable.sectors.BoatRace2Definition;
-import dev.jsinco.luma.lumaevents.configurable.sectors.ManorMinigameDefinition;
-import dev.jsinco.luma.lumaevents.configurable.sectors.MinigameDefinition;
-import dev.jsinco.luma.lumaevents.configurable.sectors.Paintball2_1Definition;
-import dev.jsinco.luma.lumaevents.configurable.sectors.PanelPartyMinigameDefinition;
-import dev.jsinco.luma.lumaevents.configurable.sectors.TheNabbitsMinigameDefinition;
-import dev.jsinco.luma.lumaevents.configurable.sectors.TowersDefinition;
+import dev.jsinco.luma.lumaevents.configurable.sectors.*;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.annotation.Comment;

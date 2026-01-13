@@ -1,6 +1,5 @@
 package dev.jsinco.luma.lumaevents.games.interfaces.structures;
 
-import dev.jsinco.luma.lumaevents.EventMain;
 import dev.thorinwasher.schem.Schematic;
 import dev.thorinwasher.schem.SchematicReader;
 import lombok.Getter;

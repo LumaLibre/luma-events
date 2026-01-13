@@ -1,5 +1,9 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.wrappers.BlockPosition;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.TNTRunDefinition;
 import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
@@ -9,30 +13,40 @@ import dev.jsinco.luma.lumaevents.games.interfaces.structures.WorldEditStructure
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
+import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Executors;
 import dev.lumas.lumacore.utility.Logging;
 import net.kyori.adventure.bossbar.BossBar;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
-import org.bukkit.World;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemFlag;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.BoundingBox;
+import org.bukkit.util.Transformation;
+import org.bukkit.util.Vector;
+import org.joml.AxisAngle4f;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 // TODO: finish cleanup & test
 public final class TNTRun extends InventoryUnifiedMinigame {
@@ -46,6 +60,18 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private final Location arenaOrigin;
     private final int decayDelayTicks;
     private final int eliminationHeight;
+
+    private final boolean powerupsEnabled;
+    private final int powerupMaxAlive;
+    private final int powerupSpawnPeriodTicks;
+    private final int powerupSpawnAttempts;
+
+    private final int slowFallingTicks;
+    private final int updraftCooldownTicks;
+    private final int jumpSpeedTicks;
+    private final int platformTicks;
+    private final double smallUpdraftY;
+    private final double bigUpdraftY;
 
     private volatile boolean arenaReady = false; // TODO: maybe unnecessary volatile?
     private volatile boolean decayArmed = false; // TODO: maybe unnecessary volatile?
@@ -62,6 +88,20 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private BukkitTask decayTask = null;
     private BukkitTask waitingForArenaTask = null;
 
+    private BukkitTask powerupTask = null;
+    private BukkitTask powerupSpinTask = null;
+    private float powerupSpinAngle = 0f;
+
+    private final Map<UUID, String> powerupByEntity = new HashMap<>();
+    private final Map<UUID, ItemStack> powerupItemByEntity = new HashMap<>();
+    private final Map<UUID, Long> updraftCooldownUntilTick = new HashMap<>();
+
+    private record PlatformInstance(UUID id, UUID owner, org.bukkit.World world, Set<BlockPos> blocks) {}
+    private final Map<UUID, PlatformInstance> platformById = new HashMap<>();
+    private final Map<UUID, Set<UUID>> platformIdsByOwner = new HashMap<>();
+    private final Map<BlockPos, Deque<UUID>> platformStackByBlock = new HashMap<>();
+    private final Map<BlockPos, BlockData> platformTrueOriginalByBlock = new HashMap<>();
+
     public TNTRun(TNTRunDefinition def) {
         super("TNT Run", "Don't fall down!", def.getTimeLimitSeconds() * 1000L, def.getHeartbeatTicks(),
                 false, true, false, true);
@@ -72,6 +112,18 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         this.eliminationHeight = def.getEliminationHeight();
         this.worldEditStructure = new WorldEditStructure(arenaOrigin, def.getMapSchematic());
         this.boundingBox = worldEditStructure.getBoundingBox();
+
+        this.powerupsEnabled = def.isPowerupsEnabled();
+        this.powerupMaxAlive = def.getPowerupMaxAlive();
+        this.powerupSpawnPeriodTicks = def.getPowerupSpawnPeriodTicks();
+        this.powerupSpawnAttempts = def.getPowerupSpawnAttempts();
+
+        this.slowFallingTicks = def.getSlowFallingTicks();
+        this.updraftCooldownTicks = def.getUpdraftCooldownTicks();
+        this.jumpSpeedTicks = def.getJumpSpeedTicks();
+        this.platformTicks = def.getPlatformTicks();
+        this.smallUpdraftY = def.getSmallUpdraftY();
+        this.bigUpdraftY = def.getBigUpdraftY();
     }
 
 
@@ -131,12 +183,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     protected void onRunnable(long timeLeft) {
         if (!this.arenaReady) return;
 
-        if (!this.playersTeleported) {
-            this.playersTeleported = true;
-            this.teleportPlayersToArenaThenStartCountdown();
-        }
-
-
         for (AbstractTNTRunPlayer tntRunPlayer : this.roleMap) {
             tntRunPlayer.tick();
         }
@@ -158,6 +204,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         });
 
         unsafe(this::stopDecayTask);
+        unsafe(this::stopPowerupTask);
+        unsafe(this::despawnAllPowerups);
 
         unsafe(() -> {
 
@@ -236,6 +284,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
                 .callback(() -> {
                     this.sendAudienceMessage("<green>TNT Run started!</green>");
                     this.decayArmed = true;
+                    this.startPowerupTask();
                     this.startGameTimerBossBar();
                 })
                 .build()
@@ -246,7 +295,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         this.gameTimerBossBar = CountdownBossBar.builder()
                 .title("<green>Time Left: %ss")
                 .color(BossBar.Color.GREEN)
-                .miliseconds(this.getDuration())
+                .miliseconds(this.getDuration() - 10_000L/*correct for the 10s at the start*/)
                 .audience(this.audience)
                 .callback(() -> {
                     this.sendAudienceMessage("<yellow>Time is up!</yellow>");
@@ -346,6 +395,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         }
 
         this.scheduleDecay(blockBelow);
+        this.tryPickupPowerup(player);
     }
 
     @EventHandler(ignoreCancelled = true) // TODO: Probably unnecessary: worldguard
@@ -420,7 +470,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         public void eliminate() {
             // swap to spectator role
             this.context.roleMap.swapRole(this, () -> new TNTRunSpectator(this.eventPlayer, this.context));
-
+            this.eventPlayer.teleportAsync(this.context.arenaOrigin);
             this.eventPlayer.operatePlayer(player -> {
                 player.playSound(player, Sound.ENTITY_ALLAY_DEATH, SoundCategory.MASTER, 1.0f, 1.0f);
             });
@@ -488,4 +538,495 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
 
     private record BlockPos(int x, int y, int z) {}
+
+
+    private static NamespacedKey POWERUP_ID_KEY() {
+        return new NamespacedKey(EventMain.getInstance(), "tntrun_powerup_id");
+    }
+
+    private enum PowerupType {
+        UPDRAFT_SMALL("updraft_small", Material.FEATHER),
+        UPDRAFT_BIG("updraft_big", Material.FIREWORK_ROCKET),
+        SLOW_FALL("slow_fall", Material.PHANTOM_MEMBRANE),
+        JUMP_SPEED("jump_speed", Material.RABBIT_FOOT),
+        PLATFORM("platform", Material.BEDROCK);
+
+        final String id;
+        final Material displayMat;
+
+        PowerupType(String id, Material displayMat) {
+            this.id = id;
+            this.displayMat = displayMat;
+        }
+
+        static PowerupType fromId(String id) {
+            for (PowerupType t : values()) {
+                if (t.id.equalsIgnoreCase(id)) return t;
+            }
+            return null;
+        }
+
+        static PowerupType random() {
+            PowerupType[] v = values();
+            return v[ThreadLocalRandom.current().nextInt(v.length)];
+        }
+    }
+
+    private void startPowerupTask() {
+        stopPowerupTask();
+        if (!powerupsEnabled) return;
+
+        this.powerupTask = Executors.repeatingSync(Math.max(1L, powerupSpawnPeriodTicks), () -> {
+            if (!arenaReady || !decayArmed) return;
+            if (this.isCancelled()) return;
+            if (this.boundingBox == null) return;
+
+            if (powerupByEntity.size() >= powerupMaxAlive) return;
+            for (int i = 0; i <= powerupSpawnAttempts; i++) trySpawnRandomPowerup();
+        });
+
+        startPowerupSpinTask();
+    }
+
+    private void stopPowerupTask() {
+        if (powerupTask != null) {
+            powerupTask.cancel();
+            powerupTask = null;
+        }
+        stopPowerupSpinTask();
+    }
+
+    private void startPowerupSpinTask() {
+        stopPowerupSpinTask();
+        powerupSpinAngle = 0f;
+
+        powerupSpinTask = Executors.repeatingSync(1L, () -> {
+            if (!arenaReady || !decayArmed) return;
+            org.bukkit.World w = arenaOrigin.getWorld();
+            if (w == null) return;
+            if (powerupByEntity.isEmpty()) return;
+
+            powerupSpinAngle += 0.12f;
+            if (powerupSpinAngle > (float) (Math.PI * 2)) powerupSpinAngle -= (float) (Math.PI * 2);
+
+            for (UUID id : new ArrayList<>(powerupByEntity.keySet())) {
+                Entity e = w.getEntity(id);
+                if (!(e instanceof ItemDisplay d)) continue;
+                Transformation t = d.getTransformation();
+                t.getScale().set(0.67f, 0.67f, 0.67f);
+                t.getLeftRotation().set(new AxisAngle4f(powerupSpinAngle, 0f, 1f, 0f));
+                d.setTransformation(t);
+            }
+        });
+    }
+
+    private void stopPowerupSpinTask() {
+        if (powerupSpinTask != null) {
+            powerupSpinTask.cancel();
+            powerupSpinTask = null;
+        }
+    }
+
+    private void despawnAllPowerups() {
+        if (arenaOrigin.getWorld() == null) return;
+        org.bukkit.World w = arenaOrigin.getWorld();
+
+        for (UUID id : new ArrayList<>(powerupByEntity.keySet())) {
+            Entity e = w.getEntity(id);
+            if (e != null) e.remove();
+        }
+        powerupByEntity.clear();
+    }
+
+    private void trySpawnRandomPowerup() {
+        org.bukkit.World w = arenaOrigin.getWorld();
+        if (w == null || this.boundingBox == null ||
+                !(this.boundingBox instanceof WorldTiedBoundingBox box)) return;
+
+        Location randomLocation = box.getRandomLocation();
+
+        Block air = w.getBlockAt(randomLocation);
+        if (!air.getType().isAir()) return;
+
+        Block below = air.getRelative(BlockFace.DOWN);
+        Material base = below.getType();
+        if (base.isAir() || !base.hasGravity()) return;
+
+        if (isPowerupAlreadyAt(w, randomLocation.getBlockX(),
+                randomLocation.getBlockY(), randomLocation.getBlockZ())) return;
+
+        PowerupType type = PowerupType.random();
+        spawnPowerupDisplay(w, randomLocation.getBlockX(),
+                randomLocation.getBlockY(), randomLocation.getBlockZ(), type);
+    }
+
+    private boolean isPowerupAlreadyAt(org.bukkit.World w, int x, int y, int z) {
+        Location center = new Location(w, x + 0.5, y + 0.5, z + 0.5);
+        for (UUID id : powerupByEntity.keySet()) {
+            Entity e = w.getEntity(id);
+            if (e == null) continue;
+            if (e.getLocation().distanceSquared(center) < 0.5 * 0.5) return true;
+        }
+        return false;
+    }
+
+    private void spawnPowerupDisplay(org.bukkit.World w, int x, int y, int z, PowerupType type) {
+        Location loc = new Location(w, x + 0.5, y + 0.75, z + 0.5);
+        ItemStack reward = createPowerupItem(type);
+
+        //Logger.logWrn("Spawning PowerUp Display (type " + type.id + ") at " + x + ", " + y + ", " + z + " in " + w.getName());
+
+        ItemDisplay display = w.spawn(loc, ItemDisplay.class, d -> {
+            d.setItemStack(reward.clone());
+            d.getPersistentDataContainer().set(POWERUP_ID_KEY(), PersistentDataType.STRING, type.id);
+            d.setBillboard(Display.Billboard.CENTER);
+            Transformation t = d.getTransformation();
+            t.getScale().set(0.67f, 0.67f, 0.67f);
+            d.setTransformation(t);
+        });
+
+        powerupByEntity.put(display.getUniqueId(), type.id);
+        powerupItemByEntity.put(display.getUniqueId(), reward);
+    }
+
+    private void tryPickupPowerup(Player player) {
+        if (!arenaReady || !decayArmed) return;
+        ActiveTNTRunPlayer active = this.roleMap.as(player.getUniqueId(), ActiveTNTRunPlayer.class);
+        if (active == null) return;
+        org.bukkit.World w = player.getWorld();
+
+        Collection<Entity> nearby = w.getNearbyEntities(player.getBoundingBox().expand(0.5, 0.5, 0.5),
+                e -> e instanceof ItemDisplay && powerupByEntity.containsKey(e.getUniqueId()));
+
+        if (nearby.isEmpty()) return;
+
+        for (Entity e : nearby) {
+            ItemDisplay d = (ItemDisplay) e;
+
+            String id = d.getPersistentDataContainer().get(POWERUP_ID_KEY(), PersistentDataType.STRING);
+            if (id == null) continue;
+
+            PowerupType type = PowerupType.fromId(id);
+            if (type == null) continue;
+
+            UUID entId = d.getUniqueId();
+            ItemStack reward = powerupItemByEntity.remove(entId);
+            powerupByEntity.remove(entId);
+            d.remove();
+
+            if (reward != null && !reward.getType().isAir()) {
+                giveOrDrop(player, reward.clone());
+                player.playSound(player, Sound.ENTITY_ITEM_PICKUP, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            return;
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onUsePowerup(PlayerInteractEvent event) {
+        if (!event.getAction().isRightClick()) return;
+        if (event.getHand() != EquipmentSlot.HAND) return;
+
+        Player player = event.getPlayer();
+        ActiveTNTRunPlayer active =
+                this.roleMap.as(player.getUniqueId(), ActiveTNTRunPlayer.class);
+
+        if (active == null) return;
+        if (!this.decayArmed) return;
+
+        ItemStack item = player.getInventory().getItemInMainHand();
+        if (item.getType().isAir()) return;
+
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+
+        String id = meta.getPersistentDataContainer()
+                .get(POWERUP_ID_KEY(), PersistentDataType.STRING);
+
+        if (id == null) return;
+
+        PowerupType type = PowerupType.fromId(id);
+        if (type == null) return;
+
+        event.setCancelled(true);
+        if (!applyPowerupEffect(player, type)) return;
+        consumeOneMainHand(player);
+    }
+
+    private void consumeOneMainHand(Player p) {
+        ItemStack inHand = p.getInventory().getItemInMainHand();
+        if (inHand.getType().isAir()) return;
+
+        int amt = inHand.getAmount();
+        if (amt <= 1) p.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
+        else inHand.setAmount(amt - 1);
+
+        p.updateInventory();
+    }
+
+    private ItemStack createPowerupItem(PowerupType type) {
+        ItemStack stack = new ItemStack(type.displayMat, 1);
+        ItemMeta meta = stack.getItemMeta();
+
+        meta.getPersistentDataContainer().set(POWERUP_ID_KEY(), PersistentDataType.STRING, type.id);
+
+        Component name = switch (type) {
+            case UPDRAFT_SMALL -> Component.text("Small Updraft", NamedTextColor.AQUA);
+            case UPDRAFT_BIG -> Component.text("Rocket Boost", NamedTextColor.AQUA);
+            case SLOW_FALL -> Component.text("Slow Falling", NamedTextColor.AQUA);
+            case JUMP_SPEED -> Component.text("Jump & Speed", NamedTextColor.AQUA);
+            case PLATFORM -> Component.text("Temp Platform", NamedTextColor.AQUA);
+        };
+
+        meta.displayName(name.decoration(TextDecoration.ITALIC, false));
+        meta.lore(List.of(
+                Component.text("(right-click)", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        meta.addItemFlags(ItemFlag.values());
+        stack.setItemMeta(meta);
+        return stack;
+    }
+
+    private boolean applyPowerupEffect(Player player, PowerupType type) {
+        switch (type) {
+            case UPDRAFT_SMALL -> {
+                if (!checkAndApplyUpdraftCooldown(player)) return false;
+                org.bukkit.util.Vector v = player.getVelocity();
+                player.setVelocity(new Vector(v.getX(), Math.max(v.getY(), smallUpdraftY), v.getZ()));
+                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BAT_TAKEOFF, SoundCategory.MASTER, 1.0f, 1.1f);
+                return true;
+            }
+
+            case UPDRAFT_BIG -> {
+                if (!checkAndApplyUpdraftCooldown(player)) return false;
+                org.bukkit.util.Vector v = player.getVelocity();
+                player.setVelocity(new org.bukkit.util.Vector(v.getX(), Math.max(v.getY(), bigUpdraftY), v.getZ()));
+                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, SoundCategory.MASTER, 1.0f, 1.1f);
+                return true;
+            }
+
+            case SLOW_FALL -> {
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, slowFallingTicks, 0, false, false, true));
+                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ALLAY_AMBIENT_WITHOUT_ITEM, SoundCategory.MASTER, 1.0f, 1.2f);
+                return true;
+            }
+
+            case JUMP_SPEED -> {
+                player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, jumpSpeedTicks, 1, false, false, true)); // Jump Boost 2 => amplifier 1
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, jumpSpeedTicks, 0, false, false, true));      // Speed 1 => amplifier 0
+                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_RABBIT_JUMP, SoundCategory.MASTER, 1.0f, 1.1f);
+                return true;
+            }
+
+            case PLATFORM -> {
+                spawnTemporaryPlatform(player);
+                player.getWorld().playSound(player.getLocation(), Sound.BLOCK_STONE_PLACE, SoundCategory.MASTER, 0.9f, 0.8f);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean checkAndApplyUpdraftCooldown(Player player) {
+        long now = decayTick;
+        long until = updraftCooldownUntilTick.getOrDefault(player.getUniqueId(), 0L);
+        if (now < until) {
+            player.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, SoundCategory.MASTER, 1f, 0.7f);
+            return false;
+        }
+        updraftCooldownUntilTick.put(player.getUniqueId(), now + updraftCooldownTicks);
+        return true;
+    }
+
+    private void spawnTemporaryPlatform(Player player) {
+        org.bukkit.World w = player.getWorld();
+        Location loc = player.getLocation();
+        int baseY = loc.getBlockY() - 1;
+        int cx = loc.getBlockX();
+        int cz = loc.getBlockZ();
+
+        UUID platformId = UUID.randomUUID();
+        Set<BlockPos> blocks = new HashSet<>();
+
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                int x = cx + dx;
+                int z = cz + dz;
+
+                Block b = w.getBlockAt(x, baseY, z);
+                BlockPos pos = new BlockPos(x, baseY, z);
+                blocks.add(pos);
+
+                Deque<UUID> stack = platformStackByBlock.computeIfAbsent(pos, k -> new ArrayDeque<>());
+                if (stack.isEmpty()) platformTrueOriginalByBlock.put(pos, b.getBlockData().clone());
+                stack.push(platformId);
+
+                b.setType(Material.BEDROCK, false);
+            }
+        }
+
+        PlatformInstance inst = new PlatformInstance(platformId, player.getUniqueId(), w, blocks);
+        platformById.put(platformId, inst);
+        platformIdsByOwner.computeIfAbsent(player.getUniqueId(), k -> new HashSet<>()).add(platformId);
+
+        int warnTicks = Math.min(40, platformTicks);
+        Executors.delayedSync(Math.max(1, platformTicks - warnTicks), () -> {
+            if (!decayArmed) return;
+            animatePlatformBreaking(platformId, blocks, warnTicks);
+        });
+
+        Executors.delayedSync(platformTicks, () -> restorePlatform(platformId));
+    }
+
+    private void animatePlatformBreaking(UUID platformId, Set<BlockPos> blocks, int durationTicks) {
+        // Only animate blocks where this platform is CURRENTLY on top
+        Set<BlockPos> topOwned = new HashSet<>();
+        for (BlockPos pos : blocks) {
+            Deque<UUID> st = platformStackByBlock.get(pos);
+            if (st != null && !st.isEmpty() && platformId.equals(st.peek())) {
+                topOwned.add(pos);
+            }
+        }
+        if (topOwned.isEmpty()) return;
+
+        List<Player> viewers = new ArrayList<>();
+        for (EventPlayer ep : this.participants) {
+            Player p = ep.getPlayer();
+            if (p != null) viewers.add(p);
+        }
+
+        final int[] t = {0};
+        BukkitTask task = Executors.repeatingSync(1L, () -> {
+            if (!decayArmed || t[0] >= durationTicks) {
+                clearBreakAnim(platformId, topOwned, viewers);
+                return;
+            }
+
+            int stage = Math.min(9, (int) Math.floor((t[0] / (double) durationTicks) * 10.0));
+            for (BlockPos pos : topOwned) {
+                Deque<UUID> st = platformStackByBlock.get(pos);
+                if (st == null || st.isEmpty() || !platformId.equals(st.peek())) continue;
+
+                int id = breakerIdFor(platformId, pos);
+                for (Player viewer : viewers) {
+                    sendBreakAnim(viewer, id, pos, stage);
+                }
+            }
+            t[0]++;
+        });
+
+        Executors.delayedSync(durationTicks + 2L, () -> {
+            task.cancel();
+            clearBreakAnim(platformId, topOwned, viewers);
+        });
+    }
+
+    private void clearBreakAnim(UUID platformId, Set<BlockPos> blocks, List<Player> viewers) {
+        for (BlockPos pos : blocks) {
+            int id = breakerIdFor(platformId, pos);
+            for (Player viewer : viewers) {
+                sendBreakAnim(viewer, id, pos, -1);
+            }
+        }
+    }
+
+    private void restorePlatform(UUID platformId) {
+        PlatformInstance inst = platformById.remove(platformId);
+        if (inst == null) return;
+
+        Set<UUID> set = platformIdsByOwner.get(inst.owner());
+        if (set != null) {
+            set.remove(platformId);
+            if (set.isEmpty()) platformIdsByOwner.remove(inst.owner());
+        }
+
+        List<Player> viewers = new ArrayList<>();
+        for (EventPlayer ep : this.participants) {
+            Player p = ep.getPlayer();
+            if (p != null) viewers.add(p);
+        }
+        clearBreakAnim(platformId, inst.blocks(), viewers);
+
+        for (BlockPos pos : inst.blocks()) {
+            Deque<UUID> st = platformStackByBlock.get(pos);
+            if (st == null || st.isEmpty()) continue;
+
+            if (platformId.equals(st.peek())) st.pop();
+            else st.remove(platformId);
+
+            Block b = inst.world().getBlockAt(pos.x(), pos.y(), pos.z());
+
+            if (st.isEmpty()) {
+                BlockData original = platformTrueOriginalByBlock.remove(pos);
+                if (original != null) b.setBlockData(original, false);
+                platformStackByBlock.remove(pos);
+            } else {
+                b.setType(Material.BEDROCK, false);
+            }
+        }
+    }
+
+    private static void sendBreakAnim(Player viewer, int breakerId, BlockPos pos, int stage) {
+        PacketContainer packet = ProtocolLibrary.getProtocolManager().createPacket(PacketType.Play.Server.BLOCK_BREAK_ANIMATION);
+        packet.getIntegers().write(0, breakerId);
+        packet.getBlockPositionModifier().write(0, new BlockPosition(pos.x(), pos.y(), pos.z()));
+        packet.getIntegers().write(1, stage);
+        try {
+            ProtocolLibrary.getProtocolManager().sendServerPacket(viewer, packet);
+        } catch (Exception ignored) {}
+    }
+
+    // Must be the same every update, but different per block
+    private static int breakerIdFor(UUID owner, BlockPos pos) {
+        int h = owner.hashCode();
+        h = 31 * h + pos.x();
+        h = 31 * h + pos.y();
+        h = 31 * h + pos.z();
+        return h;
+    }
+
+    private static void giveOrDrop(Player player, ItemStack toGive) {
+        if (player == null || toGive == null || toGive.getType().isAir() || toGive.getAmount() <= 0) return;
+
+        PlayerInventory inv = player.getInventory();
+        ItemStack remaining = toGive.clone();
+
+        // Fill partial stacks of similar items
+        for (int slot = 0; slot < 36 && remaining.getAmount() > 0; slot++) {
+            ItemStack existing = inv.getItem(slot);
+            if (existing == null || existing.getType().isAir()) continue;
+            if (!existing.isSimilar(remaining)) continue;
+
+            int max = existing.getMaxStackSize();
+            int space = max - existing.getAmount();
+            if (space <= 0) continue;
+
+            int move = Math.min(space, remaining.getAmount());
+            existing.setAmount(existing.getAmount() + move);
+            remaining.setAmount(remaining.getAmount() - move);
+            inv.setItem(slot, existing);
+        }
+
+        // Put into empty slots
+        for (int slot = 0; slot < 36 && remaining.getAmount() > 0; slot++) {
+            ItemStack existing = inv.getItem(slot);
+            if (existing != null && !existing.getType().isAir()) continue;
+
+            int max = remaining.getMaxStackSize();
+            int move = Math.min(max, remaining.getAmount());
+
+            ItemStack stack = remaining.clone();
+            stack.setAmount(move);
+            inv.setItem(slot, stack);
+
+            remaining.setAmount(remaining.getAmount() - move);
+        }
+
+        // Drop any leftover
+        if (remaining.getAmount() > 0) {
+            player.getWorld().dropItemNaturally(player.getLocation(), remaining);
+        }
+
+        player.updateInventory();
+    }
 }
