@@ -305,7 +305,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
             block.setType(Material.AIR, false);
 
-            Block under = block.getRelative(0, -1, 0);
+            Block under = block.getRelative(BlockFace.DOWN);
             if (under.getType() == Material.TNT) {
                 under.setType(Material.AIR, false);
             }
@@ -339,24 +339,13 @@ public final class TNTRun extends InventoryUnifiedMinigame {
             return;
         }
 
-        Block blockBelow = event.getTo().getBlock().getRelative(BlockFace.DOWN);
+        Block blockBelow = to.getBlock().getRelative(BlockFace.DOWN);
         Material type = blockBelow.getType();
         if (type.isAir() || !type.hasGravity()) {
             return;
         }
 
         this.scheduleDecay(blockBelow);
-    }
-
-
-    @EventHandler(ignoreCancelled = true) // TODO: Probably unnecessary: worldguard
-    public void onDamage(EntityDamageEvent event) {
-        this.ensureNotIllegal();
-        if (!(event.getEntity() instanceof Player player)) return;
-
-        if (this.isParticipant(player)) {
-            event.setCancelled(true);
-        }
     }
 
     @EventHandler(ignoreCancelled = true) // TODO: Probably unnecessary: worldguard
