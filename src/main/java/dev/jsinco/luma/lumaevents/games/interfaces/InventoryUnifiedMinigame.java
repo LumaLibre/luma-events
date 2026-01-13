@@ -33,6 +33,7 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
         this.addExtraListener(quitListener);
     }
 
+    // do not override
     @Override
     protected void onPreStart() {
         List<EventPlayer> removed = new ArrayList<>();

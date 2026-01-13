@@ -46,7 +46,7 @@ public class MinigameRoleMap<T extends MinigameRole> extends HashMap<UUID, T> im
 //    }
 
     @Nullable
-    public T as(UUID uuid, Class<T> type) {
+    public <K extends T> K as(UUID uuid, Class<K> type) {
         T player = this.get(uuid);
         if (type.isInstance(player)) {
             return type.cast(player);
@@ -54,8 +54,8 @@ public class MinigameRoleMap<T extends MinigameRole> extends HashMap<UUID, T> im
         return null;
     }
 
-    public <S extends MinigameRole> T swapRole(S propHuntPlayer, Supplier<T> newRoleSupplier) {
-        return this.swapRole(propHuntPlayer.getEventPlayer(), newRoleSupplier);
+    public <S extends MinigameRole> T swapRole(S rolePlayer, Supplier<T> newRoleSupplier) {
+        return this.swapRole(rolePlayer.getEventPlayer(), newRoleSupplier);
     }
 
     public T swapRole(EventPlayer eventPlayer, Supplier<T> newRoleSupplier) {

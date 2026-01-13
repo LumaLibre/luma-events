@@ -4,7 +4,7 @@ import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MicrogameMap;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameAlreadyStartedException;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameComponentIllegallyActive;
-import dev.jsinco.luma.lumaevents.games.interfaces.structures.Structure;
+import dev.jsinco.luma.lumaevents.games.interfaces.structures.GenericStructure;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import org.bukkit.Bukkit;
@@ -19,7 +19,7 @@ import java.util.List;
 public abstract class Microgame implements Listener {
 
     protected final List<EventPlayer> eventPlayers;
-    protected final Structure structure;
+    protected final GenericStructure structure;
     protected final WorldTiedBoundingBox boundingBox;
     private final Runnable delegateOnEnd;
     private final long timeLimit;
@@ -29,7 +29,7 @@ public abstract class Microgame implements Listener {
     private EventPlayer winner = null;
 
 
-    public Microgame(List<EventPlayer> eventPlayers, Structure structure, Runnable onEnd, long timeLimit, int padding) {
+    public Microgame(List<EventPlayer> eventPlayers, GenericStructure structure, Runnable onEnd, long timeLimit, int padding) {
         this.structure = structure;
         this.eventPlayers = eventPlayers;
         this.delegateOnEnd = onEnd;
@@ -145,12 +145,12 @@ public abstract class Microgame implements Listener {
 
 
         public <T extends Microgame> T create(Class<T> microgameClass) {
-            Structure structure = new Structure(origin, map.getStructureName());
+            GenericStructure structure = new GenericStructure(origin, map.getStructureName());
             try {
                 // using reflection is so dumb here
                 return microgameClass.getDeclaredConstructor(
                         List.class,
-                        Structure.class,
+                        GenericStructure.class,
                         Runnable.class,
                         long.class,
                         int.class

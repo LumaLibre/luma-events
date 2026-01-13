@@ -1,164 +1,121 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
-import com.google.common.base.Preconditions;
-import com.sk89q.worldedit.WorldEdit;
-import com.sk89q.worldedit.bukkit.BukkitAdapter;
-import com.sk89q.worldedit.extent.clipboard.Clipboard;
-import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat;
-import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
-import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
-import com.sk89q.worldedit.function.operation.Operation;
-import com.sk89q.worldedit.function.operation.Operations;
-import com.sk89q.worldedit.math.BlockVector3;
-import com.sk89q.worldedit.regions.CuboidRegion;
-import com.sk89q.worldedit.regions.Region;
-import com.sk89q.worldedit.session.ClipboardHolder;
-import com.sk89q.worldedit.EditSession;
-import com.sk89q.worldedit.world.World;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.TNTRunDefinition;
 import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
+import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRole;
+import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRoleMap;
+import dev.jsinco.luma.lumaevents.games.interfaces.structures.WorldEditStructure;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
-import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Executors;
-import dev.jsinco.luma.lumaevents.utility.Logger;
-import dev.jsinco.luma.lumaevents.utility.Util;
+import dev.lumas.lumacore.utility.Logging;
 import net.kyori.adventure.bossbar.BossBar;
-import org.bukkit.*;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
+import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityExplodeEvent;
-import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.BoundingBox;
-import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
+// TODO: finish cleanup & test
 public final class TNTRun extends InventoryUnifiedMinigame {
 
+    private static final double DECAY_PRECISION = 1.0e-4;
+
+    // TODO: Cleanup -> unnecessary fields
+
+    private final WorldEditStructure worldEditStructure;
     private final Location lobbyLocation;
     private final Location arenaOrigin;
     private final int decayDelayTicks;
     private final int eliminationHeight;
 
-    private volatile boolean arenaReady = false;
-    private volatile boolean decayArmed = false;
+    private volatile boolean arenaReady = false; // TODO: maybe unnecessary volatile?
+    private volatile boolean decayArmed = false; // TODO: maybe unnecessary volatile?
+    private boolean playersTeleported = false;
 
     private CountdownBossBar countdownBossBar;
     private CountdownBossBar gameTimerBossBar;
 
     private final Scoreboard<EventPlayer> scoreboard = new Scoreboard<>();
-    private final Set<UUID> eliminated = new HashSet<>();
-    private final Map<UUID, Set<UUID>> hiddenByViewer = new HashMap<>();
-
-    private final File mapsFolder =
-            new File(EventMain.getInstance().getDataFolder(), "assets/tntrun-maps");
-    private CuboidRegion pastedRegion = null;
-
-    private BukkitTask decayTask = null;
-    private long decayTick = 0L;
-
-    private record BlockPos(int x, int y, int z) {}
+    private final MinigameRoleMap<AbstractTNTRunPlayer> roleMap = new MinigameRoleMap<>(AbstractTNTRunPlayer::cleanup);
     private final Map<BlockPos, Long> decayQueue = new HashMap<>();
 
+    private long decayTick = 0L;
+    private BukkitTask decayTask = null;
     private BukkitTask waitingForArenaTask = null;
 
     public TNTRun(TNTRunDefinition def) {
         super("TNT Run", "Don't fall down!", def.getTimeLimitSeconds() * 1000L, def.getHeartbeatTicks(),
-                true, true, false, true);
+                false, true, false, true);
 
         this.decayDelayTicks = def.getDecayDelayTicks();
         this.lobbyLocation = def.getLobbyLocation();
         this.arenaOrigin = def.getArenaOrigin();
         this.eliminationHeight = def.getEliminationHeight();
+        this.worldEditStructure = new WorldEditStructure(arenaOrigin, def.getMapSchematic());
+        this.boundingBox = worldEditStructure.getBoundingBox();
     }
+
 
     @Override
-    protected void onPreStart() {
-        super.onPreStart();
-
-        this.arenaReady = false;
-        this.pastedRegion = null;
-        this.boundingBox = null;
-
-        File map = pickRandomMapFile();
-        if (map == null) {
-            Logger.logWrn("[TNTRun] No maps found in " + mapsFolder.getPath());
-            this.stop();
-            return;
-        }
-
-        Logger.log("[TNTRun] Pre-generating map: " + map.getName());
-
-        Executors.runAsync(() -> {
-            try {
-                Clipboard clipboard = loadClipboard(map);
-
-                org.bukkit.World bw = arenaOrigin.getWorld();
-                Preconditions.checkNotNull(bw, "arenaOrigin world is null");
-                World weWorld = BukkitAdapter.adapt(bw);
-
-                pastedRegion = computePastedRegion(clipboard, arenaOrigin);
-                this.boundingBox = regionToBoundingBox(bw, pastedRegion);
-
-                pasteClipboard(weWorld, clipboard, arenaOrigin);
-
-                Executors.runSync(() -> {
-                    if (this.isCancelled()) return;
-                    this.arenaReady = true;
-                    Logger.log("[TNTRun] Arena ready.");
-                });
-
-            } catch (Throwable t) {
-                Logger.logErr(t);
-                Executors.runSync(this::stop);
-            }
-        });
+    protected void tokenHandler(EventPlayer participant) {
+        // TODO: Implement
     }
+
 
     @Override
     protected void handleStart() {
-        this.decayArmed = false;
-        this.eliminated.clear();
-        decayQueue.clear();
 
-        this.decayTick = 0L;
-        stopDecayTask();
-        startDecayTask();
+        worldEditStructure.pasteAsync().whenComplete((vo, thr) -> {
+            Executors.runSync(() -> {
+                if (this.isCancelled()) return;
+                this.arenaReady = true;
+                Logging.log("[TNTRun] Arena ready.");
+            });
+        });
 
-        if (waitingForArenaTask != null) {
-            waitingForArenaTask.cancel();
-            waitingForArenaTask = null;
+        // TODO: callbacks for this probably
+        // Executors.runSync(this::stop);
+
+
+        for (EventPlayer eventPlayer : this.participants) {
+            ActiveTNTRunPlayer role = new ActiveTNTRunPlayer(eventPlayer, this);
+            this.roleMap.put(role);
         }
 
-        if (arenaReady) {
+
+        this.startDecayTask();
+
+        if (this.arenaReady) {
             Executors.runSync(this::teleportPlayersToArenaThenStartCountdown);
             return;
         }
 
-        waitingForArenaTask = Executors.repeatingSync(1L, () -> {
+        this.waitingForArenaTask = Executors.repeatingSync(1L, () -> {
             if (this.isCancelled()) {
                 if (waitingForArenaTask != null) waitingForArenaTask.cancel();
                 waitingForArenaTask = null;
                 return;
             }
 
-            if (!arenaReady) return;
+            if (!this.arenaReady) return;
 
             if (waitingForArenaTask != null) waitingForArenaTask.cancel();
             waitingForArenaTask = null;
@@ -169,75 +126,55 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     @Override
     protected void onRunnable(long timeLeft) {
-        if (!arenaReady) return;
+        if (!this.arenaReady) return;
 
-        Executors.runSync(() -> {
-            for (EventPlayer ep : this.participants) {
-                if (eliminated.contains(ep.getUuid())) continue;
-                Player p = ep.getPlayer();
-                if (p == null) continue;
+        if (!this.playersTeleported) {
+            this.playersTeleported = true;
+            this.teleportPlayersToArenaThenStartCountdown();
+        }
 
-                if (p.getLocation().getY() < eliminationHeight) {
-                    eliminate(ep);
-                    continue;
-                }
 
-                if (decayArmed && p.getGameMode() == GameMode.SURVIVAL) {
-                    scheduleDecayUnderFootprint(p);
-                }
-            }
+        for (AbstractTNTRunPlayer tntRunPlayer : this.roleMap) {
+            tntRunPlayer.tick();
+        }
 
-            for (EventPlayer ep : this.participants) {
-                if (eliminated.contains(ep.getUuid())) continue;
-                scoreboard.addScore(ep, 1);
-            }
-
-            if (aliveCount() <= 1) this.stop();
-        });
+        if (this.roleMap.getMatching(ActiveTNTRunPlayer.class).size() <= 1) {
+            this.stop();
+        }
     }
 
     @Override
     protected void handleStop() {
-        if (waitingForArenaTask != null) {
-            waitingForArenaTask.cancel();
-            waitingForArenaTask = null;
-        }
-        stopDecayTask();
-        unsafe(() -> {
-            if (countdownBossBar != null && !countdownBossBar.isCancelled()) countdownBossBar.stop(false);
-            if (gameTimerBossBar != null && !gameTimerBossBar.isCancelled()) gameTimerBossBar.stop(false);
-        });
-
         this.decayArmed = false;
 
-        Executors.runSync(() -> {
-            for (EventPlayer ep : this.participants) {
-                Player player = ep.getPlayer();
-                ep.teleportAsync(this.lobbyLocation);
-                if (player != null) {
-                    player.setAllowFlight(false);
-                    player.setFlying(false);
-                    cleanPlayer(player);
-                }
+        unsafe(() -> {
+            if (waitingForArenaTask != null) {
+                waitingForArenaTask.cancel();
+                waitingForArenaTask = null;
             }
-            restoreAllVisibility();
         });
 
-        CuboidRegion region = this.pastedRegion;
-        if (region != null) {
-            Executors.runAsync(() -> {
-                try (EditSession session = WorldEdit.getInstance().newEditSession(region.getWorld())) {
-                    session.setBlocks((Region) region, com.sk89q.worldedit.world.block.BlockTypes.AIR.getDefaultState());
-                    session.flushQueue();
-                } catch (Throwable t) {
-                    Logger.logErr(t);
-                }
-            });
+        unsafe(this::stopDecayTask);
+
+        unsafe(() -> {
+
+            if (countdownBossBar != null && !countdownBossBar.isCancelled()) {
+                countdownBossBar.stop(false);
+            }
+            if (gameTimerBossBar != null && !gameTimerBossBar.isCancelled()) {
+                gameTimerBossBar.stop(false);
+            }
+        });
+
+        for (AbstractTNTRunPlayer tntRunPlayer : this.roleMap) {
+            tntRunPlayer.cleanup();
+            tntRunPlayer.getEventPlayer().teleportAsync(this.lobbyLocation);
         }
 
-        this.pastedRegion = null;
-        decayQueue.clear();
+        this.worldEditStructure.remove();
+        this.decayQueue.clear();
 
+        // TODO: fixup
         this.scoreboard.handleGameEnd(this.audience, () -> {
             CountdownBossBar.builder()
                     .audience(this.audience)
@@ -256,35 +193,16 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     }
 
     @Override
-    protected boolean handleParticipantJoin(EventPlayer player) {
-        super.handleParticipantJoin(player);
-        player.teleportAsync(this.lobbyLocation);
-        return true;
+    protected boolean handleParticipantJoin(EventPlayer eventPlayer) {
+        eventPlayer.teleportAsync(this.lobbyLocation);
+        return super.handleParticipantJoin(eventPlayer);
     }
 
     @Override
     public boolean removeParticipant(EventPlayer participant) {
-        UUID uuid = participant.getUuid();
-        eliminated.add(uuid);
-        Executors.runSync(() -> {
-            Player leaving = participant.getPlayer();
-            if (leaving != null) {
-                for (EventPlayer ep : this.participants) {
-                    Player viewer = ep.getPlayer();
-                    if (viewer != null && !viewer.getUniqueId().equals(uuid)) {
-                        viewer.showPlayer(EventMain.getInstance(), leaving);
-                    }
-                }
-            }
-            hiddenByViewer.remove(uuid);
-            for (Set<UUID> set : hiddenByViewer.values()) set.remove(uuid);
-        });
+        AbstractTNTRunPlayer tntRunPlayer = this.roleMap.remove(participant.getUuid());
+        tntRunPlayer.cleanup();
         return super.removeParticipant(participant);
-    }
-
-    @Override
-    protected void tokenHandler(EventPlayer participant) {
-
     }
 
     private void startDecayTask() {
@@ -303,16 +221,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     }
 
     private void teleportPlayersToArenaThenStartCountdown() {
-        for (EventPlayer ep : this.participants) {
-            Player p = ep.getPlayer();
-            if (p != null) {
-                cleanPlayer(p);
-                p.addPotionEffect(new PotionEffect(
-                    PotionEffectType.SATURATION, PotionEffect.INFINITE_DURATION,
-                    0, false, false, false
-                ));
-            }
-            ep.teleportAsync(arenaOrigin);
+        for (EventPlayer eventPlayer : this.participants) {
+            eventPlayer.teleportAsync(this.arenaOrigin);
         }
 
         this.countdownBossBar = CountdownBossBar.builder()
@@ -321,9 +231,9 @@ public final class TNTRun extends InventoryUnifiedMinigame {
                 .color(net.kyori.adventure.bossbar.BossBar.Color.YELLOW)
                 .seconds(10)
                 .callback(() -> {
-                    this.sendAudienceMessage("<green>TNTRun started!</green>");
+                    this.sendAudienceMessage("<green>TNT Run started!</green>");
                     this.decayArmed = true;
-                    startGameTimerBossBar();
+                    this.startGameTimerBossBar();
                 })
                 .build()
                 .start();
@@ -343,18 +253,19 @@ public final class TNTRun extends InventoryUnifiedMinigame {
                 .start();
     }
 
-    private static final double PRECISION = 1.0e-4;
-    private void scheduleDecayUnderFootprint(Player p) {
-        if (!decayArmed) return;
+    private void scheduleDecayUnderFootprint(Player player) {
+        if (!this.decayArmed) {
+            return;
+        }
 
-        BoundingBox bb = p.getBoundingBox();
-        int minX = (int) Math.floor(bb.getMinX() + PRECISION);
-        int maxX = (int) Math.floor(bb.getMaxX() - PRECISION);
-        int minZ = (int) Math.floor(bb.getMinZ() + PRECISION);
-        int maxZ = (int) Math.floor(bb.getMaxZ() - PRECISION);
-        int y0 = (int) Math.floor(bb.getMinY() - PRECISION);
+        BoundingBox bb = player.getBoundingBox();
+        int minX = (int) Math.floor(bb.getMinX() + DECAY_PRECISION);
+        int maxX = (int) Math.floor(bb.getMaxX() - DECAY_PRECISION);
+        int minZ = (int) Math.floor(bb.getMinZ() + DECAY_PRECISION);
+        int maxZ = (int) Math.floor(bb.getMaxZ() - DECAY_PRECISION);
+        int y0 = (int) Math.floor(bb.getMinY() - DECAY_PRECISION);
 
-        org.bukkit.World w = p.getWorld();
+        org.bukkit.World w = player.getWorld();
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
                 for (int dy = 0; dy <= 1; dy++) {
@@ -369,13 +280,12 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     }
 
     private void processDecayQueue() {
-        if (!arenaReady || !decayArmed) return;
-        if (decayQueue.isEmpty()) return;
+        if (!this.arenaReady || !this.decayArmed || this.decayQueue.isEmpty()) return;
 
-        org.bukkit.World w = arenaOrigin.getWorld();
-        if (w == null) return;
+        World world = arenaOrigin.getWorld();
+        if (world == null) return;
 
-        long nowTick = decayTick;
+        long nowTick = this.decayTick;
 
         Iterator<Map.Entry<BlockPos, Long>> it = decayQueue.entrySet().iterator();
         while (it.hasNext()) {
@@ -385,42 +295,18 @@ public final class TNTRun extends InventoryUnifiedMinigame {
             BlockPos pos = e.getKey();
             it.remove();
 
-            Block b = w.getBlockAt(pos.x(), pos.y(), pos.z());
-            Material type = b.getType();
+            Block block = world.getBlockAt(pos.x(), pos.y(), pos.z());
+            Material type = block.getType();
 
             if (type.isAir() || !type.hasGravity()) continue;
 
-            b.setType(Material.AIR, false);
+            block.setType(Material.AIR, false);
 
-            Block under = b.getRelative(0, -1, 0);
+            Block under = block.getRelative(0, -1, 0);
             if (under.getType() == Material.TNT) {
                 under.setType(Material.AIR, false);
             }
         }
-    }
-
-    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
-    public void onMove(PlayerMoveEvent event) {
-        this.ensureNotIllegal();
-        if (!arenaReady) return;
-        if (!decayArmed) return;
-
-        Location to = event.getTo();
-        Player player = event.getPlayer();
-        if (!isParticipant(player.getUniqueId())) return;
-        if (eliminated.contains(player.getUniqueId())) return;
-        if (player.getGameMode() != GameMode.SURVIVAL) return;
-
-        if ( // Only process when moving across block borders
-            event.getFrom().getBlockX() == event.getTo().getBlockX()
-            && event.getFrom().getBlockY() == event.getTo().getBlockY()
-            && event.getFrom().getBlockZ() == event.getTo().getBlockZ()
-        ) return;
-
-        Block belowTo = to.getWorld().getBlockAt(to.getBlockX(), to.getBlockY() - 1, to.getBlockZ());
-        Material m = belowTo.getType();
-        if (m.isAir() || !m.hasGravity()) return;
-        scheduleDecay(belowTo);
     }
 
     private void scheduleDecay(Block block) {
@@ -430,183 +316,184 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         );
     }
 
-    private void eliminate(EventPlayer ep) {
-        if (!eliminated.add(ep.getUuid())) return;
-        Player player = ep.getPlayer();
-        if (player == null) return;
-
-        cleanPlayer(player);
-        player.setAllowFlight(true);
-        player.setFlying(true);
-
-        ep.teleportAsync(arenaOrigin);
-        updateSpectatorVisibilityFor(ep.getUuid());
-
-        player.playSound(player, Sound.ENTITY_ALLAY_DEATH, SoundCategory.MASTER, 1.0f, 1.0f);
-        Util.sendMsg(player, "<red>You have been eliminated!");
-    }
-
-    private int aliveCount() {
-        int alive = 0;
-        for (EventPlayer p : this.participants) {
-            if (!eliminated.contains(p.getUuid())) alive++;
-        }
-        return alive;
-    }
-
-    private boolean isParticipant(UUID uuid) {
-        return this.participants.stream().anyMatch(p -> p.getUuid().equals(uuid));
-    }
-
-    private void updateSpectatorVisibilityFor(UUID eliminatedId) {
-        Player eliminatedPlayer = Bukkit.getPlayer(eliminatedId);
-        if (eliminatedPlayer == null) return;
-
-        for (EventPlayer viewerEp : this.participants) {
-            Player viewer = viewerEp.getPlayer();
-            if (viewer == null) continue;
-            if (viewer.getUniqueId().equals(eliminatedId)) continue;
-
-            viewer.hidePlayer(EventMain.getInstance(), eliminatedPlayer);
-            hiddenByViewer.computeIfAbsent(viewer.getUniqueId(), k -> new HashSet<>()).add(eliminatedId);
-        }
-
-        for (EventPlayer targetEp : this.participants) {
-            UUID targetId = targetEp.getUuid();
-            Player target = targetEp.getPlayer();
-            if (target == null) continue;
-            if (targetId.equals(eliminatedId)) continue;
-
-            if (eliminated.contains(targetId)) {
-                eliminatedPlayer.hidePlayer(EventMain.getInstance(), target);
-                hiddenByViewer.computeIfAbsent(eliminatedId, k -> new HashSet<>()).add(targetId);
-            } else {
-                eliminatedPlayer.showPlayer(EventMain.getInstance(), target);
-                Set<UUID> set = hiddenByViewer.get(eliminatedId);
-                if (set != null) set.remove(targetId);
-            }
-        }
-    }
-
-    private void restoreAllVisibility() {
-        for (EventPlayer a : this.participants) {
-            Player pa = a.getPlayer();
-            if (pa == null) continue;
-            for (EventPlayer b : this.participants) {
-                Player pb = b.getPlayer();
-                if (pb == null) continue;
-                pa.showPlayer(EventMain.getInstance(), pb);
-            }
-        }
-        hiddenByViewer.clear();
-    }
-
-    private void cleanPlayer(Player player) {
-        player.clearActivePotionEffects();
-        player.setHealth(20.0);
-        player.setFireTicks(0);
-        player.setFoodLevel(20);
-        player.setExp(0.0f);
-        player.setLevel(0);
-        player.getInventory().clear();
-        player.updateInventory();
-    }
-
+    // TODO: Why is priority low
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onMove(PlayerMoveEvent event) {
+        if (!event.hasChangedBlock() || !this.decayArmed) return;
+        this.ensureNotIllegal();
+
+        Player player = event.getPlayer();
+        ActiveTNTRunPlayer activeTntRunPlayer = this.roleMap.as(player.getUniqueId(), ActiveTNTRunPlayer.class);
+
+        if (activeTntRunPlayer == null) {
+            return;
+        }
+
+        Location from = event.getFrom();
+        Location to = event.getTo();
+        // Only process when moving across block borders
+        if (from.getBlockX() == to.getBlockX() && from.getBlockY() == to.getBlockY() && from.getBlockZ() == to.getBlockZ()) {
+            return;
+        }
+
+        Block blockBelow = event.getTo().getBlock().getRelative(BlockFace.DOWN);
+        Material type = blockBelow.getType();
+        if (type.isAir() || !type.hasGravity()) {
+            return;
+        }
+
+        this.scheduleDecay(blockBelow);
+    }
+
+
+    @EventHandler(ignoreCancelled = true) // TODO: Probably unnecessary: worldguard
     public void onDamage(EntityDamageEvent event) {
         this.ensureNotIllegal();
-        if (!(event.getEntity() instanceof Player p)) return;
-        if (!isParticipant(p.getUniqueId())) return;
-        event.setCancelled(true);
+        if (!(event.getEntity() instanceof Player player)) return;
+
+        if (this.isParticipant(player)) {
+            event.setCancelled(true);
+        }
     }
 
-    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    @EventHandler(ignoreCancelled = true) // TODO: Probably unnecessary: worldguard
     public void onBreak(BlockBreakEvent event) {
         this.ensureNotIllegal();
-        if (!isParticipant(event.getPlayer().getUniqueId())) return;
-        event.setCancelled(true);
+
+        if (this.isParticipant(event.getPlayer())) {
+            event.setCancelled(true);
+        }
     }
 
+    // TODO: Unnecessary listener? When would a player be able to place a block?
+    // TODO: Probably unnecessary: worldguard
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
         this.ensureNotIllegal();
-        if (!isParticipant(event.getPlayer().getUniqueId())) return;
-        event.setCancelled(true);
-    }
-
-    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
-    public void onExplosionPrime(ExplosionPrimeEvent event) {
-        this.ensureNotIllegal();
-        if (event.getEntity() instanceof TNTPrimed) {
-            event.setCancelled(true);
-            event.getEntity().remove();
-        }
-    }
-
-    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
-    public void onTntExplode(EntityExplodeEvent event) {
-        this.ensureNotIllegal();
-        if (event.getEntity() instanceof TNTPrimed) {
-            event.blockList().clear();
+        if (this.isParticipant(event.getPlayer())) {
             event.setCancelled(true);
         }
     }
 
-    private @Nullable File pickRandomMapFile() {
-        if (!mapsFolder.exists()) mapsFolder.mkdirs();
-        File[] files = mapsFolder.listFiles(f ->
-                f.isFile() && (f.getName().endsWith(".schem") || f.getName().endsWith(".schematic"))
-        );
-        if (files == null || files.length == 0) return null;
-        return files[ThreadLocalRandom.current().nextInt(files.length)];
+
+
+    public static abstract class AbstractTNTRunPlayer extends MinigameRole {
+        protected final TNTRun context;
+
+        protected AbstractTNTRunPlayer(EventPlayer eventPlayer, TNTRun context) {
+            super(eventPlayer);
+            this.context = context;
+        }
+
+        public abstract void cleanup();
+
+        public abstract void tick();
     }
 
-    private static Clipboard loadClipboard(File file) throws Exception {
-        ClipboardFormat format = ClipboardFormats.findByFile(file);
-        if (format == null) throw new IllegalArgumentException("Unknown schematic format: " + file.getName());
 
-        try (ClipboardReader reader = format.getReader(new FileInputStream(file))) {
-            return reader.read();
+    public static class ActiveTNTRunPlayer extends AbstractTNTRunPlayer {
+        protected ActiveTNTRunPlayer(EventPlayer eventPlayer, TNTRun context) {
+            super(eventPlayer, context);
+        }
+
+        @Override
+        public void cleanup() {
+
+        }
+
+        @Override
+        public void tick() {
+            Player player = this.eventPlayer.getPlayer();
+
+            if (player == null) {
+                return;
+            }
+
+            player.setFoodLevel(20);
+
+            if (player.getLocation().getY() < this.context.eliminationHeight) {
+                this.eliminate();
+                return;
+            }
+
+            if (this.context.decayArmed) {
+                this.context.scheduleDecayUnderFootprint(player);
+            }
+
+            // add score
+            this.context.scoreboard.addScore(this.eventPlayer, 1);
+        }
+
+
+        public void eliminate() {
+            // swap to spectator role
+            this.context.roleMap.swapRole(this, () -> new TNTRunSpectator(this.eventPlayer, this.context));
+
+            this.eventPlayer.operatePlayer(player -> {
+                player.playSound(player, Sound.ENTITY_ALLAY_DEATH, SoundCategory.MASTER, 1.0f, 1.0f);
+            });
+            this.eventPlayer.sendMessage("<red>You have been eliminated!");
         }
     }
 
-    private static void pasteClipboard(World weWorld, Clipboard clipboard, Location pasteAt) throws Exception {
-        BlockVector3 to = BlockVector3.at(pasteAt.getBlockX(), pasteAt.getBlockY(), pasteAt.getBlockZ());
+    private static class TNTRunSpectator extends AbstractTNTRunPlayer {
 
-        try (EditSession session = WorldEdit.getInstance().newEditSession(weWorld)) {
-            Operation op = new ClipboardHolder(clipboard)
-                    .createPaste(session)
-                    .to(to)
-                    .ignoreAirBlocks(false)
-                    .build();
+        protected TNTRunSpectator(EventPlayer eventPlayer, TNTRun context) {
+            super(eventPlayer, context);
+            this.hide();
+        }
 
-            Operations.complete(op);
-            session.flushQueue();
+        @Override
+        public void cleanup() {
+            this.show();
+            this.eventPlayer.operatePlayer(player -> {
+                player.setAllowFlight(false);
+                player.setFlying(false);
+            });
+        }
+
+        public void hide() {
+            Executors.runSync(() -> {
+                Player self = this.getEventPlayer().getPlayer();
+                if (self == null) return;
+
+                for (EventPlayer other : this.context.getParticipants()) {
+                    Player bukkitOther = other.getPlayer();
+                    if (bukkitOther == null) continue;
+
+                    bukkitOther.hidePlayer(EventMain.getInstance(), self);
+                }
+            });
+        }
+
+        public void show() {
+            Executors.runSync(() -> {
+                Player self = this.getEventPlayer().getPlayer();
+                if (self == null) return;
+
+                for (EventPlayer other : this.context.getParticipants()) {
+                    Player bukkitOther = other.getPlayer();
+                    if (bukkitOther == null) continue;
+
+                    bukkitOther.showPlayer(EventMain.getInstance(), self);
+                }
+            });
+        }
+
+        @Override
+        public void tick() {
+            this.eventPlayer.operatePlayer(player -> {
+                if (!player.getAllowFlight()) { // Other plugins may interfere
+                    player.setAllowFlight(true);
+                }
+
+                if (!player.isFlying()) { // Some players are not aware that they can fly, force them to fly
+                    player.setFlying(true);
+                }
+            });
         }
     }
 
-    private static CuboidRegion computePastedRegion(Clipboard clipboard, Location pasteAt) {
-        org.bukkit.World bw = pasteAt.getWorld();
-        Preconditions.checkNotNull(bw, "pasteAt world is null");
-        World weWorld = BukkitAdapter.adapt(bw);
 
-        BlockVector3 clipMin = clipboard.getRegion().getMinimumPoint();
-        BlockVector3 clipMax = clipboard.getRegion().getMaximumPoint();
-        BlockVector3 clipOrigin = clipboard.getOrigin();
-
-        BlockVector3 base = BlockVector3.at(pasteAt.getBlockX(), pasteAt.getBlockY(), pasteAt.getBlockZ());
-
-        BlockVector3 worldMin = base.add(clipMin.subtract(clipOrigin));
-        BlockVector3 worldMax = base.add(clipMax.subtract(clipOrigin));
-
-        return new CuboidRegion(weWorld, worldMin, worldMax);
-    }
-
-    private static WorldTiedBoundingBox regionToBoundingBox(org.bukkit.World bw, CuboidRegion region) {
-        BlockVector3 min = region.getMinimumPoint();
-        BlockVector3 max = region.getMaximumPoint();
-        Location lMin = new Location(bw, min.x(), min.y(), min.z());
-        Location lMax = new Location(bw, max.x(), max.y(), max.z());
-        return WorldTiedBoundingBox.of(lMin, lMax);
-    }
+    private record BlockPos(int x, int y, int z) {}
 }

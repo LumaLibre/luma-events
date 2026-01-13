@@ -6,7 +6,7 @@ import dev.jsinco.luma.lumaevents.games.exceptions.MinigameException;
 import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRole;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRoleMap;
-import dev.jsinco.luma.lumaevents.games.interfaces.structures.Structure;
+import dev.jsinco.luma.lumaevents.games.interfaces.structures.GenericStructure;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.utility.Executors;
@@ -29,7 +29,7 @@ public class PanelParty extends InventoryUnifiedMinigame {
 
     private final Location spawnLocation;
     private final Location center;
-    private final List<Structure> panels;
+    private final List<GenericStructure> panels;
 
     private final MinigameRoleMap<AbstractPanelPlayer> roleMap;
 
@@ -46,7 +46,7 @@ public class PanelParty extends InventoryUnifiedMinigame {
         this.spawnLocation = def.getSpawnLocation();
         this.center = def.getCenter();
         this.panels = def.getSchematics().stream()
-                .map(fileName -> new Structure(this.center, fileName))
+                .map(fileName -> new GenericStructure(this.center, fileName))
                 .toList();
         this.roleMap = new MinigameRoleMap<>();
         this.currentBlockDataCount = new HashMap<>();
@@ -101,7 +101,7 @@ public class PanelParty extends InventoryUnifiedMinigame {
         }
 
         // paste the next panel and count block data
-        Structure panel = this.panels.get(this.round);
+        GenericStructure panel = this.panels.get(this.round);
         System.out.println("Pasting panel for round " + (this.round + 1));
         panel.paste((vector3i, blockData) -> {
             Integer count = currentBlockDataCount.getOrDefault(blockData, 0);

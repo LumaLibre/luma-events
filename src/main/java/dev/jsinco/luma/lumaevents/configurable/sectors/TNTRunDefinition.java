@@ -4,6 +4,8 @@ import eu.okaeri.configs.OkaeriConfig;
 import lombok.Getter;
 import org.bukkit.Location;
 
+import java.util.List;
+
 @Getter
 public class TNTRunDefinition extends OkaeriConfig {
 
@@ -15,5 +17,7 @@ public class TNTRunDefinition extends OkaeriConfig {
 
     private int decayDelayTicks = 20;
     private int eliminationHeight = 0;
+
+    private String mapSchematic;
 
 }

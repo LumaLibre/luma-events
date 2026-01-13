@@ -303,6 +303,13 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         return true;
     }
 
+    protected boolean isParticipant(Player player) {
+        return this.participants.stream()
+                .map(EventPlayer::getUuid)
+                .filter(Objects::nonNull)
+                .anyMatch(uuid -> uuid.equals(player.getUniqueId()));
+    }
+
     protected boolean isInBoundingBox(EventPlayer... players) {
         for (EventPlayer p : players) {
             Player bukkitPlayer = p.getPlayer();
