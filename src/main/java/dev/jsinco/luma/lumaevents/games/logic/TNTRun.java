@@ -17,10 +17,9 @@ import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Executors;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.lumas.lumacore.utility.Logging;
+import dev.lumas.lumacore.utility.Text;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -40,7 +39,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.EquipmentSlot;
-import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -50,6 +48,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.Nullable;
 import org.joml.AxisAngle4f;
 
 import java.util.ArrayDeque;
@@ -511,30 +510,81 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
 
     private enum PowerupType {
-        UPDRAFT_SMALL("updraft_small", Material.FEATHER),
-        UPDRAFT_BIG("updraft_big", Material.FIREWORK_ROCKET),
-        SLOW_FALL("slow_fall", Material.PHANTOM_MEMBRANE),
-        JUMP_SPEED("jump_speed", Material.RABBIT_FOOT),
-        PLATFORM("platform", Material.BEDROCK);
+        UPDRAFT_SMALL(Material.FEATHER, "<aqua><b>Small Updraft") {
+            @Override
+            public boolean handle(TNTRun ctx, Player player) {
+                if (!ctx.checkAndApplyUpdraftCooldown(player)) return false;
+                org.bukkit.util.Vector v = player.getVelocity();
+                player.setVelocity(new Vector(v.getX(), Math.max(v.getY(), ctx.smallUpdraftY), v.getZ()));
+                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BAT_TAKEOFF, SoundCategory.MASTER, 1.0f, 1.1f);
+                return true;
+            }
+        },
+        UPDRAFT_BIG(Material.FIREWORK_ROCKET, "<aqua><b>Big Updraft") {
+            @Override
+            public boolean handle(TNTRun ctx, Player player) {
+                if (!ctx.checkAndApplyUpdraftCooldown(player)) return false;
+                org.bukkit.util.Vector v = player.getVelocity();
+                player.setVelocity(new org.bukkit.util.Vector(v.getX(), Math.max(v.getY(), ctx.bigUpdraftY), v.getZ()));
+                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, SoundCategory.MASTER, 1.0f, 1.1f);
+                return true;
+            }
+        },
+        SLOW_FALL(Material.PHANTOM_MEMBRANE, "<aqua><b>Slow Falling") {
+            @Override
+            public boolean handle(TNTRun ctx, Player player) {
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, ctx.slowFallingTicks, 0, false, false, true));
+                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ALLAY_AMBIENT_WITHOUT_ITEM, SoundCategory.MASTER, 1.0f, 1.2f);
+                return true;
+            }
+        },
+        JUMP_SPEED(Material.RABBIT_FOOT, "<aqua><b>Jump & Speed") {
+            @Override
+            public boolean handle(TNTRun ctx, Player player) {
+                player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, ctx.jumpSpeedTicks, 1, false, false, true));
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, ctx.jumpSpeedTicks, 0, false, false, true));
+                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_RABBIT_JUMP, SoundCategory.MASTER, 1.0f, 1.1f);
+                return true;
+            }
+        },
+        PLATFORM(Material.BEDROCK, "<aqua><b>Temporary Platform") {
+            @Override
+            public boolean handle(TNTRun ctx, Player player) {
+                ctx.spawnTemporaryPlatform(player);
+                player.getWorld().playSound(player.getLocation(), Sound.BLOCK_STONE_PLACE, SoundCategory.MASTER, 0.9f, 0.8f);
+                return true;
+            }
+        };
 
-        final String id;
-        final Material displayMat;
+        final Material material;
+        final Component displayName;
 
-        PowerupType(String id, Material displayMat) {
-            this.id = id;
-            this.displayMat = displayMat;
+
+
+        PowerupType(Material material, String displayName) {
+            this.material = material;
+            this.displayName = Text.mmNoItalic(displayName);
         }
 
+        public abstract boolean handle(TNTRun ctx, Player player);
+
+
+        public ItemStack createPowerupItem() {
+            return Util.createItem(this.material, meta -> {
+                meta.getPersistentDataContainer().set(POWERUP_ID_KEY, PersistentDataType.STRING, this.toString());
+                meta.displayName(this.displayName);
+                meta.lore(Text.mml("<gray>Right-click to activate"));
+            });
+        }
+
+
+        @Nullable
         static PowerupType fromId(String id) {
-            for (PowerupType t : values()) {
-                if (t.id.equalsIgnoreCase(id)) return t;
-            }
-            return null;
+            return Util.getEnumFromString(PowerupType.class, id);
         }
 
         static PowerupType random() {
-            PowerupType[] v = values();
-            return v[ThreadLocalRandom.current().nextInt(v.length)];
+            return Util.getRandom(values());
         }
     }
 
@@ -639,19 +689,19 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     private void spawnPowerupDisplay(org.bukkit.World w, int x, int y, int z, PowerupType type) {
         Location loc = new Location(w, x + 0.5, y + 0.75, z + 0.5);
-        ItemStack reward = createPowerupItem(type);
+        ItemStack reward = type.createPowerupItem();
 
 
         ItemDisplay display = w.spawn(loc, ItemDisplay.class, d -> {
             d.setItemStack(reward.clone());
-            d.getPersistentDataContainer().set(POWERUP_ID_KEY, PersistentDataType.STRING, type.id);
+            d.getPersistentDataContainer().set(POWERUP_ID_KEY, PersistentDataType.STRING, type.toString());
             d.setBillboard(Display.Billboard.CENTER);
             Transformation t = d.getTransformation();
             t.getScale().set(0.67f, 0.67f, 0.67f);
             d.setTransformation(t);
         });
 
-        powerupByEntity.put(display.getUniqueId(), type.id);
+        powerupByEntity.put(display.getUniqueId(), type.toString());
         powerupItemByEntity.put(display.getUniqueId(), reward);
     }
 
@@ -712,7 +762,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         if (type == null) return;
 
         event.setCancelled(true);
-        if (!applyPowerupEffect(player, type)) return;
+        if (!type.handle(this, player)) return;
         consumeOneMainHand(player);
     }
 
@@ -723,68 +773,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         inHand.setAmount(inHand.getAmount() - 1);
     }
 
-    private ItemStack createPowerupItem(PowerupType type) {
-        ItemStack stack = new ItemStack(type.displayMat, 1);
-        ItemMeta meta = stack.getItemMeta();
 
-        meta.getPersistentDataContainer().set(POWERUP_ID_KEY, PersistentDataType.STRING, type.id);
-
-        Component name = switch (type) {
-            case UPDRAFT_SMALL -> Component.text("Small Updraft", NamedTextColor.AQUA);
-            case UPDRAFT_BIG -> Component.text("Rocket Boost", NamedTextColor.AQUA);
-            case SLOW_FALL -> Component.text("Slow Falling", NamedTextColor.AQUA);
-            case JUMP_SPEED -> Component.text("Jump & Speed", NamedTextColor.AQUA);
-            case PLATFORM -> Component.text("Temp Platform", NamedTextColor.AQUA);
-        };
-
-        meta.displayName(name.decoration(TextDecoration.ITALIC, false));
-        meta.lore(List.of(
-                Component.text("(right-click)", NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
-        ));
-        meta.addItemFlags(ItemFlag.values());
-        stack.setItemMeta(meta);
-        return stack;
-    }
-
-    private boolean applyPowerupEffect(Player player, PowerupType type) {
-        switch (type) {
-            case UPDRAFT_SMALL -> {
-                if (!checkAndApplyUpdraftCooldown(player)) return false;
-                org.bukkit.util.Vector v = player.getVelocity();
-                player.setVelocity(new Vector(v.getX(), Math.max(v.getY(), smallUpdraftY), v.getZ()));
-                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BAT_TAKEOFF, SoundCategory.MASTER, 1.0f, 1.1f);
-                return true;
-            }
-
-            case UPDRAFT_BIG -> {
-                if (!checkAndApplyUpdraftCooldown(player)) return false;
-                org.bukkit.util.Vector v = player.getVelocity();
-                player.setVelocity(new org.bukkit.util.Vector(v.getX(), Math.max(v.getY(), bigUpdraftY), v.getZ()));
-                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, SoundCategory.MASTER, 1.0f, 1.1f);
-                return true;
-            }
-
-            case SLOW_FALL -> {
-                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, slowFallingTicks, 0, false, false, true));
-                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ALLAY_AMBIENT_WITHOUT_ITEM, SoundCategory.MASTER, 1.0f, 1.2f);
-                return true;
-            }
-
-            case JUMP_SPEED -> {
-                player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, jumpSpeedTicks, 1, false, false, true)); // Jump Boost 2 => amplifier 1
-                player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, jumpSpeedTicks, 0, false, false, true));      // Speed 1 => amplifier 0
-                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_RABBIT_JUMP, SoundCategory.MASTER, 1.0f, 1.1f);
-                return true;
-            }
-
-            case PLATFORM -> {
-                spawnTemporaryPlatform(player);
-                player.getWorld().playSound(player.getLocation(), Sound.BLOCK_STONE_PLACE, SoundCategory.MASTER, 0.9f, 0.8f);
-                return true;
-            }
-        }
-        return false;
-    }
 
     private boolean checkAndApplyUpdraftCooldown(Player player) {
         long now = decayTick;
