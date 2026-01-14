@@ -68,21 +68,22 @@ import java.util.concurrent.atomic.AtomicInteger;
 // TODO: finish cleanup & test
 public final class TNTRun extends InventoryUnifiedMinigame {
 
+    private static final BlockData AIR_BLOCK_DATA = Material.AIR.createBlockData();
     private static final double DECAY_PRECISION = 1.0e-4;
-    private static final NamespacedKey POWERUP_ID_KEY = new NamespacedKey(EventMain.getInstance(), "tntrun_powerup_id");
+    private static final NamespacedKey POWERUP_ID_KEY = new NamespacedKey(EventMain.getInstance(), "tnt-run-powerup");
 
     // TODO: Cleanup -> unnecessary fields
 
     private final WorldEditStructure worldEditStructure;
     private final Location lobbyLocation;
     private final Location arenaOrigin;
-    private final int decayDelayTicks;
-    private final int eliminationHeight;
+    private final int decayDelayTicks; // TODO: could be hardcoded
+    private final int eliminationHeight; // TODO: this should be done dynamically based on arena bounding box
 
-    private final boolean powerupsEnabled;
-    private final int powerupMaxAlive;
-    private final int powerupSpawnPeriodTicks;
-    private final int powerupSpawnAttempts;
+    private final boolean powerupsEnabled; // TODO: unnecessary config
+    private final int powerupMaxAlive; // TODO: this could be hardcoded
+    private final int powerupSpawnPeriodTicks; // TODO: should be hardcoded
+    private final int powerupSpawnAttempts; // TODO: should be hardcoded
 
     private final int slowFallingTicks;
     private final int updraftCooldownTicks;
@@ -102,35 +103,37 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private final Map<BlockPos, Long> decayQueue = new HashMap<>();
 
     private long decayTick = 0L;
-    private BukkitTask decayTask = null;
+    private BukkitTask decayTask = null; // TODO: Use the game's built in scheduler
 
-    private BukkitTask powerupTask = null;
-    private BukkitTask powerupSpinTask = null;
-    private float powerupSpinAngle = 0f;
+    private BukkitTask powerupTask = null; // TODO: Use the game's built in scheduler
+    private BukkitTask powerupSpinTask = null; // TODO: use items instead of displays
+    private float powerupSpinAngle = 0f; // TODO: use items instead of displays
 
 
-    // TODO?
+
     private final Map<UUID, String> powerupByEntity = new HashMap<>();
     private final Map<UUID, ItemStack> powerupItemByEntity = new HashMap<>();
     private final Map<UUID, Long> updraftCooldownUntilTick = new HashMap<>();
 
-
+    // TODO: This powerup should be rewritten or removed probably
     private final Map<UUID, PlatformInstance> platformById = new HashMap<>();
     private final Map<UUID, Set<UUID>> platformIdsByOwner = new HashMap<>();
     private final Map<BlockPos, Deque<UUID>> platformStackByBlock = new HashMap<>();
     private final Map<BlockPos, BlockData> platformTrueOriginalByBlock = new HashMap<>();
 
     public TNTRun(TNTRunDefinition def) {
+        // TODO: Unnecessary configuration: See other games
         super("TNT Run", "Don't fall down!", def.getTimeLimitSeconds() * 1000L, def.getHeartbeatTicks(),
                 false, true, false, true);
 
-        this.decayDelayTicks = def.getDecayDelayTicks();
+        this.decayDelayTicks = def.getDecayDelayTicks(); // TODO: unnecessary config
         this.lobbyLocation = def.getLobbyLocation();
         this.arenaOrigin = def.getArenaOrigin();
         this.eliminationHeight = def.getEliminationHeight();
         this.worldEditStructure = new WorldEditStructure(arenaOrigin, def.getMapSchematic());
         this.boundingBox = worldEditStructure.getBoundingBox();
 
+        // TODO: unnecessary config
         this.powerupsEnabled = def.isPowerupsEnabled();
         this.powerupMaxAlive = def.getPowerupMaxAlive();
         this.powerupSpawnPeriodTicks = def.getPowerupSpawnPeriodTicks();
@@ -270,7 +273,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         this.countdownBossBar = CountdownBossBar.builder()
                 .audience(this.audience)
                 .title("<yellow><b>Starting in %ss</b>")
-                .color(net.kyori.adventure.bossbar.BossBar.Color.YELLOW)
+                .color(BossBar.Color.YELLOW)
                 .seconds(10)
                 .callback(() -> {
                     this.sendAudienceMessage("<green>TNT Run started!</green>");
@@ -343,11 +346,11 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
             if (type.isAir() || !type.hasGravity()) continue;
 
-            block.setType(Material.AIR, false);
+            block.setBlockData(AIR_BLOCK_DATA, false);
 
             Block under = block.getRelative(BlockFace.DOWN);
             if (under.getType() == Material.TNT) {
-                under.setType(Material.AIR, false);
+                under.setBlockData(AIR_BLOCK_DATA, false);
             }
         }
     }
@@ -644,6 +647,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Use boundingBox#getEntities(ItemDisplay.class) instead
     private void despawnAllPowerups() {
         if (arenaOrigin.getWorld() == null) return;
         org.bukkit.World w = arenaOrigin.getWorld();
