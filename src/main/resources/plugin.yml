@@ -7,7 +7,7 @@ depend:
   - LumaCore
   - LumaItems
   - InventoryRollbackPlus
-  - ProtocolLib # TODO: remove
-  - LibsDisguises
 softdepend:
   - PlaceholderAPI
+  - ProtocolLib
+  - LibsDisguises

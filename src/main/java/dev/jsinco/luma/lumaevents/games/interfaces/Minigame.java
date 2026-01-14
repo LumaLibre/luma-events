@@ -1,7 +1,6 @@
 package dev.jsinco.luma.lumaevents.games.interfaces;
 
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.events.PacketListener;
+
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.games.events.MinigamePreventDamageListener;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
@@ -25,7 +24,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
@@ -114,7 +112,6 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
             extraListeners.stream()
                     .filter(Objects::nonNull)
                     .forEach(this::unregisterEvents);
-            packetListeners().forEach(packetListener -> ProtocolLibrary.getProtocolManager().removePacketListener(packetListener));
             Util.broadcast("Not enough players joined to start " + this.name);
             return false;
         }
@@ -128,8 +125,6 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         extraListeners.stream()
                 .filter(Objects::nonNull)
                 .forEach(this::registerEvents);
-
-        packetListeners().forEach(packetListener -> ProtocolLibrary.getProtocolManager().addPacketListener(packetListener));
 
         unsafe(this::handleStart);
         if (async) {
@@ -171,7 +166,6 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         extraListeners.stream()
                 .filter(Objects::nonNull)
                 .forEach(this::unregisterEvents);
-        packetListeners().forEach(packetListener -> ProtocolLibrary.getProtocolManager().removePacketListener(packetListener));
         this.cancel();
 
         this.active = false;
@@ -351,10 +345,6 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
     protected int minimumParticipants() {
         // This method can be overridden to specify the minimum number of participants required to start the minigame
         return 2; // Default is 2 participants
-    }
-
-    protected Collection<PacketListener> packetListeners() {
-        return List.of();
     }
 
     // Minigame starts, returns true if successful

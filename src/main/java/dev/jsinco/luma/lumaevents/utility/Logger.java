@@ -4,6 +4,10 @@ import org.bukkit.Bukkit;
 
 import java.util.logging.Level;
 
+/**
+ * @deprecated Use {@link dev.lumas.lumacore.utility.Logging} instead.
+ */
+@Deprecated(forRemoval = true)
 public class Logger {
 
     public static void log(String message) {

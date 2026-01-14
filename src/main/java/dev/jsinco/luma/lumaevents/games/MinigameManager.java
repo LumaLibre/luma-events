@@ -8,7 +8,6 @@ import dev.jsinco.luma.lumaevents.games.exceptions.GameAlreadyStartedException;
 import dev.jsinco.luma.lumaevents.games.exceptions.NoAvailableMinigames;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.games.logic.NonActiveMinigame;
-import dev.jsinco.luma.lumaevents.utility.Logger;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import eu.okaeri.configs.OkaeriConfig;
 import lombok.AccessLevel;

@@ -15,26 +15,33 @@ import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Executors;
+import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.lumas.lumacore.utility.Logging;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import org.bukkit.*;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
-import org.bukkit.entity.*;
+import org.bukkit.entity.Display;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.ItemDisplay;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
@@ -45,13 +52,25 @@ import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
 import org.joml.AxisAngle4f;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 
 // TODO: finish cleanup & test
 public final class TNTRun extends InventoryUnifiedMinigame {
 
     private static final double DECAY_PRECISION = 1.0e-4;
+    private static final NamespacedKey POWERUP_ID_KEY = new NamespacedKey(EventMain.getInstance(), "tntrun_powerup_id");
 
     // TODO: Cleanup -> unnecessary fields
 
@@ -73,9 +92,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private final double smallUpdraftY;
     private final double bigUpdraftY;
 
-    private volatile boolean arenaReady = false; // TODO: maybe unnecessary volatile?
-    private volatile boolean decayArmed = false; // TODO: maybe unnecessary volatile?
-    private boolean playersTeleported = false;
+    private volatile boolean arenaReady = false;
+    private volatile boolean decayArmed = false;
 
     private CountdownBossBar countdownBossBar;
     private CountdownBossBar gameTimerBossBar;
@@ -86,17 +104,18 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     private long decayTick = 0L;
     private BukkitTask decayTask = null;
-    private BukkitTask waitingForArenaTask = null;
 
     private BukkitTask powerupTask = null;
     private BukkitTask powerupSpinTask = null;
     private float powerupSpinAngle = 0f;
 
+
+    // TODO?
     private final Map<UUID, String> powerupByEntity = new HashMap<>();
     private final Map<UUID, ItemStack> powerupItemByEntity = new HashMap<>();
     private final Map<UUID, Long> updraftCooldownUntilTick = new HashMap<>();
 
-    private record PlatformInstance(UUID id, UUID owner, org.bukkit.World world, Set<BlockPos> blocks) {}
+
     private final Map<UUID, PlatformInstance> platformById = new HashMap<>();
     private final Map<UUID, Set<UUID>> platformIdsByOwner = new HashMap<>();
     private final Map<BlockPos, Deque<UUID>> platformStackByBlock = new HashMap<>();
@@ -136,18 +155,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     @Override
     protected void handleStart() {
 
-        worldEditStructure.pasteAsync().whenComplete((vo, thr) -> {
-            Executors.runSync(() -> {
-                if (this.isCancelled()) return;
-                this.arenaReady = true;
-                Logging.log("[TNTRun] Arena ready.");
-            });
-        });
-
-        // TODO: callbacks for this probably
-        // Executors.runSync(this::stop);
-
-
         for (EventPlayer eventPlayer : this.participants) {
             ActiveTNTRunPlayer role = new ActiveTNTRunPlayer(eventPlayer, this);
             this.roleMap.put(role);
@@ -155,28 +162,20 @@ public final class TNTRun extends InventoryUnifiedMinigame {
             eventPlayer.operatePlayer(LivingEntity::clearActivePotionEffects);
         }
 
+        worldEditStructure.pasteAsync().whenComplete((vo, thr) -> {
+            Executors.runSync(() -> {
+                if (this.isCancelled()) return;
+                this.arenaReady = true;
+                Logging.log("[TNTRun] Arena ready.");
+
+
+                // Teleport players after arena is done being pasted.
+                this.teleportPlayersToArenaThenStartCountdown();
+            });
+        });
+
 
         this.startDecayTask();
-
-        if (this.arenaReady) {
-            Executors.runSync(this::teleportPlayersToArenaThenStartCountdown);
-            return;
-        }
-
-        this.waitingForArenaTask = Executors.repeatingSync(1L, () -> {
-            if (this.isCancelled()) {
-                if (waitingForArenaTask != null) waitingForArenaTask.cancel();
-                waitingForArenaTask = null;
-                return;
-            }
-
-            if (!this.arenaReady) return;
-
-            if (waitingForArenaTask != null) waitingForArenaTask.cancel();
-            waitingForArenaTask = null;
-
-            teleportPlayersToArenaThenStartCountdown();
-        });
     }
 
     @Override
@@ -195,13 +194,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     @Override
     protected void handleStop() {
         this.decayArmed = false;
-
-        unsafe(() -> {
-            if (waitingForArenaTask != null) {
-                waitingForArenaTask.cancel();
-                waitingForArenaTask = null;
-            }
-        });
 
         unsafe(this::stopDecayTask);
         unsafe(this::stopPowerupTask);
@@ -368,8 +360,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         );
     }
 
-    // TODO: Why is priority low
-    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+
+    @EventHandler(ignoreCancelled = true)
     public void onMove(PlayerMoveEvent event) {
         if (!event.hasChangedBlock() || !this.decayArmed) return;
         this.ensureNotIllegal();
@@ -397,26 +389,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         this.scheduleDecay(blockBelow);
         this.tryPickupPowerup(player);
     }
-
-    @EventHandler(ignoreCancelled = true) // TODO: Probably unnecessary: worldguard
-    public void onBreak(BlockBreakEvent event) {
-        this.ensureNotIllegal();
-
-        if (this.isParticipant(event.getPlayer())) {
-            event.setCancelled(true);
-        }
-    }
-
-    // TODO: Unnecessary listener? When would a player be able to place a block?
-    // TODO: Probably unnecessary: worldguard
-    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
-    public void onPlace(BlockPlaceEvent event) {
-        this.ensureNotIllegal();
-        if (this.isParticipant(event.getPlayer())) {
-            event.setCancelled(true);
-        }
-    }
-
 
 
     public static abstract class AbstractTNTRunPlayer extends MinigameRole {
@@ -537,12 +509,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     }
 
 
-    private record BlockPos(int x, int y, int z) {}
-
-
-    private static NamespacedKey POWERUP_ID_KEY() {
-        return new NamespacedKey(EventMain.getInstance(), "tntrun_powerup_id");
-    }
 
     private enum PowerupType {
         UPDRAFT_SMALL("updraft_small", Material.FEATHER),
@@ -600,6 +566,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         stopPowerupSpinTask();
         powerupSpinAngle = 0f;
 
+        // TODO: Should use itemstacks instead: wasted resources
         powerupSpinTask = Executors.repeatingSync(1L, () -> {
             if (!arenaReady || !decayArmed) return;
             org.bukkit.World w = arenaOrigin.getWorld();
@@ -674,11 +641,10 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         Location loc = new Location(w, x + 0.5, y + 0.75, z + 0.5);
         ItemStack reward = createPowerupItem(type);
 
-        //Logger.logWrn("Spawning PowerUp Display (type " + type.id + ") at " + x + ", " + y + ", " + z + " in " + w.getName());
 
         ItemDisplay display = w.spawn(loc, ItemDisplay.class, d -> {
             d.setItemStack(reward.clone());
-            d.getPersistentDataContainer().set(POWERUP_ID_KEY(), PersistentDataType.STRING, type.id);
+            d.getPersistentDataContainer().set(POWERUP_ID_KEY, PersistentDataType.STRING, type.id);
             d.setBillboard(Display.Billboard.CENTER);
             Transformation t = d.getTransformation();
             t.getScale().set(0.67f, 0.67f, 0.67f);
@@ -703,7 +669,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         for (Entity e : nearby) {
             ItemDisplay d = (ItemDisplay) e;
 
-            String id = d.getPersistentDataContainer().get(POWERUP_ID_KEY(), PersistentDataType.STRING);
+            String id = d.getPersistentDataContainer().get(POWERUP_ID_KEY, PersistentDataType.STRING);
             if (id == null) continue;
 
             PowerupType type = PowerupType.fromId(id);
@@ -728,11 +694,9 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         if (event.getHand() != EquipmentSlot.HAND) return;
 
         Player player = event.getPlayer();
-        ActiveTNTRunPlayer active =
-                this.roleMap.as(player.getUniqueId(), ActiveTNTRunPlayer.class);
+        ActiveTNTRunPlayer active = this.roleMap.as(player.getUniqueId(), ActiveTNTRunPlayer.class);
 
-        if (active == null) return;
-        if (!this.decayArmed) return;
+        if (active == null || !this.decayArmed) return;
 
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item.getType().isAir()) return;
@@ -740,8 +704,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return;
 
-        String id = meta.getPersistentDataContainer()
-                .get(POWERUP_ID_KEY(), PersistentDataType.STRING);
+        String id = meta.getPersistentDataContainer().get(POWERUP_ID_KEY, PersistentDataType.STRING);
 
         if (id == null) return;
 
@@ -757,18 +720,14 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         ItemStack inHand = p.getInventory().getItemInMainHand();
         if (inHand.getType().isAir()) return;
 
-        int amt = inHand.getAmount();
-        if (amt <= 1) p.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
-        else inHand.setAmount(amt - 1);
-
-        p.updateInventory();
+        inHand.setAmount(inHand.getAmount() - 1);
     }
 
     private ItemStack createPowerupItem(PowerupType type) {
         ItemStack stack = new ItemStack(type.displayMat, 1);
         ItemMeta meta = stack.getItemMeta();
 
-        meta.getPersistentDataContainer().set(POWERUP_ID_KEY(), PersistentDataType.STRING, type.id);
+        meta.getPersistentDataContainer().set(POWERUP_ID_KEY, PersistentDataType.STRING, type.id);
 
         Component name = switch (type) {
             case UPDRAFT_SMALL -> Component.text("Small Updraft", NamedTextColor.AQUA);
@@ -895,14 +854,15 @@ public final class TNTRun extends InventoryUnifiedMinigame {
             if (p != null) viewers.add(p);
         }
 
-        final int[] t = {0};
-        BukkitTask task = Executors.repeatingSync(1L, () -> {
-            if (!decayArmed || t[0] >= durationTicks) {
+        AtomicInteger ticks = new AtomicInteger();
+        Executors.repeatingSync(1, task -> {
+            if (!decayArmed || ticks.getAndIncrement() >= durationTicks) {
                 clearBreakAnim(platformId, topOwned, viewers);
+                task.cancel();
                 return;
             }
 
-            int stage = Math.min(9, (int) Math.floor((t[0] / (double) durationTicks) * 10.0));
+            int stage = Math.min(9, (int) Math.floor((ticks.get() / (double) durationTicks) * 10.0));
             for (BlockPos pos : topOwned) {
                 Deque<UUID> st = platformStackByBlock.get(pos);
                 if (st == null || st.isEmpty() || !platformId.equals(st.peek())) continue;
@@ -912,12 +872,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
                     sendBreakAnim(viewer, id, pos, stage);
                 }
             }
-            t[0]++;
-        });
-
-        Executors.delayedSync(durationTicks + 2L, () -> {
-            task.cancel();
-            clearBreakAnim(platformId, topOwned, viewers);
         });
     }
 
@@ -966,6 +920,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: take a look at this powerup and see if it's worth keeping
+    // not a fan of protocollib usage
     private static void sendBreakAnim(Player viewer, int breakerId, BlockPos pos, int stage) {
         PacketContainer packet = ProtocolLibrary.getProtocolManager().createPacket(PacketType.Play.Server.BLOCK_BREAK_ANIMATION);
         packet.getIntegers().write(0, breakerId);
@@ -988,45 +944,10 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private static void giveOrDrop(Player player, ItemStack toGive) {
         if (player == null || toGive == null || toGive.getType().isAir() || toGive.getAmount() <= 0) return;
 
-        PlayerInventory inv = player.getInventory();
-        ItemStack remaining = toGive.clone();
-
-        // Fill partial stacks of similar items
-        for (int slot = 0; slot < 36 && remaining.getAmount() > 0; slot++) {
-            ItemStack existing = inv.getItem(slot);
-            if (existing == null || existing.getType().isAir()) continue;
-            if (!existing.isSimilar(remaining)) continue;
-
-            int max = existing.getMaxStackSize();
-            int space = max - existing.getAmount();
-            if (space <= 0) continue;
-
-            int move = Math.min(space, remaining.getAmount());
-            existing.setAmount(existing.getAmount() + move);
-            remaining.setAmount(remaining.getAmount() - move);
-            inv.setItem(slot, existing);
-        }
-
-        // Put into empty slots
-        for (int slot = 0; slot < 36 && remaining.getAmount() > 0; slot++) {
-            ItemStack existing = inv.getItem(slot);
-            if (existing != null && !existing.getType().isAir()) continue;
-
-            int max = remaining.getMaxStackSize();
-            int move = Math.min(max, remaining.getAmount());
-
-            ItemStack stack = remaining.clone();
-            stack.setAmount(move);
-            inv.setItem(slot, stack);
-
-            remaining.setAmount(remaining.getAmount() - move);
-        }
-
-        // Drop any leftover
-        if (remaining.getAmount() > 0) {
-            player.getWorld().dropItemNaturally(player.getLocation(), remaining);
-        }
-
-        player.updateInventory();
+        Util.giveItem(player, toGive);
     }
+
+
+    private record BlockPos(int x, int y, int z) {}
+    private record PlatformInstance(UUID id, UUID owner, org.bukkit.World world, Set<BlockPos> blocks) {}
 }

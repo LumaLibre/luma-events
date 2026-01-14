@@ -3,6 +3,7 @@ package dev.jsinco.luma.lumaevents.utility;
 import dev.jsinco.luma.lumaevents.EventMain;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,6 +43,17 @@ public final class Executors {
 
     public static BukkitTask repeatingSync(long period, Runnable runnable) {
         return Bukkit.getScheduler().runTaskTimer(instance, runnable, 0, period);
+    }
+
+    public static BukkitTask repeatingSync(long period, Consumer<BukkitRunnable> consumer) {
+        BukkitRunnable task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                consumer.accept(this);
+            }
+        };
+
+        return task.runTaskTimer(instance, 0, period);
     }
 
     public static BukkitTask sync(Runnable runnable) {
