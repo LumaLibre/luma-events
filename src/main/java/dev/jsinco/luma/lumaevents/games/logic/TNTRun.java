@@ -44,7 +44,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
@@ -70,9 +69,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private final int decayDelayTicks; // TODO: could be hardcoded
     private final int eliminationHeight; // TODO: this should be done dynamically based on arena bounding box
 
-    private final boolean powerupsEnabled; // TODO: unnecessary config
     private final int powerupMaxAlive; // TODO: this could be hardcoded
-    private final int powerupSpawnPeriodTicks; // TODO: should be hardcoded
     private final int powerupSpawnAttempts; // TODO: should be hardcoded
 
     private final int slowFallingTicks;
@@ -118,9 +115,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         this.boundingBox = worldEditStructure.getBoundingBox();
 
         // TODO: unnecessary config
-        this.powerupsEnabled = def.isPowerupsEnabled();
         this.powerupMaxAlive = def.getPowerupMaxAlive();
-        this.powerupSpawnPeriodTicks = def.getPowerupSpawnPeriodTicks();
         this.powerupSpawnAttempts = def.getPowerupSpawnAttempts();
 
         this.slowFallingTicks = def.getSlowFallingTicks();

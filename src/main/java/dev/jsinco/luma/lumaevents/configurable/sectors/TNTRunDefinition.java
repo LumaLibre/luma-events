@@ -15,9 +15,7 @@ public class TNTRunDefinition extends OkaeriConfig {
     private int decayDelayTicks = 20;
     private int eliminationHeight = 0;
 
-    private boolean powerupsEnabled = true;
-    private int powerupSpawnPeriodTicks = 5;
-    private int powerupSpawnAttempts = 65;
+    private int powerupSpawnAttempts = 12;
     private int powerupMaxAlive = 55;
 
     private int slowFallingTicks = 140;
