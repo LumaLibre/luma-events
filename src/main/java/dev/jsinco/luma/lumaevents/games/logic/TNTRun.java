@@ -246,6 +246,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     public boolean removeParticipant(EventPlayer participant) {
         AbstractTNTRunPlayer tntRunPlayer = this.roleMap.remove(participant.getUuid());
         tntRunPlayer.cleanup();
+        participant.operatePlayer(p -> p.setFallDistance(0f));
         return super.removeParticipant(participant);
     }
 
