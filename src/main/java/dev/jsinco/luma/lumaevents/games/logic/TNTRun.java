@@ -182,6 +182,11 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
         processDecayQueue();
 
+        if (decayArmed && boundingBox != null && powerupByEntity.size() < powerupMaxAlive) {
+            for (int i = 0; i <= powerupSpawnAttempts; i++) trySpawnRandomPowerup();
+        }
+        spinPowerups();
+
         if (tickCounter % 5 != 0) return;
 
         for (AbstractTNTRunPlayer tntRunPlayer : this.roleMap) {
@@ -197,7 +202,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     protected void handleStop() {
         this.decayArmed = false;
 
-        unsafe(this::stopPowerupTask);
         unsafe(this::despawnAllPowerups);
 
         unsafe(() -> {
@@ -263,7 +267,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
                 .callback(() -> {
                     this.sendAudienceMessage("<green>TNT Run started!</green>");
                     this.decayArmed = true;
-                    this.startPowerupTask();
                     this.startGameTimerBossBar();
                 })
                 .build()
@@ -576,59 +579,22 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         }
     }
 
-    private void startPowerupTask() {
-        stopPowerupTask();
-        if (!powerupsEnabled) return;
+    private void spinPowerups() {
+        if (!arenaReady || !decayArmed) return;
+        org.bukkit.World w = arenaOrigin.getWorld();
+        if (w == null) return;
+        if (powerupByEntity.isEmpty()) return;
 
-        this.powerupTask = Executors.repeatingSync(Math.max(1L, powerupSpawnPeriodTicks), () -> {
-            if (!arenaReady || !decayArmed) return;
-            if (this.isCancelled()) return;
-            if (this.boundingBox == null) return;
+        powerupSpinAngle += 0.12f;
+        if (powerupSpinAngle > (float) (Math.PI * 2)) powerupSpinAngle -= (float) (Math.PI * 2);
 
-            if (powerupByEntity.size() >= powerupMaxAlive) return;
-            for (int i = 0; i <= powerupSpawnAttempts; i++) trySpawnRandomPowerup();
-        });
-
-        startPowerupSpinTask();
-    }
-
-    private void stopPowerupTask() {
-        if (powerupTask != null) {
-            powerupTask.cancel();
-            powerupTask = null;
-        }
-        stopPowerupSpinTask();
-    }
-
-    private void startPowerupSpinTask() {
-        stopPowerupSpinTask();
-        powerupSpinAngle = 0f;
-
-        // TODO: Should use itemstacks instead: wasted resources
-        powerupSpinTask = Executors.repeatingSync(1L, () -> {
-            if (!arenaReady || !decayArmed) return;
-            org.bukkit.World w = arenaOrigin.getWorld();
-            if (w == null) return;
-            if (powerupByEntity.isEmpty()) return;
-
-            powerupSpinAngle += 0.12f;
-            if (powerupSpinAngle > (float) (Math.PI * 2)) powerupSpinAngle -= (float) (Math.PI * 2);
-
-            for (UUID id : new ArrayList<>(powerupByEntity.keySet())) {
-                Entity e = w.getEntity(id);
-                if (!(e instanceof ItemDisplay d)) continue;
-                Transformation t = d.getTransformation();
-                t.getScale().set(0.67f, 0.67f, 0.67f);
-                t.getLeftRotation().set(new AxisAngle4f(powerupSpinAngle, 0f, 1f, 0f));
-                d.setTransformation(t);
-            }
-        });
-    }
-
-    private void stopPowerupSpinTask() {
-        if (powerupSpinTask != null) {
-            powerupSpinTask.cancel();
-            powerupSpinTask = null;
+        for (UUID id : new ArrayList<>(powerupByEntity.keySet())) {
+            Entity e = w.getEntity(id);
+            if (!(e instanceof ItemDisplay d)) continue;
+            Transformation t = d.getTransformation();
+            t.getScale().set(0.67f, 0.67f, 0.67f);
+            t.getLeftRotation().set(new AxisAngle4f(powerupSpinAngle, 0f, 1f, 0f));
+            d.setTransformation(t);
         }
     }
 
