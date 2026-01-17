@@ -411,7 +411,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
             player.setFoodLevel(20);
 
-            if (player.getLocation().getY() < this.context.eliminationHeight) {
+            if (player.getLocation().getY() < this.context.eliminationHeight && this.context.decayArmed) {
                 this.eliminate();
                 return;
             }
