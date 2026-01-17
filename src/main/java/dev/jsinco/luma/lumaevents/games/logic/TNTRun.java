@@ -48,20 +48,11 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
+import org.checkerframework.common.value.qual.IntRange;
 import org.jetbrains.annotations.Nullable;
 import org.joml.AxisAngle4f;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 // TODO: finish cleanup & test
@@ -102,17 +93,13 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private final Map<BlockPos, Long> decayQueue = new HashMap<>();
     private long tickCounter = 0L;
 
-    private BukkitTask powerupTask = null; // TODO: Use the game's built in scheduler
-    private BukkitTask powerupSpinTask = null; // TODO: use items instead of displays
     private float powerupSpinAngle = 0f; // TODO: use items instead of displays
-
-
-
     private final Map<UUID, String> powerupByEntity = new HashMap<>();
     private final Map<UUID, ItemStack> powerupItemByEntity = new HashMap<>();
     private final Map<UUID, Long> updraftCooldownUntilTick = new HashMap<>();
 
     // TODO: This powerup should be rewritten or removed probably
+    // TODO: Noo, my favourite powerup 😢
     private final Map<UUID, PlatformInstance> platformById = new HashMap<>();
     private final Map<UUID, Set<UUID>> platformIdsByOwner = new HashMap<>();
     private final Map<BlockPos, Deque<UUID>> platformStackByBlock = new HashMap<>();
@@ -811,7 +798,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
                 Deque<UUID> st = platformStackByBlock.get(pos);
                 if (st == null || st.isEmpty() || !platformId.equals(st.peek())) continue;
 
-                int id = breakerIdFor(platformId, pos);
+                int id = Objects.hash(platformId, pos.x(), pos.y(), pos.z());
                 for (Player viewer : viewers) {
                     sendBreakAnim(viewer, id, pos, stage);
                 }
@@ -821,7 +808,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     private void clearBreakAnim(UUID platformId, Set<BlockPos> blocks, List<Player> viewers) {
         for (BlockPos pos : blocks) {
-            int id = breakerIdFor(platformId, pos);
+            int id = Objects.hash(platformId, pos.x(), pos.y(), pos.z());
             for (Player viewer : viewers) {
                 sendBreakAnim(viewer, id, pos, -1);
             }
@@ -866,7 +853,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     // TODO: take a look at this powerup and see if it's worth keeping
     // not a fan of protocollib usage
-    private static void sendBreakAnim(Player viewer, int breakerId, BlockPos pos, int stage) {
+    private static void sendBreakAnim(Player viewer, int breakerId, BlockPos pos, @IntRange(from = -1, to = 9) int stage) {
         PacketContainer packet = ProtocolLibrary.getProtocolManager().createPacket(PacketType.Play.Server.BLOCK_BREAK_ANIMATION);
         packet.getIntegers().write(0, breakerId);
         packet.getBlockPositionModifier().write(0, new BlockPosition(pos.x(), pos.y(), pos.z()));
@@ -876,21 +863,11 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         } catch (Exception ignored) {}
     }
 
-    // Must be the same every update, but different per block
-    private static int breakerIdFor(UUID owner, BlockPos pos) {
-        int h = owner.hashCode();
-        h = 31 * h + pos.x();
-        h = 31 * h + pos.y();
-        h = 31 * h + pos.z();
-        return h;
-    }
-
     private static void giveOrDrop(Player player, ItemStack toGive) {
         if (player == null || toGive == null || toGive.getType().isAir() || toGive.getAmount() <= 0) return;
 
         Util.giveItem(player, toGive);
     }
-
 
     private record BlockPos(int x, int y, int z) {}
     private record PlatformInstance(UUID id, UUID owner, org.bukkit.World world, Set<BlockPos> blocks) {}
