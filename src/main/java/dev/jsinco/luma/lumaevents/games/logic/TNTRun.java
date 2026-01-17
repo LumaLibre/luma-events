@@ -62,7 +62,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 // TODO: finish cleanup & test
@@ -101,9 +100,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private final Scoreboard<EventPlayer> scoreboard = new Scoreboard<>();
     private final MinigameRoleMap<AbstractTNTRunPlayer> roleMap = new MinigameRoleMap<>(AbstractTNTRunPlayer::cleanup);
     private final Map<BlockPos, Long> decayQueue = new HashMap<>();
-
-    private long decayTick = 0L;
-    private BukkitTask decayTask = null; // TODO: Use the game's built in scheduler
+    private long tickCounter = 0L;
 
     private BukkitTask powerupTask = null; // TODO: Use the game's built in scheduler
     private BukkitTask powerupSpinTask = null; // TODO: use items instead of displays
@@ -123,7 +120,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     public TNTRun(TNTRunDefinition def) {
         // TODO: Unnecessary configuration: See other games
-        super("TNT Run", "Don't fall down!", def.getTimeLimitSeconds() * 1000L, def.getHeartbeatTicks(),
+        super("TNT Run", "Don't fall down!", def.getTimeLimitSeconds() * 1000L, 1,
                 false, true, false, true);
 
         this.decayDelayTicks = def.getDecayDelayTicks(); // TODO: unnecessary config
@@ -176,13 +173,16 @@ public final class TNTRun extends InventoryUnifiedMinigame {
             });
         });
 
-
-        this.startDecayTask();
     }
 
     @Override
     protected void onRunnable(long timeLeft) {
         if (!this.arenaReady) return;
+        tickCounter++;
+
+        processDecayQueue();
+
+        if (tickCounter % 5 != 0) return;
 
         for (AbstractTNTRunPlayer tntRunPlayer : this.roleMap) {
             tntRunPlayer.tick();
@@ -197,7 +197,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     protected void handleStop() {
         this.decayArmed = false;
 
-        unsafe(this::stopDecayTask);
         unsafe(this::stopPowerupTask);
         unsafe(this::despawnAllPowerups);
 
@@ -248,21 +247,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         AbstractTNTRunPlayer tntRunPlayer = this.roleMap.remove(participant.getUuid());
         tntRunPlayer.cleanup();
         return super.removeParticipant(participant);
-    }
-
-    private void startDecayTask() {
-        this.decayTask = Executors.repeatingSync(1L, () -> {
-            if (!arenaReady) return;
-            decayTick++;
-            processDecayQueue();
-        });
-    }
-
-    private void stopDecayTask() {
-        if (this.decayTask != null) {
-            this.decayTask.cancel();
-            this.decayTask = null;
-        }
     }
 
     private void teleportPlayersToArenaThenStartCountdown() {
@@ -331,7 +315,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         World world = arenaOrigin.getWorld();
         if (world == null) return;
 
-        long nowTick = this.decayTick;
+        long nowTick = this.tickCounter;
 
         Iterator<Map.Entry<BlockPos, Long>> it = decayQueue.entrySet().iterator();
         while (it.hasNext()) {
@@ -358,7 +342,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private void scheduleDecay(Block block) {
         decayQueue.putIfAbsent(
                 new BlockPos(block.getX(), block.getY(), block.getZ()),
-                decayTick + decayDelayTicks
+                tickCounter + decayDelayTicks
         );
     }
 
@@ -780,7 +764,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
 
     private boolean checkAndApplyUpdraftCooldown(Player player) {
-        long now = decayTick;
+        long now = tickCounter;
         long until = updraftCooldownUntilTick.getOrDefault(player.getUniqueId(), 0L);
         if (now < until) {
             player.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, SoundCategory.MASTER, 1f, 0.7f);
