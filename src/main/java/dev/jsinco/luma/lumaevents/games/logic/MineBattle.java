@@ -26,8 +26,8 @@ import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Executors;
-import dev.jsinco.luma.lumaevents.utility.Logger;
 import dev.jsinco.luma.lumaevents.utility.Util;
+import dev.lumas.lumacore.utility.Logging;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -146,7 +146,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         this.lastRevealAtMillis = 0L;
         int playerCount = Math.max(1, this.participants.size());
         int radius = computeRadiusForPlayers(playerCount);
-        Logger.log("Generating arena for " + playerCount + " players (r=" + radius + ")...");
+        Logging.log("Generating arena for " + playerCount + " players (r=" + radius + ")...");
         rollStructuresAndAssignSpawns(radius);
         this.arenaRegions = ArenaRegions.of(this.arenaOrigin, radius, this.arenaHeight);
         Executors.runAsync(() -> {
@@ -156,13 +156,13 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 for (Location loc : this.structureLocations) {
                     File file = pickRandomSchematicFile();
                     if (file == null) {
-                        Logger.logWrn("No schematics found in " + schematicsFolder.getPath());
+                        Logging.errorLog("No schematics found in " + schematicsFolder.getPath());
                         break;
                     }
                     pasteSchematic(this.arenaRegions.world(), loc, file);
                 }
             } catch (Throwable t) {
-                Logger.logErr(t);
+                Logging.errorLog(t.getMessage(), t);
             }
             Executors.runSync(() -> {
                 if (this.isCancelled()) return;
@@ -246,7 +246,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 try {
                     removeArenaFAWE(regions);
                 } catch (Throwable t) {
-                    Logger.logErr(t);
+                    Logging.errorLog(t.getMessage(), t);
                 }
             });
         }
@@ -675,11 +675,11 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
             CompletableFuture<Boolean> tp = ep.teleportAsync(spawn);
             if (tp == null) {
-                Logger.logWrn("[MineBattle] teleportAsync returned null for " + ep.getUuid());
+                Logging.warningLog("[MineBattle] teleportAsync returned null for " + ep.getUuid());
                 tp = CompletableFuture.completedFuture(false);
             } else {
                 tp = tp.exceptionally(err -> {
-                    Logger.logErr(err);
+                    Logging.errorLog(err.getMessage(), err);
                     return false;
                 });
             }
@@ -687,7 +687,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             CompletableFuture<Boolean> finalTp = tp;
             tp.thenAccept(ok -> {
                 if (ok) ep.operatePlayer(this::equip);
-                else Logger.logWrn("[MineBattle] teleport failed for " + ep.getUuid());
+                else Logging.warningLog("[MineBattle] teleport failed for " + ep.getUuid());
             });
 
             futures.add(finalTp);
