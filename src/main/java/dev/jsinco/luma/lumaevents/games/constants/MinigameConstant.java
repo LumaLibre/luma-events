@@ -2,6 +2,7 @@ package dev.jsinco.luma.lumaevents.games.constants;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.Config;
+import dev.jsinco.luma.lumaevents.configurable.sectors.MineBattleDefinition;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.games.logic.*;
 import dev.jsinco.luma.lumaevents.utility.Util;
@@ -23,7 +24,7 @@ public enum MinigameConstant {
     PROP_HUNT(PropHunt::new, "prophunt", "prop_hunt"),
     THE_NABBITS(TheNabbits::new, "thenabbits", "the_nabbits"),
     PANEL_PARTY(PanelParty::new, "panelparty", "panel_party"),
-    MINEBATTLE(MineBattle::new, "minebattle", "mine_battle"),
+    MINEBATTLE((config) -> new MineBattle((MineBattleDefinition) config), "minebattle", "mine_battle"),
     TNTRUN(TNTRun::new, "tntrun", "tnt_run")
     ;
 

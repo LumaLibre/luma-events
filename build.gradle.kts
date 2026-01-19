@@ -1,9 +1,10 @@
 plugins {
     id("java")
     id("com.gradleup.shadow") version "8.3.5"
+    id("io.freefair.lombok") version "8.10"
+    id("xyz.jpenilla.run-paper") version "2.3.1"
     kotlin("jvm")
     kotlin("plugin.lombok") version "2.1.0"
-    id("io.freefair.lombok") version "8.10"
 }
 
 // TODO: Change package name on next event
@@ -25,7 +26,7 @@ repositories {
 
 
 dependencies {
-    compileOnly("dev.lumas.lumacore:LumaCore:d56563b")
+    compileOnly("dev.lumas.lumacore:LumaCore:4149a14")
     compileOnly("dev.lumas.lumaitems:LumaItems:d55b35f")
     compileOnly("dev.lumas.glowapi:LumaGlowAPI:c57567c")
     compileOnly("me.clip:placeholderapi:2.11.6")
@@ -74,6 +75,10 @@ tasks {
 
     build {
         dependsOn(shadowJar)
+    }
+
+    runServer {
+        minecraftVersion("1.21.11")
     }
 }
 kotlin {

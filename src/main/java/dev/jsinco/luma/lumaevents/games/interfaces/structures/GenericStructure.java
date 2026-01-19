@@ -16,7 +16,6 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.function.BiPredicate;
 
-// TODO: Maybe swap this out for FAWE because these schematics can get big
 @Getter
 public class GenericStructure extends Structure {
 

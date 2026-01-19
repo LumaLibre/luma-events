@@ -12,5 +12,6 @@ public class PanelPartyMinigameDefinition extends OkaeriConfig {
     private Location spawnLocation;
     private Location center;
     private Region region = new Region();
+    private String blankPanelSchematic = "panel_blank.schem";
     private List<String> schematics = List.of();
 }

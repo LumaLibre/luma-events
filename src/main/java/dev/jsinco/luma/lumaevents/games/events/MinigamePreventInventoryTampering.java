@@ -25,7 +25,7 @@ public class MinigamePreventInventoryTampering implements Listener {
 
         Player player = (Player) event.getWhoClicked();
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
-        if (minigame.getParticipants().contains(eventPlayer) && minigame.getBoundingBox().contains(player)) {
+        if (minigame.getParticipants().contains(eventPlayer)/* && minigame.getBoundingBox().contains(player)*/) {
             event.setCancelled(true);
             eventPlayer.sendMessage("You can't change your inventory while participating in this minigame.");
         }
@@ -37,7 +37,7 @@ public class MinigamePreventInventoryTampering implements Listener {
 
         Player player = event.getPlayer();
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
-        if (minigame.getParticipants().contains(eventPlayer) && minigame.getBoundingBox().contains(player)) {
+        if (minigame.getParticipants().contains(eventPlayer)/* && minigame.getBoundingBox().contains(player)*/) {
             event.setCancelled(true);
         }
     }
@@ -48,7 +48,7 @@ public class MinigamePreventInventoryTampering implements Listener {
 
         Player player = event.getPlayer();
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
-        if (minigame.getParticipants().contains(eventPlayer) && minigame.getBoundingBox().contains(player)) {
+        if (minigame.getParticipants().contains(eventPlayer)/* && minigame.getBoundingBox().contains(player)*/) {
             event.setCancelled(true);
             eventPlayer.sendMessage("You can't drop items while participating in this minigame.");
         }

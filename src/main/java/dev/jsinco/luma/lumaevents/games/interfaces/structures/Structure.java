@@ -6,11 +6,11 @@ import org.bukkit.Location;
 
 import java.nio.file.Path;
 
+@Getter
 public abstract class Structure {
 
     protected static final Path SCHEMATIC_DIR = EventMain.getInstance().getDataPath().resolve("schematics");
 
-    @Getter
     protected final Location origin;
     protected final String localSchemPath;
 
@@ -22,4 +22,9 @@ public abstract class Structure {
     public abstract void paste();
 
     public abstract void remove();
+
+
+    static {
+        SCHEMATIC_DIR.toFile().mkdirs();
+    }
 }
