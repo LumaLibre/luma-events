@@ -1,6 +1,7 @@
 package dev.jsinco.luma.lumaevents.obj;
 
 import com.google.common.base.Preconditions;
+import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -57,7 +58,7 @@ public class WorldTiedBoundingBox extends BoundingBox implements MinigameBoundin
     }
 
     public Location getRandomLocation() {
-        final Random rand = new Random();
+        final Random rand = Util.RANDOM;
         final double x = rand.nextDouble(Math.abs(this.getMaxX() - this.getMinX()) + 1) + this.getMinX();
         final double y = rand.nextDouble(Math.abs(this.getMaxY() - this.getMinY()) + 1) + this.getMinY();
         final double z = rand.nextDouble(Math.abs(this.getMaxZ() - this.getMinZ()) + 1) + this.getMinZ();

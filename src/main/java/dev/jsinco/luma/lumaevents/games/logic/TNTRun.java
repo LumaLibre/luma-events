@@ -54,23 +54,20 @@ import org.joml.AxisAngle4f;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-// TODO: finish cleanup & test
 public final class TNTRun extends InventoryUnifiedMinigame {
 
     private static final BlockData AIR_BLOCK_DATA = Material.AIR.createBlockData();
     private static final double DECAY_PRECISION = 1.0e-4;
     private static final NamespacedKey POWERUP_ID_KEY = new NamespacedKey(EventMain.getInstance(), "tnt-run-powerup");
 
-    // TODO: Cleanup -> unnecessary fields
-
     private final WorldEditStructure worldEditStructure;
     private final Location lobbyLocation;
     private final Location arenaOrigin;
-    private final int decayDelayTicks; // TODO: could be hardcoded
-    private final int eliminationHeight; // TODO: this should be done dynamically based on arena bounding box
+    private final int decayDelayTicks;
+    private final int eliminationHeight;
 
-    private final int powerupMaxAlive; // TODO: this could be hardcoded
-    private final int powerupSpawnAttempts; // TODO: should be hardcoded
+    private final int powerupMaxAlive;
+    private final int powerupSpawnAttempts;
 
     private final int slowFallingTicks;
     private final int updraftCooldownTicks;
@@ -95,26 +92,23 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private final Map<UUID, ItemStack> powerupItemByEntity = new HashMap<>();
     private final Map<UUID, Long> updraftCooldownUntilTick = new HashMap<>();
 
-    // TODO: This powerup should be rewritten or removed probably
-    // TODO: Noo, my favourite powerup 😢
+
     private final Map<UUID, PlatformInstance> platformById = new HashMap<>();
     private final Map<UUID, Set<UUID>> platformIdsByOwner = new HashMap<>();
     private final Map<BlockPos, Deque<UUID>> platformStackByBlock = new HashMap<>();
     private final Map<BlockPos, BlockData> platformTrueOriginalByBlock = new HashMap<>();
 
     public TNTRun(TNTRunDefinition def) {
-        // TODO: Unnecessary configuration: See other games
         super("TNT Run", "Don't fall down!", def.getTimeLimitSeconds() * 1000L, 1,
                 false, true, false, true);
 
-        this.decayDelayTicks = def.getDecayDelayTicks(); // TODO: unnecessary config
+        this.decayDelayTicks = def.getDecayDelayTicks();
         this.lobbyLocation = def.getLobbyLocation();
         this.arenaOrigin = def.getArenaOrigin();
         this.eliminationHeight = def.getEliminationHeight();
         this.worldEditStructure = new WorldEditStructure(arenaOrigin, def.getMapSchematic());
         this.boundingBox = worldEditStructure.getBoundingBox();
 
-        // TODO: unnecessary config
         this.powerupMaxAlive = def.getPowerupMaxAlive();
         this.powerupSpawnAttempts = def.getPowerupSpawnAttempts();
 
@@ -130,6 +124,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     @Override
     protected void tokenHandler(EventPlayer participant) {
         // TODO: Implement
+        // For Mitality: See other games/tokenformulas. Determine how many tokens should be given based on score
     }
 
 
@@ -204,12 +199,11 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         this.worldEditStructure.remove();
         this.decayQueue.clear();
 
-        // TODO: fixup
         this.scoreboard.handleGameEnd(this.audience, () -> {
             CountdownBossBar.builder()
                     .audience(this.audience)
-                    .color(BossBar.Color.BLUE)
-                    .title("<aqua><b>Game Over")
+                    .color(BossBar.Color.RED)
+                    .title("<red><b>Game Over")
                     .seconds(10)
                     .callback(() -> {
                         this.participants.forEach(eventPlayer -> {
@@ -259,7 +253,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         this.gameTimerBossBar = CountdownBossBar.builder()
                 .title("<green>Time Left: %ss")
                 .color(BossBar.Color.GREEN)
-                .miliseconds(this.getDuration() - 10_000L/*correct for the 10s at the start*/)
+                // correct for the 10s at the start
+                .miliseconds(this.getDuration() - 10_000L)
                 .audience(this.audience)
                 .callback(() -> {
                     this.sendAudienceMessage("<yellow>Time is up!</yellow>");
@@ -480,7 +475,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         }
     }
 
-
+    // powerups
 
     private enum PowerupType {
         UPDRAFT_SMALL(Material.FEATHER, "<aqua><b>Small Updraft") {
@@ -580,7 +575,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         }
     }
 
-    // TODO: Use boundingBox#getEntities(ItemDisplay.class) instead
+
     private void despawnAllPowerups() {
         if (arenaOrigin.getWorld() == null) return;
         org.bukkit.World w = arenaOrigin.getWorld();
@@ -846,8 +841,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         }
     }
 
-    // TODO: take a look at this powerup and see if it's worth keeping
-    // not a fan of protocollib usage
+
     private static void sendBreakAnim(Player viewer, int breakerId, BlockPos pos, @IntRange(from = -1, to = 9) int stage) {
         PacketContainer packet = ProtocolLibrary.getProtocolManager().createPacket(PacketType.Play.Server.BLOCK_BREAK_ANIMATION);
         packet.getIntegers().write(0, breakerId);
