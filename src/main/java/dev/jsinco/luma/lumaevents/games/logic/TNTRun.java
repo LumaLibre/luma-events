@@ -1,15 +1,14 @@
 package dev.jsinco.luma.lumaevents.games.logic;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.wrappers.BlockPosition;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.TNTRunDefinition;
 import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRole;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRoleMap;
 import dev.jsinco.luma.lumaevents.games.interfaces.structures.WorldEditStructure;
+import dev.jsinco.luma.lumaevents.games.interfaces.tempplatforms.ProtocolLibBreakAnimationSender;
+import dev.jsinco.luma.lumaevents.games.interfaces.tempplatforms.TempPlatformConfig;
+import dev.jsinco.luma.lumaevents.games.interfaces.tempplatforms.TempPlatformManager;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
@@ -47,12 +46,10 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
-import org.checkerframework.common.value.qual.IntRange;
 import org.jetbrains.annotations.Nullable;
 import org.joml.AxisAngle4f;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public final class TNTRun extends InventoryUnifiedMinigame {
 
@@ -91,12 +88,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private final Map<UUID, String> powerupByEntity = new HashMap<>();
     private final Map<UUID, ItemStack> powerupItemByEntity = new HashMap<>();
     private final Map<UUID, Long> updraftCooldownUntilTick = new HashMap<>();
-
-
-    private final Map<UUID, PlatformInstance> platformById = new HashMap<>();
-    private final Map<UUID, Set<UUID>> platformIdsByOwner = new HashMap<>();
-    private final Map<BlockPos, Deque<UUID>> platformStackByBlock = new HashMap<>();
-    private final Map<BlockPos, BlockData> platformTrueOriginalByBlock = new HashMap<>();
+    private final TempPlatformManager tempPlatforms;
 
     public TNTRun(TNTRunDefinition def) {
         super("TNT Run", "Don't fall down!", def.getTimeLimitSeconds() * 1000L, 1,
@@ -118,8 +110,22 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         this.platformTicks = def.getPlatformTicks();
         this.smallUpdraftY = def.getSmallUpdraftY();
         this.bigUpdraftY = def.getBigUpdraftY();
-    }
 
+        this.tempPlatforms = new TempPlatformManager(
+                TempPlatformConfig.defaultBedrock3x3(platformTicks, Math.min(40, platformTicks)),
+                block -> true, // replace all types of blocks
+                new ProtocolLibBreakAnimationSender(),
+                () -> {
+                    List<Player> viewers = new ArrayList<>();
+                    for (EventPlayer ep : this.participants) {
+                        Player p = ep.getPlayer();
+                        if (p != null) viewers.add(p);
+                    }
+                    return viewers;
+                },
+                () -> this.decayArmed // active condition
+        );
+    }
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
@@ -180,6 +186,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         this.decayArmed = false;
 
         unsafe(this::despawnAllPowerups);
+        tempPlatforms.cleanup();
 
         unsafe(() -> {
 
@@ -475,8 +482,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         }
     }
 
-    // powerups
-
     private enum PowerupType {
         UPDRAFT_SMALL(Material.FEATHER, "<aqua><b>Small Updraft") {
             @Override
@@ -518,7 +523,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         PLATFORM(Material.BEDROCK, "<aqua><b>Temporary Platform") {
             @Override
             public boolean handle(TNTRun ctx, Player player) {
-                ctx.spawnTemporaryPlatform(player);
+                ctx.tempPlatforms.spawnUnderPlayer(player);
                 player.getWorld().playSound(player.getLocation(), Sound.BLOCK_STONE_PLACE, SoundCategory.MASTER, 0.9f, 0.8f);
                 return true;
             }
@@ -705,8 +710,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         inHand.setAmount(inHand.getAmount() - 1);
     }
 
-
-
     private boolean checkAndApplyUpdraftCooldown(Player player) {
         long now = tickCounter;
         long until = updraftCooldownUntilTick.getOrDefault(player.getUniqueId(), 0L);
@@ -718,140 +721,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         return true;
     }
 
-    private void spawnTemporaryPlatform(Player player) {
-        org.bukkit.World w = player.getWorld();
-        Location loc = player.getLocation();
-        int baseY = loc.getBlockY() - 1;
-        int cx = loc.getBlockX();
-        int cz = loc.getBlockZ();
-
-        UUID platformId = UUID.randomUUID();
-        Set<BlockPos> blocks = new HashSet<>();
-
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
-                int x = cx + dx;
-                int z = cz + dz;
-
-                Block b = w.getBlockAt(x, baseY, z);
-                BlockPos pos = new BlockPos(x, baseY, z);
-                blocks.add(pos);
-
-                Deque<UUID> stack = platformStackByBlock.computeIfAbsent(pos, k -> new ArrayDeque<>());
-                if (stack.isEmpty()) platformTrueOriginalByBlock.put(pos, b.getBlockData().clone());
-                stack.push(platformId);
-
-                b.setType(Material.BEDROCK, false);
-            }
-        }
-
-        PlatformInstance inst = new PlatformInstance(platformId, player.getUniqueId(), w, blocks);
-        platformById.put(platformId, inst);
-        platformIdsByOwner.computeIfAbsent(player.getUniqueId(), k -> new HashSet<>()).add(platformId);
-
-        int warnTicks = Math.min(40, platformTicks);
-        Executors.delayedSync(Math.max(1, platformTicks - warnTicks), () -> {
-            if (!decayArmed) return;
-            animatePlatformBreaking(platformId, blocks, warnTicks);
-        });
-
-        Executors.delayedSync(platformTicks, () -> restorePlatform(platformId));
-    }
-
-    private void animatePlatformBreaking(UUID platformId, Set<BlockPos> blocks, int durationTicks) {
-        // Only animate blocks where this platform is CURRENTLY on top
-        Set<BlockPos> topOwned = new HashSet<>();
-        for (BlockPos pos : blocks) {
-            Deque<UUID> st = platformStackByBlock.get(pos);
-            if (st != null && !st.isEmpty() && platformId.equals(st.peek())) {
-                topOwned.add(pos);
-            }
-        }
-        if (topOwned.isEmpty()) return;
-
-        List<Player> viewers = new ArrayList<>();
-        for (EventPlayer ep : this.participants) {
-            Player p = ep.getPlayer();
-            if (p != null) viewers.add(p);
-        }
-
-        AtomicInteger ticks = new AtomicInteger();
-        Executors.repeatingSync(1, task -> {
-            if (!decayArmed || ticks.getAndIncrement() >= durationTicks) {
-                clearBreakAnim(platformId, topOwned, viewers);
-                task.cancel();
-                return;
-            }
-
-            int stage = Math.min(9, (int) Math.floor((ticks.get() / (double) durationTicks) * 10.0));
-            for (BlockPos pos : topOwned) {
-                Deque<UUID> st = platformStackByBlock.get(pos);
-                if (st == null || st.isEmpty() || !platformId.equals(st.peek())) continue;
-
-                int id = Objects.hash(platformId, pos.x(), pos.y(), pos.z());
-                for (Player viewer : viewers) {
-                    sendBreakAnim(viewer, id, pos, stage);
-                }
-            }
-        });
-    }
-
-    private void clearBreakAnim(UUID platformId, Set<BlockPos> blocks, List<Player> viewers) {
-        for (BlockPos pos : blocks) {
-            int id = Objects.hash(platformId, pos.x(), pos.y(), pos.z());
-            for (Player viewer : viewers) {
-                sendBreakAnim(viewer, id, pos, -1);
-            }
-        }
-    }
-
-    private void restorePlatform(UUID platformId) {
-        PlatformInstance inst = platformById.remove(platformId);
-        if (inst == null) return;
-
-        Set<UUID> set = platformIdsByOwner.get(inst.owner());
-        if (set != null) {
-            set.remove(platformId);
-            if (set.isEmpty()) platformIdsByOwner.remove(inst.owner());
-        }
-
-        List<Player> viewers = new ArrayList<>();
-        for (EventPlayer ep : this.participants) {
-            Player p = ep.getPlayer();
-            if (p != null) viewers.add(p);
-        }
-        clearBreakAnim(platformId, inst.blocks(), viewers);
-
-        for (BlockPos pos : inst.blocks()) {
-            Deque<UUID> st = platformStackByBlock.get(pos);
-            if (st == null || st.isEmpty()) continue;
-
-            if (platformId.equals(st.peek())) st.pop();
-            else st.remove(platformId);
-
-            Block b = inst.world().getBlockAt(pos.x(), pos.y(), pos.z());
-
-            if (st.isEmpty()) {
-                BlockData original = platformTrueOriginalByBlock.remove(pos);
-                if (original != null) b.setBlockData(original, false);
-                platformStackByBlock.remove(pos);
-            } else {
-                b.setType(Material.BEDROCK, false);
-            }
-        }
-    }
-
-
-    private static void sendBreakAnim(Player viewer, int breakerId, BlockPos pos, @IntRange(from = -1, to = 9) int stage) {
-        PacketContainer packet = ProtocolLibrary.getProtocolManager().createPacket(PacketType.Play.Server.BLOCK_BREAK_ANIMATION);
-        packet.getIntegers().write(0, breakerId);
-        packet.getBlockPositionModifier().write(0, new BlockPosition(pos.x(), pos.y(), pos.z()));
-        packet.getIntegers().write(1, stage);
-        try {
-            ProtocolLibrary.getProtocolManager().sendServerPacket(viewer, packet);
-        } catch (Exception ignored) {}
-    }
-
     private static void giveOrDrop(Player player, ItemStack toGive) {
         if (player == null || toGive == null || toGive.getType().isAir() || toGive.getAmount() <= 0) return;
 
@@ -859,5 +728,4 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     }
 
     private record BlockPos(int x, int y, int z) {}
-    private record PlatformInstance(UUID id, UUID owner, org.bukkit.World world, Set<BlockPos> blocks) {}
 }
