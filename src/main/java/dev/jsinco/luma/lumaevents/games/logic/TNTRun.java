@@ -6,6 +6,7 @@ import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRole;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRoleMap;
 import dev.jsinco.luma.lumaevents.games.interfaces.structures.WorldEditStructure;
+import dev.jsinco.luma.lumaevents.games.interfaces.tempplatforms.BreakAnimationSender;
 import dev.jsinco.luma.lumaevents.games.interfaces.tempplatforms.ProtocolLibBreakAnimationSender;
 import dev.jsinco.luma.lumaevents.games.interfaces.tempplatforms.TempPlatformConfig;
 import dev.jsinco.luma.lumaevents.games.interfaces.tempplatforms.TempPlatformManager;
@@ -19,6 +20,7 @@ import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.lumacore.utility.Text;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -114,7 +116,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         this.tempPlatforms = new TempPlatformManager(
                 TempPlatformConfig.defaultBedrock3x3(platformTicks, Math.min(40, platformTicks)),
                 block -> true, // replace all types of blocks
-                new ProtocolLibBreakAnimationSender(),
+                Bukkit.getPluginManager().isPluginEnabled("ProtocolLib") ?
+                new ProtocolLibBreakAnimationSender() : BreakAnimationSender.noop(),
                 () -> {
                     List<Player> viewers = new ArrayList<>();
                     for (EventPlayer ep : this.participants) {
