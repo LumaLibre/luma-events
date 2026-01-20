@@ -40,6 +40,11 @@ public class Config extends OkaeriConfig {
             MinigameConstant.PROP_HUNT
     );
 
+    @Comment("Commands allowed while participating in a game")
+    private List<String> commandWhitelist = List.of(
+            "g", "l", "pc", "sc", "msg", "r", "tell", "partychat", "staffchat"
+    );
+
     @Comment("Minigame definition for 'Boatrace 2'")
     private Map<String, BoatRace2Definition> boatRaceMaps = Map.of(
             "default", new BoatRace2Definition()

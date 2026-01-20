@@ -1,5 +1,6 @@
 package dev.jsinco.luma.lumaevents.games.events;
 
+import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.EventPlayerManager;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
@@ -9,6 +10,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
+
+import java.util.List;
 
 public class MinigameExitPreventionListener implements Listener {
 
@@ -38,6 +41,9 @@ public class MinigameExitPreventionListener implements Listener {
     public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
         minigame.ensureNotIllegal();
 
+        if (EventMain.getOkaeriConfig().getCommandWhitelist()
+                .contains(event.getMessage().split(" ")[0].substring(1).toLowerCase())) return;
+
         Player player = event.getPlayer();
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
         if (minigame.getParticipants().contains(eventPlayer)
@@ -45,7 +51,7 @@ public class MinigameExitPreventionListener implements Listener {
                 && !event.getMessage().contains("quit") // super lazy check to allow quitting
         ) {
             event.setCancelled(true);
-            eventPlayer.sendMessage("You can't use commands while participating in this minigame. Use /event quit to leave.");
+            eventPlayer.sendMessage("You can't use this command while participating in a minigame. Use /event quit to leave.");
         }
     }
 }
