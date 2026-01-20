@@ -1,19 +1,32 @@
-package dev.jsinco.luma.lumaevents.games.interfaces.tempplatforms;
+package dev.jsinco.luma.lumaevents.games.interfaces.packet;
+
 
 import dev.jsinco.luma.lumaevents.utility.Executors;
+import dev.jsinco.luma.lumaevents.utility.Externals;
+import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-public final class TempPlatformManager {
+public final class BlockAnimationPlatform {
 
-    private final TempPlatformConfig config;
-    private final ReplacePredicate replacePredicate;
+    private final BlockAnimationPlatformConfig config;
+    private final Predicate<Block> replacePredicate;
     private final BreakAnimationSender breakSender;
     private final Supplier<List<Player>> viewersSupplier;
     private final Supplier<Boolean> isActiveSupplier; // e.g. decayArmed / gameRunning
@@ -22,9 +35,9 @@ public final class TempPlatformManager {
     private final Map<BlockPos, Deque<UUID>> platformStackByBlock = new HashMap<>();
     private final Map<BlockPos, BlockData> trueOriginalByBlock = new HashMap<>();
 
-    public TempPlatformManager(
-            TempPlatformConfig config,
-            ReplacePredicate replacePredicate,
+    public BlockAnimationPlatform(
+            BlockAnimationPlatformConfig config,
+            Predicate<Block> replacePredicate,
             BreakAnimationSender breakSender,
             Supplier<List<Player>> viewersSupplier,
             Supplier<Boolean> isActiveSupplier
@@ -65,7 +78,7 @@ public final class TempPlatformManager {
                 int z = cz + dz;
 
                 Block b = w.getBlockAt(x, y, z);
-                if (!replacePredicate.canReplace(b)) continue;
+                if (!replacePredicate.test(b)) continue;
 
                 BlockPos pos = new BlockPos(x, y, z);
                 blocks.add(pos);
@@ -74,7 +87,7 @@ public final class TempPlatformManager {
                 if (stack.isEmpty()) trueOriginalByBlock.put(pos, b.getBlockData().clone());
                 stack.push(platformId);
 
-                b.setType(config.platformMaterial(), false);
+                b.setType(config.material(), false);
             }
         }
 
@@ -116,7 +129,7 @@ public final class TempPlatformManager {
                 if (original != null) b.setBlockData(original, false);
                 platformStackByBlock.remove(pos);
             } else {
-                b.setType(config.platformMaterial(), false);
+                b.setType(config.material(), false);
             }
         }
     }
@@ -163,6 +176,54 @@ public final class TempPlatformManager {
         }
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
     private record BlockPos(int x, int y, int z) {}
     private record PlatformInstance(UUID id, World world, Set<BlockPos> blocks) {}
+
+    public static class Builder {
+
+        private BlockAnimationPlatformConfig config = BlockAnimationPlatformConfig.defaultConfig();
+        private Predicate<Block> replacePredicate = block -> true;
+        private BreakAnimationSender breakSender = Externals.pluginExists("ProtocolLib") ? new ProtocolLibBreakAnimationSender() : BreakAnimationSender.noop();
+        private Supplier<List<Player>> viewersSupplier = () -> new ArrayList<>(Bukkit.getOnlinePlayers());
+        private Supplier<Boolean> isActiveSupplier = () -> true;
+
+        public Builder config(BlockAnimationPlatformConfig config) {
+            this.config = config;
+            return this;
+        }
+
+        public Builder replacePredicate(Predicate<Block> replacePredicate) {
+            this.replacePredicate = replacePredicate;
+            return this;
+        }
+
+        public Builder breakSender(BreakAnimationSender breakSender) {
+            this.breakSender = breakSender;
+            return this;
+        }
+
+        public Builder viewersSupplier(Supplier<List<Player>> viewersSupplier) {
+            this.viewersSupplier = viewersSupplier;
+            return this;
+        }
+
+        public Builder isActiveSupplier(Supplier<Boolean> isActiveSupplier) {
+            this.isActiveSupplier = isActiveSupplier;
+            return this;
+        }
+
+        public BlockAnimationPlatform build() {
+            return new BlockAnimationPlatform(
+                    config,
+                    replacePredicate,
+                    breakSender,
+                    viewersSupplier,
+                    isActiveSupplier
+            );
+        }
+    }
 }

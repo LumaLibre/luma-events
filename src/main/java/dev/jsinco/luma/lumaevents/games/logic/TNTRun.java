@@ -6,10 +6,8 @@ import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRole;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRoleMap;
 import dev.jsinco.luma.lumaevents.games.interfaces.structures.WorldEditStructure;
-import dev.jsinco.luma.lumaevents.games.interfaces.tempplatforms.BreakAnimationSender;
-import dev.jsinco.luma.lumaevents.games.interfaces.tempplatforms.ProtocolLibBreakAnimationSender;
-import dev.jsinco.luma.lumaevents.games.interfaces.tempplatforms.TempPlatformConfig;
-import dev.jsinco.luma.lumaevents.games.interfaces.tempplatforms.TempPlatformManager;
+import dev.jsinco.luma.lumaevents.games.interfaces.packet.BlockAnimationPlatformConfig;
+import dev.jsinco.luma.lumaevents.games.interfaces.packet.BlockAnimationPlatform;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
@@ -20,7 +18,6 @@ import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.lumacore.utility.Text;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -51,7 +48,14 @@ import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 import org.joml.AxisAngle4f;
 
-import java.util.*;
+// no wildcard imports please
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 
 public final class TNTRun extends InventoryUnifiedMinigame {
 
@@ -86,11 +90,11 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private final Map<BlockPos, Long> decayQueue = new HashMap<>();
     private long tickCounter = 0L;
 
-    private float powerupSpinAngle = 0f; // TODO: use items instead of displays
+    private float powerupSpinAngle = 0f;
     private final Map<UUID, String> powerupByEntity = new HashMap<>();
     private final Map<UUID, ItemStack> powerupItemByEntity = new HashMap<>();
     private final Map<UUID, Long> updraftCooldownUntilTick = new HashMap<>();
-    private final TempPlatformManager tempPlatforms;
+    private final BlockAnimationPlatform tempPlatforms;
 
     public TNTRun(TNTRunDefinition def) {
         super("TNT Run", "Don't fall down!", def.getTimeLimitSeconds() * 1000L, 1,
@@ -112,22 +116,15 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         this.platformTicks = def.getPlatformTicks();
         this.smallUpdraftY = def.getSmallUpdraftY();
         this.bigUpdraftY = def.getBigUpdraftY();
-
-        this.tempPlatforms = new TempPlatformManager(
-                TempPlatformConfig.defaultBedrock3x3(platformTicks, Math.min(40, platformTicks)),
-                block -> true, // replace all types of blocks
-                Bukkit.getPluginManager().isPluginEnabled("ProtocolLib") ?
-                new ProtocolLibBreakAnimationSender() : BreakAnimationSender.noop(),
-                () -> {
-                    List<Player> viewers = new ArrayList<>();
-                    for (EventPlayer ep : this.participants) {
-                        Player p = ep.getPlayer();
-                        if (p != null) viewers.add(p);
-                    }
-                    return viewers;
-                },
-                () -> this.decayArmed // active condition
-        );
+        this.tempPlatforms = BlockAnimationPlatform.builder()
+                .config(BlockAnimationPlatformConfig.defaultBedrock3x3(platformTicks, Math.min(40, platformTicks)))
+                .replacePredicate(block -> true) // replace all types of blocks
+                .viewersSupplier(() -> this.participants.stream()
+                        .map(EventPlayer::getPlayer)
+                        .filter(Objects::nonNull)
+                        .toList())
+                .isActiveSupplier(() -> this.decayArmed) // active condition
+                .build();
     }
 
     @Override

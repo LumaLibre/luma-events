@@ -1,10 +1,11 @@
-package dev.jsinco.luma.lumaevents.games.interfaces.tempplatforms;
+package dev.jsinco.luma.lumaevents.games.interfaces.packet;
 
 import org.bukkit.entity.Player;
-import org.checkerframework.common.value.qual.IntRange;
+import org.jetbrains.annotations.Range;
 
 public interface BreakAnimationSender {
-    void sendBreakAnimation(Player viewer, int breakerId, int x, int y, int z, @IntRange(from = -1, to = 9) int stage);
+
+    void sendBreakAnimation(Player viewer, int breakerId, int x, int y, int z, @Range(from = -1, to = 9) int stage);
 
     default void clearBreakAnimation(Player viewer, int breakerId, int x, int y, int z) {
         sendBreakAnimation(viewer, breakerId, x, y, z, -1);
