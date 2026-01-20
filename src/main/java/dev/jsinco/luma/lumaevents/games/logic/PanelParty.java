@@ -15,11 +15,19 @@ import dev.jsinco.luma.lumaevents.utility.Executors;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
@@ -28,9 +36,12 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class PanelParty extends InventoryUnifiedMinigame {
@@ -43,7 +54,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             "<green>%s</green> isn't great with colors...",
             "<yellow>%s</yellow> chose a bad block.",
             "<light_purple>%s</light_purple> was eliminated!",
-            "<gold>%s</gold> became a spectator.",
+            "<gold>%s</gold> became a spectator."
     };
 
     private final Location spawnLocation;
@@ -54,12 +65,11 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     private final Scoreboard<EventPlayer> scoreboard;
     private final int maxRounds;
 
-
     private int round;
     private @NotNull PanelPartyProcess currentProcess;
 
     public PanelParty(PanelPartyMinigameDefinition def) {
-        super("Panels", "Stand on the correct color!", DURATION, TICK_INTERVAL, true, true, true, true);
+        super("Panel Party", "Stand on the correct color!", DURATION, TICK_INTERVAL, true, true, true, false);
         this.boundingBox = def.getRegion().toWorldTiedBoundingBox();
         this.spawnLocation = def.getSpawnLocation();
         this.center = def.getCenter();
@@ -100,6 +110,9 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         AbstractPanelPlayer role = this.roleMap.remove(participant.getUuid());
         if (role != null) {
             role.cleanup();
+            if (role instanceof PanelParticipant panelParticipant) {
+                panelParticipant.checkEnd();
+            }
         }
         return super.removeParticipant(participant);
     }
@@ -132,16 +145,38 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             return;
         }
 
+        boolean isFinished = this.currentProcess.isFinished();
+
+
+        Material chosenMaterial = this.currentProcess.getChosenMaterial();
+        Component component;
+        if (!isFinished && chosenMaterial != null) {
+            TextColor textColor = TextColor.color(chosenMaterial.createBlockData().getMapColor().asRGB());
+            component = Component.text("Stand on: " + Util.formatMaterialName(chosenMaterial.name()))
+                    .color(textColor)
+                    .decorate(TextDecoration.UNDERLINED);
+        } else {
+            component = null;
+        }
+
         this.roleMap.forEach(abstractPanelPlayer -> {
             abstractPanelPlayer.tick();
+
+            if (component != null) {
+                abstractPanelPlayer.getEventPlayer().sendActionBar(component);
+            }
         });
 
         Preconditions.checkNotNull(this.currentProcess, "Current process cannot be null during onRunnable.");
 
-        if (!this.currentProcess.isFinished()) {
+        if (!isFinished) {
             return;
         }
 
+        int points = this.currentProcess.difficulty.getScoreboardWeight();
+        for (PanelParticipant panelParticipant : this.roleMap.getMatching(PanelParticipant.class)) {
+            this.scoreboard.addScore(panelParticipant.getEventPlayer(), points); // Award points for surviving the round
+        }
 
         this.round++;
         if (this.shouldStop()) {
@@ -151,10 +186,6 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             Executors.runSync(() -> {
                 this.currentProcess.run(this.round);
             });
-
-            for (PanelParticipant panelParticipant : this.roleMap.getMatching(PanelParticipant.class)) {
-                this.scoreboard.addScore(panelParticipant.getEventPlayer(), 1); // Award 1 point for surviving the round
-            }
         }
     }
 
@@ -228,6 +259,35 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     }
 
 
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event) {
+        this.ensureNotIllegal();
+        Player player = event.getPlayer();
+        AbstractPanelPlayer role = this.roleMap.get(player.getUniqueId());
+        if (role != null) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        this.ensureNotIllegal();
+        if (!(event.getEntity() instanceof Player victim)) {
+            return;
+        }
+        if (!(event.getDamager() instanceof Player attacker)) {
+            return;
+        }
+
+        AbstractPanelPlayer victimRole = this.roleMap.get(victim.getUniqueId());
+        AbstractPanelPlayer attackerRole = this.roleMap.get(attacker.getUniqueId());
+
+        if (victimRole != null && attackerRole != null) {
+            victimRole.attacked(event, attackerRole);
+        }
+    }
+
+
     private static abstract class AbstractPanelPlayer extends MinigameRole {
         protected final PanelParty context;
 
@@ -239,29 +299,44 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         public abstract void tick();
         public abstract void cleanup();
         public abstract void eliminate();
+        public abstract void attacked(EntityDamageByEntityEvent event, AbstractPanelPlayer attacker);
     }
 
-    public static class PanelParticipant extends AbstractPanelPlayer {
+    private static class PanelParticipant extends AbstractPanelPlayer {
 
-        private static final PotionEffect JUMP_BOOST = new PotionEffect(PotionEffectType.JUMP_BOOST, 300, 2, true, false);
+        private static final PotionEffect JUMP_BOOST = new PotionEffect(PotionEffectType.JUMP_BOOST, 210, 0, true, false);
         private static final ItemStack AIR = ItemStack.of(Material.AIR);
+        private static final int ELIMINATION_Y_LEVEL_OFFSET = 50;
 
         private final int eliminationYLevel;
         private boolean eliminated;
 
         public PanelParticipant(PanelParty context, EventPlayer eventPlayer) {
             super(context, eventPlayer);
-            this.eliminationYLevel = context.center.getBlockY() - 35;
+            this.eliminationYLevel = context.center.getBlockY() - ELIMINATION_Y_LEVEL_OFFSET;
             this.eliminated = false;
+            this.eventPlayer.operatePlayer(player -> {
+                if (player.getGameMode() != GameMode.SURVIVAL) {
+                    player.setGameMode(GameMode.SURVIVAL);
+                }
+            });
         }
 
         @Override
         public void tick() {
             this.eventPlayer.operatePlayer(player -> {
-                player.addPotionEffect(JUMP_BOOST);
-                player.setFoodLevel(20);
+                PanelPartyProcess process = this.context.currentProcess;
+
+                if (process.difficulty.hasModifier(PanelDifficultyModifier.JUMP_BOOST_ENABLED)) {
+                    player.addPotionEffect(JUMP_BOOST);
+                }
+
+
                 if (player.getLocation().getY() <= this.eliminationYLevel) {
                     this.eliminate();
+                    player.playSound(player.getLocation(), Sound.ITEM_TOTEM_USE, 0.8f, 1.0f);
+                } else {
+                    player.setFoodLevel(20);
                 }
             });
         }
@@ -283,17 +358,36 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             this.context.roleMap.swapRole(this, () -> new PanelSpectator(this.context, this.eventPlayer));
 
             Location location = this.context.center.clone().add(0, 10, 0);
-            this.teleportAsync(location);
+            this.eventPlayer.operatePlayer(player ->  {
+                player.setFallDistance(0);
+                player.teleportAsync(location);
+            });
 
             this.eventPlayer.sendMessage("You have been eliminated and are now a spectator!");
             this.context.sendAudienceMessage(String.format(Util.getRandom(ELIMINATION_MESSAGES), this.eventPlayer.getName()));
 
+            this.checkEnd();
+        }
+
+        @Override
+        public void attacked(EntityDamageByEntityEvent event, AbstractPanelPlayer attacker) {
+            PanelPartyProcess process = this.context.currentProcess;
+            if (process.isIntermission() && process.difficulty.hasModifier(PanelDifficultyModifier.PVP_ENABLED) && attacker instanceof PanelParticipant) {
+                return; // allow pvp
+            }
+            event.setCancelled(true);
+        }
+
+        public void checkEnd() {
             if (this.context.roleMap.getMatching(PanelParticipant.class).size() <= 1) {
                 PanelParticipant winner = this.context.roleMap.getMatching(PanelParticipant.class).stream().findFirst().orElse(null);
                 if (winner != null) {
-                    this.context.sendAudienceMessage("<gold><b>" + winner.getEventPlayer().getName() + "</b> was the last player standing!");
+                    this.context.sendAudienceMessage("<gold><b>" + winner.getEventPlayer().getName() + "</b></gold> was the last player standing!");
+                    this.context.scoreboard.addScore(winner.getEventPlayer(), 2); // bonus points for winning
                 }
-                this.context.stop();
+                Executors.runDelayedAsync(50, TimeUnit.MILLISECONDS, task -> {
+                    this.context.stop();
+                });
             }
         }
 
@@ -307,7 +401,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     private static class PanelSpectator extends AbstractPanelPlayer {
 
-        private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 300, 0, true, false);
+        private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 210, 0, true, true);
 
         public PanelSpectator(PanelParty context, EventPlayer eventPlayer) {
             super(context, eventPlayer);
@@ -321,11 +415,11 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         @Override
         public void tick() {
             this.eventPlayer.operatePlayer(player -> {
-                if (!player.isFlying()) {
-                    player.setFlying(true);
-                }
                 if (!player.getAllowFlight()) {
                     player.setAllowFlight(true);
+                }
+                if (!player.isFlying()) {
+                    player.setFlying(true);
                 }
                 player.addPotionEffect(INVISIBILITY);
             });
@@ -347,10 +441,15 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             this.teleportAsync(location);
         }
 
-        public void hide() {
+        @Override
+        public void attacked(EntityDamageByEntityEvent event, AbstractPanelPlayer attacker) {
+            event.setCancelled(true); // spectators cannot be attacked
+        }
+
+        private void hide() {
             this.eventPlayer.operatePlayer(self -> {
-                for (EventPlayer other : this.context.getParticipants()) {
-                    Player bukkitOther = other.getPlayer();
+                for (PanelParticipant other : this.context.roleMap.getMatching(PanelParticipant.class)) {
+                    Player bukkitOther = other.getEventPlayer().getPlayer();
                     if (bukkitOther != null) {
                         bukkitOther.hidePlayer(EventMain.getInstance(), self);
                     }
@@ -358,7 +457,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             });
         }
 
-        public void show() {
+        private void show() {
             this.eventPlayer.operatePlayer(self -> {
                 for (EventPlayer other : this.context.getParticipants()) {
                     Player bukkitOther = other.getPlayer();
@@ -371,18 +470,21 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     }
 
-    public static class PanelPartyProcess {
+    private static class PanelPartyProcess {
 
         private static final float ROUND_INTERVAL_SECONDS = 5;
+        private static final int MINIMUM_BLOCKS_PER_MATERIAL = 10;
 
         private final PanelParty context;
         private final PanelDifficulty difficulty;
         private final Set<Material> availableMaterials;
-        private final AtomicBoolean finished; // TODO: could be volatile boolean instead
+        private final AtomicBoolean finished;
+        private final AtomicBoolean intermission;
 
         private CountdownBossBar countdownBossBar;
         private CountdownBossBar intermissionBossBar;
 
+        @Getter
         private Material chosenMaterial;
 
 
@@ -391,13 +493,18 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             this.difficulty = difficulty;
             this.availableMaterials = new HashSet<>();
             this.finished = new AtomicBoolean(false);
+            this.intermission = new AtomicBoolean(false);
         }
 
         public boolean isFinished() {
             return this.finished.get();
         }
 
-        public boolean run(int round) {
+        public boolean isIntermission() {
+            return this.intermission.get();
+        }
+
+        public boolean run(final int round) {
             // check if more rounds are available
             if (round + 1 > this.context.maxRounds) {
                 return false;
@@ -405,28 +512,34 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
             // paste the next panel and count block data
             GenericStructure panel = this.context.panels.get(round);
-            panel.paste((vector3i, blockData) -> {
-                Material material = blockData.getMaterial();
-                this.availableMaterials.add(material);
-                return true;
-            });
+            this.pastePanelWithCounting(panel);
+
 
             this.chosenMaterial = Util.getRandom(this.availableMaterials);
             Preconditions.checkNotNull(this.chosenMaterial, "Chosen block data cannot be null.");
 
 
-            // Teleport players to the center
+            // give players the chosen block in hand if applicable
             ItemStack itemStack = ItemStack.of(this.chosenMaterial);
             for (PanelParticipant panelParticipant : this.context.roleMap.getMatching(PanelParticipant.class)) {
-                Location location = this.context.center.clone();
-                panelParticipant.teleportAsync(location.add(RANDOM.nextDouble(0, 5), 2, RANDOM.nextDouble(0, 5)));
-                panelParticipant.setItemInHand(itemStack);
+                if (this.difficulty.hasModifier(PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK)) {
+                    panelParticipant.setItemInHand(itemStack);
+                }
             }
 
 
+            StringBuilder titleBuilder = new StringBuilder();
+            titleBuilder.append(this.difficulty.formatted(this.panelName(panel.getLocalSchemPath())));
+            titleBuilder.append(" <gray>#").append(round + 1);
+            if (this.difficulty.hasModifier(PanelDifficultyModifier.PVP_ENABLED)) {
+                titleBuilder.append(this.difficulty.formatted(" (PvP)"));
+            }
+
+            String intermissionTitle = this.difficulty.formatted(!this.difficulty.hasModifier(PanelDifficultyModifier.PVP_ENABLED) ? "Don't move!" : "Don't move! (PvP)");
+
             this.countdownBossBar = CountdownBossBar.builder()
                     .seconds(this.difficulty.getSeconds())
-                    .title(this.difficulty.formatted(this.panelName(panel.getLocalSchemPath()) + " <gray>(" + round + "/" + this.context.maxRounds + ")"))
+                    .title(titleBuilder.toString())
                     .audience(this.context.getAudience())
                     .color(this.difficulty.getBossBarColor())
                     .callback(() -> {
@@ -438,13 +551,22 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                             );
                         });
 
-                        // recursively start next round
+                        if (this.difficulty.hasModifier(PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK)) {
+                            for (PanelParticipant panelParticipant : this.context.roleMap.getMatching(PanelParticipant.class)) {
+                                panelParticipant.setItemInHand(PanelParticipant.AIR);
+                            }
+                        }
+
+                        // start intermission
+                        this.intermission.set(true);
+
                         this.intermissionBossBar = CountdownBossBar.builder()
                                 .seconds(ROUND_INTERVAL_SECONDS)
-                                .title(this.difficulty.formatted("Hold Your Positions!"))
+                                .title(intermissionTitle)
                                 .audience(this.context.getAudience())
                                 .color(this.difficulty.getBossBarColor())
                                 .callback(() -> {
+                                    this.intermission.set(false);
                                     this.finished.set(true);
                                 })
                                 .build()
@@ -454,6 +576,28 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                     .start();
 
             return true;
+        }
+
+        private void pastePanelWithCounting(GenericStructure panel) {
+            Map<Material, Integer> materialCountMap = new HashMap<>();
+
+            panel.paste((vector3i, blockData) -> {
+                Material material = blockData.getMaterial();
+                // If it's already qualified, no need to keep counting
+                if (this.availableMaterials.contains(material)) {
+                    return true;
+                } else if (this.difficulty.hasModifier(PanelDifficultyModifier.IGNORE_MINIMUM_BLOCKS)) {
+                    this.availableMaterials.add(material);
+                    return true;
+                }
+
+                int newCount = materialCountMap.merge(material, 1, Integer::sum);
+
+                if (newCount >= MINIMUM_BLOCKS_PER_MATERIAL) {
+                    this.availableMaterials.add(material);
+                }
+                return true;
+            });
         }
 
 
@@ -487,24 +631,37 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
 
     @Getter
-    public enum PanelDifficulty {
-        EASY(12, BossBar.Color.GREEN, "<green>"),
-        MEDIUM(9, BossBar.Color.YELLOW, "<yellow>"),
-        HARD(6, BossBar.Color.RED, "<dark_red>"),
-        HARDER_THAN_HARD_I_GUESS(3, BossBar.Color.PURPLE, "<dark_purple>");
+    private enum PanelDifficulty {
+        EASY(14, BossBar.Color.GREEN, "<green>", 1, PanelDifficultyModifier.JUMP_BOOST_ENABLED, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
+        MEDIUM(9, BossBar.Color.YELLOW, "<yellow>", 1, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
+        HARD(6, BossBar.Color.RED, "<dark_red>", 1, PanelDifficultyModifier.PVP_ENABLED),
+        HARDER_THAN_HARD_I_GUESS(4, BossBar.Color.PURPLE, "<dark_purple>", 2, PanelDifficultyModifier.PVP_ENABLED, PanelDifficultyModifier.IGNORE_MINIMUM_BLOCKS);
 
         private final int seconds;
         private final BossBar.Color bossBarColor;
         private final String textColorPrefix;
+        private final int scoreboardWeight;
+        private final PanelDifficultyModifier[] modifiers;
 
-        PanelDifficulty(int seconds, BossBar.Color bossBarColor, String textColorPrefix) {
+        PanelDifficulty(int seconds, BossBar.Color bossBarColor, String textColorPrefix, int scoreboardWeight, PanelDifficultyModifier... modifiers) {
             this.seconds = seconds;
             this.bossBarColor = bossBarColor;
+            this.scoreboardWeight = scoreboardWeight;
             this.textColorPrefix = textColorPrefix;
+            this.modifiers = modifiers;
         }
 
         public String formatted(String message) {
             return this.textColorPrefix + "<b>" + message;
+        }
+
+        public boolean hasModifier(PanelDifficultyModifier modifier) {
+            for (PanelDifficultyModifier mod : this.modifiers) {
+                if (mod == modifier) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public static PanelDifficulty fromRounds(int currentRound, int maxRounds) {
@@ -520,5 +677,13 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                 return HARDER_THAN_HARD_I_GUESS;
             }
         }
+    }
+
+
+    private enum PanelDifficultyModifier {
+        PVP_ENABLED,
+        IGNORE_MINIMUM_BLOCKS,
+        JUMP_BOOST_ENABLED,
+        SHOW_PHYSICAL_BLOCK
     }
 }

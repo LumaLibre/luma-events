@@ -50,6 +50,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
     protected long startTime = -1;
     protected boolean open = false;
     protected boolean active = false;
+    protected boolean stopping = false;
     protected Audience audience;
     protected MinigameBoundingBox boundingBox;
 
@@ -136,9 +137,11 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
     }
 
     public boolean stop() {
-        if (!this.active) {
+        if (!this.active || this.stopping) {
             return false;
         }
+        this.stopping = true;
+
         if (this.inventoryTampering != null) {
             unregisterEvents(this.inventoryTampering);
         }
