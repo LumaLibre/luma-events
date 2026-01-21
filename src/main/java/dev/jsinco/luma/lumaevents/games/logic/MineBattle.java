@@ -457,6 +457,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: this needs to be changed in some way.
+    //  Batched or calls reduced.
     private void updateLineOfSightVisibility() {
         if (!arenaReady) return;
 
@@ -551,7 +553,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     // TODO: Constants should be at the top
     // Reveal for 3s at half-time, 5s at 3/4, 10s at 7/8 and permanently at 15/16
-    private static final PeriodicRevealStep[] REVEAL_SCHEDULE = new PeriodicRevealStep[] {
+    private static final PeriodicRevealStep[] REVEAL_SCHEDULE = {
             new PeriodicRevealStep(1, 2,  3_000),
             new PeriodicRevealStep(2, 3,  0),
             new PeriodicRevealStep(3, 4,  5_000),
@@ -631,6 +633,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: put this at the bottom
     private record WorldBorderSnapshot(
             Location center,
             double size,
@@ -942,7 +945,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
-    // TODO: Bad method. This includes TNT in all worlds areas of the server.
+    // TODO: Bad method. This includes TNT in all areas of the server.
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onTntExplode(EntityExplodeEvent event) {
         this.ensureNotIllegal();
@@ -1210,6 +1213,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Util#giveItem?
     private static void giveOrDrop(Player player, ItemStack toGive) {
         if (player == null || toGive == null || toGive.getType().isAir() || toGive.getAmount() <= 0) return;
 
@@ -1252,7 +1256,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             player.getWorld().dropItemNaturally(player.getLocation(), remaining);
         }
 
-        player.updateInventory();
+        player.updateInventory(); // TODO: bad method call
     }
 
     private void handleEnchantment(InventoryClickEvent event, Player player, Enchantment enchantment, int maxLevel) {
@@ -1299,16 +1303,19 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         player.playSound (player, Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1, 1);
     }
 
+    // TODO: Use bukkit tag registry
     private boolean isSword(ItemStack item) {
         return item.getType().name().toUpperCase().contains("_SWORD");
     }
 
+    // TODO: Use bukkit tag registry
     private boolean isArmor(ItemStack item) {
         String name = item.getType().name().toUpperCase();
         return name.contains("_HELMET") || name.contains("_CHESTPLATE")
                 || name.contains("_LEGGINGS") || name.contains("_BOOTS");
     }
 
+    // TODO: Use bukkit tag registry
     private boolean isBoots(ItemStack item) {
         return item.getType().name().toUpperCase().contains("_BOOTS");
     }
@@ -1346,6 +1353,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Should be configured manually
     private @Nullable File pickRandomSchematicFile() {
         if (!schematicsFolder.exists()) schematicsFolder.mkdirs();
         File[] files = schematicsFolder.listFiles(f ->
@@ -1355,6 +1363,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         return files[new Random().nextInt(files.length)];
     }
 
+    // TODO: Use WorldEditStructure
     private void pasteSchematic(World weWorld, Location pasteAt, File file) throws Exception {
         ClipboardFormat format = ClipboardFormats.findByFile(file);
         if (format == null) throw new IllegalArgumentException("Unknown schematic format: " + file.getName());
