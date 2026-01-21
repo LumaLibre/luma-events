@@ -18,6 +18,8 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Registry;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
@@ -289,6 +291,15 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
             return;
         }
         this.audience.showTitle(Util.title(Util.getTextColor() + title, Util.getTextColor() + subtitle));
+    }
+
+    public void playAudienceSound(Sound sound, float volume, float pitch) {
+        if (this.audience == null) {
+            return;
+        }
+
+        net.kyori.adventure.sound.Sound kyoriSound = net.kyori.adventure.sound.Sound.sound(Registry.SOUNDS.getKey(sound), net.kyori.adventure.sound.Sound.Source.NEUTRAL, volume, pitch);
+        this.audience.playSound(kyoriSound);
     }
 
     protected boolean isParticipant(EventPlayer... players) {

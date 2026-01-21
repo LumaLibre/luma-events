@@ -18,7 +18,6 @@ import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -537,6 +536,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
             String intermissionTitle = this.difficulty.formatted(!this.difficulty.hasModifier(PanelDifficultyModifier.PVP_ENABLED) ? "Don't move!" : "Don't move! (PvP)");
 
+            this.context.playAudienceSound(Sound.BLOCK_NOTE_BLOCK_BIT, 1.0f, 1.0f);
+
             this.countdownBossBar = CountdownBossBar.builder()
                     .seconds(this.difficulty.getSeconds())
                     .title(titleBuilder.toString())
@@ -559,6 +560,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
                         // start intermission
                         this.intermission.set(true);
+                        this.context.playAudienceSound(Sound.BLOCK_NOTE_BLOCK_IRON_XYLOPHONE, 1.0f, 1.0f);
 
                         this.intermissionBossBar = CountdownBossBar.builder()
                                 .seconds(ROUND_INTERVAL_SECONDS)
@@ -568,6 +570,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                                 .callback(() -> {
                                     this.intermission.set(false);
                                     this.finished.set(true);
+                                    //this.context.playAudienceSound(Sound.BLOCK_NOTE_BLOCK_FLUTE, 0.8f, 1.0f);
                                 })
                                 .build()
                                 .start();
@@ -632,9 +635,9 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     @Getter
     private enum PanelDifficulty {
-        EASY(14, BossBar.Color.GREEN, "<green>", 1, PanelDifficultyModifier.JUMP_BOOST_ENABLED, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
-        MEDIUM(9, BossBar.Color.YELLOW, "<yellow>", 1, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
-        HARD(6, BossBar.Color.RED, "<dark_red>", 1, PanelDifficultyModifier.PVP_ENABLED),
+        EASY(11, BossBar.Color.GREEN, "<green>", 1, PanelDifficultyModifier.JUMP_BOOST_ENABLED, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
+        MEDIUM(7, BossBar.Color.YELLOW, "<yellow>", 1, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
+        HARD(6, BossBar.Color.RED, "<dark_red>", 1, PanelDifficultyModifier.IGNORE_MINIMUM_BLOCKS),
         HARDER_THAN_HARD_I_GUESS(4, BossBar.Color.PURPLE, "<dark_purple>", 2, PanelDifficultyModifier.PVP_ENABLED, PanelDifficultyModifier.IGNORE_MINIMUM_BLOCKS);
 
         private final int seconds;
