@@ -78,9 +78,13 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private ArenaRegions arenaRegions;
     private List<Location> pocketCenters = List.of();
     private final Scoreboard<EventPlayer> scoreboard;
+
+    // TODO: use roles
     private final Set<UUID> eliminated = new HashSet<>();
     private final Map<UUID, Set<UUID>> hiddenByViewer = new HashMap<>();
     private final Map<UUID, Map<UUID, Long>> forceVisibleUntil = new HashMap<>();
+
+    // TODO: should use standard schematics folder
     private final File schematicsFolder =
             new File(EventMain.getInstance().getDataFolder(), "assets/minebattle-schematics");
     private final Map<UUID, Location> assignedSpawn = new HashMap<>();
@@ -91,7 +95,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     public MineBattle(MineBattleDefinition def) {
         super("MineBattle", "Break ores, gear up, and fight!", def.getTimeLimitSeconds() * 1000L, def.getHeartbeatTicks(), true, true, false, false);
-        this.timeLimitMillis = def.getTimeLimitSeconds() * 1000L;
+        this.timeLimitMillis = Util.secsToMillis(def.getTimeLimitSeconds());
         this.doPeriodicReveal = def.isDoPeriodicReveal();
         this.useWorldBorder = def.isUseWorldBorder();
         this.lobbyLocation = def.getLobbyLocation();
@@ -159,11 +163,14 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                         Logging.errorLog("No schematics found in " + schematicsFolder.getPath());
                         break;
                     }
+
+                    // TODO: Use WorldEditStructure
                     pasteSchematic(this.arenaRegions.world(), loc, file);
                 }
             } catch (Throwable t) {
                 Logging.errorLog(t.getMessage(), t);
             }
+            // TODO: should be delayed
             Executors.runSync(() -> {
                 if (this.isCancelled()) return;
                 this.arenaReady = true;
@@ -178,6 +185,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     }
 
     @Override
+    // TODO: See TNTRun's impl for optimizations
     protected void onRunnable(long timeLeft) {
         if (!this.arenaReady) return;
         Executors.runSync(() -> {
@@ -198,6 +206,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         UUID uuid = participant.getUuid();
         eliminated.add(uuid);
         Executors.runSync(() -> {
+            // TODO: should be abstracted out
             Player leaving = participant.getPlayer();
             if (leaving != null) {
                 for (EventPlayer ep : this.participants) {
@@ -306,6 +315,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         Pattern outer = parsePattern(regions.world(), outerPattern);
 
         try (EditSession session = WorldEdit.getInstance().newEditSession(regions.world())) {
+            // TODO: unused variables
             int changedOuter = session.setBlocks((Region) regions.outer(), outer);
             int changedShell = session.setBlocks((Region) regions.shell(), shell);
             int changedInner = session.setBlocks((Region) regions.inner(), inner);
@@ -318,6 +328,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         try (EditSession session = WorldEdit.getInstance().newEditSession(weWorld)) {
             for (Location c : centers) {
                 CuboidRegion pocket = pocketRegion(weWorld, c);
+                // TODO: unused variable
                 int changedBlocks = session.setBlocks((Region) pocket, air);
                 session.flushQueue();
             }
@@ -432,6 +443,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         return new CuboidRegion(weWorld, min, max);
     }
 
+    // TODO: unused method
     private void teleportPlayersToAssignedSpawns() {
         for (EventPlayer ep : this.participants) {
             ep.operatePlayer(this::cleanPlayer);
@@ -496,6 +508,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Use roles
     private void forceShowFor(UUID viewerId, UUID targetId, long durationMs) {
         long until = System.currentTimeMillis() + durationMs;
         forceVisibleUntil
@@ -510,6 +523,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Use roles
     private boolean isForceVisible(UUID viewerId, UUID targetId) {
         Map<UUID, Long> map = forceVisibleUntil.get(viewerId);
         if (map == null) return false;
@@ -535,6 +549,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Constants should be at the top
     // Reveal for 3s at half-time, 5s at 3/4, 10s at 7/8 and permanently at 15/16
     private static final PeriodicRevealStep[] REVEAL_SCHEDULE = new PeriodicRevealStep[] {
             new PeriodicRevealStep(1, 2,  3_000),
@@ -548,7 +563,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     };
 
     private void tickPeriodicReveal(long timeLeftMillis) {
-        if (!doPeriodicReveal) return;
+        if (!doPeriodicReveal) return; // TODO: unnecessary config imo
         if (!arenaReady) return;
 
         while (periodicRevealStep < REVEAL_SCHEDULE.length) {
@@ -582,6 +597,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Use roles
     private void revealAllPlayers(long durationMs) {
         int ticks = (int) Math.max(20, (durationMs / 50));
 
@@ -716,6 +732,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         savedBorder = null;
     }
 
+    // TODO: should be removed entirely
     private void cleanPlayer(Player player) {
         player.clearActivePotionEffects();
         AttributeInstance attr = player.getAttribute(Attribute.MAX_HEALTH);
@@ -732,6 +749,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         player.updateInventory();
     }
 
+    // TODO: These items could be constants
     private void equip(Player player) {
         ItemStack sword = new ItemStack(Material.STONE_SWORD);
         sword.addUnsafeEnchantment(Enchantment.VANISHING_CURSE, 1);
@@ -745,6 +763,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         player.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, PotionEffect.INFINITE_DURATION, 0));
     }
 
+    // TODO: Use roles
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onEntityDamagedByEntityEvent(EntityDamageByEntityEvent event) {
         this.ensureNotIllegal();
@@ -755,6 +774,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Use roles
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onEntityDamageEvent(EntityDamageEvent event) {
         this.ensureNotIllegal();
@@ -764,6 +784,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Use roles
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onPlayerPickupItem(EntityPickupItemEvent event) {
         this.ensureNotIllegal();
@@ -773,6 +794,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Use roles
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onPlayerPickupItem(EntityDropItemEvent event) {
         this.ensureNotIllegal();
@@ -782,6 +804,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Use roles
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onStartBreaking(PlayerInteractEvent event) {
         this.ensureNotIllegal();
@@ -796,6 +819,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Use roles
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBlockDamage(BlockDamageEvent event) {
         this.ensureNotIllegal();
@@ -804,6 +828,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Use roles
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onPlayerDeath(PlayerDeathEvent event) {
         this.ensureNotIllegal();
@@ -847,6 +872,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         });
     }
 
+    // TODO: Use roles
     private int aliveCount() {
         int alive = 0;
         for (EventPlayer p : this.participants) {
@@ -857,10 +883,12 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         return alive;
     }
 
+    // TODO: Parent class already has a method like this
     private boolean isParticipant(UUID uuid) {
         return this.participants.stream().anyMatch(p -> p.getUuid().equals(uuid));
     }
 
+    // TODO: Use roles
     private EventPlayer getParticipant(UUID uuid) {
         return this.participants.stream()
                 .filter(p -> p.getUuid().equals(uuid))
@@ -868,6 +896,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 .orElse(null);
     }
 
+    // TODO: Use roles
     private void hideFromOtherPlayers(Player dead) {
         for (EventPlayer ep : this.participants) {
             if (ep.getUuid().equals(dead.getUniqueId())) continue;
@@ -878,6 +907,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // Why not let death event handle this?
     private void dropInventoryAndClear(Player dead) {
         org.bukkit.World w = dead.getWorld();
         Location loc = dead.getLocation();
@@ -897,9 +927,10 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
 
         dead.getInventory().clear();
-        dead.updateInventory();
+        dead.updateInventory(); // TODO: bad method call
     }
 
+    // TODO: Use roles
     private void awardKill(UUID killer, UUID victim) {
         if (killer.equals(victim)) return;
         if (!isParticipant(killer)) return;
@@ -911,6 +942,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Bad method. This includes TNT in all worlds areas of the server.
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onTntExplode(EntityExplodeEvent event) {
         this.ensureNotIllegal();
@@ -918,6 +950,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         event.setYield(0.0f); // prevent block drops
     }
 
+    // TODO: Bad method. This will affect all areas of the server.
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onEntitySpawn(EntitySpawnEvent event) {
         if (event.getEntity() instanceof ExperienceOrb) {
@@ -925,16 +958,19 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
+    // TODO: Bad method. This will affect all areas of the server.
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBlockExp(BlockExpEvent event) {
         this.ensureNotIllegal();
         event.setExpToDrop(0);
     }
 
+    // TODO: Bad method. This will affect all areas of the server.
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
         this.ensureNotIllegal();
 
+        // TODO: Use roles
         if (eliminated.contains(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
         }
@@ -954,6 +990,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     }
 
+    // TODO: Bad method. This will affect all areas of the server.
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         this.ensureNotIllegal();
@@ -964,10 +1001,11 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
         Player player = event.getPlayer();
         Material blockType = event.getBlock().getType();
-        Random random = new Random();
+        Random random = RANDOM;
         event.setDropItems(false);
         event.setExpToDrop(0);
 
+        // TODO: These could be abstracted out
         switch (blockType) {
             case DEEPSLATE_COAL_ORE -> {
                 player.playSound(player, Sound.BLOCK_BEEHIVE_EXIT, 1, 1);
@@ -1065,6 +1103,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     }
 
+    // TODO: Bad method. This will affect all areas of the server.
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onSlotChange(InventoryClickEvent event) {
         this.ensureNotIllegal();
@@ -1090,6 +1129,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         event.setCancelled(true);
     }
 
+    // TODO: Should be constant
     private static NamespacedKey COPPER_MAX_HEALTH_KEY() {
         return new NamespacedKey(EventMain.getInstance(), "minebattle_copper_max_health");
     }
@@ -1277,7 +1317,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         structureLocations.clear();
         assignedSpawn.clear();
 
-        Random random = new Random();
+        Random random = RANDOM;
         int players = this.participants.size();
         List<EventPlayer> structurePlayers = new ArrayList<>();
         boolean structuresEnabled = pickRandomSchematicFile() != null;
