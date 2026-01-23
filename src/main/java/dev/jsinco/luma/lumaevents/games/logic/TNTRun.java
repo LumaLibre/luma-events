@@ -5,9 +5,9 @@ import dev.jsinco.luma.lumaevents.configurable.sectors.TNTRunDefinition;
 import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRole;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRoleMap;
-import dev.jsinco.luma.lumaevents.games.interfaces.structures.WorldEditStructure;
-import dev.jsinco.luma.lumaevents.games.interfaces.packet.BlockAnimationPlatformConfig;
 import dev.jsinco.luma.lumaevents.games.interfaces.packet.BlockAnimationPlatform;
+import dev.jsinco.luma.lumaevents.games.interfaces.packet.BlockAnimationPlatformConfig;
+import dev.jsinco.luma.lumaevents.games.interfaces.structures.WorldEditStructure;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
@@ -48,14 +48,16 @@ import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 import org.joml.AxisAngle4f;
 
-// no wildcard imports please
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 public final class TNTRun extends InventoryUnifiedMinigame {
 
@@ -91,6 +93,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private long tickCounter = 0L;
 
     private float powerupSpinAngle = 0f;
+    private final Map<PowerupType, Integer> powerupWeights;
     private final Map<UUID, String> powerupByEntity = new HashMap<>();
     private final Map<UUID, ItemStack> powerupItemByEntity = new HashMap<>();
     private final Map<UUID, Long> updraftCooldownUntilTick = new HashMap<>();
@@ -109,6 +112,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
         this.powerupMaxAlive = def.getPowerupMaxAlive();
         this.powerupSpawnAttempts = def.getPowerupSpawnAttempts();
+        this.powerupWeights = parsePowerupWeights(def.getPowerupWeights());
 
         this.slowFallingTicks = def.getSlowFallingTicks();
         this.updraftCooldownTicks = def.getUpdraftCooldownTicks();
@@ -559,6 +563,29 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         static PowerupType random() {
             return Util.getRandom(values());
         }
+
+        @Nullable
+        static PowerupType weightedRandom(Map<PowerupType, Integer> weights) {
+            if (weights == null || weights.isEmpty()) return random();
+
+            int totalWeight = Arrays.stream(values())
+                    .mapToInt(type -> Math.max(0, weights.getOrDefault(type, 0)))
+                    .sum();
+
+            if (totalWeight <= 0) return null; // all disabled
+            int randInt = ThreadLocalRandom.current().nextInt(totalWeight);
+            int accumulated = 0;
+
+            for (PowerupType type : values()) {
+                int weight = Math.max(0, weights.getOrDefault(type, 0));
+                if (weight == 0) continue;
+
+                accumulated += weight;
+                if (randInt < accumulated) return type;
+            }
+
+            return null;
+        }
     }
 
     private void spinPowerups() {
@@ -609,7 +636,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         if (isPowerupAlreadyAt(w, randomLocation.getBlockX(),
                 randomLocation.getBlockY(), randomLocation.getBlockZ())) return;
 
-        PowerupType type = PowerupType.random();
+        PowerupType type = PowerupType.weightedRandom(this.powerupWeights);
+        if (type == null) return; // all disabled
         spawnPowerupDisplay(w, randomLocation.getBlockX(),
                 randomLocation.getBlockY(), randomLocation.getBlockZ(), type);
     }
@@ -708,6 +736,20 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         if (inHand.getType().isAir()) return;
 
         inHand.setAmount(inHand.getAmount() - 1);
+    }
+
+    private static Map<PowerupType, Integer> parsePowerupWeights(@Nullable Map<String, Integer> raw) {
+        Map<PowerupType, Integer> weights = new EnumMap<>(PowerupType.class);
+
+        for (PowerupType type : PowerupType.values()) {
+            int weight = 0;
+            if (raw != null) {
+                Integer fromCfg = raw.get(type.name());
+                if (fromCfg != null) weight = Math.max(0, fromCfg);
+            }
+            weights.put(type, weight);
+        }
+        return weights;
     }
 
     private boolean checkAndApplyUpdraftCooldown(Player player) {
