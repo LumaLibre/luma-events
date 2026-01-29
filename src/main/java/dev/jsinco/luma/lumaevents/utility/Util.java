@@ -158,7 +158,7 @@ public final class Util {
     }
 
     public static void giveItem(Player player, ItemStack itemStack) {
-        if (player == null) {
+        if (player == null || itemStack == null || itemStack.getType() == Material.AIR) {
             return;
         }
 

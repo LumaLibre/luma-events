@@ -11,6 +11,7 @@ public class MineBattleDefinition extends OkaeriConfig {
 
     private long timeLimitSeconds = 360;
     private long heartbeatTicks = 5;
+    private long maxDistanceLOS = 10;
 
     private boolean doPeriodicReveal = false;
     private boolean useWorldBorder = false;
@@ -23,7 +24,8 @@ public class MineBattleDefinition extends OkaeriConfig {
     private int maxRadius = 32;
 
     private Map<String, Double> innerPattern = Map.ofEntries(
-            Map.entry("deepslate", 83.92),
+            Map.entry("deepslate", 80.0),
+            Map.entry("cobbled_deepslate", 3.92),
             Map.entry("deepslate_diamond_ore", 0.6),
             Map.entry("deepslate_emerald_ore", 0.6),
             Map.entry("deepslate_lapis_ore", 1.2),

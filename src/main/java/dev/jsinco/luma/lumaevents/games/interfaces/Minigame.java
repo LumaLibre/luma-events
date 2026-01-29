@@ -2,11 +2,11 @@ package dev.jsinco.luma.lumaevents.games.interfaces;
 
 
 import dev.jsinco.luma.lumaevents.EventMain;
-import dev.jsinco.luma.lumaevents.games.events.MinigamePreventDamageListener;
-import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.events.MinigameExitPreventionListener;
+import dev.jsinco.luma.lumaevents.games.events.MinigamePreventDamageListener;
 import dev.jsinco.luma.lumaevents.games.events.MinigamePreventInventoryTampering;
 import dev.jsinco.luma.lumaevents.games.exceptions.GameComponentIllegallyActive;
+import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.MinigameBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Util;
@@ -55,6 +55,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
     protected boolean stopping = false;
     protected Audience audience;
     protected MinigameBoundingBox boundingBox;
+    protected CountdownBossBar queueBossbar;
 
     protected Minigame(String name, String description, long duration, long tickInterval, boolean async) {
         this.name = name;
@@ -219,7 +220,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
     }
 
     private void openQueue(int seconds) {
-        CountdownBossBar.builder()
+        this.queueBossbar = CountdownBossBar.builder()
                 .title("<aqua><b>" + name + " Starting in</b><gray>:</gray> <b>%ss</b></aqua>")
                 .seconds(seconds)
                 .color(BossBar.Color.BLUE)

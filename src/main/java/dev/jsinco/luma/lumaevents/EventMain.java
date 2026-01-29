@@ -1,5 +1,6 @@
 package dev.jsinco.luma.lumaevents;
 
+import dev.jsinco.luma.lumaevents.games.events.LateJoinListener;
 import dev.lumas.lumacore.manager.modules.ModuleManager;
 import dev.jsinco.luma.lumaevents.configurable.Config;
 import dev.jsinco.luma.lumaevents.configurable.ConfigManager;
@@ -35,6 +36,7 @@ public final class EventMain extends JavaPlugin {
         Bukkit.getScheduler().runTaskTimerAsynchronously(this, EventPlayerManager::saveAll, 0, 12000);
 
         MinigameManager.getInstance().runTaskTimerAsynchronously(this, 0, 600); // 30 seconds
+        Bukkit.getPluginManager().registerEvents(new LateJoinListener(), this);
 
         LocalCustomItemManager.addCustomItem(new WinterStampItem());
         LocalCustomItemManager.addCustomItem(new StartMinigameItem());
