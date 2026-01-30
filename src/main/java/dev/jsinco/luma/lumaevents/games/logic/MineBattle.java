@@ -28,6 +28,8 @@ import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
+import org.bukkit.ChunkSnapshot;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -65,6 +67,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
@@ -118,6 +121,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private long lastRevealAtMillis = 0L;
     private int periodicRevealStep = 0;
 
+    // TODO constants should be above fields
+
     // Reveal for 3s at half-time, 5s at 3/4, 10s at 7/8 and permanently at 15/16
     private static final PeriodicRevealStep[] REVEAL_SCHEDULE = {
         new PeriodicRevealStep(1, 2,  3_000),
@@ -133,25 +138,24 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private static final NamespacedKey COPPER_MAX_HEALTH_KEY =
             new NamespacedKey(EventMain.getInstance(), "minebattle_copper_max_health");
 
+    // TODO: Using infinite duration potion effects is dangerous because minigames may not cleanup properly.
+    //    Potion effects should always be reasonably finite.
+    //    - Consider replacing this with a periodic scheduler and removing saturation entirely as max saturation will-
+    //    force all players to heal at Minecraft's max rate. `player.setFoodLevel(20);` should be sufficient.
     private static final PotionEffect START_SATURATION =
             new PotionEffect(PotionEffectType.SATURATION, PotionEffect.INFINITE_DURATION, 0, false, false);
     private static final PotionEffect START_DARKNESS =
             new PotionEffect(PotionEffectType.DARKNESS, PotionEffect.INFINITE_DURATION, 0, false, false);
 
-    private static final ItemStack START_SWORD_TEMPLATE;
-    private static final ItemStack START_PICKAXE_TEMPLATE;
+    private static final ItemStack START_SWORD_TEMPLATE = Util.createItem(Material.STONE_SWORD, meta -> {
+        meta.addEnchant(Enchantment.VANISHING_CURSE, 1, true);
+    });
+    private static final ItemStack START_PICKAXE_TEMPLATE = Util.createItem(Material.DIAMOND_PICKAXE, meta -> {
+        meta.addEnchant(Enchantment.VANISHING_CURSE, 1, true);
+        meta.addEnchant(Enchantment.UNBREAKING, 10, true);
+        meta.addEnchant(Enchantment.EFFICIENCY, 3, true);
+    });
 
-    static {
-        ItemStack sword = new ItemStack(Material.STONE_SWORD);
-        sword.addUnsafeEnchantment(Enchantment.VANISHING_CURSE, 1);
-        START_SWORD_TEMPLATE = sword;
-
-        ItemStack pickaxe = new ItemStack(Material.DIAMOND_PICKAXE);
-        pickaxe.addUnsafeEnchantment(Enchantment.VANISHING_CURSE, 1);
-        pickaxe.addUnsafeEnchantment(Enchantment.UNBREAKING, 10);
-        pickaxe.addUnsafeEnchantment(Enchantment.EFFICIENCY, 3);
-        START_PICKAXE_TEMPLATE = pickaxe;
-    }
 
     public MineBattle(MineBattleDefinition def) {
         super("MineBattle", "Break ores, gear up, and fight!", def.getTimeLimitSeconds() * 1000L, def.getHeartbeatTicks(), true, true, false, false);
@@ -185,7 +189,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
-
+        // TODO: Implement
     }
 
     public static String buildWeightedPattern(Map<String, Double> weights) {
@@ -204,63 +208,55 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStart() {
-        this.arenaReady = false;
-        this.roleMap.clear();
-        this.hiddenByViewer.clear();
-        this.forceVisibleUntil.clear();
-        this.revealAllUntilMillis = 0L;
-        this.lastRevealAtMillis = 0L;
-        this.periodicRevealStep = 0;
+
         for (EventPlayer ep : this.participants) {
             this.roleMap.put(new ActiveMineBattlePlayer(ep, this));
         }
+
         int playerCount = Math.max(1, this.participants.size());
         int radius = computeRadiusForPlayers(playerCount);
         Logging.log("Generating arena for " + playerCount + " players (r=" + radius + ")...");
         rollStructuresAndAssignSpawns(radius);
         this.arenaRegions = ArenaRegions.of(this.arenaOrigin, radius, this.arenaHeight);
-        Executors.runAsync(() -> {
-            try {
-                buildArenaFAWE(this.arenaRegions);
-                carvePocketsFAWE(this.arenaRegions.world(), this.pocketCenters);
-                for (Location loc : this.structureLocations) {
-                    File file = pickRandomSchematicFile();
-                    if (file == null) {
-                        Logging.errorLog("No schematics found in " + schematicsFolder.getPath());
-                        break;
-                    }
-                    WorldEditStructure structure =
-                            new WorldEditStructure(loc, "minebattle/" + file.getName());
-                    structure.paste();
+
+        try {
+            buildArenaFAWE(this.arenaRegions);
+            carvePocketsFAWE(this.arenaRegions.world(), this.pocketCenters);
+            for (Location loc : this.structureLocations) {
+                File file = pickRandomSchematicFile();
+                if (file == null) {
+                    Logging.errorLog("No schematics found in " + schematicsFolder.getPath());
+                    break;
                 }
-            } catch (Throwable t) {
-                Logging.errorLog(t.getMessage(), t);
+                WorldEditStructure structure =
+                        new WorldEditStructure(loc, "minebattle/" + file.getName());
+                structure.paste();
             }
+        } catch (Throwable t) {
+            Logging.errorLog(t.getMessage(), t);
+        }
 
-            Executors.runSync(() -> {
-                if (this.isCancelled()) return;
-                CountdownBossBar.builder()
-                        .title("<yellow>Generating Arena...") // <gray>%ss</gray>
-                        .color(BossBar.Color.YELLOW)
-                        .seconds(5)
-                        .audience(this.audience)
-                        .countUp(true)
-                        .callback(() -> Executors.runSync(() -> {
-                            if (this.isCancelled()) return;
-                            this.arenaReady = true;
+        if (this.isCancelled()) return; // does this need to be done sync?
+        CountdownBossBar.builder()
+                .title("<yellow>Generating Arena...") // <gray>%ss</gray>
+                .color(BossBar.Color.YELLOW)
+                .seconds(5)
+                .audience(this.audience)
+                .countUp(true)
+                .callback(() -> Executors.runSync(() -> {
+                    if (this.isCancelled()) return;
+                    this.arenaReady = true;
 
-                            if (useWorldBorder) setupWorldBorderSafe(radius);
+                    if (useWorldBorder) setupWorldBorderSafe(radius);
 
-                            teleportPlayersToAssignedSpawnsThen(() -> {
-                                if (useWorldBorder) armAndShrinkWorldBorder();
-                                startGameTimerBossBar();
-                                this.sendAudienceMessage("<green>MineBattle started!</green>");
-                            });
-                        }))
-                        .build()
-                        .start();
-            });
-        });
+                    teleportPlayersToAssignedSpawnsThen(() -> {
+                        if (useWorldBorder) armAndShrinkWorldBorder();
+                        startGameTimerBossBar();
+                        this.sendAudienceMessage("<green>MineBattle started!</green>");
+                    });
+                }))
+                .build()
+                .start();
     }
 
     @Override
@@ -612,33 +608,21 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         return new CuboidRegion(weWorld, min, max);
     }
 
+
+
+    // TODO: After thinking this over, the performance cost from this function is too high in all senses.
+    //  - Player#hasLineOfSight is incredibly expensive, and these nested loops will cause massive lag spikes-
+    //  no matter what tick rate this game is at.
+    //  - Considering all these factors, if an asynchronous solution cannot be found, we will have to remove
+    //  this feature entirely.
     private void updateLineOfSightVisibility() {
         if (!arenaReady) return;
 
-        List<Player> actives = new ArrayList<>();
-        List<Player> spectators = new ArrayList<>();
-        for (EventPlayer ep : this.participants) {
-            Player p = ep.getPlayer();
-            if (p == null) continue;
+        List<Player> actives = this.roleMap.getMatching(ActiveMineBattlePlayer.class).stream()
+                .map(role -> role.getEventPlayer().getPlayer())
+                .filter(Objects::nonNull)
+                .toList();
 
-            if (isActive(p)) actives.add(p);
-            else if (isSpectator(p)) spectators.add(p);
-        }
-
-        // No one sees spectators
-        for (Player viewer : actives) {
-            for (Player spec : spectators) {
-                setCanSee(viewer, spec, false);
-            }
-        }
-
-        // Spectators don't see other spectators
-        for (Player viewer : spectators) {
-            for (Player spec : spectators) {
-                if (viewer == spec) continue;
-                setCanSee(viewer, spec, false);
-            }
-        }
 
         // Active <-> Active (LOS in any direction)
         for (int i = 0; i < actives.size(); i++) {
@@ -656,40 +640,104 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 }
 
                 double distSq = a.getLocation().distanceSquared(b.getLocation());
-                boolean baseVisible = false;
-                if (distSq <= maxDistanceLOSsquared) {
-                    baseVisible = a.hasLineOfSight(b) || b.hasLineOfSight(a);
+                boolean baseVisible;
+                if (distSq <= maxDistanceLOSsquared && a.getWorld() == b.getWorld()) {
+                    baseVisible = hasAsyncLineOfSight(a.getEyeLocation(), b.getEyeLocation(), a.getWorld());
+                } else {
+                    baseVisible = false;
                 }
 
-                setCanSee(a, b, aForces || baseVisible);
-                setCanSee(b, a, bForces || baseVisible);
+                Executors.runSync(() -> {
+                    setCanSee(a, b, aForces || baseVisible);
+                    setCanSee(b, a, bForces || baseVisible);
+                });
             }
         }
 
+        // No one sees spectators
+        // TODO: Why is this being called every tick if it never changes? Spectators are only made visible after the game ends.
+//        for (Player viewer : actives) {
+//            for (Player spec : spectators) {
+//                setCanSee(viewer, spec, false);
+//            }
+//        }
+//
+//        // Spectators don't see other spectators
+//        for (Player viewer : spectators) {
+//            for (Player spec : spectators) {
+//                if (viewer == spec) continue;
+//                setCanSee(viewer, spec, false);
+//            }
+//        }
+
+        // TODO: Unnecessary, let spectators see all actives
         // Spectator -> Active (directional LOS)
-        for (Player viewer : spectators) {
-            UUID viewerId = viewer.getUniqueId();
+//        for (Player viewer : spectators) {
+//            UUID viewerId = viewer.getUniqueId();
+//
+//            for (Player target : actives) {
+//                boolean force = forcedVisible(viewerId, target.getUniqueId());
+//
+//                if (viewer.getWorld() != target.getWorld()) {
+//                    setCanSee(viewer, target, false);
+//                    continue;
+//                }
+//
+//                double distSq = viewer.getLocation().distanceSquared(target.getLocation());
+//                boolean visible = false;
+//
+//                if (force) {
+//                    visible = true;
+//                } else if (distSq <= maxDistanceLOSsquared) {
+//                    visible = viewer.hasLineOfSight(target);
+//                }
+//
+//                setCanSee(viewer, target, visible);
+//            }
+//        }
+    }
 
-            for (Player target : actives) {
-                boolean force = forcedVisible(viewerId, target.getUniqueId());
+    private boolean hasAsyncLineOfSight(Location from, Location to, org.bukkit.World world) {
+        Vector start = from.toVector();
+        Vector end = to.toVector();
+        Vector direction = end.clone().subtract(start).normalize();
+        double distance = from.distance(to);
 
-                if (viewer.getWorld() != target.getWorld()) {
-                    setCanSee(viewer, target, false);
-                    continue;
+        Map<Long, ChunkSnapshot> chunkCache = new HashMap<>();
+
+        for (double i = 0; i < distance; i += 0.5) {
+            Vector point = start.clone().add(direction.clone().multiply(i));
+
+            int x = point.getBlockX();
+            int y = point.getBlockY();
+            int z = point.getBlockZ();
+
+            int chunkX = x >> 4;
+            int chunkZ = z >> 4;
+            long chunkKey = ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
+
+            // TODO: Depending on how often this method is called maybe the chunk cache should be global and be updated periodically.
+            ChunkSnapshot snapshot = chunkCache.computeIfAbsent(chunkKey, k -> {
+                try {
+                    Chunk chunk = world.getChunkAtAsync(chunkX, chunkZ).get();
+                    return chunk.getChunkSnapshot(true, false, false);
+                } catch (Exception e) {
+                    return null;
                 }
+            });
 
-                double distSq = viewer.getLocation().distanceSquared(target.getLocation());
-                boolean visible = false;
+            if (snapshot == null) continue;
 
-                if (force) {
-                    visible = true;
-                } else if (distSq <= maxDistanceLOSsquared) {
-                    visible = viewer.hasLineOfSight(target);
-                }
+            // relative coordinates within the chunk
+            int relX = x & 15;
+            int relZ = z & 15;
+            Material blockType = snapshot.getBlockType(relX, y, relZ);
 
-                setCanSee(viewer, target, visible);
+            if (blockType.isSolid() && blockType.isOccluding()) {
+                return false;
             }
         }
+        return true;
     }
 
     private void forceShowFor(UUID viewerId, UUID targetId, long durationMs) {
@@ -747,29 +795,26 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     private void revealAllPlayers(long durationMs) {
         int ticks = (int) Math.max(20, durationMs / 50);
+        PotionEffect glowing = new PotionEffect(PotionEffectType.GLOWING, ticks, 0, false, false);
 
-        List<Player> actives = new ArrayList<>();
-        List<Player> viewers = new ArrayList<>();
+        for (AbstractMineBattlePlayer abstractMineBattlePlayer : this.roleMap) {
+            Player bukkitPlayer = abstractMineBattlePlayer.getEventPlayer().getPlayer();
 
-        for (EventPlayer ep : this.participants) {
-            Player p = ep.getPlayer();
-            if (p == null) continue;
-            if (isActive(p)) actives.add(p);
-            if (isActive(p) || isSpectator(p)) viewers.add(p);
-        }
+            if (bukkitPlayer == null) continue;
 
-        // Glow all active players
-        for (Player p : actives) {
-            p.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, ticks, 0, false, false));
-            p.playSound(p, Sound.ENTITY_WITHER_SPAWN, 1, 1);
-        }
+            // Glow all active players
+            if (abstractMineBattlePlayer instanceof ActiveMineBattlePlayer) {
+                bukkitPlayer.addPotionEffect(glowing);
+                bukkitPlayer.playSound(bukkitPlayer, Sound.ENTITY_WITHER_SPAWN, 1, 1);
+            }
 
-        // Force visibility (viewers -> actives)
-        for (Player viewer : viewers) {
-            UUID viewerId = viewer.getUniqueId();
-            for (Player target : actives) {
-                if (viewer == target) continue;
-                forceShowFor(viewerId, target.getUniqueId(), durationMs);
+            // TODO: I don't like this nested loop, there is probably a better way to do this.
+            // Force visibility (viewers -> actives)
+            UUID viewerId = bukkitPlayer.getUniqueId();
+            for (ActiveMineBattlePlayer target : this.roleMap.getMatching(ActiveMineBattlePlayer.class)) {
+                Player targetPlayer = target.getEventPlayer().getPlayer();
+                if (targetPlayer == null || bukkitPlayer == targetPlayer) continue;
+                forceShowFor(viewerId, targetPlayer.getUniqueId(), durationMs);
             }
         }
     }
@@ -814,6 +859,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         border.setSize(5.0 /*end diameter*/, seconds);
     }
 
+    // TODO: Should be moved to role class. Also futures are probably unnecessary here (just tp and forget).
     private void teleportPlayersToAssignedSpawnsThen(Runnable afterAllTeleports) {
         List<CompletableFuture<Boolean>> futures = new ArrayList<>();
 
@@ -1022,11 +1068,12 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             if (item.getEnchantmentLevel(Enchantment.VANISHING_CURSE) > 0) continue;
             w.dropItemNaturally(loc, item.clone());
         }
-        for (ItemStack item : dead.getInventory().getArmorContents()) {
-            if (item == null || item.getType().isAir()) continue;
-            if (item.getEnchantmentLevel(Enchantment.VANISHING_CURSE) > 0) continue;
-            w.dropItemNaturally(loc, item.clone());
-        }
+        // getContents() already includes armor contents
+//        for (ItemStack item : dead.getInventory().getArmorContents()) {
+//            if (item == null || item.getType().isAir()) continue;
+//            if (item.getEnchantmentLevel(Enchantment.VANISHING_CURSE) > 0) continue;
+//            w.dropItemNaturally(loc, item.clone());
+//        }
         ItemStack off = dead.getInventory().getItemInOffHand();
         if (!off.getType().isAir() && off.getEnchantmentLevel(Enchantment.VANISHING_CURSE) <= 0) {
             w.dropItemNaturally(loc, off.clone());
@@ -1285,11 +1332,10 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         });
 
         if (!hasAllEffectsAtMax) {
-            Random random = new Random();
             List<PotionEffectType> keys = new ArrayList<>(effectLimits.keySet());
 
             while (true) {
-                PotionEffectType randomEffect = keys.get(random.nextInt(keys.size()));
+                PotionEffectType randomEffect = keys.get(RANDOM.nextInt(keys.size()));
                 int maxAmp = effectLimits.get(randomEffect);
 
                 PotionEffect current = player.getPotionEffect(randomEffect);
@@ -1414,7 +1460,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 f.isFile() && (f.getName().endsWith(".schem") || f.getName().endsWith(".schematic"))
         );
         if (files == null || files.length == 0) return null;
-        return files[new Random().nextInt(files.length)];
+        return files[RANDOM.nextInt(files.length)];
     }
 
     private record ArenaRegions(World world, CuboidRegion inner, CuboidRegion shell, CuboidRegion outer) {
