@@ -262,8 +262,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     @Override
     protected void onRunnable(long timeLeft) {
         if (!this.arenaReady) return;
+        updateLineOfSightVisibility(); // should run async
         Executors.runSync(() -> {
-            updateLineOfSightVisibility();
             tickPeriodicReveal(timeLeft);
         });
         if (aliveCount() <= 1) this.stop();
