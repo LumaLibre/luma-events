@@ -234,7 +234,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                     break;
                 }
                 WorldEditStructure structure =
-                        new WorldEditStructure(loc, "minebattle/" + file.getName());
+                        new WorldEditStructure(loc.add(0,-1,0), "minebattle/" + file.getName());
                 structure.paste();
             }
         } catch (Throwable t) {
