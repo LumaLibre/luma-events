@@ -87,7 +87,32 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class MineBattle extends InventoryUnifiedMinigame {
 
+    // Reveal for 3s at half-time, 5s at 3/4, 10s at 7/8 and permanently at 15/16
+    private static final PeriodicRevealStep[] REVEAL_SCHEDULE = {
+        new PeriodicRevealStep(1, 2,  3_000),
+        new PeriodicRevealStep(2, 3,  0),
+        new PeriodicRevealStep(3, 4,  5_000),
+        new PeriodicRevealStep(4, 5,  0),
+        new PeriodicRevealStep(5, 6,  0),
+        new PeriodicRevealStep(6, 7,  0),
+        new PeriodicRevealStep(7, 8, 10_000),
+        new PeriodicRevealStep(15,16, -1)
+    };
+
+    private static final ItemStack START_SWORD_TEMPLATE = Util.createItem(Material.STONE_SWORD, meta -> {
+        meta.addEnchant(Enchantment.VANISHING_CURSE, 1, true);
+    });
+    private static final ItemStack START_PICKAXE_TEMPLATE = Util.createItem(Material.DIAMOND_PICKAXE, meta -> {
+        meta.addEnchant(Enchantment.VANISHING_CURSE, 1, true);
+        meta.addEnchant(Enchantment.UNBREAKING, 10, true);
+        meta.addEnchant(Enchantment.EFFICIENCY, 3, true);
+    });
+
+    private static final NamespacedKey COPPER_MAX_HEALTH_KEY =
+            new NamespacedKey(EventMain.getInstance(), "minebattle_copper_max_health");
+
     private final long timeLimitMillis;
+    private final long gameEndsAtMillis;
     private final long maxDistanceLOSsquared;
     private final boolean doPeriodicReveal;
     private final boolean useWorldBorder;
@@ -121,45 +146,10 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private long lastRevealAtMillis = 0L;
     private int periodicRevealStep = 0;
 
-    // TODO constants should be above fields
-
-    // Reveal for 3s at half-time, 5s at 3/4, 10s at 7/8 and permanently at 15/16
-    private static final PeriodicRevealStep[] REVEAL_SCHEDULE = {
-        new PeriodicRevealStep(1, 2,  3_000),
-        new PeriodicRevealStep(2, 3,  0),
-        new PeriodicRevealStep(3, 4,  5_000),
-        new PeriodicRevealStep(4, 5,  0),
-        new PeriodicRevealStep(5, 6,  0),
-        new PeriodicRevealStep(6, 7,  0),
-        new PeriodicRevealStep(7, 8, 10_000),
-        new PeriodicRevealStep(15,16, -1)
-    };
-
-    private static final NamespacedKey COPPER_MAX_HEALTH_KEY =
-            new NamespacedKey(EventMain.getInstance(), "minebattle_copper_max_health");
-
-    // TODO: Using infinite duration potion effects is dangerous because minigames may not cleanup properly.
-    //    Potion effects should always be reasonably finite.
-    //    - Consider replacing this with a periodic scheduler and removing saturation entirely as max saturation will-
-    //    force all players to heal at Minecraft's max rate. `player.setFoodLevel(20);` should be sufficient.
-    private static final PotionEffect START_SATURATION =
-            new PotionEffect(PotionEffectType.SATURATION, PotionEffect.INFINITE_DURATION, 0, false, false);
-    private static final PotionEffect START_DARKNESS =
-            new PotionEffect(PotionEffectType.DARKNESS, PotionEffect.INFINITE_DURATION, 0, false, false);
-
-    private static final ItemStack START_SWORD_TEMPLATE = Util.createItem(Material.STONE_SWORD, meta -> {
-        meta.addEnchant(Enchantment.VANISHING_CURSE, 1, true);
-    });
-    private static final ItemStack START_PICKAXE_TEMPLATE = Util.createItem(Material.DIAMOND_PICKAXE, meta -> {
-        meta.addEnchant(Enchantment.VANISHING_CURSE, 1, true);
-        meta.addEnchant(Enchantment.UNBREAKING, 10, true);
-        meta.addEnchant(Enchantment.EFFICIENCY, 3, true);
-    });
-
-
     public MineBattle(MineBattleDefinition def) {
-        super("MineBattle", "Break ores, gear up, and fight!", def.getTimeLimitSeconds() * 1000L, def.getHeartbeatTicks(), true, true, false, false);
+        super("MineBattle", "Break ores, gear up, and fight!", Util.secsToMillis(def.getTimeLimitSeconds()), def.getHeartbeatTicks(), true, true, false, false);
         this.timeLimitMillis = Util.secsToMillis(def.getTimeLimitSeconds());
+        this.gameEndsAtMillis = System.currentTimeMillis() + Util.secsToMillis(def.getTimeLimitSeconds());
         this.maxDistanceLOSsquared = def.getMaxDistanceLOS() * def.getMaxDistanceLOS();
         this.doPeriodicReveal = def.isDoPeriodicReveal();
         this.useWorldBorder = def.isUseWorldBorder();
@@ -263,9 +253,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     protected void onRunnable(long timeLeft) {
         if (!this.arenaReady) return;
         // spinning up a new thread to not block this current thread
-        Executors.runAsync(() -> {
-            updateLineOfSightVisibility();
-        });
+        Executors.runAsync(this::updateLineOfSightVisibility);
         Executors.runSync(() -> {
             tickPeriodicReveal(timeLeft);
         });
@@ -899,8 +887,20 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private void equip(Player player) {
         player.getInventory().addItem(START_SWORD_TEMPLATE.clone());
         player.getInventory().addItem(START_PICKAXE_TEMPLATE.clone());
-        player.addPotionEffect(START_SATURATION);
-        player.addPotionEffect(START_DARKNESS);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, ticksFromMillis(timeLimitMillis), 0, false, false));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION, ticksFromMillis(timeLimitMillis), 0, false, false));
+    }
+
+    private int ticksFromMillis(long ms) {
+        long ticks = (ms + 49) / 50; // ceil(ms/50)
+        long withBuffer = ticks + 20L * 10; // +10s buffer
+        return (int) Math.min(Integer.MAX_VALUE, withBuffer);
+    }
+
+    private int ticksUntilGameEnd() {
+        long msLeft = Math.max(0L, this.gameEndsAtMillis - System.currentTimeMillis());
+        long ticks = (msLeft + 49) / 50; // ceil
+        return (int) Math.min(Integer.MAX_VALUE, ticks);
     }
 
     private void restoreWorldBorder() {
@@ -1293,7 +1293,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         event.setCancelled(true);
     }
 
-    private static void handleCopper(Player player) {
+    private void handleCopper(Player player) {
         AttributeInstance attr = player.getAttribute(Attribute.MAX_HEALTH);
         if (attr == null) return;
 
@@ -1314,7 +1314,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
-    private static void handleEmerald(Player player) {
+    private void handleEmerald(Player player) {
 
         // Define effects and their max amplifier (0-based, so 2 = level 3)
         Map<PotionEffectType, Integer> effectLimits = new HashMap<>();
@@ -1343,10 +1343,10 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
                 PotionEffect current = player.getPotionEffect(randomEffect);
                 if (current == null) {
-                    player.addPotionEffect(new PotionEffect(randomEffect, -1, 0, false, false)); // Level 1
+                    player.addPotionEffect(new PotionEffect(randomEffect, ticksUntilGameEnd() + 200/*buffer*/, 0, false, false)); // Level 1
                     break;
                 } else if (current.getAmplifier() < maxAmp) {
-                    player.addPotionEffect(new PotionEffect(randomEffect, -1, current.getAmplifier() + 1, false, false));
+                    player.addPotionEffect(new PotionEffect(randomEffect, ticksUntilGameEnd() + 200/*buffer*/, current.getAmplifier() + 1, false, false));
                     break;
                 }
             }
