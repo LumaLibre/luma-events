@@ -12,6 +12,7 @@ public class MineBattleDefinition extends OkaeriConfig {
     private long timeLimitSeconds = 360;
     private long heartbeatTicks = 5;
     private long maxDistanceLOS = 10;
+    private long minDistanceLOS = 2;
 
     private boolean doPeriodicReveal = false;
     private boolean useWorldBorder = false;

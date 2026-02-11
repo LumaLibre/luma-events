@@ -114,6 +114,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private final long timeLimitMillis;
     private final long gameEndsAtMillis;
     private final long maxDistanceLOSsquared;
+    private final long minDistanceLOSsquared;
     private final boolean doPeriodicReveal;
     private final boolean useWorldBorder;
     private final Location lobbyLocation;
@@ -151,6 +152,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         this.timeLimitMillis = Util.secsToMillis(def.getTimeLimitSeconds());
         this.gameEndsAtMillis = System.currentTimeMillis() + Util.secsToMillis(def.getTimeLimitSeconds());
         this.maxDistanceLOSsquared = def.getMaxDistanceLOS() * def.getMaxDistanceLOS();
+        this.minDistanceLOSsquared = def.getMinDistanceLOS() * def.getMinDistanceLOS();
         this.doPeriodicReveal = def.isDoPeriodicReveal();
         this.useWorldBorder = def.isUseWorldBorder();
         this.lobbyLocation = def.getLobbyLocation();
@@ -226,27 +228,29 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             Logging.errorLog(t.getMessage(), t);
         }
 
-        if (this.isCancelled()) return; // does this need to be done sync?
-        CountdownBossBar.builder()
-                .title("<yellow>Generating Arena...") // <gray>%ss</gray>
-                .color(BossBar.Color.YELLOW)
-                .seconds(5)
-                .audience(this.audience)
-                .countUp(true)
-                .callback(() -> Executors.runSync(() -> {
-                    if (this.isCancelled()) return;
-                    this.arenaReady = true;
+        Executors.runSync(() -> {
+            if (this.isCancelled()) return; // does this need to be done sync? - Apparently so.
+            CountdownBossBar.builder()
+                    .title("<yellow>Generating Arena...") // <gray>%ss</gray>
+                    .color(BossBar.Color.YELLOW)
+                    .seconds(5)
+                    .audience(this.audience)
+                    .countUp(true)
+                    .callback(() -> Executors.runSync(() -> {
+                        if (this.isCancelled()) return;
+                        this.arenaReady = true;
 
-                    if (useWorldBorder) setupWorldBorderSafe(radius);
+                        if (useWorldBorder) setupWorldBorderSafe(radius);
 
-                    teleportPlayersToAssignedSpawnsThen(() -> {
-                        if (useWorldBorder) armAndShrinkWorldBorder();
-                        startGameTimerBossBar();
-                        this.sendAudienceMessage("<green>MineBattle started!</green>");
-                    });
-                }))
-                .build()
-                .start();
+                        teleportPlayersToAssignedSpawnsThen(() -> {
+                            if (useWorldBorder) armAndShrinkWorldBorder();
+                            startGameTimerBossBar();
+                            this.sendAudienceMessage("<green>MineBattle started!</green>");
+                        });
+                    }))
+                    .build()
+                    .start();
+        });
     }
 
     @Override
@@ -291,6 +295,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStop() {
+        arenaReady = false;
         unsafe(() -> {
             if (this.gameTimerBossBar != null && !this.gameTimerBossBar.isCancelled()) {
                 this.gameTimerBossBar.stop(false);
@@ -599,13 +604,6 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         return new CuboidRegion(weWorld, min, max);
     }
 
-
-
-    // TODO: After thinking this over, the performance cost from this function is too high in all senses.
-    //  - Player#hasLineOfSight is incredibly expensive, and these nested loops will cause massive lag spikes-
-    //  no matter what tick rate this game is at.
-    //  - Considering all these factors, if an asynchronous solution cannot be found, we will have to remove
-    //  this feature entirely.
     private void updateLineOfSightVisibility() {
         if (!arenaReady) return;
 
@@ -613,7 +611,13 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 .map(role -> role.getEventPlayer().getPlayer())
                 .filter(Objects::nonNull)
                 .toList();
+        List<Player> spectators = this.roleMap.getMatching(MineBattleSpectator.class).stream()
+                .map(role -> role.getEventPlayer().getPlayer())
+                .filter(Objects::nonNull)
+                .toList();
 
+        record Visibility(Player viewer, Player target, boolean shouldSee) {}
+        List<Visibility> changes = new ArrayList<>();
 
         // Active <-> Active (LOS in any direction)
         for (int i = 0; i < actives.size(); i++) {
@@ -633,59 +637,66 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 double distSq = a.getLocation().distanceSquared(b.getLocation());
                 boolean baseVisible;
                 if (distSq <= maxDistanceLOSsquared && a.getWorld() == b.getWorld()) {
-                    baseVisible = hasAsyncLineOfSight(a.getEyeLocation(), b.getEyeLocation(), a.getWorld());
+                    if (distSq <= minDistanceLOSsquared) baseVisible = true;
+                    else baseVisible = hasAsyncLineOfSight(a.getEyeLocation(), b.getEyeLocation(), a.getWorld());
                 } else {
                     baseVisible = false;
                 }
 
-                Executors.runSync(() -> {
-                    setCanSee(a, b, aForces || baseVisible);
-                    setCanSee(b, a, bForces || baseVisible);
-                });
+                changes.add(new Visibility(a, b, aForces || baseVisible));
+                changes.add(new Visibility(b, a, bForces || baseVisible));
             }
         }
 
-        // No one sees spectators
-        // TODO: Why is this being called every tick if it never changes? Spectators are only made visible after the game ends.
+        // No one sees spectators (shouldn't ever change, therefore unnecessary)
 //        for (Player viewer : actives) {
 //            for (Player spec : spectators) {
-//                setCanSee(viewer, spec, false);
-//            }
-//        }
-//
-//        // Spectators don't see other spectators
-//        for (Player viewer : spectators) {
-//            for (Player spec : spectators) {
-//                if (viewer == spec) continue;
-//                setCanSee(viewer, spec, false);
+//                changes.add(new Vis(viewer, spec, false));
 //            }
 //        }
 
-        // TODO: Unnecessary, let spectators see all actives
+        // Spectators don't see other spectators
+        for (Player viewer : spectators) {
+            for (Player spec : spectators) {
+                if (viewer == spec) continue;
+                changes.add(new Visibility(viewer, spec, false));
+            }
+        }
+
         // Spectator -> Active (directional LOS)
-//        for (Player viewer : spectators) {
-//            UUID viewerId = viewer.getUniqueId();
-//
-//            for (Player target : actives) {
-//                boolean force = forcedVisible(viewerId, target.getUniqueId());
-//
-//                if (viewer.getWorld() != target.getWorld()) {
-//                    setCanSee(viewer, target, false);
-//                    continue;
-//                }
-//
-//                double distSq = viewer.getLocation().distanceSquared(target.getLocation());
-//                boolean visible = false;
-//
-//                if (force) {
-//                    visible = true;
-//                } else if (distSq <= maxDistanceLOSsquared) {
-//                    visible = viewer.hasLineOfSight(target);
-//                }
-//
-//                setCanSee(viewer, target, visible);
-//            }
-//        }
+        for (Player viewer : spectators) {
+            UUID viewerId = viewer.getUniqueId();
+
+            for (Player target : actives) {
+                boolean force = forcedVisible(viewerId, target.getUniqueId());
+
+                if (viewer.getWorld() != target.getWorld()) {
+                    changes.add(new Visibility(viewer, target, false));
+                    continue;
+                }
+
+                double distSq = viewer.getLocation().distanceSquared(target.getLocation());
+                boolean visible = false;
+
+                if (force) {
+                    visible = true;
+                } else if (distSq <= maxDistanceLOSsquared) {
+                    if (distSq <= minDistanceLOSsquared) visible = true;
+                    else visible = hasAsyncLineOfSight(viewer.getEyeLocation(), target.getEyeLocation(), viewer.getWorld());
+                }
+
+                changes.add(new Visibility(viewer, target, visible));
+            }
+        }
+
+        // Apply changes on the main thread
+        Executors.runSync(() -> {
+            if (!arenaReady) return; // Game is not active
+            for (Visibility v : changes) {
+                if (!v.viewer().isOnline() || !v.target().isOnline()) continue;
+                setCanSee(v.viewer(), v.target(), v.shouldSee());
+            }
+        });
     }
 
     private boolean hasAsyncLineOfSight(Location from, Location to, org.bukkit.World world) {
@@ -1194,6 +1205,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 this.getParticipants().stream()
                         .filter(ep -> !Objects.equals(ep.getUuid(), player.getUniqueId()))
                         .forEach(ep -> ep.operatePlayer(p -> {
+                            if (!isActive(p)) return; // don't reveal spectators
                             if (p.getLocation().distanceSquared(player.getLocation()) > 25*25) return;
                             forceShowFor(player.getUniqueId(), p.getUniqueId(), 3_000); // (= 60 ticks)
                             if (p.hasPotionEffect(PotionEffectType.GLOWING)) p.removePotionEffect(PotionEffectType.GLOWING);
