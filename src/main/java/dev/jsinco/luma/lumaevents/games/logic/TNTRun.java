@@ -2,6 +2,7 @@ package dev.jsinco.luma.lumaevents.games.logic;
 
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.TNTRunDefinition;
+import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRole;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRoleMap;
@@ -10,6 +11,7 @@ import dev.jsinco.luma.lumaevents.games.interfaces.packet.BlockAnimationPlatform
 import dev.jsinco.luma.lumaevents.games.interfaces.structures.WorldEditStructure;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
+import dev.jsinco.luma.lumaevents.games.tokenformula.TNTRunTokenFormula;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Executors;
@@ -88,6 +90,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private CountdownBossBar gameTimerBossBar;
 
     private final Scoreboard<EventPlayer> scoreboard = new Scoreboard<>();
+    private final TNTRunTokenFormula tokenFormula = new TNTRunTokenFormula();
     private final MinigameRoleMap<AbstractTNTRunPlayer> roleMap = new MinigameRoleMap<>(AbstractTNTRunPlayer::cleanup);
     private final Map<BlockPos, Long> decayQueue = new HashMap<>();
     private long tickCounter = 0L;
@@ -133,8 +136,9 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
-        // TODO: Implement
-        // For Mitality: See other games/tokenformulas. Determine how many tokens should be given based on score
+        int score = this.scoreboard.getScore(participant);
+        tokenFormula.giveTokens(participant, score);
+        participant.addPermanentScore(MinigameConstant.TNTRUN, score);
     }
 
 

@@ -13,12 +13,14 @@ import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldedit.world.World;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MineBattleDefinition;
+import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRole;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRoleMap;
 import dev.jsinco.luma.lumaevents.games.interfaces.structures.WorldEditStructure;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
+import dev.jsinco.luma.lumaevents.games.tokenformula.MineBattleTokenFormula;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Executors;
@@ -111,6 +113,9 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private static final NamespacedKey COPPER_MAX_HEALTH_KEY =
             new NamespacedKey(EventMain.getInstance(), "minebattle_copper_max_health");
 
+    private static final int SURVIVE_POINTS = 150;
+    private static final int KILL_POINTS = 100;
+
     private final long timeLimitMillis;
     private final long gameEndsAtMillis;
     private final long maxDistanceLOSsquared;
@@ -133,6 +138,10 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private ArenaRegions arenaRegions;
     private List<Location> pocketCenters = List.of();
     private final Scoreboard<EventPlayer> scoreboard;
+    private final Map<UUID, Integer> killCounts;
+    private final MineBattleTokenFormula tokenFormula;
+    private final Map<UUID, Double> survivalRemainder = new HashMap<>();
+    private long lastSurvivalTimeLeftMs = -1L;
 
     private final MinigameRoleMap<AbstractMineBattlePlayer> roleMap =
             new MinigameRoleMap<>(AbstractMineBattlePlayer::cleanup);
@@ -166,6 +175,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         this.minPocketSpacing = def.getMinPocketSpacing();
         this.wallPadding = def.getWallPadding();
         this.scoreboard = new Scoreboard<>();
+        this.killCounts = new HashMap<>();
+        this.tokenFormula = new MineBattleTokenFormula();
         this.boundingBox = computeBoundingBox(arenaOrigin, maxRadius, arenaHeight);
     }
 
@@ -181,7 +192,9 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
-        // TODO: Implement
+        int score = this.scoreboard.getScore(participant);
+        tokenFormula.giveTokens(participant, score);
+        participant.addPermanentScore(MinigameConstant.MINEBATTLE, score);
     }
 
     public static String buildWeightedPattern(Map<String, Double> weights) {
@@ -254,12 +267,13 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     }
 
     @Override
-    protected void onRunnable(long timeLeft) {
+    protected void onRunnable(long timeLeftMillis) {
         if (!this.arenaReady) return;
+        updateSurvivalPoints(timeLeftMillis);
         // spinning up a new thread to not block this current thread
         Executors.runAsync(this::updateLineOfSightVisibility);
         Executors.runSync(() -> {
-            tickPeriodicReveal(timeLeft);
+            tickPeriodicReveal(timeLeftMillis);
         });
         if (aliveCount() <= 1) this.stop();
     }
@@ -1100,8 +1114,36 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         if (killer.equals(victim)) return;
         EventPlayer killerEp = getParticipant(killer);
         if (killerEp == null) return;
-        scoreboard.addScore(killerEp, 1);
-        killerEp.sendMessage("<green>+1 kill</green> <gray>(" + scoreboard.getScore(killerEp) + " total)</gray>");
+        scoreboard.addScore(killerEp, KILL_POINTS);
+        killCounts.merge(killer, 1, Integer::sum);
+        killerEp.sendMessage("<green>+1 kill</green> <gray>(" + killCounts.get(killer) + " total)</gray>");
+    }
+
+    private void updateSurvivalPoints(long timeLeftMillis) {
+        if (lastSurvivalTimeLeftMs < 0) {
+            lastSurvivalTimeLeftMs = timeLeftMillis;
+            return;
+        }
+
+        long elapsedMs = lastSurvivalTimeLeftMs - timeLeftMillis;
+        lastSurvivalTimeLeftMs = timeLeftMillis;
+        if (elapsedMs <= 0) return;
+
+        double pointsPerMs = SURVIVE_POINTS / (double) timeLimitMillis;
+        double add = pointsPerMs * elapsedMs;
+
+        for (ActiveMineBattlePlayer role : this.roleMap.getMatching(ActiveMineBattlePlayer.class)) {
+            UUID id = role.getEventPlayer().getUuid();
+
+            double acc = survivalRemainder.getOrDefault(id, 0.0) + add;
+            int whole = (int) Math.floor(acc);
+
+            if (whole > 0) {
+                scoreboard.addScore(role.getEventPlayer(), whole);
+                acc -= whole;
+            }
+            survivalRemainder.put(id, acc);
+        }
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
