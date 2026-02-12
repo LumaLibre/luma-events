@@ -1,6 +1,5 @@
 package dev.lumas.events.configurable;
 
-import dev.jsinco.luma.lumaevents.configurable.sectors.*;
 import dev.lumas.events.configurable.sectors.BoatRace2Definition;
 import dev.lumas.events.configurable.sectors.ManorMinigameDefinition;
 import dev.lumas.events.configurable.sectors.MineBattleDefinition;

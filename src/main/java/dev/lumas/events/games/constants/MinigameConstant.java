@@ -4,7 +4,6 @@ import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.sectors.MineBattleDefinition;
 import dev.lumas.events.games.interfaces.Minigame;
-import dev.jsinco.luma.lumaevents.games.logic.*;
 import dev.lumas.events.games.logic.BoatRace2;
 import dev.lumas.events.games.logic.Manor;
 import dev.lumas.events.games.logic.MineBattle;
