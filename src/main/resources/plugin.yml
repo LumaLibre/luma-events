@@ -1,8 +1,7 @@
-name: Valentines
-main: dev.jsinco.luma.lumaevents.EventMain
-version: '1.0-SNAPSHOT'
+name: LumaEvents
+main: dev.lumas.events.EventMain
+version: '${version}'
 api-version: 1.21
-author: jsinco
 depend:
   - LumaCore
   - LumaItems

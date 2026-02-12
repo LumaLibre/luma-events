@@ -1,3 +1,7 @@
+import org.apache.tools.ant.filters.ReplaceTokens
+import org.gradle.kotlin.dsl.filter
+import java.nio.charset.Charset
+
 plugins {
     id("java")
     id("com.gradleup.shadow") version "8.3.5"
@@ -7,9 +11,8 @@ plugins {
     kotlin("plugin.lombok") version "2.1.0"
 }
 
-// TODO: Change package name on next event
-group = "dev.jsinco.luma.lumaevents"
-version = "1.0-SNAPSHOT"
+group = "dev.lumas.events"
+version = commitHash()
 
 repositories {
     mavenCentral()
@@ -69,8 +72,11 @@ tasks {
         dependencies {
             exclude(dependency("org.jetbrains.kotlin:kotlin-stdlib"))
         }
-        relocate("eu.okaeri", "dev.jsinco.luma.lumaevents.okaeri")
-        relocate("dev.thorinwasher.schem", "dev.jsinco.luma.lumaevents.schemreader")
+
+        val pack = "dev.lumas.events.lib"
+
+        relocate("eu.okaeri", "$pack.okaeri")
+        relocate("dev.thorinwasher.schem", "$pack.schem")
         archiveClassifier.set("")
     }
 
@@ -81,7 +87,34 @@ tasks {
     runServer {
         minecraftVersion("1.21.11")
     }
+
+    processResources {
+        outputs.upToDateWhen { false }
+        filter<ReplaceTokens>(mapOf(
+            "tokens" to mapOf("version" to project.version.toString()),
+            "beginToken" to "\${",
+            "endToken" to "}"
+        )).filteringCharset = "UTF-8"
+    }
 }
+
+
 kotlin {
     jvmToolchain(21)
+}
+
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+}
+
+fun commitHash(): String {
+    return try {
+        val process = ProcessBuilder("git", "log", "-1", "--format=%h")
+            .redirectErrorStream(true)
+            .start()
+        val result = process.inputStream.bufferedReader(Charset.defaultCharset()).readText().trim()
+        result.ifBlank { "none" }
+    } catch (_: Exception) {
+        "none"
+    }
 }
