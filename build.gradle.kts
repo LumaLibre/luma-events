@@ -78,6 +78,7 @@ tasks {
         relocate("eu.okaeri", "$pack.okaeri")
         relocate("dev.thorinwasher.schem", "$pack.schem")
         archiveClassifier.set("")
+        archiveVersion.set("")
     }
 
     build {
