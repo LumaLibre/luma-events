@@ -27,7 +27,7 @@ repositories {
 
 dependencies {
     compileOnly("dev.lumas.lumacore:LumaCore:4149a14")
-    compileOnly("dev.lumas.lumaitems:LumaItems:d55b35f")
+    compileOnly("dev.lumas.lumaitems:LumaItems:a5ce560")
     compileOnly("dev.lumas.glowapi:LumaGlowAPI:c57567c")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("com.nuclyon.technicallycoded.inventoryrollback:InventoryRollbackPlus:1.7.3")
@@ -70,6 +70,7 @@ tasks {
             exclude(dependency("org.jetbrains.kotlin:kotlin-stdlib"))
         }
         relocate("eu.okaeri", "dev.jsinco.luma.lumaevents.okaeri")
+        relocate("dev.thorinwasher.schem", "dev.jsinco.luma.lumaevents.schemreader")
         archiveClassifier.set("")
     }
 

@@ -3,13 +3,16 @@ package dev.jsinco.luma.lumaevents.games.logic;
 import com.google.common.base.Preconditions;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.PanelPartyMinigameDefinition;
+import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.exceptions.MinigameException;
 import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
+import dev.jsinco.luma.lumaevents.games.interfaces.TokenFormula;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRole;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRoleMap;
 import dev.jsinco.luma.lumaevents.games.interfaces.structures.GenericStructure;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
+import dev.jsinco.luma.lumaevents.games.tokenformula.FlatIntTokenFormula;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.utility.Executors;
 import dev.jsinco.luma.lumaevents.utility.Util;
@@ -62,6 +65,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     private final List<GenericStructure> panels;
     private final MinigameRoleMap<AbstractPanelPlayer> roleMap;
     private final Scoreboard<EventPlayer> scoreboard;
+    private final TokenFormula<Integer> tokenFormula;
     private final int maxRounds;
 
     private int round;
@@ -78,6 +82,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                 .toList());
         this.roleMap = new MinigameRoleMap<>(AbstractPanelPlayer::cleanup);
         this.scoreboard = new Scoreboard<>();
+        this.tokenFormula = new FlatIntTokenFormula(30);
         this.maxRounds = panels.size();
 
 
@@ -94,8 +99,9 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
-        // TODO: implement token handling
-        participant.sendMessage("TODO: Panel Party Token Handler");
+        int score = this.scoreboard.getScore(participant);
+        this.tokenFormula.giveTokens(participant, score);
+        participant.addPermanentScore(MinigameConstant.PANEL_PARTY, score);
     }
 
     @Override
@@ -635,7 +641,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     @Getter
     private enum PanelDifficulty {
-        EASY(11, BossBar.Color.GREEN, "<green>", 1, PanelDifficultyModifier.JUMP_BOOST_ENABLED, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
+        EASY(11, BossBar.Color.GREEN, "<green>", 1, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
         MEDIUM(7, BossBar.Color.YELLOW, "<yellow>", 1, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
         HARD(6, BossBar.Color.RED, "<dark_red>", 1, PanelDifficultyModifier.IGNORE_MINIMUM_BLOCKS),
         HARDER_THAN_HARD_I_GUESS(4, BossBar.Color.PURPLE, "<dark_purple>", 2, PanelDifficultyModifier.PVP_ENABLED, PanelDifficultyModifier.IGNORE_MINIMUM_BLOCKS);

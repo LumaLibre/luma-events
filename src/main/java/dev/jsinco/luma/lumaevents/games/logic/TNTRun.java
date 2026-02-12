@@ -4,6 +4,7 @@ import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.TNTRunDefinition;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
+import dev.jsinco.luma.lumaevents.games.interfaces.TokenFormula;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRole;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRoleMap;
 import dev.jsinco.luma.lumaevents.games.interfaces.packet.BlockAnimationPlatform;
@@ -11,7 +12,7 @@ import dev.jsinco.luma.lumaevents.games.interfaces.packet.BlockAnimationPlatform
 import dev.jsinco.luma.lumaevents.games.interfaces.structures.WorldEditStructure;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
-import dev.jsinco.luma.lumaevents.games.tokenformula.TNTRunTokenFormula;
+import dev.jsinco.luma.lumaevents.games.tokenformula.DivisibleTokenFormula;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Executors;
@@ -90,7 +91,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private CountdownBossBar gameTimerBossBar;
 
     private final Scoreboard<EventPlayer> scoreboard = new Scoreboard<>();
-    private final TNTRunTokenFormula tokenFormula = new TNTRunTokenFormula();
+    private final TokenFormula<Double> tokenFormula = new DivisibleTokenFormula(3.0, 30);
     private final MinigameRoleMap<AbstractTNTRunPlayer> roleMap = new MinigameRoleMap<>(AbstractTNTRunPlayer::cleanup);
     private final Map<BlockPos, Long> decayQueue = new HashMap<>();
     private long tickCounter = 0L;
@@ -103,7 +104,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private final BlockAnimationPlatform tempPlatforms;
 
     public TNTRun(TNTRunDefinition def) {
-        super("TNT Run", "Don't fall down!", def.getTimeLimitSeconds() * 1000L, 1,
+        super("TNT Run", "Don't fall down!", 420000L, 1,
                 false, true, false, true);
 
         this.decayDelayTicks = def.getDecayDelayTicks();
@@ -137,7 +138,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     @Override
     protected void tokenHandler(EventPlayer participant) {
         int score = this.scoreboard.getScore(participant);
-        tokenFormula.giveTokens(participant, score);
+        tokenFormula.giveTokens(participant, (double) score);
         participant.addPermanentScore(MinigameConstant.TNTRUN, score);
     }
 

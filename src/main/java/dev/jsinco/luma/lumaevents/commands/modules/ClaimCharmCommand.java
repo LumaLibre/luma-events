@@ -10,14 +10,14 @@ import dev.jsinco.luma.lumaevents.commands.CommandModule;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.lumas.lumaitems.api.LumaItemsAPI;
-import dev.lumas.lumaitems.manager.CustomItem;
+import dev.lumas.lumaitems.model.CustomItem;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.List;
 
-@AutoRegister(RegisterType.SUBCOMMAND)
+//@AutoRegister(RegisterType.SUBCOMMAND)
 @CommandInfo(
         name = "claim",
         permission = "lumaevents.default",

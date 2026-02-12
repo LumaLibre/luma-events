@@ -9,7 +9,7 @@ import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.MinigameManager;
 import dev.jsinco.luma.lumaevents.games.interfaces.Minigame;
 import dev.jsinco.luma.lumaevents.items.StartMinigameItem;
-import dev.jsinco.luma.lumaevents.items.WinterStampItem;
+import dev.jsinco.luma.lumaevents.items.CandiedAppleItem;
 import dev.jsinco.luma.lumaevents.items.LocalCustomItemManager;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
@@ -38,7 +38,7 @@ public final class EventMain extends JavaPlugin {
         MinigameManager.getInstance().runTaskTimerAsynchronously(this, 0, 600); // 30 seconds
         Bukkit.getPluginManager().registerEvents(new LateJoinListener(), this);
 
-        LocalCustomItemManager.addCustomItem(new WinterStampItem());
+        LocalCustomItemManager.addCustomItem(new CandiedAppleItem());
         LocalCustomItemManager.addCustomItem(new StartMinigameItem());
         LocalCustomItemManager.registerCustomItems();
     }

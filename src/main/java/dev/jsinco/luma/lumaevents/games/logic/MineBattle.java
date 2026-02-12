@@ -15,12 +15,13 @@ import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.configurable.sectors.MineBattleDefinition;
 import dev.jsinco.luma.lumaevents.games.constants.MinigameConstant;
 import dev.jsinco.luma.lumaevents.games.interfaces.InventoryUnifiedMinigame;
+import dev.jsinco.luma.lumaevents.games.interfaces.TokenFormula;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRole;
 import dev.jsinco.luma.lumaevents.games.interfaces.models.MinigameRoleMap;
 import dev.jsinco.luma.lumaevents.games.interfaces.structures.WorldEditStructure;
 import dev.jsinco.luma.lumaevents.games.obj.CountdownBossBar;
 import dev.jsinco.luma.lumaevents.games.obj.Scoreboard;
-import dev.jsinco.luma.lumaevents.games.tokenformula.MineBattleTokenFormula;
+import dev.jsinco.luma.lumaevents.games.tokenformula.DivisibleTokenFormula;
 import dev.jsinco.luma.lumaevents.obj.EventPlayer;
 import dev.jsinco.luma.lumaevents.obj.WorldTiedBoundingBox;
 import dev.jsinco.luma.lumaevents.utility.Executors;
@@ -139,7 +140,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private List<Location> pocketCenters = List.of();
     private final Scoreboard<EventPlayer> scoreboard;
     private final Map<UUID, Integer> killCounts;
-    private final MineBattleTokenFormula tokenFormula;
+    private final TokenFormula<Double> tokenFormula;
     private final Map<UUID, Double> survivalRemainder = new HashMap<>();
     private long lastSurvivalTimeLeftMs = -1L;
 
@@ -176,7 +177,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         this.wallPadding = def.getWallPadding();
         this.scoreboard = new Scoreboard<>();
         this.killCounts = new HashMap<>();
-        this.tokenFormula = new MineBattleTokenFormula();
+        this.tokenFormula = new DivisibleTokenFormula(20.0, 35);
         this.boundingBox = computeBoundingBox(arenaOrigin, maxRadius, arenaHeight);
     }
 
@@ -193,7 +194,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     @Override
     protected void tokenHandler(EventPlayer participant) {
         int score = this.scoreboard.getScore(participant);
-        tokenFormula.giveTokens(participant, score);
+        tokenFormula.giveTokens(participant, (double) score);
         participant.addPermanentScore(MinigameConstant.MINEBATTLE, score);
     }
 
@@ -275,6 +276,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         Executors.runSync(() -> {
             tickPeriodicReveal(timeLeftMillis);
         });
+        this.roleMap.forEach(AbstractMineBattlePlayer::tick);
         if (aliveCount() <= 1) this.stop();
     }
 
@@ -381,11 +383,23 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
 
         public abstract void cleanup();
+        public abstract void tick();
     }
 
     public static final class ActiveMineBattlePlayer extends AbstractMineBattlePlayer {
+
+        private static final PotionEffect DARKNESS = new PotionEffect(PotionEffectType.DARKNESS, 150, 0, false, false, true);
+
         private ActiveMineBattlePlayer(EventPlayer eventPlayer, MineBattle context) {
             super(eventPlayer, context);
+        }
+
+        @Override
+        public void tick() {
+            eventPlayer.operatePlayer(player -> {
+                player.setFoodLevel(20);
+                player.addPotionEffect(DARKNESS);
+            });
         }
 
         @Override
@@ -419,9 +433,19 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     }
 
     private static final class MineBattleSpectator extends AbstractMineBattlePlayer {
+
+        private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 150, 0, false, false, true);
+
         private MineBattleSpectator(EventPlayer eventPlayer, MineBattle context) {
             super(eventPlayer, context);
             this.hide();
+        }
+
+        @Override
+        public void tick() {
+            eventPlayer.operatePlayer(player -> {
+                player.addPotionEffect(INVISIBILITY);
+            });
         }
 
         @Override
@@ -910,16 +934,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     }
 
     private void equip(Player player) {
-        player.getInventory().addItem(START_SWORD_TEMPLATE.clone());
-        player.getInventory().addItem(START_PICKAXE_TEMPLATE.clone());
-        player.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, ticksFromMillis(timeLimitMillis), 0, false, false));
-        player.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION, ticksFromMillis(timeLimitMillis), 0, false, false));
-    }
-
-    private int ticksFromMillis(long ms) {
-        long ticks = (ms + 49) / 50; // ceil(ms/50)
-        long withBuffer = ticks + 20L * 10; // +10s buffer
-        return (int) Math.min(Integer.MAX_VALUE, withBuffer);
+        player.getInventory().addItem(START_SWORD_TEMPLATE);
+        player.getInventory().addItem(START_PICKAXE_TEMPLATE);
     }
 
     private int ticksUntilGameEnd() {

@@ -32,7 +32,7 @@ public abstract class TokenFormula<C> {
         }
 
         makeDirty(uuid);
-        TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.STAMP, amount);
+        TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.CANDIED_APPLE, amount);
     }
 
     private boolean isDirty(UUID uuid) {

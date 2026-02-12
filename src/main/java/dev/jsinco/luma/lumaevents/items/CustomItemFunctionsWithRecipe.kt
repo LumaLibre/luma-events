@@ -1,6 +1,6 @@
 package dev.jsinco.luma.lumaevents.items
 
-import dev.lumas.lumaitems.manager.CustomItemFunctions
+import dev.lumas.lumaitems.model.CustomItemFunctions
 import org.bukkit.NamespacedKey
 import org.bukkit.inventory.Recipe
 

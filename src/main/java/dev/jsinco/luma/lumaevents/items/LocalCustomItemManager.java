@@ -1,7 +1,7 @@
 package dev.jsinco.luma.lumaevents.items;
 
 import dev.lumas.lumaitems.api.LumaItemsAPI;
-import dev.lumas.lumaitems.manager.CustomItem;
+import dev.lumas.lumaitems.model.CustomItem;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.inventory.ItemStack;

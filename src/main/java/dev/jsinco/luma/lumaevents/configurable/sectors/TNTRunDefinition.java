@@ -10,8 +10,6 @@ import java.util.Map;
 @Getter
 public class TNTRunDefinition extends OkaeriConfig {
 
-    private long timeLimitSeconds = 360;
-
     private Location lobbyLocation;
     private Location arenaOrigin;
 

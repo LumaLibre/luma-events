@@ -4,7 +4,7 @@ import dev.lumas.lumacore.utility.Logging;
 import dev.jsinco.luma.lumaevents.EventMain;
 import dev.jsinco.luma.lumaevents.utility.Util;
 import dev.lumas.lumaitems.LumaItems;
-import dev.lumas.lumaitems.manager.CustomItem;
+import dev.lumas.lumaitems.model.CustomItem;
 import lombok.Getter;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -66,8 +66,8 @@ public class TokenExchanging {
 
     @Getter
     public enum TokenType {
-        STAMP(WinterStampItem.class, "Stamp", "winter-stamp"),
-        //REFINED_OPAL(RefinedSummerOpal.class, "Refined Opal", "refined-summer-opal"),
+        CANDIED_APPLE(CandiedAppleItem.class, "Candied Apple", "candied-apple"),
+        CARAMEL_APPLE(CaramelAppleItem.class, "Caramel Apple", "caramel-apple"),
         ;
 
         private final Class<? extends CustomItem> tokenClass;
