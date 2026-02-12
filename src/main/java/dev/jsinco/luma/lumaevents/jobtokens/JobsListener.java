@@ -17,7 +17,7 @@ import java.util.Random;
 @AutoRegister(RegisterType.LISTENER)
 public class JobsListener implements Listener {
 
-    private static final Random RANDOM = Util.RANDOM;
+    private static final Random RANDOM = new Random(); // intentionally new random seed for this
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onJobsPrePayment(JobsPrePaymentEvent event) {
