@@ -1,4 +1,4 @@
-package dev.lumas.events.games.obj;
+package dev.lumas.events.games.models;
 
 import lombok.Getter;
 import me.danjono.inventoryrollback.data.LogType;

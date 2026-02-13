@@ -2,13 +2,13 @@ package dev.lumas.events.games.logic;
 
 import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.events.games.constants.MinigameConstant;
-import dev.lumas.events.games.obj.Scoreboard;
+import dev.lumas.events.games.models.Scoreboard;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.tokenformula.BoatRace2TokenFormula;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.BoatRace2Definition;
-import dev.lumas.events.games.obj.CountdownBossBar;
+import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.obj.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;

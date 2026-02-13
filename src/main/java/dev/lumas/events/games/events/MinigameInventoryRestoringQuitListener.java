@@ -1,7 +1,7 @@
 package dev.lumas.events.games.events;
 
 import dev.lumas.events.EventPlayerManager;
-import dev.lumas.events.games.obj.InventorySnapshot;
+import dev.lumas.events.games.models.InventorySnapshot;
 import dev.lumas.events.games.InventorySnapshotManager;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.obj.EventPlayer;

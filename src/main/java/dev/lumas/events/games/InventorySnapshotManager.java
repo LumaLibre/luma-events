@@ -1,7 +1,7 @@
 package dev.lumas.events.games;
 
 import dev.lumas.events.games.exceptions.UnsafeInventorySnapshot;
-import dev.lumas.events.games.obj.InventorySnapshot;
+import dev.lumas.events.games.models.InventorySnapshot;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;

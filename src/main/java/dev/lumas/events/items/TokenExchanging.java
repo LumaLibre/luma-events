@@ -6,9 +6,12 @@ import dev.lumas.events.utility.Util;
 import dev.lumas.lumaitems.LumaItems;
 import dev.lumas.lumaitems.model.CustomItem;
 import lombok.Getter;
+import net.kyori.adventure.text.minimessage.internal.parser.TokenType;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class TokenExchanging {
 
@@ -29,7 +32,11 @@ public class TokenExchanging {
 //        Util.sendMsg(player, "You got <yellow>" + amountClone + "</yellow> " + TokenType.OPAL.customName + "(s)!");
 //    }
 
-    public static void give(Player player, TokenType type, int amount) {
+    public static void give(@NotNull Player player, @NotNull TokenType type, int amount) {
+        give(player, type, amount, null);
+    }
+
+    public static void give(@NotNull Player player, @NotNull TokenType type, int amount, @Nullable String source) {
         if (amount < 1) {
             return;
         }
@@ -41,8 +48,12 @@ public class TokenExchanging {
             return;
         }
         Util.giveItem(player, itemStack, finalAmount);
-        Util.sendMsg(player, "You got <gold>" + finalAmount + "</gold> " + type.customName + "(s)!");
 
+        String msg = "You got <gold> " + finalAmount + "</gold> " + type.customName + "(s)!";
+        if (source != null) {
+            msg += "<dark_gray> (" + source + ")";
+        }
+        Util.sendMsg(player, msg);
     }
 
     public static boolean take(Player player, TokenType type, int amount) {
@@ -66,8 +77,8 @@ public class TokenExchanging {
 
     @Getter
     public enum TokenType {
-        CANDIED_APPLE(CandiedAppleItem.class, "Candied Apple", "candied-apple"),
-        CARAMEL_APPLE(CaramelAppleItem.class, "Caramel Apple", "caramel-apple"),
+        CANDIED_APPLE(CandiedAppleItem.class, "<gradient:#DD2785:#fc5b8d:#cb354e>Candied Apple</gradient>", "candied-apple"),
+        CARAMEL_APPLE(CaramelAppleItem.class, "<gradient:#a76d3c:#d2b48c:#c79c6b:#f3e7c4:#9b7652>Caramel Apple</gradient>", "caramel-apple"),
         ;
 
         private final Class<? extends CustomItem> tokenClass;

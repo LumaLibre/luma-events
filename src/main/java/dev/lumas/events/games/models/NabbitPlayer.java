@@ -1,4 +1,4 @@
-package dev.lumas.events.games.obj;
+package dev.lumas.events.games.models;
 
 import dev.lumas.events.EventMain;
 import dev.lumas.events.games.interfaces.Scorer;

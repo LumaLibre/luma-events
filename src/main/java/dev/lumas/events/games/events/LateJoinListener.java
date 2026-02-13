@@ -2,7 +2,7 @@ package dev.lumas.events.games.events;
 
 import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.interfaces.Minigame;
-import dev.lumas.events.games.obj.CountdownBossBar;
+import dev.lumas.events.games.models.CountdownBossBar;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;

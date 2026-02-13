@@ -1,4 +1,4 @@
-package dev.lumas.events.games.obj;
+package dev.lumas.events.games.models;
 
 import dev.lumas.events.obj.EventPlayer;
 import org.bukkit.entity.Player;

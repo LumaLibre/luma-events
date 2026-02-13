@@ -27,4 +27,9 @@ public class DivisibleTokenFormula extends TokenFormula<Double> {
         }
         return Math.min(value, maxTokens);
     }
+
+    @Override
+    public String description() {
+        return "A token formula that awards tokens based on the double context divided by " + divisor + ", with a maximum of " + maxTokens + " tokens.";
+    }
 }

@@ -18,4 +18,9 @@ public class FlatIntTokenFormula extends TokenFormula<Integer> {
     protected int tokens(Integer context) {
         return Math.min(context, maxTokens);
     }
+
+    @Override
+    public String description() {
+        return "A token formula that awards 1 token per point earned, up to a maximum of " + maxTokens + " tokens.";
+    }
 }

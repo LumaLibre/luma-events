@@ -6,7 +6,7 @@ import dev.lumas.events.games.events.MinigameExitPreventionListener;
 import dev.lumas.events.games.events.MinigamePreventDamageListener;
 import dev.lumas.events.games.events.MinigamePreventInventoryTampering;
 import dev.lumas.events.games.exceptions.GameComponentIllegallyActive;
-import dev.lumas.events.games.obj.CountdownBossBar;
+import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.MinigameBoundingBox;
 import dev.lumas.events.utility.Util;
@@ -221,9 +221,9 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
 
     private void openQueue(int seconds) {
         this.queueBossbar = CountdownBossBar.builder()
-                .title("<aqua><b>" + name + " Starting in</b><gray>:</gray> <b>%ss</b></aqua>")
+                .title("<gradient:#954381:#ee78c0:#ec6e95:#cb354e><b>" + name + " Starting in</b><gray>:</gray> <b>%ss</b></gradient>")
                 .seconds(seconds)
-                .color(BossBar.Color.BLUE)
+                .color(BossBar.Color.RED)
                 .callback(this::start)
                 .audience(Audience.audience(Bukkit.getOnlinePlayers()))
                 .build()

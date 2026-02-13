@@ -21,7 +21,8 @@ public class JobsListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onJobsPrePayment(JobsPrePaymentEvent event) {
-        EventJobValue jobConstant = Util.getEnumFromString(EventJobValue.class, event.getJob().getName().toUpperCase());
+        String jobName = event.getJob().getName();
+        EventJobValue jobConstant = Util.getEnumFromString(EventJobValue.class, jobName);
         if (jobConstant == null) {
             return;
         }
@@ -32,7 +33,7 @@ public class JobsListener implements Listener {
             if (player == null) {
                 return;
             }
-            TokenExchanging.give(player, TokenExchanging.TokenType.CANDIED_APPLE, 1);
+            TokenExchanging.give(player, TokenExchanging.TokenType.CANDIED_APPLE, 1, jobName);
         }
     }
 }

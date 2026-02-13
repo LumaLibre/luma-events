@@ -7,7 +7,7 @@ import dev.lumas.lumacore.manager.modules.ModuleManager;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.ConfigManager;
 import dev.lumas.events.configurable.MinigameState;
-import dev.lumas.events.games.obj.CountdownBossBar;
+import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.items.StartMinigameItem;

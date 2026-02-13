@@ -2,7 +2,7 @@ package dev.lumas.events.games.interfaces;
 
 import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.events.games.events.MinigameInventoryRestoringQuitListener;
-import dev.lumas.events.games.obj.InventorySnapshot;
+import dev.lumas.events.games.models.InventorySnapshot;
 import dev.lumas.events.games.InventorySnapshotManager;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Executors;

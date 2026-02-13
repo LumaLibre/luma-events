@@ -4,7 +4,7 @@ import dev.lumas.lumacore.manager.commands.CommandInfo;
 import dev.lumas.lumacore.manager.modules.AutoRegister;
 import dev.lumas.lumacore.manager.modules.RegisterType;
 import dev.lumas.events.commands.CommandManager;
-import dev.lumas.events.games.obj.CountdownBossBar;
+import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.lumaitems.LumaItems;
 import dev.lumas.lumaitems.commands.SubCommand;
 import org.bukkit.command.CommandSender;
