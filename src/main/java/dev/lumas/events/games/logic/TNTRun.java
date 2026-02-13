@@ -347,7 +347,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     @EventHandler(ignoreCancelled = true)
     public void onMove(PlayerMoveEvent event) {
-        if (!event.hasChangedBlock() || !this.decayArmed) return;
+        if (!event.hasChangedPosition() || !this.decayArmed) return;
         this.ensureNotIllegal();
 
         Player player = event.getPlayer();
@@ -357,13 +357,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
             return;
         }
 
-        Location from = event.getFrom();
         Location to = event.getTo();
-        // Only process when moving across block borders
-        if (from.getBlockX() == to.getBlockX() && from.getBlockY() == to.getBlockY() && from.getBlockZ() == to.getBlockZ()) {
-            return;
-        }
-
         Block blockBelow = to.getBlock().getRelative(BlockFace.DOWN);
         Material type = blockBelow.getType();
         if (type.isAir() || !type.hasGravity()) {
@@ -371,7 +365,9 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         }
 
         this.scheduleDecay(blockBelow);
-        this.tryPickupPowerup(player);
+        if (event.hasChangedBlock()) {
+            this.tryPickupPowerup(player);
+        }
     }
 
 
