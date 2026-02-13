@@ -17,6 +17,7 @@ import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import lombok.Getter;
+import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
@@ -34,6 +35,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -90,6 +92,10 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         this.currentProcess = new PanelPartyProcess(this, PanelDifficulty.fromRounds(this.round, this.maxRounds));
 
         Collections.shuffle(this.panels, RANDOM); // shuffle panels
+
+        Executors.sync(() -> {
+            this.currentProcess.paste(this.round); // pre-paste first panel to count materials and prepare for the game start
+        });
     }
 
     @Override
@@ -124,11 +130,13 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStart() {
-        Location initialTeleportLocation = this.center.clone().add(RANDOM.nextDouble(0, 5), 2, RANDOM.nextDouble(0, 5));
+        Location initialTeleportLocation = this.center.clone().add(RANDOM.nextDouble(0, 5), 3, RANDOM.nextDouble(0, 5));
         for (EventPlayer participant : this.getParticipants()) {
             PanelParticipant role = new PanelParticipant(this, participant);
+            participant.teleportAsync(initialTeleportLocation).thenAccept(result -> {
+                role.setReadyToTick(true);
+            });
             this.roleMap.put(role);
-            participant.teleportAsync(initialTeleportLocation);
         }
 
         if (this.panels.isEmpty()) {
@@ -315,11 +323,14 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
         private final int eliminationYLevel;
         private boolean eliminated;
+        @Setter
+        private boolean readyToTick;
 
         public PanelParticipant(PanelParty context, EventPlayer eventPlayer) {
             super(context, eventPlayer);
             this.eliminationYLevel = context.center.getBlockY() - ELIMINATION_Y_LEVEL_OFFSET;
             this.eliminated = false;
+            this.readyToTick = false;
             this.eventPlayer.operatePlayer(player -> {
                 if (player.getGameMode() != GameMode.SURVIVAL) {
                     player.setGameMode(GameMode.SURVIVAL);
@@ -329,6 +340,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
         @Override
         public void tick() {
+            if (!this.readyToTick) return;
+
             this.eventPlayer.operatePlayer(player -> {
                 PanelPartyProcess process = this.context.currentProcess;
 
@@ -493,6 +506,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
         @Getter
         private Material chosenMaterial;
+        @MonotonicNonNull
+        private GenericStructure panel;
 
 
         public PanelPartyProcess(PanelParty context, PanelDifficulty difficulty) {
@@ -511,16 +526,22 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             return this.intermission.get();
         }
 
+        public void paste(int round) {
+            if (this.panel != null) {
+                return; // already pasted
+            }
+            // paste the next panel and count block data
+            this.panel = this.context.panels.get(round);
+            this.pastePanelWithCounting(panel);
+        }
+
         public boolean run(final int round) {
             // check if more rounds are available
             if (round + 1 > this.context.maxRounds) {
                 return false;
             }
 
-            // paste the next panel and count block data
-            GenericStructure panel = this.context.panels.get(round);
-            this.pastePanelWithCounting(panel);
-
+            this.paste(round);
 
             this.chosenMaterial = Util.getRandom(this.availableMaterials);
             Preconditions.checkNotNull(this.chosenMaterial, "Chosen block data cannot be null.");
@@ -590,6 +611,10 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         }
 
         private void pastePanelWithCounting(GenericStructure panel) {
+            if (this.panel == null) {
+                throw new IllegalStateException("Panel structure must be initialized before pasting.");
+            }
+
             Map<Material, Integer> materialCountMap = new HashMap<>();
 
             panel.paste((vector3i, blockData) -> {
