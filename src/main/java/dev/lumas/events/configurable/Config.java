@@ -53,6 +53,25 @@ public class Config extends OkaeriConfig {
             "g", "l", "pc", "sc", "msg", "r", "tell", "partychat", "staffchat"
     );
 
+
+    // valentines 2026
+
+    @Comment("Minigame definition for 'Panel Party'")
+    private Map<String, PanelPartyMinigameDefinition> panelPartyMaps = Map.of(
+            "default", new PanelPartyMinigameDefinition()
+    );
+
+    @Comment("Minigame definition for 'TNTRun'")
+    private Map<String, TNTRunDefinition> tntRunMaps = Map.of(
+            "default", new TNTRunDefinition()
+    );
+
+    @Comment("Minigame definition for 'MineBattle'")
+    private Map<String, MineBattleDefinition> mineBattleMaps = Map.of(
+            "default", new MineBattleDefinition()
+    );
+
+
     @Comment("Minigame definition for 'Boatrace 2'")
     private Map<String, BoatRace2Definition> boatRaceMaps = Map.of(
             "default", new BoatRace2Definition()
@@ -68,26 +87,10 @@ public class Config extends OkaeriConfig {
             "default", new ManorMinigameDefinition()
     );
 
-    @Comment("Minigame definition for 'MineBattle'")
-    private Map<String, MineBattleDefinition> mineBattleMaps = Map.of(
-            "default", new MineBattleDefinition()
-    );
-
-    @Comment("Minigame definition for 'TNTRun'")
-    private Map<String, TNTRunDefinition> tntRunMaps = Map.of(
-            "default", new TNTRunDefinition()
-    );
-
     @Comment("Minigame definition for 'Paintball 2.1'")
     private Map<String, Paintball2_1Definition> paintballMaps = Map.of(
             "default", new Paintball2_1Definition()
     );
-
-    @Comment("Minigame definition for 'Panel Party'")
-    private Map<String, PanelPartyMinigameDefinition> panelPartyMaps = Map.of(
-            "default", new PanelPartyMinigameDefinition()
-    );
-
 
     @Comment("Minigame definition for 'TNT Tag'")
     private Map<String, MinigameDefinition> tntTagMaps = Map.of();

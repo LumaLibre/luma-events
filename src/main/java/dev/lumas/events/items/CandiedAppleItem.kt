@@ -1,22 +1,25 @@
 package dev.lumas.events.items
 
+import dev.lumas.events.utility.Util
 import dev.lumas.lumaitems.items.ItemFactory
 import dev.lumas.lumaitems.model.CustomItemFunctions
 import dev.lumas.lumaitems.util.tiers.Tier
 import org.bukkit.Material
 import org.bukkit.enchantments.Enchantment
+import org.bukkit.entity.Player
+import org.bukkit.event.player.PlayerItemConsumeEvent
 import org.bukkit.inventory.ItemStack
 
 class CandiedAppleItem : CustomItemFunctions() {
 
     override fun createItem(): Pair<String, ItemStack> {
         return ItemFactory.builder()
-            .name("<b><gradient:#890100:#a96632:#f7c569>Candied Apple</gradient></b>")
+            .name("<b><gradient:#DD2785:#fc5b8d:#cb354e>Candied Apple</gradient></b>")
             .lore(
                 "A tasty little apple",
                 "covered in red glaze.",
                 "",
-                "Craft <#890100>9</#890100> of these into",
+                "Craft <#E95F76>9</#E95F76> of these into",
                 "a different sweet!"
             )
             .material(Material.APPLE)
@@ -24,6 +27,11 @@ class CandiedAppleItem : CustomItemFunctions() {
             .vanillaEnchants(Enchantment.UNBREAKING to 10)
             .persistentData("candied-apple")
             .buildPair()
+    }
+
+    override fun onConsumeItem(player: Player, event: PlayerItemConsumeEvent) {
+        Util.sendMsg(player, "You can't eat that, silly!")
+        event.isCancelled = true
     }
 
 }

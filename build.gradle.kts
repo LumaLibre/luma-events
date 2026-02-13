@@ -69,14 +69,12 @@ tasks {
     }
 
     shadowJar {
-        dependencies {
-            exclude(dependency("org.jetbrains.kotlin:kotlin-stdlib"))
-        }
-
         val pack = "dev.lumas.events.lib"
 
         relocate("eu.okaeri", "$pack.okaeri")
         relocate("dev.thorinwasher.schem", "$pack.schem")
+        exclude("kotlin/**", "net/kyori/**", "org/joml/**")
+        minimize()
         archiveClassifier.set("")
         archiveVersion.set("")
     }

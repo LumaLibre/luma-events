@@ -1,6 +1,7 @@
 package dev.lumas.events;
 
 import dev.lumas.events.games.events.LateJoinListener;
+import dev.lumas.events.items.CaramelAppleItem;
 import dev.lumas.lumacore.manager.modules.ModuleManager;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.ConfigManager;
@@ -40,6 +41,7 @@ public final class EventMain extends JavaPlugin {
 
         LocalCustomItemManager.addCustomItem(new CandiedAppleItem());
         LocalCustomItemManager.addCustomItem(new StartMinigameItem());
+        LocalCustomItemManager.addCustomItem(new CaramelAppleItem());
         LocalCustomItemManager.registerCustomItems();
     }
 
