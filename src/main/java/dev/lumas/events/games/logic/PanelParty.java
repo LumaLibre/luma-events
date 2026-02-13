@@ -368,6 +368,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                 player.teleportAsync(location);
             });
 
+            this.context.scoreboard.addScore(this.eventPlayer, 1);
+
             this.eventPlayer.sendMessage("You have been eliminated and are now a spectator!");
             this.context.sendAudienceMessage(String.format(Util.getRandom(ELIMINATION_MESSAGES), this.eventPlayer.getName()));
 

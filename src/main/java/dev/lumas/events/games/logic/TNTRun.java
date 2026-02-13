@@ -91,7 +91,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private CountdownBossBar gameTimerBossBar;
 
     private final Scoreboard<EventPlayer> scoreboard = new Scoreboard<>();
-    private final TokenFormula<Double> tokenFormula = new DivisibleTokenFormula(3.0, 30);
+    // TODO: Fix token formula
+    private final TokenFormula<Double> tokenFormula = new DivisibleTokenFormula(85.0, 30);
     private final MinigameRoleMap<AbstractTNTRunPlayer> roleMap = new MinigameRoleMap<>(AbstractTNTRunPlayer::cleanup);
     private final Map<BlockPos, Long> decayQueue = new HashMap<>();
     private long tickCounter = 0L;

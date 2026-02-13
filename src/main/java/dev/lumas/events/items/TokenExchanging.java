@@ -49,7 +49,7 @@ public class TokenExchanging {
         }
         Util.giveItem(player, itemStack, finalAmount);
 
-        String msg = "You got <gold> " + finalAmount + "</gold> " + type.customName + "(s)!";
+        String msg = "You got <gold>" + finalAmount + "</gold> " + type.customName + "(s)!";
         if (source != null) {
             msg += "<dark_gray> (" + source + ")";
         }
