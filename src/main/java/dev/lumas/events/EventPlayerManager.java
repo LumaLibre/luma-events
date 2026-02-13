@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Util;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.FileReader;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+// FIXME: lazy temporary solution, please lazy load players
 public final class EventPlayerManager {
 
     // FIXME: This needs to lazy load players
@@ -84,6 +86,17 @@ public final class EventPlayerManager {
             }
         }
         return load(uuid);
+    }
+
+
+    @Nullable
+    public static EventPlayer getByUUIDOrNull(UUID uuid) {
+        for (EventPlayer eventPlayer : EVENT_PLAYERS) {
+            if (eventPlayer.getUuid().equals(uuid)) {
+                return eventPlayer;
+            }
+        }
+        return null;
     }
 
 }

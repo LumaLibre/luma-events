@@ -1,5 +1,7 @@
-package dev.lumas.events.placeholders;
+package dev.lumas.events.placeholders.games;
 
+import dev.lumas.events.placeholders.PlaceholderManager;
+import dev.lumas.events.placeholders.PlaceholderModule;
 import dev.lumas.lumacore.manager.modules.AutoRegister;
 import dev.lumas.lumacore.manager.modules.RegisterType;
 import dev.lumas.lumacore.manager.placeholder.PlaceholderInfo;
@@ -17,7 +19,7 @@ import java.util.concurrent.TimeUnit;
         identifier = "mgnext",
         parent = PlaceholderManager.class
 )
-public class MinigameNextPlaceholder implements PlaceholderModule{
+public class MinigameNextPlaceholder implements PlaceholderModule {
     @Nullable
     @Override
     public String onRequest(EventMain eventMain, @Nullable OfflinePlayer offlinePlayer, List<String> list) {

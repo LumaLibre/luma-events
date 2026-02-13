@@ -31,11 +31,12 @@ public class EventPlayer implements Serializable, Scorer {
     private final UUID uuid;
     private final Map<MinigameConstant, Integer> scores;
     private boolean claimedCharm;
+    private long secondsPlayed;
 
 
     // Initial creation
     public EventPlayer(UUID uuid) {
-        this(uuid, new HashMap<>(), false);
+        this(uuid, new HashMap<>(), false, 0L);
     }
 
 
@@ -141,5 +142,8 @@ public class EventPlayer implements Serializable, Scorer {
         return this.scores.getOrDefault(minigame, 0);
     }
 
+    public void addSecondsPlayed(long seconds) {
+        this.secondsPlayed += seconds;
+    }
 
 }

@@ -2,6 +2,7 @@ package dev.lumas.events;
 
 import dev.lumas.events.games.events.LateJoinListener;
 import dev.lumas.events.items.CaramelAppleItem;
+import dev.lumas.events.tasks.PlaytimeCounterTask;
 import dev.lumas.lumacore.manager.modules.ModuleManager;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.ConfigManager;
@@ -16,6 +17,8 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.concurrent.TimeUnit;
 
 public final class EventMain extends JavaPlugin {
 
@@ -43,6 +46,10 @@ public final class EventMain extends JavaPlugin {
         LocalCustomItemManager.addCustomItem(new StartMinigameItem());
         LocalCustomItemManager.addCustomItem(new CaramelAppleItem());
         LocalCustomItemManager.registerCustomItems();
+
+        // playtime counter
+        PlaytimeCounterTask task = new PlaytimeCounterTask(60, TimeUnit.SECONDS);
+        Bukkit.getAsyncScheduler().runAtFixedRate(this, task, 0, 60, TimeUnit.SECONDS);
     }
 
     @Override

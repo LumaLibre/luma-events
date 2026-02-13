@@ -1,5 +1,7 @@
-package dev.lumas.events.placeholders;
+package dev.lumas.events.placeholders.games;
 
+import dev.lumas.events.placeholders.PlaceholderManager;
+import dev.lumas.events.placeholders.PlaceholderModule;
 import dev.lumas.lumacore.manager.modules.AutoRegister;
 import dev.lumas.lumacore.manager.modules.RegisterType;
 import dev.lumas.lumacore.manager.placeholder.PlaceholderInfo;
