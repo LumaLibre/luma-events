@@ -84,7 +84,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                 .toList());
         this.roleMap = new MinigameRoleMap<>(AbstractPanelPlayer::cleanup);
         this.scoreboard = new Scoreboard<>();
-        this.tokenFormula = new FlatIntTokenFormula(30);
+        this.tokenFormula = new FlatIntTokenFormula(25);
         this.maxRounds = panels.size();
 
 

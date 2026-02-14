@@ -92,7 +92,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     private final Scoreboard<EventPlayer> scoreboard = new Scoreboard<>();
     // TODO: Fix token formula
-    private final TokenFormula<Double> tokenFormula = new DivisibleTokenFormula(85.0, 30);
+    private final TokenFormula<Double> tokenFormula = new DivisibleTokenFormula(70.0, 23);
     private final MinigameRoleMap<AbstractTNTRunPlayer> roleMap = new MinigameRoleMap<>(AbstractTNTRunPlayer::cleanup);
     private final Map<BlockPos, Long> decayQueue = new HashMap<>();
     private long tickCounter = 0L;
@@ -182,11 +182,13 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
         if (tickCounter % 5 != 0) return;
 
+        int activeCount = 0;
         for (AbstractTNTRunPlayer tntRunPlayer : this.roleMap) {
             tntRunPlayer.tick();
+            if (tntRunPlayer instanceof ActiveTNTRunPlayer) activeCount++;
         }
 
-        if (this.roleMap.getMatching(ActiveTNTRunPlayer.class).size() <= 1) {
+        if (activeCount <= 1) {
             this.stop();
         }
     }

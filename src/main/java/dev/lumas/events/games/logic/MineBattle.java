@@ -177,7 +177,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         this.wallPadding = def.getWallPadding();
         this.scoreboard = new Scoreboard<>();
         this.killCounts = new HashMap<>();
-        this.tokenFormula = new DivisibleTokenFormula(20.0, 35);
+        this.tokenFormula = new DivisibleTokenFormula(20.0, 25);
         this.boundingBox = computeBoundingBox(arenaOrigin, maxRadius, arenaHeight);
     }
 
