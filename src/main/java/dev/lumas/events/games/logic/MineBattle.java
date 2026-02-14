@@ -33,6 +33,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.ChunkSnapshot;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -44,9 +45,11 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.ExperienceOrb;
 import org.bukkit.entity.HumanEntity;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.Event;
@@ -319,6 +322,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         });
 
         Executors.runSync(() -> {
+            this.boundingBox.getEntities(Item.class).forEach(Entity::remove);
+
             for (EventPlayer ep : this.participants) {
                 ep.teleportAsync(this.lobbyLocation);
                 Player p = ep.getPlayer();
@@ -375,6 +380,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     }
 
     public static abstract class AbstractMineBattlePlayer extends MinigameRole {
+        protected static final PotionEffect NIGHT_VISION = new PotionEffect(PotionEffectType.NIGHT_VISION, 210, 0, false, false, true);
         protected final MineBattle context;
 
         protected AbstractMineBattlePlayer(EventPlayer eventPlayer, MineBattle context) {
@@ -388,17 +394,23 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     public static final class ActiveMineBattlePlayer extends AbstractMineBattlePlayer {
 
-        private static final PotionEffect DARKNESS = new PotionEffect(PotionEffectType.DARKNESS, 150, 0, false, false, true);
+        ///private static final PotionEffect DARKNESS = new PotionEffect(PotionEffectType.DARKNESS, 150, 0, false, false, true);
 
         private ActiveMineBattlePlayer(EventPlayer eventPlayer, MineBattle context) {
             super(eventPlayer, context);
+            eventPlayer.operatePlayer(p -> {
+                if (p.getGameMode() != GameMode.SURVIVAL) {
+                    p.setGameMode(GameMode.SURVIVAL);
+                }
+            });
         }
 
         @Override
         public void tick() {
             eventPlayer.operatePlayer(player -> {
                 player.setFoodLevel(20);
-                player.addPotionEffect(DARKNESS);
+                //player.addPotionEffect(DARKNESS);
+                player.addPotionEffect(NIGHT_VISION);
             });
         }
 
@@ -408,7 +420,6 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
 
         public void eliminate(@Nullable Player killer) {
-            this.context.roleMap.swapRole(this, () -> new MineBattleSpectator(this.eventPlayer, this.context));
 
             this.eventPlayer.operatePlayer(p -> {
                 this.context.dropInventoryAndClear(p);
@@ -416,6 +427,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 this.context.hideFromOtherPlayers(p);
                 p.playSound(p, Sound.ENTITY_ALLAY_DEATH, SoundCategory.MASTER, 1.0f, 1.0f);
             });
+
+            this.context.roleMap.swapRole(this, () -> new MineBattleSpectator(this.eventPlayer, this.context));
 
             this.eventPlayer.sendMessage("<red>You have been eliminated!</red>");
 
@@ -434,8 +447,6 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     private static final class MineBattleSpectator extends AbstractMineBattlePlayer {
 
-        private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 150, 0, false, false, true);
-
         private MineBattleSpectator(EventPlayer eventPlayer, MineBattle context) {
             super(eventPlayer, context);
             this.hide();
@@ -444,7 +455,11 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         @Override
         public void tick() {
             eventPlayer.operatePlayer(player -> {
-                player.addPotionEffect(INVISIBILITY);
+                Location loc = player.getLocation();
+                if (loc.distanceSquared(this.context.arenaOrigin) > 200 * 200) {
+                    player.teleportAsync(this.context.arenaOrigin);
+                }
+                player.addPotionEffect(NIGHT_VISION);
             });
         }
 
@@ -455,28 +470,14 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
 
         private void hide() {
-            Executors.runSync(() -> {
-                Player self = this.getEventPlayer().getPlayer();
-                if (self == null) return;
-                for (EventPlayer other : this.context.getParticipants()) {
-                    if (self.getUniqueId().equals(other.getUuid())) continue;
-                    Player bukkitOther = other.getPlayer();
-                    if (bukkitOther == null) continue;
-                    bukkitOther.hidePlayer(EventMain.getInstance(), self);
-                }
+            eventPlayer.operatePlayer(player -> {
+                player.setGameMode(GameMode.SPECTATOR);
             });
         }
 
         private void show() {
-            Executors.runSync(() -> {
-                Player self = this.getEventPlayer().getPlayer();
-                if (self == null) return;
-                for (EventPlayer other : this.context.getParticipants()) {
-                    if (self.getUniqueId().equals(other.getUuid())) continue;
-                    Player bukkitOther = other.getPlayer();
-                    if (bukkitOther == null) continue;
-                    bukkitOther.showPlayer(EventMain.getInstance(), self);
-                }
+            eventPlayer.operatePlayer(player -> {
+                player.setGameMode(GameMode.SURVIVAL);
             });
         }
     }
@@ -491,6 +492,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         player.setHealth(20.0);
         player.setFireTicks(0);
         player.setFoodLevel(20);
+        player.setGameMode(GameMode.SURVIVAL);
     }
 
     public int computeRadiusForPlayers(int playerCount) {
@@ -694,38 +696,38 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 //        }
 
         // Spectators don't see other spectators
-        for (Player viewer : spectators) {
-            for (Player spec : spectators) {
-                if (viewer == spec) continue;
-                changes.add(new Visibility(viewer, spec, false));
-            }
-        }
+//        for (Player viewer : spectators) {
+//            for (Player spec : spectators) {
+//                if (viewer == spec) continue;
+//                changes.add(new Visibility(viewer, spec, false));
+//            }
+//        }
 
         // Spectator -> Active (directional LOS)
-        for (Player viewer : spectators) {
-            UUID viewerId = viewer.getUniqueId();
-
-            for (Player target : actives) {
-                boolean force = forcedVisible(viewerId, target.getUniqueId());
-
-                if (viewer.getWorld() != target.getWorld()) {
-                    changes.add(new Visibility(viewer, target, false));
-                    continue;
-                }
-
-                double distSq = viewer.getLocation().distanceSquared(target.getLocation());
-                boolean visible = false;
-
-                if (force) {
-                    visible = true;
-                } else if (distSq <= maxDistanceLOSsquared) {
-                    if (distSq <= minDistanceLOSsquared) visible = true;
-                    else visible = hasAsyncLineOfSight(viewer.getEyeLocation(), target.getEyeLocation(), viewer.getWorld());
-                }
-
-                changes.add(new Visibility(viewer, target, visible));
-            }
-        }
+//        for (Player viewer : spectators) {
+//            UUID viewerId = viewer.getUniqueId();
+//
+//            for (Player target : actives) {
+//                boolean force = forcedVisible(viewerId, target.getUniqueId());
+//
+//                if (viewer.getWorld() != target.getWorld()) {
+//                    changes.add(new Visibility(viewer, target, false));
+//                    continue;
+//                }
+//
+//                double distSq = viewer.getLocation().distanceSquared(target.getLocation());
+//                boolean visible = false;
+//
+//                if (force) {
+//                    visible = true;
+//                } else if (distSq <= maxDistanceLOSsquared) {
+//                    if (distSq <= minDistanceLOSsquared) visible = true;
+//                    else visible = hasAsyncLineOfSight(viewer.getEyeLocation(), target.getEyeLocation(), viewer.getWorld());
+//                }
+//
+//                changes.add(new Visibility(viewer, target, visible));
+//            }
+//        }
 
         // Apply changes on the main thread
         Executors.runSync(() -> {

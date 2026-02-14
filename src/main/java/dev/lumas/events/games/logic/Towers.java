@@ -1,6 +1,8 @@
 package dev.lumas.events.games.logic;
 
 import com.destroystokyo.paper.event.player.PlayerJumpEvent;
+import dev.lumas.events.games.interfaces.TokenFormula;
+import dev.lumas.events.games.tokenformula.FlatIntTokenFormula;
 import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.lumacore.utility.Text;
 import dev.lumas.events.EventMain;
@@ -64,7 +66,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
-// TODO: Test items, bounding box sizes, add game ending & scoreboard.
+
 public final class Towers extends InventoryUnifiedMinigame {
 
     private static final int TICK_INTERVAL = 2;
@@ -78,7 +80,8 @@ public final class Towers extends InventoryUnifiedMinigame {
     private final Location centerPoint;
     private final Map<UUID, TowersPlayer> towersPlayers;
     private final Scoreboard<EventPlayer> scoreboard;
-    private final TowersTokenFormula tokenFormula;
+    private final TokenFormula<Integer> tokenFormula;
+    private final boolean isEscalation;
 
     private CountdownBossBar newItemTimer;
     private boolean started = false;
@@ -87,7 +90,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     private List<Location> gridLocations;
 
     public Towers(TowersDefinition def) {
-        super("Escalation Towers", "Don't fall.", 480000, TICK_INTERVAL, false, false, false, false);
+        super(def.isEscalation() ? "Escalation Towers" : "Towers", "Don't fall.", 480000, TICK_INTERVAL, false, false, false, false);
 
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.spawnLocation = def.getSpawnLocation().toCenterLocation();
@@ -96,7 +99,8 @@ public final class Towers extends InventoryUnifiedMinigame {
         this.centerPoint = def.getCenterPoint();
         this.towersPlayers = new HashMap<>();
         this.scoreboard = new Scoreboard<>();
-        this.tokenFormula = new TowersTokenFormula();
+        this.tokenFormula = new FlatIntTokenFormula(35);
+        this.isEscalation = def.isEscalation();
         this.forceGameArenaYLevel = this.centerPoint.getY() - 10;
     }
 
@@ -168,11 +172,13 @@ public final class Towers extends InventoryUnifiedMinigame {
             towersPlayer.onTick(timeLeft);
         }
 
-        for (Location location : this.gridLocations) {
-            Location locationAtYLevel = location.clone();
-            locationAtYLevel.setY(this.forceGameArenaYLevel);
+        if (this.isEscalation) {
+            for (Location location : this.gridLocations) {
+                Location locationAtYLevel = location.clone();
+                locationAtYLevel.setY(this.forceGameArenaYLevel);
 
-            locationAtYLevel.getWorld().spawnParticle(Particle.DUST_COLOR_TRANSITION, locationAtYLevel, 300, 40, 0.0, 40, 0.1, DUST_TRANSITION);
+                locationAtYLevel.getWorld().spawnParticle(Particle.DUST_COLOR_TRANSITION, locationAtYLevel, 300, 40, 0.0, 40, 0.1, DUST_TRANSITION);
+            }
         }
 
         if (this.newItemTimer == null || this.newItemTimer.isCancelled()) {
@@ -184,7 +190,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     @Override
     protected void handleStop() {
         this.getActivePlayers().forEach(activePlayer -> {
-            this.scoreboard.addScore(activePlayer.getEventPlayer(), 2);
+            this.scoreboard.addScore(activePlayer.getEventPlayer(), 4);
         });
 
         Executors.runSync(() -> {
@@ -594,8 +600,10 @@ public final class Towers extends InventoryUnifiedMinigame {
                 return;
             }
 
-            if (player.getLocation().getY() <= this.context.forceGameArenaYLevel) {
-                player.damage(5.0);
+            if (this.context.isEscalation) {
+                if (player.getLocation().getY() <= this.context.forceGameArenaYLevel) {
+                    player.damage(5.0);
+                }
             }
 
             if (player.getAllowFlight()) {
@@ -603,8 +611,8 @@ public final class Towers extends InventoryUnifiedMinigame {
                 player.setFlying(false);
             }
 
-            String floorString = ((int)player.getLocation().getY()) + "/" + ((int) this.context.forceGameArenaYLevel);
-            player.sendActionBar(Text.mm("<yellow>Time left: " + Util.millisToSecs(timeLeft) + "s | <green>Kills: " + this.kills + " <yellow>| <aqua>Floor: " + floorString));
+            String floorString = this.context.isEscalation ? " <yellow>| <aqua>Floor: " + ((int)player.getLocation().getY()) + "/" + ((int) this.context.forceGameArenaYLevel) : "";
+            player.sendActionBar(Text.mm("<yellow>Time left: " + Util.millisToSecs(timeLeft) + "s | <green>Kills: " + this.kills + floorString));
         }
 
         @Override
@@ -613,7 +621,7 @@ public final class Towers extends InventoryUnifiedMinigame {
 
             if (!dirty) {
                 this.dirty = true;
-                this.context.scoreboard.addScore(this.eventPlayer, 2);
+                this.context.scoreboard.addScore(this.eventPlayer, 4);
             }
 
             event.setCancelled(true);
@@ -631,7 +639,7 @@ public final class Towers extends InventoryUnifiedMinigame {
             }
 
             TowersPlayer attackerPlayer = this.context.towersPlayers.get(this.lastAttacker);
-            this.context.scoreboard.addScore(attackerPlayer.getEventPlayer(), 2);
+            this.context.scoreboard.addScore(attackerPlayer.getEventPlayer(), 4);
             if (attackerPlayer instanceof ActivePlayer activePlayer) {
                 activePlayer.kills++;
                 Player bukkitAttacker = activePlayer.getEventPlayer().getPlayer();

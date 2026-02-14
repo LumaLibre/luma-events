@@ -21,6 +21,7 @@ import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.lumacore.utility.Text;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -390,6 +391,11 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     public static class ActiveTNTRunPlayer extends AbstractTNTRunPlayer {
         protected ActiveTNTRunPlayer(EventPlayer eventPlayer, TNTRun context) {
             super(eventPlayer, context);
+            eventPlayer.operatePlayer(p -> {
+                if (p.getGameMode() != GameMode.SURVIVAL) {
+                    p.setGameMode(GameMode.SURVIVAL);
+                }
+            });
         }
 
         @Override
@@ -434,6 +440,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     private static class TNTRunSpectator extends AbstractTNTRunPlayer {
 
+        private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 120, 0, false, false, true);
+
         protected TNTRunSpectator(EventPlayer eventPlayer, TNTRun context) {
             super(eventPlayer, context);
             this.hide();
@@ -445,6 +453,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
             this.eventPlayer.operatePlayer(player -> {
                 player.setAllowFlight(false);
                 player.setFlying(false);
+                player.clearActivePotionEffects();
             });
         }
 
@@ -486,6 +495,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
                 if (!player.isFlying()) { // Some players are not aware that they can fly, force them to fly
                     player.setFlying(true);
                 }
+                player.addPotionEffect(INVISIBILITY);
             });
         }
     }

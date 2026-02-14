@@ -13,5 +13,6 @@ public class TowersDefinition extends OkaeriConfig {
     private Region region = new Region();
     private int maxRadius = 250;
     private Location centerPoint;
+    private boolean escalation = false;
     private TowersItems towersItems = new TowersItems();
 }

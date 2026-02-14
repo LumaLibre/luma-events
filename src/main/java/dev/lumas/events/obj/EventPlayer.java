@@ -14,6 +14,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.Serializable;
@@ -80,10 +81,11 @@ public class EventPlayer implements Serializable, Scorer {
         player.showTitle(Title.title(Util.color(title), Util.color(subtitle)));
     }
 
+    @NotNull
     public CompletableFuture<Boolean> teleportAsync(Location location) {
         Player player = this.getPlayer();
         if (player == null) {
-            return null;
+            return CompletableFuture.completedFuture(false);
         }
         return player.teleportAsync(location);
     }
