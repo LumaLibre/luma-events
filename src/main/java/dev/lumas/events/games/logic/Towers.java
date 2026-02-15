@@ -15,7 +15,6 @@ import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.structures.BoundCircularStructureGrid;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
-import dev.lumas.events.games.tokenformula.TowersTokenFormula;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
@@ -486,8 +485,13 @@ public final class Towers extends InventoryUnifiedMinigame {
     }
 
     private CountdownBossBar newItemTimer() {
+        String title = "<b><yellow>Next drop in: %s";
+        if (this.isEscalation) {
+            title += " | The floor will rise!";
+        }
+
         return CountdownBossBar.builder()
-                .title("<b><yellow>Next drop in: %s | The floor will rise!")
+                .title(title)
                 .seconds(9)
                 .color(BossBar.Color.YELLOW)
                 .audience(this.audience)

@@ -428,17 +428,20 @@ public final class Util {
     }
 
     public static String formatMaterialName(String s) {
-        String name = s.toLowerCase().replace("_", " ");
-        name = name.substring(0, 1).toUpperCase() + name.substring(1);
+        return formatSnakeCase(s);
+    }
 
-        for (int i = 0; i < name.length(); i++) {
-            if (name.charAt(i) == ' ' && i + 1 < name.length()) {
-                name = name.substring(0, i + 1)
-                        + Character.toUpperCase(name.charAt(i + 1))
-                        + name.substring(i + 2);
+    public static String formatSnakeCase(String input) {
+        String[] words = input.toLowerCase().split("_");
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < words.length; i++) {
+            if (i > 0) result.append(" ");
+            if (!words[i].isEmpty()) {
+                result.append(Character.toUpperCase(words[i].charAt(0)))
+                        .append(words[i].substring(1));
             }
         }
-        return name;
+        return result.toString();
     }
 
 

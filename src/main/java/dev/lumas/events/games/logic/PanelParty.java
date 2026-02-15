@@ -165,7 +165,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         Component component;
         if (!isFinished && chosenMaterial != null) {
             TextColor textColor = TextColor.color(chosenMaterial.createBlockData().getMapColor().asRGB());
-            component = Component.text("Stand on: " + Util.formatMaterialName(chosenMaterial.name()))
+            component = Component.text("Stand on: " + Util.formatMaterialName(chosenMaterial.toString()))
                     .color(textColor)
                     .decorate(TextDecoration.UNDERLINED);
         } else {
@@ -345,8 +345,17 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             this.eventPlayer.operatePlayer(player -> {
                 PanelPartyProcess process = this.context.currentProcess;
 
+
+
                 if (process.difficulty.hasModifier(PanelDifficultyModifier.JUMP_BOOST_ENABLED)) {
                     player.addPotionEffect(JUMP_BOOST);
+                    player.getActivePotionEffects().forEach(potionEffect -> {
+                        if (!potionEffect.equals(JUMP_BOOST)) {
+                            player.removePotionEffect(potionEffect.getType());
+                        }
+                    });
+                } else {
+                    player.clearActivePotionEffects();
                 }
 
 
