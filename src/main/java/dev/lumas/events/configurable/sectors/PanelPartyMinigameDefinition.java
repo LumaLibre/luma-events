@@ -12,6 +12,7 @@ public class PanelPartyMinigameDefinition extends OkaeriConfig {
     private Location spawnLocation;
     private Location center;
     private Region region = new Region();
+    private int reachableRadius = 32; // 64x64 blocks
     private String blankPanelSchematic = "panel_blank.schem";
     private List<String> schematics = List.of();
 }

@@ -37,6 +37,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.jetbrains.annotations.NotNull;
+import org.joml.Vector3i;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -63,6 +64,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     private final Location spawnLocation;
     private final Location center;
+    private final int reachableRadius;
     private final GenericStructure blankPanel;
     private final List<GenericStructure> panels;
     private final MinigameRoleMap<AbstractPanelPlayer> roleMap;
@@ -78,6 +80,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         this.boundingBox = def.getRegion().toWorldTiedBoundingBox();
         this.spawnLocation = def.getSpawnLocation();
         this.center = def.getCenter();
+        this.reachableRadius = def.getReachableRadius();
         this.blankPanel = new GenericStructure(this.center, def.getBlankPanelSchematic());
         this.panels = new ArrayList<>(def.getSchematics().stream()
                 .map(fileName -> new GenericStructure(this.center, fileName))
@@ -627,6 +630,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             Map<Material, Integer> materialCountMap = new HashMap<>();
 
             panel.paste((vector3i, blockData) -> {
+                if (!isReachable(vector3i)) return true;
+
                 Material material = blockData.getMaterial();
                 // If it's already qualified, no need to keep counting
                 if (this.availableMaterials.contains(material)) {
@@ -643,6 +648,11 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                 }
                 return true;
             });
+        }
+
+        private boolean isReachable(Vector3i v) {
+            int r = this.context.reachableRadius;
+            return v.x >= -r && v.x < r && v.z >= -r && v.z < r;
         }
 
 
