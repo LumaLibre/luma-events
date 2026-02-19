@@ -1,5 +1,6 @@
 package dev.lumas.events.games.logic;
 
+import com.sk89q.worldedit.util.formatting.text.format.TextColor;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.TNTRunDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
@@ -17,10 +18,12 @@ import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
+import dev.lumas.lumacore.utility.ContextLogger;
 import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.lumacore.utility.Text;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -64,6 +67,8 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 public final class TNTRun extends InventoryUnifiedMinigame {
+
+    ContextLogger LOGGER = ContextLogger.getLogger(NamedTextColor.YELLOW, false);
 
     private static final BlockData AIR_BLOCK_DATA = Material.AIR.createBlockData();
     private static final double DECAY_PRECISION = 1.0e-4;
@@ -176,6 +181,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
         processDecayQueue();
 
+        LOGGER.debug("Attempting to spawn powerups... (decayArmed="+decayArmed+",boundingBox!=null="+(boundingBox != null)+",powerupByEntity.size()="+powerupByEntity.size()+",powerupMaxAlive="+powerupMaxAlive+")");
         if (decayArmed && boundingBox != null && powerupByEntity.size() < powerupMaxAlive) {
             for (int i = 0; i <= powerupSpawnAttempts; i++) trySpawnRandomPowerup();
         }
@@ -670,6 +676,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         Location loc = new Location(w, x + 0.5, y + 0.75, z + 0.5);
         ItemStack reward = type.createPowerupItem();
 
+        LOGGER.debug("Spawning a " + type.displayName + " powerup at " + x + ", " + y + ", " + z + " in world " + w.getName());
 
         ItemDisplay display = w.spawn(loc, ItemDisplay.class, d -> {
             d.setItemStack(reward.clone());
