@@ -71,6 +71,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     private final Scoreboard<EventPlayer> scoreboard;
     private final TokenFormula<Integer> tokenFormula;
     private final int maxRounds;
+    private final boolean superSpeed;
+    private final int superSpeedBoost;
 
     private int round;
     private @NotNull PanelPartyProcess currentProcess;
@@ -89,6 +91,9 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         this.scoreboard = new Scoreboard<>();
         this.tokenFormula = new FlatIntTokenFormula(25);
         this.maxRounds = panels.size();
+        this.superSpeed = def.isSuperSpeed();
+        this.superSpeedBoost = def.getSuperSpeedBoost();
+
 
 
         this.round = 0;
@@ -321,6 +326,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     private static class PanelParticipant extends AbstractPanelPlayer {
 
         private static final PotionEffect JUMP_BOOST = new PotionEffect(PotionEffectType.JUMP_BOOST, 210, 0, true, false);
+        private static final PotionEffect SPEED = new PotionEffect(PotionEffectType.SPEED, 210, 99, true, false);
         private static final ItemStack AIR = ItemStack.of(Material.AIR);
         private static final int ELIMINATION_Y_LEVEL_OFFSET = 50;
 
@@ -349,6 +355,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                 PanelPartyProcess process = this.context.currentProcess;
 
 
+                boolean ss = this.context.superSpeed;
 
                 if (process.difficulty.hasModifier(PanelDifficultyModifier.JUMP_BOOST_ENABLED)) {
                     player.addPotionEffect(JUMP_BOOST);
@@ -357,10 +364,13 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                             player.removePotionEffect(potionEffect.getType());
                         }
                     });
-                } else {
+                } else if (!ss) {
                     player.clearActivePotionEffects();
                 }
 
+                if (ss) {
+                    player.addPotionEffect(SPEED.withAmplifier(this.context.superSpeedBoost));
+                }
 
                 if (player.getLocation().getY() <= this.eliminationYLevel) {
                     this.eliminate();
@@ -557,6 +567,11 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
             this.chosenMaterial = Util.getRandom(this.availableMaterials);
             Preconditions.checkNotNull(this.chosenMaterial, "Chosen block data cannot be null.");
+            TextColor textColor = TextColor.color(chosenMaterial.createBlockData().getMapColor().asRGB());
+            Component component = Component.text("Stand on: " + Util.formatMaterialName(chosenMaterial.toString()))
+                    .color(textColor)
+                    .decorate(TextDecoration.UNDERLINED);
+            this.context.sendAudienceMessage(component);
 
 
             // give players the chosen block in hand if applicable

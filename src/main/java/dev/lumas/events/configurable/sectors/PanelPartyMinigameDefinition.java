@@ -13,6 +13,8 @@ public class PanelPartyMinigameDefinition extends OkaeriConfig {
     private Location center;
     private Region region = new Region();
     private int reachableRadius = 32; // 64x64 blocks
+    private boolean superSpeed = true;
+    private int superSpeedBoost = 255;
     private String blankPanelSchematic = "panel_blank.schem";
     private List<String> schematics = List.of();
 }

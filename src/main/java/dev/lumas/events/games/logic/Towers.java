@@ -180,6 +180,11 @@ public final class Towers extends InventoryUnifiedMinigame {
             }
         }
 
+        Location loc = ((WorldTiedBoundingBox) this.boundingBox).getRandomLocation();
+        loc.setY(380);
+
+        loc.getWorld().spawnEntity(loc, EntityType.TNT);
+
         if (this.newItemTimer == null || this.newItemTimer.isCancelled()) {
             this.newItemTimer = this.newItemTimer();
             this.newItemTimer.start();
@@ -504,6 +509,27 @@ public final class Towers extends InventoryUnifiedMinigame {
 
     private void newItem() { // FIXME
         for (ActivePlayer activePlayer : this.getActivePlayers()) {
+
+            if (true) {
+                if (RANDOM.nextInt(100) <= 10) {
+                    ItemStack flintAndSteel;
+                    if (RANDOM.nextBoolean()) {
+                        flintAndSteel = ItemStack.of(Material.FLINT_AND_STEEL, 1);
+                    } else {
+                        flintAndSteel = ItemStack.of(Material.FISHING_ROD, 1);
+                    }
+                    activePlayer.giveItem(flintAndSteel);
+                    activePlayer.getEventPlayer().sendMessage("You got: " + Util.formatMaterialName(flintAndSteel.getType().toString()) + " x" + flintAndSteel.getAmount());
+                    continue;
+                }
+
+                int amount = RANDOM.nextInt(1, 40);
+                ItemStack tnt = ItemStack.of(Material.TNT, amount);
+                activePlayer.giveItem(tnt);
+                activePlayer.getEventPlayer().sendMessage("You got: " + Util.formatMaterialName(tnt.getType().toString()) + " x" + tnt.getAmount());
+                continue;
+            }
+
             ItemStack itemStack;
             if (RANDOM.nextInt(100) <= 20) {
                 if (RANDOM.nextInt(100) > 40) {
@@ -576,7 +602,7 @@ public final class Towers extends InventoryUnifiedMinigame {
             Executors.sync(() -> {
                 for (int i = spawnLocation.getBlockY() - 1; i >= MINECRAFT_MIN_Y; i--) {
                     Block block = spawnLocation.getWorld().getBlockAt(spawnLocation.getBlockX(), i, spawnLocation.getBlockZ());
-                    block.setType(Material.BEDROCK);
+                    block.setType(Material.RED_WOOL);
                 }
                 this.eventPlayer.operatePlayer(player -> {
                     player.setVelocity(new Vector());
