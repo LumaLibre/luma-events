@@ -13,6 +13,7 @@ import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.items.StartMinigameItem;
 import dev.lumas.events.items.CandiedAppleItem;
 import dev.lumas.events.items.LocalCustomItemManager;
+import lombok.Getter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
@@ -25,6 +26,8 @@ public final class EventMain extends JavaPlugin {
     private static EventMain instance;
     private static ConfigManager okaeriConfigManager;
     private static ModuleManager moduleManager;
+    @Getter
+    private static boolean withMcMMO = false;
 
     public static boolean STOPPING = false;
 
@@ -50,6 +53,10 @@ public final class EventMain extends JavaPlugin {
         // playtime counter
         PlaytimeCounterTask task = new PlaytimeCounterTask(60, TimeUnit.SECONDS);
         Bukkit.getAsyncScheduler().runAtFixedRate(this, task, 0, 60, TimeUnit.SECONDS);
+
+        if (Bukkit.getPluginManager().getPlugin("mcMMO") != null) {
+            withMcMMO = true;
+        }
     }
 
     @Override
@@ -69,7 +76,7 @@ public final class EventMain extends JavaPlugin {
         }
     }
 
-    @SuppressWarnings("")
+    @SuppressWarnings("") // lombok
     public static EventMain getInstance() {
         return instance;
     }

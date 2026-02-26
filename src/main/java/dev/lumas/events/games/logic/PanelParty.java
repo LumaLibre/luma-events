@@ -89,7 +89,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                 .toList());
         this.roleMap = new MinigameRoleMap<>(AbstractPanelPlayer::cleanup);
         this.scoreboard = new Scoreboard<>();
-        this.tokenFormula = new FlatIntTokenFormula(25);
+        this.tokenFormula = new FlatIntTokenFormula(40);
         this.maxRounds = panels.size();
         this.superSpeed = def.isSuperSpeed();
         this.superSpeedBoost = def.getSuperSpeedBoost();
@@ -403,7 +403,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                 player.teleportAsync(location);
             });
 
-            this.context.scoreboard.addScore(this.eventPlayer, 1);
+            this.context.scoreboard.addScore(this.eventPlayer, 2);
 
             this.eventPlayer.sendMessage("You have been eliminated and are now a spectator!");
             this.context.sendAudienceMessage(String.format(Util.getRandom(ELIMINATION_MESSAGES), this.eventPlayer.getName()));
@@ -425,7 +425,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                 PanelParticipant winner = this.context.roleMap.getMatching(PanelParticipant.class).stream().findFirst().orElse(null);
                 if (winner != null) {
                     this.context.sendAudienceMessage("<gold><b>" + winner.getEventPlayer().getName() + "</b></gold> was the last player standing!");
-                    this.context.scoreboard.addScore(winner.getEventPlayer(), 2); // bonus points for winning
+                    this.context.scoreboard.addScore(winner.getEventPlayer(), 4); // bonus points for winning
                 }
                 Executors.runDelayedAsync(50, TimeUnit.MILLISECONDS, task -> {
                     this.context.stop();
@@ -702,10 +702,10 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     @Getter
     private enum PanelDifficulty {
-        EASY(11, BossBar.Color.GREEN, "<green>", 1, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
-        MEDIUM(7, BossBar.Color.YELLOW, "<yellow>", 1, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
-        HARD(6, BossBar.Color.RED, "<dark_red>", 1, PanelDifficultyModifier.IGNORE_MINIMUM_BLOCKS),
-        HARDER_THAN_HARD_I_GUESS(4, BossBar.Color.PURPLE, "<dark_purple>", 2, PanelDifficultyModifier.PVP_ENABLED, PanelDifficultyModifier.IGNORE_MINIMUM_BLOCKS);
+        EASY(11, BossBar.Color.GREEN, "<green>", 2, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
+        MEDIUM(7, BossBar.Color.YELLOW, "<yellow>", 2, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
+        HARD(6, BossBar.Color.RED, "<dark_red>", 2, PanelDifficultyModifier.IGNORE_MINIMUM_BLOCKS),
+        HARDER_THAN_HARD_I_GUESS(4, BossBar.Color.PURPLE, "<dark_purple>", 4, PanelDifficultyModifier.PVP_ENABLED, PanelDifficultyModifier.IGNORE_MINIMUM_BLOCKS);
 
         private final int seconds;
         private final BossBar.Color bossBarColor;

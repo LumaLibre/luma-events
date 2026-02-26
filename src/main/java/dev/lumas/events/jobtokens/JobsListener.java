@@ -1,6 +1,7 @@
 package dev.lumas.events.jobtokens;
 
 import com.gamingmesh.jobs.api.JobsPrePaymentEvent;
+import com.gmail.nossr50.api.AbilityAPI;
 import dev.lumas.lumacore.manager.modules.AutoRegister;
 import dev.lumas.lumacore.manager.modules.RegisterType;
 import dev.lumas.events.EventMain;
@@ -28,12 +29,21 @@ public class JobsListener implements Listener {
         }
 
         Config cfg = EventMain.getOkaeriConfig();
-        if (RANDOM.nextInt(jobConstant.getBound()) < jobConstant.getChance() && cfg.isJobTokenPayouts()) {
+
+        int bound = jobName.equalsIgnoreCase("Lumberjack") && isInTreeFeller(event.getPlayer().getPlayer())
+                ? jobConstant.getBound() * 3
+                : jobConstant.getBound();
+
+        if (cfg.isJobTokenPayouts() && RANDOM.nextInt(bound) < jobConstant.getChance()) {
             Player player = event.getPlayer().getPlayer();
             if (player == null) {
                 return;
             }
-            TokenExchanging.give(player, TokenExchanging.TokenType.CANDIED_APPLE, 1, jobName);
+            TokenExchanging.give(player, TokenExchanging.TokenType.CANDIED_APPLE, RANDOM.nextInt(1, 3), jobName);
         }
+    }
+
+    private boolean isInTreeFeller(Player player) {
+        return EventMain.isWithMcMMO() && AbilityAPI.treeFellerEnabled(player);
     }
 }
