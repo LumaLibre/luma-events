@@ -641,28 +641,22 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     private void trySpawnRandomPowerup() {
         org.bukkit.World w = arenaOrigin.getWorld();
-        LOGGER.debug("w==null="+(w==null)+",WorldTiedBoundingBox?="+(boundingBox instanceof WorldTiedBoundingBox));
         if (w == null || this.boundingBox == null ||
                 !(this.boundingBox instanceof WorldTiedBoundingBox box)) return;
 
         Location randomLocation = box.getRandomLocation();
 
         Block air = w.getBlockAt(randomLocation);
-        LOGGER.debug("air isAir="+air.getType().isAir());
         if (!air.getType().isAir()) return;
 
         Block below = air.getRelative(BlockFace.DOWN);
         Material base = below.getType();
-        LOGGER.debug("base isAir="+base.isAir()+", base hasGravity="+base.hasGravity());
         if (base.isAir() || !base.hasGravity()) return;
 
-        LOGGER.debug("isPowerupAlreadyAt="+isPowerupAlreadyAt(w, randomLocation.getBlockX(),
-                randomLocation.getBlockY(), randomLocation.getBlockZ()));
         if (isPowerupAlreadyAt(w, randomLocation.getBlockX(),
                 randomLocation.getBlockY(), randomLocation.getBlockZ())) return;
 
         PowerupType type = PowerupType.weightedRandom(this.powerupWeights);
-        LOGGER.debug("type="+type);
         if (type == null) return; // all disabled
         spawnPowerupDisplay(w, randomLocation.getBlockX(),
                 randomLocation.getBlockY(), randomLocation.getBlockZ(), type);
