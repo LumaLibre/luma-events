@@ -36,7 +36,7 @@ public abstract class TokenFormula<C> {
         }
 
         makeDirty(uuid, amount);
-        TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.CANDIED_APPLE, amount, "Minigame");
+        TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.CARAMEL_APPLE, amount, "Minigame");
     }
 
 

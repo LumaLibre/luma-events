@@ -21,7 +21,7 @@ import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
 import dev.lumas.events.games.interfaces.structures.WorldEditStructure;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
-import dev.lumas.events.games.tokenformula.DivisibleTokenFormula;
+import dev.lumas.events.games.tokenformula.FlatIntTokenFormula;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
@@ -117,8 +117,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private static final NamespacedKey COPPER_MAX_HEALTH_KEY =
             new NamespacedKey(EventMain.getInstance(), "minebattle_copper_max_health");
 
-    private static final int SURVIVE_POINTS = 150;
-    private static final int KILL_POINTS = 100;
+    private static final int SURVIVE_POINTS = 1;
+    private static final int KILL_POINTS = 2;
 
     private final long timeLimitMillis;
     private final long gameEndsAtMillis;
@@ -143,7 +143,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private List<Location> pocketCenters = List.of();
     private final Scoreboard<EventPlayer> scoreboard;
     private final Map<UUID, Integer> killCounts;
-    private final TokenFormula<Double> tokenFormula;
+    private final TokenFormula<Integer> tokenFormula;
     private final Map<UUID, Double> survivalRemainder = new HashMap<>();
     private long lastSurvivalTimeLeftMs = -1L;
 
@@ -159,6 +159,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private volatile long revealAllUntilMillis = 0L;
     private long lastRevealAtMillis = 0L;
     private int periodicRevealStep = 0;
+
+    private final int tickInterval;
 
     public MineBattle(MineBattleDefinition def) {
         super("MineBattle", "Break ores, gear up, and fight!", Util.secsToMillis(def.getTimeLimitSeconds()), def.getHeartbeatTicks(), true, true, false, false);
@@ -180,8 +182,9 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         this.wallPadding = def.getWallPadding();
         this.scoreboard = new Scoreboard<>();
         this.killCounts = new HashMap<>();
-        this.tokenFormula = new DivisibleTokenFormula(16.0, 40);
+        this.tokenFormula = new FlatIntTokenFormula(12);
         this.boundingBox = computeBoundingBox(arenaOrigin, maxRadius, arenaHeight);
+        this.tickInterval = (int) def.getHeartbeatTicks();
     }
 
     private WorldTiedBoundingBox computeBoundingBox(Location origin, int maxRadius, int height) {
@@ -197,7 +200,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     @Override
     protected void tokenHandler(EventPlayer participant) {
         int score = this.scoreboard.getScore(participant);
-        tokenFormula.giveTokens(participant, (double) score);
+        tokenFormula.giveTokens(participant, score);
         participant.addPermanentScore(MinigameConstant.MINEBATTLE, score);
     }
 
@@ -394,7 +397,10 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     public static final class ActiveMineBattlePlayer extends AbstractMineBattlePlayer {
 
-        ///private static final PotionEffect DARKNESS = new PotionEffect(PotionEffectType.DARKNESS, 150, 0, false, false, true);
+        //private static final PotionEffect DARKNESS = new PotionEffect(PotionEffectType.DARKNESS, 150, 0, false, false, true);
+        private static final int TICK_INTERVAL_PAYOUT = 1200;
+
+        private int tickCounter = 0;
 
         private ActiveMineBattlePlayer(EventPlayer eventPlayer, MineBattle context) {
             super(eventPlayer, context);
@@ -407,6 +413,14 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
         @Override
         public void tick() {
+            this.tickCounter += this.context.tickInterval;
+
+            if (this.tickCounter >=  TICK_INTERVAL_PAYOUT) {
+                this.tickCounter = 0;
+                this.context.scoreboard.addScore(this.eventPlayer, SURVIVE_POINTS);
+            }
+
+
             eventPlayer.operatePlayer(player -> {
                 player.setFoodLevel(20);
                 //player.addPotionEffect(DARKNESS);
@@ -1157,7 +1171,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             int whole = (int) Math.floor(acc);
 
             if (whole > 0) {
-                scoreboard.addScore(role.getEventPlayer(), whole);
+                //scoreboard.addScore(role.getEventPlayer(), whole);
                 acc -= whole;
             }
             survivalRemainder.put(id, acc);

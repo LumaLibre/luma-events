@@ -98,7 +98,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         this.centerPoint = def.getCenterPoint();
         this.towersPlayers = new HashMap<>();
         this.scoreboard = new Scoreboard<>();
-        this.tokenFormula = new FlatIntTokenFormula(35);
+        this.tokenFormula = new FlatIntTokenFormula(15);
         this.isEscalation = def.isEscalation();
         this.forceGameArenaYLevel = this.centerPoint.getY() - 10;
     }

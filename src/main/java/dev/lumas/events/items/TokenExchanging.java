@@ -47,7 +47,12 @@ public class TokenExchanging {
             Logging.log("<red>Could not give NULL token: " + type.name() + " amount: " + finalAmount + " to: " + player.getName());
             return;
         }
-        Util.giveItem(player, itemStack, finalAmount);
+
+        if (type == TokenType.CARAMEL_APPLE) {
+            Util.giveItem(player, itemStack, Math.min(finalAmount, 15)); // TODO hard cap - remove later
+        } else {
+            Util.giveItem(player, itemStack, finalAmount);
+        }
 
         String msg = "You got <gold>" + finalAmount + "</gold> " + type.customName + "(s)!";
         if (source != null) {
