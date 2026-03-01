@@ -376,6 +376,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                     this.eliminate();
                     player.playSound(player.getLocation(), Sound.ITEM_TOTEM_USE, 0.8f, 1.0f);
                 } else {
+                    if (player.isFlying()) player.setFlying(false); // tfly works with enough lag, so we cancel it here
                     player.setFoodLevel(20);
                 }
             });
