@@ -180,8 +180,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         tickCounter++;
 
         processDecayQueue();
-
-        LOGGER.debug("Attempting to spawn powerups... (decayArmed="+decayArmed+",boundingBox!=null="+(boundingBox != null)+",powerupByEntity.size()="+powerupByEntity.size()+",powerupMaxAlive="+powerupMaxAlive+")");
         if (decayArmed && boundingBox != null && powerupByEntity.size() < powerupMaxAlive) {
             for (int i = 0; i <= powerupSpawnAttempts; i++) trySpawnRandomPowerup();
         }
@@ -651,7 +649,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
         Block below = air.getRelative(BlockFace.DOWN);
         Material base = below.getType();
-        if (base.isAir() || !base.hasGravity()) return;
+        if (base.isAir() || (base != Material.SAND && base != Material.GRAVEL)) return;
 
         if (isPowerupAlreadyAt(w, randomLocation.getBlockX(),
                 randomLocation.getBlockY(), randomLocation.getBlockZ())) return;
