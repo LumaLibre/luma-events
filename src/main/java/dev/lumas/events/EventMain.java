@@ -1,6 +1,5 @@
 package dev.lumas.events;
 
-import dev.lumas.events.games.events.LateJoinListener;
 import dev.lumas.events.items.CaramelAppleItem;
 import dev.lumas.events.tasks.PlaytimeCounterTask;
 import dev.lumas.lumacore.manager.modules.ModuleManager;
@@ -13,6 +12,7 @@ import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.items.StartMinigameItem;
 import dev.lumas.events.items.CandiedAppleItem;
 import dev.lumas.events.items.LocalCustomItemManager;
+import dev.lumas.lumaitems.util.extensions.Executors;
 import lombok.Getter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
@@ -40,10 +40,9 @@ public final class EventMain extends JavaPlugin {
 
 
         EventPlayerManager.loadAll();
-        Bukkit.getScheduler().runTaskTimerAsynchronously(this, EventPlayerManager::saveAll, 0, 12000);
+        Executors.asyncTimer(TimeUnit.MINUTES, 0, 10, (task) -> EventPlayerManager.saveAll());
 
-        MinigameManager.getInstance().runTaskTimerAsynchronously(this, 0, 600); // 30 seconds
-        Bukkit.getPluginManager().registerEvents(new LateJoinListener(), this);
+        MinigameManager.getInstance().repeatingAsync(0, 600);
 
         LocalCustomItemManager.addCustomItem(new CandiedAppleItem());
         LocalCustomItemManager.addCustomItem(new StartMinigameItem());

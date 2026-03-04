@@ -1,5 +1,6 @@
 package dev.lumas.events.games.interfaces.structures;
 
+import dev.lumas.events.utility.Executors;
 import dev.thorinwasher.schem.Schematic;
 import dev.thorinwasher.schem.SchematicReader;
 import lombok.Getter;
@@ -54,14 +55,22 @@ public class GenericStructure extends Structure {
         Vector3i offset = new Vector3i(size.x() / 2, 0, size.z() / 2);
         World world = origin.getWorld();
         schematic.apply(transformation, (vector3i, blockData) -> {
-            if (blockData.getMaterial().isAir()) return;
 
-            vector3i.sub(offset);
+            int worldX = origin.getBlockX() + vector3i.x() - offset.x();
+            int worldZ = origin.getBlockZ() + vector3i.z() - offset.z();
+            int chunkX = worldX >> 4;
+            int chunkZ = worldZ >> 4;
 
-            if (!prePastePredicate.test(vector3i, blockData)) return;
-            Location posToReplace = new Location(world, origin.getX(), origin.getY(), origin.getZ()).add(vector3i.x, vector3i.y, vector3i.z);
+            Executors.runSync(world, chunkX, chunkZ, () -> {
+                if (blockData.getMaterial().isAir()) return;
 
-            world.setBlockData(posToReplace, blockData);
+                vector3i.sub(offset);
+
+                if (!prePastePredicate.test(vector3i, blockData)) return;
+                Location posToReplace = new Location(world, origin.getX(), origin.getY(), origin.getZ()).add(vector3i.x, vector3i.y, vector3i.z);
+
+                world.setBlockData(posToReplace, blockData);
+            });
         });
     }
 
@@ -70,13 +79,21 @@ public class GenericStructure extends Structure {
         Vector3i offset = new Vector3i(size.x() / 2, 0, size.z() / 2);
         World world = origin.getWorld();
         schematic.apply(transformation, (vector3i, blockData) -> {
-            if (blockData.getMaterial().isAir()) return;
 
-            vector3i.sub(offset);
-            if (!preRemovePredicate.test(vector3i, blockData)) return;
-            Location location = new Location(world, origin.getX(), origin.getY(), origin.getZ()).add(vector3i.x, vector3i.y, vector3i.z);
+            int worldX = origin.getBlockX() + vector3i.x() - offset.x();
+            int worldZ = origin.getBlockZ() + vector3i.z() - offset.z();
+            int chunkX = worldX >> 4;
+            int chunkZ = worldZ >> 4;
 
-            location.getBlock().setBlockData(AIR_BLOCK_DATA);
+            Executors.runSync(world, chunkX, chunkZ, () -> {
+                if (blockData.getMaterial().isAir()) return;
+
+                vector3i.sub(offset);
+                if (!preRemovePredicate.test(vector3i, blockData)) return;
+                Location location = new Location(world, origin.getX(), origin.getY(), origin.getZ()).add(vector3i.x, vector3i.y, vector3i.z);
+
+                location.getBlock().setBlockData(AIR_BLOCK_DATA);
+            });
         });
     }
 

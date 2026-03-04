@@ -1,5 +1,6 @@
 package dev.lumas.events.games.models;
 
+import dev.lumas.events.utility.Executors;
 import lombok.Getter;
 import me.danjono.inventoryrollback.data.LogType;
 import org.bukkit.Bukkit;
@@ -9,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 import me.danjono.inventoryrollback.inventory.SaveInventory;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Getter
 public class InventorySnapshot {
@@ -39,19 +41,26 @@ public class InventorySnapshot {
     }
 
     public void restore(Player player) {
-        player.getInventory().clear();
-        player.getInventory().setContents(contents);
+        Executors.runSync(player, () -> {
+            player.getInventory().clear();
+            player.getInventory().setContents(contents);
+        });
     }
 
-    public boolean backup() {
+    public CompletableFuture<Boolean> backup() {
         Player player = getPlayer();
         if (player == null) {
-            return false;
+            return CompletableFuture.completedFuture(false);
         }
 
-        SaveInventory saveInventory = new SaveInventory(player, LogType.FORCE, null, null);
-        saveInventory.snapshotAndSave(player.getInventory(), player.getEnderChest(), true);
-        this.backedUp = true;
-        return true;
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+
+        Executors.runSync(player, () -> {
+            SaveInventory saveInventory = new SaveInventory(player, LogType.FORCE, null, null);
+            saveInventory.snapshotAndSave(player.getInventory(), player.getEnderChest(), true);
+            this.backedUp = true;
+            future.complete(true);
+        });
+        return future;
     }
 }

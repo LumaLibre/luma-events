@@ -1,6 +1,7 @@
 package dev.lumas.events.obj;
 
 import com.google.common.base.Preconditions;
+import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import lombok.Getter;
 import lombok.Setter;
@@ -51,7 +52,14 @@ public class WorldTiedBoundingBox extends BoundingBox implements MinigameBoundin
         for (int x = (int) this.getMinX(); x <= (int) this.getMaxX(); ++x) {
             for (int y = (int) this.getMinY(); y <= (int) this.getMaxY(); ++y) {
                 for (int z = (int) this.getMinZ(); z <= (int) this.getMaxZ(); ++z) {
-                    consumer.accept(this.world.getBlockAt(x, y, z));
+                    int chunkX = x >> 4;
+                    int chunkZ = z >> 4;
+                    final int finalX = x;
+                    final int finalY = y;
+                    final int finalZ = z;
+                    Executors.runSync(this.world, chunkX, chunkZ, () -> {
+                        consumer.accept(this.world.getBlockAt(finalX, finalY, finalZ));
+                    });
                 }
             }
         }

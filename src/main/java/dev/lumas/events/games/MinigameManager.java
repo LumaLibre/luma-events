@@ -8,21 +8,22 @@ import dev.lumas.events.games.exceptions.GameAlreadyStartedException;
 import dev.lumas.events.games.exceptions.NoAvailableMinigames;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.logic.NonActiveMinigame;
+import dev.lumas.events.utility.AsynchronousRunnable;
 import dev.lumas.events.utility.Util;
 import eu.okaeri.configs.OkaeriConfig;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.event.HandlerList;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public final class MinigameManager extends BukkitRunnable {
+public final class MinigameManager extends AsynchronousRunnable {
 
 
     private static MinigameManager instance;
@@ -150,7 +151,7 @@ public final class MinigameManager extends BukkitRunnable {
     }
 
     @Override
-    public void run() {
+    public void accept(ScheduledTask task) {
         if (!cfg.isAutomaticMinigames() || !this.canSafelyStartMinigame(false)) {
             return;
         }

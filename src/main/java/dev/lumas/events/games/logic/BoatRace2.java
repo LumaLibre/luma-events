@@ -127,7 +127,7 @@ public final class BoatRace2 extends Minigame {
 
             player.teleportAsync(loc).whenComplete((v, b) -> {
                 // Synchronize
-                Executors.sync(() -> {
+                Executors.sync(player, () -> {
                     BoatRaceBoatType boatType = BoatRaceBoatType.BAMBOO; // Util.getRandom(BoatRaceBoatType.values());
                     Boat boat = player.getWorld().spawn(loc, boatType.getBoatType());
                     boat.addPassenger(player);
@@ -159,7 +159,7 @@ public final class BoatRace2 extends Minigame {
         for (EventPlayer participant : this.participants) {
             Player player = participant.getPlayer();
             if (player == null || player.isInsideVehicle() || !isInBoundingBox(player)) continue;
-            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+            Executors.runSync(player, () -> {
                 player.addPotionEffect(SPEED);
             });
         }
@@ -413,8 +413,10 @@ public final class BoatRace2 extends Minigame {
     }
 
     private void cleanBoats() {
-        Executors.runSync(() -> {
-            this.boundingBox.getEntities(Boat.class).forEach(Boat::remove);
+        unsafe(() -> {
+            this.boundingBox.getEntities(Boat.class).forEach(boat -> {
+                Executors.sync(boat, () -> boat.remove());
+            });
         });
     }
 
@@ -543,16 +545,16 @@ public final class BoatRace2 extends Minigame {
         }
 
         public void cleanup() {
-            if (!Bukkit.isPrimaryThread()) {
-                Bukkit.getScheduler().runTask(EventMain.getInstance(), this::cleanup);
-                return; // Ensure cleanup is run on the main thread
-            }
             Player player = this.eventPlayer.getPlayer();
             if (this.bossBar != null && player != null) {
                 this.bossBar.removeViewer(player);
             }
-            if (this.boat != null && !this.boat.isDead()) {
-                this.boat.remove();
+            if (this.boat != null) {
+                Executors.sync(this.boat, () -> {
+                    if (!this.boat.isDead()) {
+                        this.boat.remove();
+                    }
+                });
             }
         }
 

@@ -2,6 +2,7 @@ package dev.lumas.events.games.interfaces;
 
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.items.TokenExchanging;
+import dev.lumas.events.utility.Executors;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
@@ -36,7 +37,9 @@ public abstract class TokenFormula<C> {
         }
 
         makeDirty(uuid, amount);
-        TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.CARAMEL_APPLE, amount, "Minigame");
+        Executors.runSync(bukkitPlayer, () -> {
+            TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.CARAMEL_APPLE, amount, "Minigame");
+        });
     }
 
 

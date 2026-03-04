@@ -112,7 +112,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     public TNTRun(TNTRunDefinition def) {
         super("TNT Run", "Don't fall down!", 420000L, 1,
-                false, true, false, true);
+                true, true, false, true);
 
         this.decayDelayTicks = def.getDecayDelayTicks();
         this.lobbyLocation = def.getLobbyLocation();
@@ -161,15 +161,13 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         }
 
         worldEditStructure.pasteAsync().whenComplete((vo, thr) -> {
-            Executors.runSync(() -> {
-                if (this.isCancelled()) return;
-                this.arenaReady = true;
-                Logging.log("[TNTRun] Arena ready.");
+            if (this.isCancelled()) return;
+            this.arenaReady = true;
+            Logging.log("[TNTRun] Arena ready.");
 
 
-                // Teleport players after arena is done being pasted.
-                this.teleportPlayersToArenaThenStartCountdown();
-            });
+            // Teleport players after arena is done being pasted.
+            this.teleportPlayersToArenaThenStartCountdown();
         });
 
     }
@@ -191,7 +189,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
         int activeCount = 0;
         for (AbstractTNTRunPlayer tntRunPlayer : this.roleMap) {
-            tntRunPlayer.tick();
+            Executors.runSync(tntRunPlayer, tntRunPlayer::tick);
             if (tntRunPlayer instanceof ActiveTNTRunPlayer) activeCount++;
         }
 
@@ -332,17 +330,19 @@ public final class TNTRun extends InventoryUnifiedMinigame {
             BlockPos pos = e.getKey();
             it.remove();
 
-            Block block = world.getBlockAt(pos.x(), pos.y(), pos.z());
-            Material type = block.getType();
+            Executors.runSync(world, pos.chunkX(), pos.chunkZ(), () -> {
+                Block block = world.getBlockAt(pos.x(), pos.y(), pos.z());
+                Material type = block.getType();
 
-            if (type.isAir() || !type.hasGravity()) continue;
+                if (type.isAir() || !type.hasGravity()) return;
 
-            block.setBlockData(AIR_BLOCK_DATA, false);
+                block.setBlockData(AIR_BLOCK_DATA, false);
 
-            Block under = block.getRelative(BlockFace.DOWN);
-            if (under.getType() == Material.TNT) {
-                under.setBlockData(AIR_BLOCK_DATA, false);
-            }
+                Block under = block.getRelative(BlockFace.DOWN);
+                if (under.getType() == Material.TNT) {
+                    under.setBlockData(AIR_BLOCK_DATA, false);
+                }
+            });
         }
     }
 
@@ -464,31 +464,25 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         }
 
         public void hide() {
-            Executors.runSync(() -> {
-                Player self = this.getEventPlayer().getPlayer();
-                if (self == null) return;
+            Player self = this.getEventPlayer().getPlayer();
+            if (self == null) return;
 
-                for (EventPlayer other : this.context.getParticipants()) {
-                    Player bukkitOther = other.getPlayer();
-                    if (bukkitOther == null) continue;
-
+            for (EventPlayer other : this.context.getParticipants()) {
+                other.operatePlayer(bukkitOther -> {
                     bukkitOther.hidePlayer(EventMain.getInstance(), self);
-                }
-            });
+                });
+            }
         }
 
         public void show() {
-            Executors.runSync(() -> {
-                Player self = this.getEventPlayer().getPlayer();
-                if (self == null) return;
+            Player self = this.getEventPlayer().getPlayer();
+            if (self == null) return;
 
-                for (EventPlayer other : this.context.getParticipants()) {
-                    Player bukkitOther = other.getPlayer();
-                    if (bukkitOther == null) continue;
-
+            for (EventPlayer other : this.context.getParticipants()) {
+                other.operatePlayer(bukkitOther -> {
                     bukkitOther.showPlayer(EventMain.getInstance(), self);
-                }
-            });
+                });
+            }
         }
 
         @Override
@@ -620,10 +614,12 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         for (UUID id : new ArrayList<>(powerupByEntity.keySet())) {
             Entity e = w.getEntity(id);
             if (!(e instanceof ItemDisplay d)) continue;
-            Transformation t = d.getTransformation();
-            t.getScale().set(0.67f, 0.67f, 0.67f);
-            t.getLeftRotation().set(new AxisAngle4f(powerupSpinAngle, 0f, 1f, 0f));
-            d.setTransformation(t);
+            Executors.runSync(d, () -> {
+                Transformation t = d.getTransformation();
+                t.getScale().set(0.67f, 0.67f, 0.67f);
+                t.getLeftRotation().set(new AxisAngle4f(powerupSpinAngle, 0f, 1f, 0f));
+                d.setTransformation(t);
+            });
         }
     }
 
@@ -646,20 +642,22 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
         Location randomLocation = box.getRandomLocation();
 
-        Block air = w.getBlockAt(randomLocation);
-        if (!air.getType().isAir()) return;
+        Executors.runSync(randomLocation, () -> {
+            Block air = w.getBlockAt(randomLocation);
+            if (!air.getType().isAir()) return;
 
-        Block below = air.getRelative(BlockFace.DOWN);
-        Material base = below.getType();
-        if (base.isAir() || !base.hasGravity()) return;
+            Block below = air.getRelative(BlockFace.DOWN);
+            Material base = below.getType();
+            if (base.isAir() || !base.hasGravity()) return;
 
-        if (isPowerupAlreadyAt(w, randomLocation.getBlockX(),
-                randomLocation.getBlockY(), randomLocation.getBlockZ())) return;
+            if (isPowerupAlreadyAt(w, randomLocation.getBlockX(),
+                    randomLocation.getBlockY(), randomLocation.getBlockZ())) return;
 
-        PowerupType type = PowerupType.weightedRandom(this.powerupWeights);
-        if (type == null) return; // all disabled
-        spawnPowerupDisplay(w, randomLocation.getBlockX(),
-                randomLocation.getBlockY(), randomLocation.getBlockZ(), type);
+            PowerupType type = PowerupType.weightedRandom(this.powerupWeights);
+            if (type == null) return; // all disabled
+            spawnPowerupDisplay(w, randomLocation.getBlockX(),
+                    randomLocation.getBlockY(), randomLocation.getBlockZ(), type);
+        });
     }
 
     private boolean isPowerupAlreadyAt(org.bukkit.World w, int x, int y, int z) {
@@ -790,5 +788,12 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         Util.giveItem(player, toGive);
     }
 
-    private record BlockPos(int x, int y, int z) {}
+    private record BlockPos(int x, int y, int z) {
+        public int chunkX() {
+            return this.x >> 4;
+        }
+        public int chunkZ() {
+            return this.z >> 4;
+        }
+    }
 }

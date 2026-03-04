@@ -101,7 +101,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
         Collections.shuffle(this.panels, RANDOM); // shuffle panels
 
-        Executors.sync(() -> {
+        Executors.sync(center, () -> {
             this.currentProcess.paste(this.round); // pre-paste first panel to count materials and prepare for the game start
         });
     }
@@ -154,7 +154,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
         Preconditions.checkNotNull(this.currentProcess, "Current process cannot be null during handleStart.");
 
-        Executors.runSync(() -> {
+        Executors.runSync(this.center, () -> {
             this.currentProcess.run(this.round);
         });
     }
@@ -204,7 +204,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             this.stop();
         } else {
             this.currentProcess = new PanelPartyProcess(this, PanelDifficulty.fromRounds(this.round, this.maxRounds));
-            Executors.runSync(() -> {
+            Executors.runSync(this.center, () -> {
                 this.currentProcess.run(this.round);
             });
         }
@@ -221,7 +221,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             role.cleanup();
         }
 
-        Executors.runSync(() -> {
+        Executors.runSync(this.center, () -> {
             this.blankPanel.paste();
         });
 
@@ -427,7 +427,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                     this.context.sendAudienceMessage("<gold><b>" + winner.getEventPlayer().getName() + "</b></gold> was the last player standing!");
                     this.context.scoreboard.addScore(winner.getEventPlayer(), 1); // bonus points for winning
                 }
-                Executors.runDelayedAsync(50, TimeUnit.MILLISECONDS, task -> {
+                Executors.runDelayedAsync(TimeUnit.MILLISECONDS, 50, task -> {
                     this.context.stop();
                 });
             }
@@ -576,8 +576,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
             // give players the chosen block in hand if applicable
             ItemStack itemStack = ItemStack.of(this.chosenMaterial);
-            for (PanelParticipant panelParticipant : this.context.roleMap.getMatching(PanelParticipant.class)) {
-                if (this.difficulty.hasModifier(PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK)) {
+            if (this.difficulty.hasModifier(PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK)) {
+                for (PanelParticipant panelParticipant : this.context.roleMap.getMatching(PanelParticipant.class)) {
                     panelParticipant.setItemInHand(itemStack);
                 }
             }
@@ -602,7 +602,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                     .callback(() -> {
                         Preconditions.checkNotNull(this.chosenMaterial, "Chosen block data cannot be null during countdown callback.");
                         // remove panel
-                        Executors.sync(() -> {
+                        Executors.sync(context.center, () -> {
                             panel.remove((vector3i, blockData) ->
                                     !blockData.getMaterial().equals(this.chosenMaterial)
                             );

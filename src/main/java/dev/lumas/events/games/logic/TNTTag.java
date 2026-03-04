@@ -1,5 +1,6 @@
 package dev.lumas.events.games.logic;
 
+import dev.lumas.events.utility.Executors;
 import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.MinigameDefinition;
@@ -56,7 +57,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     private int roundCount = 0;
 
     public TNTTag(MinigameDefinition def) {
-        super("TNT Tag", "Don't explode!", (ROUND_DURATION * MAX_ROUNDS * 2000) /* internally double the duration for ticks */, TICK_INTERVAL, false, true, true);
+        super("TNT Tag", "Don't explode!", (ROUND_DURATION * MAX_ROUNDS * 2000) /* internally double the duration for ticks */, TICK_INTERVAL, true, true, true);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.tntTagPlayers = new HashMap<>();
         this.spawnPoint = def.getSpawnLocation().toCenterLocation();
@@ -71,7 +72,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
             this.swapRole(participant, () -> new Runner(participant, this.scoreboard));
             Player player = participant.getPlayer();
             if (player != null && player.getGameMode() != GameMode.SURVIVAL) {
-                Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> player.setGameMode(GameMode.SURVIVAL));
+                Executors.runSync(player, () -> player.setGameMode(GameMode.SURVIVAL));
             }
         }
         this.startRound();
@@ -79,7 +80,9 @@ public final class TNTTag extends InventoryUnifiedMinigame {
 
     @Override
     protected void onRunnable(long timeLeft) {
-        this.tntTagPlayers.values().forEach(TNTTagPlayer::tick);
+        this.tntTagPlayers.values().forEach(tntTagPlayer -> {
+            Executors.runSync(tntTagPlayer.getWho(), tntTagPlayer::tick);
+        });
 
 
         if (this.isAllTaggersOffline()) {
@@ -98,11 +101,9 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         if (this.roundCountdownBar != null) {
             this.roundCountdownBar.stop(false);
         }
-        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
-            for (TNTTagPlayer player : this.tntTagPlayers.values()) {
-                player.removeEffects(true);
-            }
-        });
+        for (TNTTagPlayer player : this.tntTagPlayers.values()) {
+            Executors.runSync(player.getWho(), () -> player.removeEffects(true));
+        }
 
         this.scoreboard.handleGameEnd(this.audience, () -> {
             this.participants.stream().filter(
@@ -157,10 +158,10 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     public <T extends TNTTagPlayer> T swapRole(EventPlayer eventPlayer, Supplier<? extends TNTTagPlayer> newRoleSupplier) {
         TNTTagPlayer currentRole = tntTagPlayers.get(eventPlayer.getUuid());
         if (currentRole != null) {
-            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> currentRole.removeEffects(false));
+            Executors.runSync(currentRole.getWho(), () -> currentRole.removeEffects(false));
         }
         TNTTagPlayer newRole = newRoleSupplier.get();
-        Bukkit.getScheduler().runTask(EventMain.getInstance(), newRole::addEffects);
+        Executors.runSync(newRole.getWho(), newRole::addEffects);
         tntTagPlayers.put(eventPlayer.getUuid(), newRole);
         return (T) newRole;
     }
@@ -210,10 +211,11 @@ public final class TNTTag extends InventoryUnifiedMinigame {
             this.sendAudienceMessage("<red>" + tagger.getWho().getName() + " is it!");
         }
 
-
-        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
-            this.getTaggers().forEach(Tagger::addEffects);
-            this.getRunners().forEach(Runner::addEffects);
+        this.getTaggers().forEach(tagger -> {
+            Executors.runSync(tagger.getWho(), tagger::addEffects);
+        });
+        this.getRunners().forEach(runner -> {
+            Executors.runSync(runner.getWho(), runner::addEffects);
         });
 
         // tp all to spawnPoint
@@ -252,7 +254,11 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         this.getTaggers().forEach(tagger -> {
             this.swapRole(tagger.getWho(), () -> new Spectator(tagger.getWho(), this.participants));
         });
-        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> this.getRunners().forEach(runner -> runner.removeEffects(false)));
+        this.getRunners().forEach(runner -> {
+            Executors.runSync(runner.getWho(), () -> {
+                runner.removeEffects(false);
+            });
+        });
 
         this.sendAudienceMessage("The round has ended!");
     }

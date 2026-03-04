@@ -3,11 +3,11 @@ package dev.lumas.events.games.models;
 import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.events.obj.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -121,7 +121,7 @@ public class BatchedBlockUpdater {
         private final Block[] blocks;
         @Setter
         private Consumer<Block> consumer;
-        private BukkitTask task;
+        private ScheduledTask task;
         @Getter
         private boolean completed = false;
 
@@ -131,11 +131,11 @@ public class BatchedBlockUpdater {
         }
 
         public void schedule(long delay, Runnable whenComplete) {
-            this.task = Executors.delayedSync(delay, () -> {
+            this.task = Executors.delayedGlobal(delay, () -> {
                 long start = System.currentTimeMillis();
                 Logging.log("Starting execution of batched block update for " + blocks.length + " blocks.");
                 for (Block block : blocks) {
-                    this.consumer.accept(block);
+                    Executors.runSync(block.getLocation(), () -> this.consumer.accept(block));
                 }
                 Executors.runAsync(whenComplete);
                 this.completed = true;

@@ -7,7 +7,7 @@ import dev.lumas.events.obj.EventPlayer;
 public final class UpAndUp extends InventoryUnifiedMinigame {
 
     public UpAndUp(UpAndUpDefinition def) {
-        super("Up & Up", "none", 30, 2, false);
+        super("Up & Up", "none", 30, 2, true);
         this.boundingBox = def.getRegion().toWorldTiedBoundingBox();
     }
 

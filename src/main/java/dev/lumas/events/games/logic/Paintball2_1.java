@@ -1,5 +1,6 @@
 package dev.lumas.events.games.logic;
 
+import dev.lumas.events.utility.Executors;
 import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.EventPlayerManager;
@@ -101,12 +102,8 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
         for (PaintballTeam team : this.paintballTeams) {
             for (EventPlayer member : team.getMembers()) {
-                Player player = member.getPlayer();
-                if (player == null) {
-                    continue;
-                }
-                player.teleportAsync(team.getSpawnPoint().toCenterLocation());
-                Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+                member.operatePlayer(player -> {
+                    player.teleportAsync(team.getSpawnPoint().toCenterLocation());
                     player.getInventory().setItemInMainHand(team.getPaintball());
                     if (player.getGameMode() != GameMode.SURVIVAL) {
                         player.setGameMode(GameMode.SURVIVAL);
@@ -229,18 +226,15 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
                 member.sendActionBar(actionBar);
                 // regen
-                Player player = member.getPlayer();
-                if (player != null) {
-                    Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
-                        if (player.isInWater()) {
-                            player.setHealth(0.0); // Eliminate player if in water
-                        }
+                member.operatePlayer(player -> {
+                    if (player.isInWater()) {
+                        player.setHealth(0.0); // Eliminate player if in water
+                    }
 
-                        player.clearActivePotionEffects();
-                        player.addPotionEffect(REGEN);
-                        player.addPotionEffect(GLOW);
-                    });
-                }
+                    player.clearActivePotionEffects();
+                    player.addPotionEffect(REGEN);
+                    player.addPotionEffect(GLOW);
+                });
             }
         }
 
@@ -377,12 +371,11 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
         if (hitEntity != null && this.boundingBox.contains(hitEntity) && hitEntity instanceof Player hitPlayer) {
             // Check if the hit entity is standing on a block painted by the other team
-            Bukkit.getAsyncScheduler().runNow(EventMain.getInstance(), (task) -> handleProjectileHitPlayer(hitPlayer, shooter, paintballTeam));
+            handleProjectileHitPlayer(hitPlayer, shooter, paintballTeam);
         } else if (hitBlock != null && this.boundingBox.contains(hitBlock.getLocation())) {
             shooter.playSound(hitBlock.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
-            Bukkit.getAsyncScheduler().runNow(EventMain.getInstance(), (task) -> handleProjectileHitBlock(hitBlock, paintballTeam, eventPlayer));
+            handleProjectileHitBlock(hitBlock, paintballTeam, eventPlayer);
         }
-
     }
 
     private void handleProjectileHitPlayer(Player hitPlayer, Player shooter, PaintballTeam paintballTeam) {
@@ -395,18 +388,22 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         if (!boundingBox.contains(hitPlayer.getLocation()) || paintballTeam == paintballTeam2) {
             return; // Shooter is not in the bounding box or hit player is not in the bounding box or shooter hit their own teammate
         }
-        Bukkit.getScheduler().runTask(EventMain.getInstance(), () ->{
+        Executors.runSync(shooter, () -> {
             shooter.playSound(hitPlayer.getLocation(), Sound.ENTITY_PLAYER_HURT, 1.0f, 1.0f);
+        });
+        Executors.runSync(hitPlayer, () -> {
             hitPlayer.damage(12.0, shooter);
         });
     }
 
     private void handleProjectileHitBlock(Block blockHit, PaintballTeam paintballTeam, EventPlayer shooter) {
-        Material blockTypeAbove = blockHit.getLocation().add(0, 1, 0).getBlock().getType();
-        if (this.blacklistedMaterials.contains(blockHit.getType()) || blockTypeAbove == Material.WATER) {
-            return;
-        }
-        this.paint(blockHit.getLocation(), paintballTeam, shooter, 1);
+        Executors.runSync(blockHit.getLocation(), () -> {
+            Material blockTypeAbove = blockHit.getLocation().add(0, 1, 0).getBlock().getType();
+            if (this.blacklistedMaterials.contains(blockHit.getType()) || blockTypeAbove == Material.WATER) {
+                return;
+            }
+            this.paint(blockHit.getLocation(), paintballTeam, shooter, 1);
+        });
     }
 
     public void paint(Location blockHit, PaintballTeam paintballTeam, EventPlayer shooter, int size) {
@@ -485,11 +482,11 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             this.glowColor = colorKit.glowColor;
 
             // team bed parts
-            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
-                for (TeamBedPart teamBedPart : teamBedParts) {
-                    Location l = teamBedPart.getBlockLocation();
-                    if (l == null) continue;
+            for (TeamBedPart teamBedPart : teamBedParts) {
+                Location l = teamBedPart.getBlockLocation();
+                if (l == null) continue;
 
+                Executors.runSync(l, () -> {
                     Block block = l.getBlock();
                     BlockState blockState = block.getState();
                     blockState.setType(colorKit.bed);
@@ -502,9 +499,8 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                         Logging.log("<red>Failed to set bed data for team: " + shortName() + " at location: " + l);
                     }
                     blockState.update(true, false);
-                }
-            });
-
+                });
+            }
         }
 
 

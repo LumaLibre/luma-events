@@ -162,7 +162,7 @@ public final class Util {
             return;
         }
 
-        Executors.runSync(() -> {
+        Executors.runSync(player, () -> {
             Map<Integer, ItemStack> didntFit = player.getInventory().addItem(itemStack);
             if (!didntFit.isEmpty()) {
                 for (ItemStack itemStack1 : didntFit.values()) {

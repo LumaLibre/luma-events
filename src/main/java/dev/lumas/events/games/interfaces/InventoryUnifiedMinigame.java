@@ -37,14 +37,14 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
     @Override
     protected void onPreStart() {
         List<EventPlayer> removed = new ArrayList<>();
-        Executors.runSync(() -> {
-            for (EventPlayer participant : this.participants) {
-                Player player = participant.getPlayer();
-                if (player == null) {
-                    removed.add(participant);
-                    continue;
-                }
+        for (EventPlayer participant : this.participants) {
+            Player player = participant.getPlayer();
+            if (player == null) {
+                removed.add(participant);
+                continue;
+            }
 
+            Executors.runSync(player, () -> {
                 InventorySnapshot inventorySnapshot = new InventorySnapshot(participant.getUuid(), player.getInventory().getContents());
                 inventorySnapshot.backup();
                 InventorySnapshotManager.INSTANCE.registerSnapshot(inventorySnapshot);
@@ -59,13 +59,15 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
                 if (this.defaultItem() != null) {
                     player.getInventory().setItemInMainHand(this.defaultItem());
                 }
+            });
 
-            }
+        }
 
-            for (EventPlayer p : removed) {
+        for (EventPlayer p : removed) {
+            Executors.runSync(p, () -> {
                 this.removeParticipant(p);
-            }
-        });
+            });
+        }
     }
 
     @Override
@@ -75,14 +77,16 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
             if (player == null) {
                 continue;
             }
-            InventorySnapshot snapshot = InventorySnapshotManager.INSTANCE.getSnapshotByOwner(participant.getUuid());
-            if (snapshot != null) {
-                snapshot.restore(player);
-                InventorySnapshotManager.INSTANCE.unregisterSnapshot(snapshot);
-            } else {
-                Logging.errorLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found.");
-            }
-            this.tokenHandler(participant);
+            Executors.runSync(participant, () -> {
+                InventorySnapshot snapshot = InventorySnapshotManager.INSTANCE.getSnapshotByOwner(participant.getUuid());
+                if (snapshot != null) {
+                    snapshot.restore(player);
+                    InventorySnapshotManager.INSTANCE.unregisterSnapshot(snapshot);
+                } else {
+                    Logging.errorLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found.");
+                }
+                this.tokenHandler(participant);
+            });
         }
     }
 
@@ -96,18 +100,20 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
     @Override
     public boolean removeParticipant(EventPlayer participant) {
         Player player = participant.getPlayer();
-        if (player != null) {
-            InventorySnapshot snapshot = InventorySnapshotManager.INSTANCE.getSnapshotByOwner(participant.getUuid());
-            if (snapshot != null) {
-                snapshot.restore(player);
-                InventorySnapshotManager.INSTANCE.unregisterSnapshot(snapshot);
-            } else {
-                Logging.warningLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found. (Participant removal)");
+        Executors.runSync(participant, () -> {
+            if (player != null) {
+                InventorySnapshot snapshot = InventorySnapshotManager.INSTANCE.getSnapshotByOwner(participant.getUuid());
+                if (snapshot != null) {
+                    snapshot.restore(player);
+                    InventorySnapshotManager.INSTANCE.unregisterSnapshot(snapshot);
+                } else {
+                    Logging.warningLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found. (Participant removal)");
+                }
             }
-        }
-        if (!this.isOpen()) {
-            this.tokenHandler(participant);
-        }
+            if (!this.isOpen()) {
+                this.tokenHandler(participant);
+            }
+        });
         return super.removeParticipant(participant);
     }
 

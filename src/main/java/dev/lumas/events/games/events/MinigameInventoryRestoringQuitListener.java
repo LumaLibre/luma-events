@@ -35,7 +35,7 @@ public class MinigameInventoryRestoringQuitListener implements Listener {
 
         Location gameDropOffLocation = minigame.getGameDropOffLocation();
         if (gameDropOffLocation != null) {
-            player.teleport(gameDropOffLocation);
+            player.teleportAsync(gameDropOffLocation); // FIXME this probably won't be sufficient
         }
     }
 }

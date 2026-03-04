@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -77,17 +78,22 @@ public final class BlockAnimationPlatform {
                 int x = cx + dx;
                 int z = cz + dz;
 
-                Block b = w.getBlockAt(x, y, z);
-                if (!replacePredicate.test(b)) continue;
+                int chunkX = x >> 4;
+                int chunkZ = z >> 4;
 
-                BlockPos pos = new BlockPos(x, y, z);
-                blocks.add(pos);
+                Executors.runSync(w, chunkX, chunkZ, () -> {
+                    Block b = w.getBlockAt(x, y, z);
+                    if (!replacePredicate.test(b)) return;
 
-                Deque<UUID> stack = platformStackByBlock.computeIfAbsent(pos, k -> new ArrayDeque<>());
-                if (stack.isEmpty()) trueOriginalByBlock.put(pos, b.getBlockData().clone());
-                stack.push(platformId);
+                    BlockPos pos = new BlockPos(x, y, z);
+                    blocks.add(pos);
 
-                b.setType(config.material(), false);
+                    Deque<UUID> stack = platformStackByBlock.computeIfAbsent(pos, k -> new ArrayDeque<>());
+                    if (stack.isEmpty()) trueOriginalByBlock.put(pos, b.getBlockData().clone());
+                    stack.push(platformId);
+
+                    b.setType(config.material(), false);
+                });
             }
         }
 
@@ -98,13 +104,13 @@ public final class BlockAnimationPlatform {
 
         int warnTicks = Math.max(0, Math.min(config.warnTicks(), config.lifetimeTicks()));
         if (warnTicks > 0 && config.sendBreakAnimation()) {
-            Executors.delayedSync(Math.max(1, config.lifetimeTicks() - warnTicks), () -> {
+            Executors.runDelayedAsync(TimeUnit.MILLISECONDS, Math.max(1, config.lifetimeTicks() - warnTicks) * 50L, (t) -> {
                 if (!isActiveSupplier.get()) return;
                 animateBreaking(platformId, blocks, warnTicks);
             });
         }
 
-        Executors.delayedSync(config.lifetimeTicks(), () -> restore(platformId));
+        Executors.runDelayedAsync(TimeUnit.MILLISECONDS, config.lifetimeTicks() * 50L, (t) -> restore(platformId));
         return platformId;
     }
 
@@ -122,15 +128,18 @@ public final class BlockAnimationPlatform {
             if (platformId.equals(st.peek())) st.pop();
             else st.remove(platformId);
 
-            Block b = inst.world().getBlockAt(pos.x(), pos.y(), pos.z());
+            Executors.runSync(inst.world(), pos.x() >> 4, pos.z() >> 4, () -> {
 
-            if (st.isEmpty()) {
-                BlockData original = trueOriginalByBlock.remove(pos);
-                if (original != null) b.setBlockData(original, false);
-                platformStackByBlock.remove(pos);
-            } else {
-                b.setType(config.material(), false);
-            }
+                Block b = inst.world().getBlockAt(pos.x(), pos.y(), pos.z());
+
+                if (st.isEmpty()) {
+                    BlockData original = trueOriginalByBlock.remove(pos);
+                    if (original != null) b.setBlockData(original, false);
+                    platformStackByBlock.remove(pos);
+                } else {
+                    b.setType(config.material(), false);
+                }
+            });
         }
     }
 
@@ -145,7 +154,7 @@ public final class BlockAnimationPlatform {
         List<Player> viewers = viewersSupplier.get();
         AtomicInteger ticks = new AtomicInteger();
 
-        Executors.repeatingSync(1, task -> {
+        Executors.runRepeatingAsync(TimeUnit.MILLISECONDS, 50, task -> {
             if (!isActiveSupplier.get() || ticks.getAndIncrement() >= durationTicks) {
                 clearBreakAnim(platformId, topOwned, viewers);
                 task.cancel();
@@ -159,7 +168,9 @@ public final class BlockAnimationPlatform {
 
                 int breakerId = Objects.hash(platformId, pos.x(), pos.y(), pos.z());
                 for (Player viewer : viewers) {
-                    breakSender.sendBreakAnimation(viewer, breakerId, pos.x(), pos.y(), pos.z(), stage);
+                    Executors.runSync(viewer, () -> {
+                        breakSender.sendBreakAnimation(viewer, breakerId, pos.x(), pos.y(), pos.z(), stage);
+                    });
                 }
             }
         });
@@ -171,7 +182,9 @@ public final class BlockAnimationPlatform {
         for (BlockPos pos : blocks) {
             int breakerId = Objects.hash(platformId, pos.x(), pos.y(), pos.z());
             for (Player viewer : viewers) {
-                breakSender.clearBreakAnimation(viewer, breakerId, pos.x(), pos.y(), pos.z());
+                Executors.runSync(viewer, () -> {
+                    breakSender.clearBreakAnimation(viewer, breakerId, pos.x(), pos.y(), pos.z());
+                });
             }
         }
     }

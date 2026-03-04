@@ -60,7 +60,7 @@ public class MinigameRoleMap<T extends MinigameRole> extends HashMap<UUID, T> im
     public T swapRole(EventPlayer eventPlayer, Supplier<T> newRoleSupplier) {
         T currentRole = this.get(eventPlayer.getUuid());
         if (currentRole != null) {
-            Executors.runSync(() -> {
+            Executors.runSync(eventPlayer, () -> {
                 cleanupConsumer.accept(currentRole);
             });
         }

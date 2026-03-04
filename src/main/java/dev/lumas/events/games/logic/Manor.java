@@ -1,5 +1,6 @@
 package dev.lumas.events.games.logic;
 
+import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.ManorMinigameDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
@@ -13,7 +14,6 @@ import dev.lumas.events.utility.Util;
 import dev.lumas.lumaitems.LumaItems;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
-import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -58,7 +58,7 @@ public final class Manor extends InventoryUnifiedMinigame {
 
 
     public Manor(ManorMinigameDefinition def) {
-        super("Manor", "Don't get caught!", 135000, TICK_INTERVAL, false, true, false);
+        super("Manor", "Don't get caught!", 135000, TICK_INTERVAL, true, true, false);
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.spawnLocation = def.getSpawnLocation();
         this.startLocation = def.getStartLocation();
@@ -105,7 +105,7 @@ public final class Manor extends InventoryUnifiedMinigame {
             this.manorPlayers.add(new Runner(participant, this));
             participant.operatePlayer(player -> {
                 if (player.getGameMode() != GameMode.SURVIVAL) {
-                    Executors.runSync(() -> player.setGameMode(GameMode.SURVIVAL));
+                    player.setGameMode(GameMode.SURVIVAL);
                 }
             });
         }
@@ -152,7 +152,7 @@ public final class Manor extends InventoryUnifiedMinigame {
         if (!this.ensureHunterAssigned()) return;
 
         this.manorPlayers.forEach(manorPlayer -> {
-            manorPlayer.onTick(timeLeft);
+            Executors.runSync(manorPlayer.getEventPlayer(), () -> manorPlayer.onTick(timeLeft));
             manorPlayer.getEventPlayer().operatePlayer(player -> {
                 player.setSaturation(10);
                 player.setFoodLevel(20);
@@ -292,19 +292,11 @@ public final class Manor extends InventoryUnifiedMinigame {
 
 
         protected <T extends ManorPlayer> void hideFromOthers(Iterable<T> players) {
-            if (!Bukkit.isPrimaryThread()) {
-                Executors.sync(() -> hideIntl(players));
-            } else {
-                hideIntl(players);
-            }
+            hideIntl(players);
         }
 
         protected <T extends ManorPlayer> void showToOthers(Iterable<T> players) {
-            if (!Bukkit.isPrimaryThread()) {
-                Executors.sync(() -> showIntl(players));
-            } else {
-                showIntl(players);
-            }
+            showIntl(players);
         }
 
         private <T extends ManorPlayer> void hideIntl(Iterable<T> players) {
@@ -315,7 +307,7 @@ public final class Manor extends InventoryUnifiedMinigame {
                 if (other == this) continue;
                 Player otherPlayer = other.eventPlayer.getPlayer();
                 if (otherPlayer != null) {
-                    otherPlayer.hidePlayer(LumaItems.getInstance(), me);
+                    Executors.runSync(otherPlayer, () -> otherPlayer.hidePlayer(EventMain.getInstance(), me));
                 }
             }
         }
@@ -328,7 +320,7 @@ public final class Manor extends InventoryUnifiedMinigame {
                 if (other == this) continue;
                 Player otherPlayer = other.eventPlayer.getPlayer();
                 if (otherPlayer != null) {
-                    otherPlayer.showPlayer(LumaItems.getInstance(), me);
+                    Executors.runSync(otherPlayer, () -> otherPlayer.showPlayer(EventMain.getInstance(), me));
                 }
             }
         }
@@ -394,13 +386,11 @@ public final class Manor extends InventoryUnifiedMinigame {
         @Override
         public void onRemove() {
             this.showToOthers(this.context.manorPlayers);
-            Executors.runSync(() -> {
-                this.eventPlayer.removeBossBar(this.context.bossBar);
-                this.eventPlayer.operatePlayer(player -> {
-                    player.removePotionEffect(PotionEffectType.GLOWING);
-                    player.removePotionEffect(PotionEffectType.NIGHT_VISION);
-                    player.removePotionEffect(PotionEffectType.SPEED);
-                });
+            this.eventPlayer.removeBossBar(this.context.bossBar);
+            this.eventPlayer.operatePlayer(player -> {
+                player.removePotionEffect(PotionEffectType.GLOWING);
+                player.removePotionEffect(PotionEffectType.NIGHT_VISION);
+                player.removePotionEffect(PotionEffectType.SPEED);
             });
         }
 
@@ -523,12 +513,10 @@ public final class Manor extends InventoryUnifiedMinigame {
             this.removeBoots();
             this.showToOthers(this.context.manorPlayers);
             this.eventPlayer.removeBossBar(this.context.bossBar);
-            Executors.runSync(() -> {
-                this.eventPlayer.operatePlayer(player -> {
-                    player.removePotionEffect(PotionEffectType.DARKNESS);
-                    player.removePotionEffect(PotionEffectType.GLOWING);
-                    player.removePotionEffect(PotionEffectType.NIGHT_VISION);
-                });
+            this.eventPlayer.operatePlayer(player -> {
+                player.removePotionEffect(PotionEffectType.DARKNESS);
+                player.removePotionEffect(PotionEffectType.GLOWING);
+                player.removePotionEffect(PotionEffectType.NIGHT_VISION);
             });
         }
 
@@ -614,12 +602,10 @@ public final class Manor extends InventoryUnifiedMinigame {
         @Override
         public void onRemove() {
             this.showToOthers(this.context.manorPlayers);
-            Executors.runSync(() -> {
-                this.eventPlayer.operatePlayer(player -> {
-                    player.removePotionEffect(PotionEffectType.INVISIBILITY);
-                });
-                this.eventPlayer.removeBossBar(this.context.bossBar);
+            this.eventPlayer.operatePlayer(player -> {
+                player.removePotionEffect(PotionEffectType.INVISIBILITY);
             });
+            this.eventPlayer.removeBossBar(this.context.bossBar);
         }
 
         @Override
@@ -693,7 +679,7 @@ public final class Manor extends InventoryUnifiedMinigame {
         public  <T extends ManorPlayer> T swapRole(EventPlayer eventPlayer, Supplier<? extends ManorPlayer> newRoleSupplier) {
             ManorPlayer currentRole = this.get(eventPlayer.getUuid());
             if (currentRole != null) {
-                Executors.runSync(() -> {
+                Executors.runSync(eventPlayer, () -> {
                     currentRole.onRemove();
                 });
             }

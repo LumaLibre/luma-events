@@ -9,7 +9,9 @@ import dev.lumas.events.games.exceptions.GameComponentIllegallyActive;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.MinigameBoundingBox;
+import dev.lumas.events.utility.AsynchronousRunnable;
 import dev.lumas.events.utility.Util;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.audience.Audience;
@@ -23,7 +25,6 @@ import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +33,7 @@ import java.util.Random;
 
 @Getter
 @Setter
-public abstract class Minigame extends BukkitRunnable implements Listener {
+public abstract class Minigame extends AsynchronousRunnable implements Listener {
 
     protected static final Random RANDOM = Util.RANDOM;
 
@@ -132,9 +133,9 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
 
         unsafe(this::handleStart);
         if (async) {
-            this.runTaskTimerAsynchronously(EventMain.getInstance(), 0, this.tickInterval);
+            this.repeatingAsync(0, this.tickInterval);
         } else {
-            this.runTaskTimer(EventMain.getInstance(), 0, this.tickInterval);
+            throw new UnsupportedOperationException("Minigame must be async");
         }
         return true;
     }
@@ -159,11 +160,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
         }
 
         try {
-            if (!EventMain.STOPPING) {
-                this.onPostStop();
-            } else {
-                Bukkit.getScheduler().runTaskLater(EventMain.getInstance(), this::onPostStop, 3L);
-            }
+            this.onPostStop();
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }
@@ -231,7 +228,7 @@ public abstract class Minigame extends BukkitRunnable implements Listener {
     }
 
     @Override
-    public void run() {
+    public void accept(ScheduledTask task) {
         long timeLeft = this.duration - (System.currentTimeMillis() - this.startTime);
         if (timeLeft <= 0) {
             this.stop();

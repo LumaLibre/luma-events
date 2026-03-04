@@ -1,20 +1,20 @@
 package dev.lumas.events.games.models;
 
+import dev.lumas.events.utility.AsynchronousRunnable;
 import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.events.EventMain;
-import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Builder;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Builder
-public class GlobalCountdownActionBar extends BukkitRunnable {
+public class GlobalCountdownActionBar extends AsynchronousRunnable {
 
     public static final ConcurrentLinkedQueue<GlobalCountdownActionBar> activeCountdowns = new ConcurrentLinkedQueue<>();
 
@@ -39,7 +39,7 @@ public class GlobalCountdownActionBar extends BukkitRunnable {
             return this;
         }
         activeCountdowns.add(this);
-        this.runTaskTimerAsynchronously(EventMain.getInstance(), 0, 2);
+        this.repeatingAsync(0, 2);
         return this;
     }
 
@@ -57,13 +57,11 @@ public class GlobalCountdownActionBar extends BukkitRunnable {
     }
 
     @Override
-    public void run() {
+    public void accept(ScheduledTask task) {
         Component msg = Util.color(String.format(message, secondsRemaining()));
-        Executors.runSync(() -> {
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                player.sendActionBar(msg);
-            }
-        });
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.sendActionBar(msg);
+        }
         seconds -= 0.1f;
 
         // when done:

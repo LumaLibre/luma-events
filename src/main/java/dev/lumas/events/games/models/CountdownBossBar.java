@@ -1,19 +1,20 @@
 package dev.lumas.events.games.models;
 
 import dev.lumas.events.EventMain;
+import dev.lumas.events.utility.AsynchronousRunnable;
 import dev.lumas.events.utility.Util;
 import dev.lumas.lumacore.utility.Logging;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class CountdownBossBar extends BukkitRunnable {
+public class CountdownBossBar extends AsynchronousRunnable {
 
     public static final ConcurrentLinkedQueue<CountdownBossBar> activeCountdowns = new ConcurrentLinkedQueue<>();
 
@@ -65,7 +66,7 @@ public class CountdownBossBar extends BukkitRunnable {
         applyState();
 
         activeCountdowns.add(this);
-        this.runTaskTimerAsynchronously(EventMain.getInstance(), 0, 2);
+        this.repeatingAsync(0, 2);
         return this;
     }
 
@@ -77,7 +78,7 @@ public class CountdownBossBar extends BukkitRunnable {
         for (Audience a : extraViewers) bossBar.removeViewer(a);
         extraViewers.clear();
 
-        this.cancel();
+        if (!this.isCancelled()) this.cancel();
         if (callback && this.callback != null) this.callback.run();
     }
 
@@ -108,7 +109,7 @@ public class CountdownBossBar extends BukkitRunnable {
     }
 
     @Override
-    public void run() {
+    public void accept(ScheduledTask task) {
         if (countUp) {
             secondsRemaining += 0.1f;
         } else {
@@ -125,7 +126,7 @@ public class CountdownBossBar extends BukkitRunnable {
             for (Audience a : extraViewers) bossBar.removeViewer(a);
             extraViewers.clear();
 
-            this.cancel();
+            task.cancel();
             if (this.callback != null) this.callback.run();
         }
     }

@@ -1,5 +1,6 @@
 package dev.lumas.events.obj;
 
+import dev.lumas.events.utility.Executors;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
@@ -56,7 +57,10 @@ public class CylinderBoundingBox implements MinigameBoundingBox {
     @Override
     public void operate(Consumer<Block> consumer) {
         for (int i = 0; i < height; i++) {
-            consumer.accept(getLayer(i).center.getBlock());
+            final int finalI = i; // TODO: Unsafe
+            Executors.runSync(this.center, () -> {
+                consumer.accept(getLayer(finalI).center.getBlock());
+            });
         }
     }
 

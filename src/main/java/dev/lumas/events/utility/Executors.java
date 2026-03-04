@@ -1,10 +1,13 @@
 package dev.lumas.events.utility;
 
 import dev.lumas.events.EventMain;
+import dev.lumas.events.games.interfaces.models.MinigameRole;
+import dev.lumas.events.obj.EventPlayer;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.entity.Entity;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -13,15 +16,15 @@ public final class Executors {
 
     private static final EventMain instance = EventMain.getInstance();
 
-    public static ScheduledTask runRepeatingAsync(long delay, long period, TimeUnit timeUnit, Consumer<ScheduledTask> consumer) {
+    public static ScheduledTask runRepeatingAsync(TimeUnit timeUnit, long delay, long period, Consumer<ScheduledTask> consumer) {
         return Bukkit.getAsyncScheduler().runAtFixedRate(instance, consumer, delay, period, timeUnit);
     }
 
-    public static ScheduledTask runDelayedAsync(long delay, TimeUnit timeUnit, Consumer<ScheduledTask> consumer) {
+    public static ScheduledTask runDelayedAsync(TimeUnit timeUnit, long delay, Consumer<ScheduledTask> consumer) {
         return Bukkit.getAsyncScheduler().runDelayed(instance, consumer, delay, timeUnit);
     }
 
-    public static ScheduledTask runRepeatingAsync(long period, TimeUnit timeUnit, Consumer<ScheduledTask> consumer) {
+    public static ScheduledTask runRepeatingAsync(TimeUnit timeUnit, long period, Consumer<ScheduledTask> consumer) {
         return Bukkit.getAsyncScheduler().runAtFixedRate(instance, consumer, 0, period, timeUnit);
     }
 
@@ -29,42 +32,96 @@ public final class Executors {
         return Bukkit.getAsyncScheduler().runNow(instance, consumer);
     }
 
-    public static BukkitTask runAsync(Runnable runnable) {
-        return Bukkit.getScheduler().runTaskAsynchronously(instance, runnable);
+    public static ScheduledTask runAsync(Runnable runnable) {
+        return Bukkit.getAsyncScheduler().runNow(instance, t -> runnable.run());
     }
 
-
+    // TODO: Log if entity was retired
     // Synchronous
 
-    public static BukkitTask delayedSync(long delay, Runnable runnable) {
-        return Bukkit.getScheduler().runTaskLater(instance, runnable, delay);
+    public static ScheduledTask delayedSync(Entity entity, long delay, Runnable runnable) {
+        return entity.getScheduler().runDelayed(instance, t -> runnable.run(), null, delay);
     }
 
-    public static BukkitTask repeatingSync(long period, Runnable runnable) {
-        return Bukkit.getScheduler().runTaskTimer(instance, runnable, 0, period);
+    public static ScheduledTask delayedSync(Location location, long delay, Runnable runnable) {
+        return Bukkit.getRegionScheduler().runDelayed(instance, location, t -> runnable.run(), delay);
     }
 
-    public static BukkitTask repeatingSync(long period, Consumer<BukkitRunnable> consumer) {
-        BukkitRunnable task = new BukkitRunnable() {
-            @Override
-            public void run() {
-                consumer.accept(this);
-            }
-        };
-
-        return task.runTaskTimer(instance, 0, period);
+    public static ScheduledTask repeatingSync(Entity entity, long period, Consumer<ScheduledTask> consumer) {
+        return entity.getScheduler().runAtFixedRate(instance, consumer, null,1, period);
     }
 
-    public static BukkitTask sync(Runnable runnable) {
-        return Bukkit.getScheduler().runTask(instance, runnable);
+    public static ScheduledTask repeatingSync(Location location, long period, Consumer<ScheduledTask> consumer) {
+        return Bukkit.getRegionScheduler().runAtFixedRate(instance, location, consumer, 1, period);
     }
 
-    public static void runSync(Runnable runnable) {
-        if (Bukkit.isPrimaryThread()) {
+    public static ScheduledTask sync(Entity entity, Runnable runnable) {
+        return entity.getScheduler().run(instance, t -> runnable.run(), null);
+    }
+
+    public static ScheduledTask sync(Location location, Runnable runnable) {
+        return Bukkit.getRegionScheduler().run(instance, location, t -> runnable.run());
+    }
+
+    public static ScheduledTask sync(World world, int chunkX, int chunkZ, Runnable runnable) {
+        return Bukkit.getRegionScheduler().run(instance, world, chunkX, chunkZ, t -> runnable.run());
+    }
+
+    public static ScheduledTask global(Runnable runnable) {
+        return Bukkit.getGlobalRegionScheduler().run(instance, t -> runnable.run());
+    }
+
+    public static ScheduledTask delayedGlobal(long delay, Runnable runnable) {
+        return Bukkit.getGlobalRegionScheduler().runDelayed(instance, t -> runnable.run(), delay);
+    }
+
+    public static ScheduledTask repeatingGlobal(long period, Consumer<ScheduledTask> consumer) {
+        return Bukkit.getGlobalRegionScheduler().runAtFixedRate(instance, consumer, 1, period);
+    }
+
+    public static void runSync(Entity entity, Runnable runnable) {
+        if (Bukkit.isOwnedByCurrentRegion(entity)) {
             runnable.run();
         } else {
-            sync(runnable);
+            sync(entity, runnable);
         }
     }
 
+    public static void runSync(EventPlayer eventPlayer, Runnable runnable) {
+        Entity entity = eventPlayer.getPlayer();
+        if (entity != null) {
+            runSync(entity, runnable);
+        }
+    }
+
+    public static void runSync(MinigameRole role, Runnable runnable) {
+        Entity entity = role.getEventPlayer().getPlayer();
+        if (entity != null) {
+            runSync(entity, runnable);
+        }
+    }
+
+    public static void runSync(Location location, Runnable runnable) {
+        if (Bukkit.isOwnedByCurrentRegion(location)) {
+            runnable.run();
+        } else {
+            sync(location, runnable);
+        }
+    }
+
+    public static void runSync(World world, int chunkX, int chunkZ, Runnable runnable) {
+        if (Bukkit.isOwnedByCurrentRegion(world, chunkX, chunkZ)) {
+            runnable.run();
+        } else {
+            sync(world, chunkX, chunkZ, runnable);
+        }
+    }
+
+    public static void runGlobal(Runnable runnable) {
+        if (Bukkit.isGlobalTickThread()) {
+            runnable.run();
+        } else {
+            global(runnable);
+        }
+    }
 }

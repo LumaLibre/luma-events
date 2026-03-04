@@ -3,8 +3,10 @@ package dev.lumas.events.games.interfaces.models;
 import dev.lumas.events.obj.EventPlayer;
 import lombok.Getter;
 import org.bukkit.Location;
+import org.bukkit.entity.Player;
 
 import java.util.UUID;
+import java.util.function.Consumer;
 
 @Getter
 public abstract class MinigameRole {
@@ -26,6 +28,10 @@ public abstract class MinigameRole {
 
     public void teleportAsync(Location location) {
         eventPlayer.teleportAsync(location);
+    }
+
+    public void operatePlayer(Consumer<Player> consumer) {
+        eventPlayer.operatePlayer(consumer);
     }
 
 }

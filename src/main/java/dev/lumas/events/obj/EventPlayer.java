@@ -98,7 +98,7 @@ public class EventPlayer implements Serializable, Scorer {
     public void operatePlayer(Consumer<Player> consumer) {
         Player player = this.getPlayer();
         if (player != null) {
-            Executors.runSync(() -> consumer.accept(player));
+            Executors.runSync(player, () -> consumer.accept(player));
         }
     }
 

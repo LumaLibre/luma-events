@@ -248,29 +248,27 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             Logging.errorLog(t.getMessage(), t);
         }
 
-        Executors.runSync(() -> {
-            if (this.isCancelled()) return; // does this need to be done sync? - Apparently so.
-            CountdownBossBar.builder()
-                    .title("<yellow>Generating Arena...") // <gray>%ss</gray>
-                    .color(BossBar.Color.YELLOW)
-                    .seconds(5)
-                    .audience(this.audience)
-                    .countUp(true)
-                    .callback(() -> Executors.runSync(() -> {
-                        if (this.isCancelled()) return;
-                        this.arenaReady = true;
+        if (this.isCancelled()) return; // does this need to be done sync? - Apparently so.
+        CountdownBossBar.builder()
+                .title("<yellow>Generating Arena...") // <gray>%ss</gray>
+                .color(BossBar.Color.YELLOW)
+                .seconds(5)
+                .audience(this.audience)
+                .countUp(true)
+                .callback(() -> {
+                    if (this.isCancelled()) return;
+                    this.arenaReady = true;
 
-                        if (useWorldBorder) setupWorldBorderSafe(radius);
+                    if (useWorldBorder) setupWorldBorderSafe(radius);
 
-                        teleportPlayersToAssignedSpawnsThen(() -> {
-                            if (useWorldBorder) armAndShrinkWorldBorder();
-                            startGameTimerBossBar();
-                            this.sendAudienceMessage("<green>MineBattle started!</green>");
-                        });
-                    }))
-                    .build()
-                    .start();
-        });
+                    teleportPlayersToAssignedSpawnsThen(() -> {
+                        if (useWorldBorder) armAndShrinkWorldBorder();
+                        startGameTimerBossBar();
+                        this.sendAudienceMessage("<green>MineBattle started!</green>");
+                    });
+                })
+                .build()
+                .start();
     }
 
     @Override
@@ -279,9 +277,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         updateSurvivalPoints(timeLeftMillis);
         // spinning up a new thread to not block this current thread
         Executors.runAsync(this::updateLineOfSightVisibility);
-        Executors.runSync(() -> {
-            tickPeriodicReveal(timeLeftMillis);
-        });
+        tickPeriodicReveal(timeLeftMillis);
         this.roleMap.forEach(AbstractMineBattlePlayer::tick);
         if (aliveCount() <= 1) this.stop();
     }
@@ -297,7 +293,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         AbstractMineBattlePlayer role = this.roleMap.remove(participant.getUuid());
         if (role != null) role.cleanup();
         UUID uuid = participant.getUuid();
-        Executors.runSync(() -> {
+        Executors.runSync(participant, () -> {
             Player leaving = participant.getPlayer();
             if (leaving != null) {
                 for (EventPlayer ep : this.participants) {
@@ -324,22 +320,26 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             }
         });
 
-        Executors.runSync(() -> {
-            this.boundingBox.getEntities(Item.class).forEach(Entity::remove);
 
-            for (EventPlayer ep : this.participants) {
-                ep.teleportAsync(this.lobbyLocation);
-                Player p = ep.getPlayer();
-                if (p == null) continue;
-                ep.operatePlayer(MineBattle::bukkitCleanup);
-                for (EventPlayer other : this.participants) {
-                    Player o = other.getPlayer();
-                    if (o != null) {
-                        o.showPlayer(EventMain.getInstance(), p);
-                    }
+        unsafe(() -> {
+            this.boundingBox.getEntities(Item.class).forEach(entity -> {
+                Executors.runSync(entity, () -> entity.remove());
+            });
+        });
+
+        for (EventPlayer ep : this.participants) {
+            ep.teleportAsync(this.lobbyLocation);
+            Player p = ep.getPlayer();
+            if (p == null) continue;
+            ep.operatePlayer(MineBattle::bukkitCleanup);
+            for (EventPlayer other : this.participants) {
+                Player o = other.getPlayer();
+                if (o != null) {
+                    Executors.runSync(o, () -> o.showPlayer(EventMain.getInstance(), p));
                 }
             }
-        });
+        }
+
         forceVisibleUntil.clear();
         hiddenByViewer.clear();
 
@@ -353,7 +353,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 }
             });
         }
-        Executors.runSync(this::restoreWorldBorder);
+
+        this.restoreWorldBorder();
 
         this.scoreboard.handleGameEnd(this.audience, () -> CountdownBossBar.builder()
                 .audience(this.audience)
@@ -744,13 +745,11 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 //        }
 
         // Apply changes on the main thread
-        Executors.runSync(() -> {
-            if (!arenaReady) return; // Game is not active
-            for (Visibility v : changes) {
-                if (!v.viewer().isOnline() || !v.target().isOnline()) continue;
-                setCanSee(v.viewer(), v.target(), v.shouldSee());
-            }
-        });
+        if (!arenaReady) return; // Game is not active
+        for (Visibility v : changes) {
+            if (!v.viewer().isOnline() || !v.target().isOnline()) continue;
+            setCanSee(v.viewer(), v.target(), v.shouldSee());
+        }
     }
 
     private boolean hasAsyncLineOfSight(Location from, Location to, org.bukkit.World world) {
@@ -806,7 +805,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         Player viewer = Bukkit.getPlayer(viewerId);
         Player target = Bukkit.getPlayer(targetId);
         if (viewer != null && target != null) {
-            viewer.showPlayer(EventMain.getInstance(), target);
+            Executors.runSync(viewer, () -> viewer.showPlayer(EventMain.getInstance(), target));
         }
     }
 
@@ -857,21 +856,23 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             Player bukkitPlayer = abstractMineBattlePlayer.getEventPlayer().getPlayer();
 
             if (bukkitPlayer == null) continue;
+            Executors.runSync(bukkitPlayer, () -> {
 
-            // Glow all active players
-            if (abstractMineBattlePlayer instanceof ActiveMineBattlePlayer) {
-                bukkitPlayer.addPotionEffect(glowing);
-                bukkitPlayer.playSound(bukkitPlayer, Sound.ENTITY_WITHER_SPAWN, 1, 1);
-            }
+                // Glow all active players
+                if (abstractMineBattlePlayer instanceof ActiveMineBattlePlayer) {
+                    bukkitPlayer.addPotionEffect(glowing);
+                    bukkitPlayer.playSound(bukkitPlayer, Sound.ENTITY_WITHER_SPAWN, 1, 1);
+                }
 
-            // TODO: I don't like this nested loop, there is probably a better way to do this.
-            // Force visibility (viewers -> actives)
-            UUID viewerId = bukkitPlayer.getUniqueId();
-            for (ActiveMineBattlePlayer target : this.roleMap.getMatching(ActiveMineBattlePlayer.class)) {
-                Player targetPlayer = target.getEventPlayer().getPlayer();
-                if (targetPlayer == null || bukkitPlayer == targetPlayer) continue;
-                forceShowFor(viewerId, targetPlayer.getUniqueId(), durationMs);
-            }
+                // TODO: I don't like this nested loop, there is probably a better way to do this.
+                // Force visibility (viewers -> actives)
+                UUID viewerId = bukkitPlayer.getUniqueId();
+                for (ActiveMineBattlePlayer target : this.roleMap.getMatching(ActiveMineBattlePlayer.class)) {
+                    Player targetPlayer = target.getEventPlayer().getPlayer();
+                    if (targetPlayer == null || bukkitPlayer == targetPlayer) continue;
+                    forceShowFor(viewerId, targetPlayer.getUniqueId(), durationMs);
+                }
+            });
         }
     }
 
@@ -906,13 +907,16 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         org.bukkit.World bw = arenaOrigin.getWorld();
         if (bw == null) return;
 
-        WorldBorder border = bw.getWorldBorder();
+        // ?? what thread do i run this on
+        Executors.global(() -> {
+            WorldBorder border = bw.getWorldBorder();
 
-        border.setDamageBuffer(0.0);
-        border.setDamageAmount(3.5);
+            border.setDamageBuffer(0.0);
+            border.setDamageAmount(3.5);
 
-        long seconds = Math.max(1, timeLimitMillis / 1000L);
-        border.setSize(5.0 /*end diameter*/, seconds);
+            long seconds = Math.max(1, timeLimitMillis / 1000L);
+            border.setSize(5.0 /*end diameter*/, seconds);
+        });
     }
 
     // TODO: Should be moved to role class. Also futures are probably unnecessary here (just tp and forget).
@@ -946,7 +950,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                .thenRun(() -> Executors.runSync(() -> Executors.delayedSync(20L, afterAllTeleports)));
+                .thenRun(() -> Executors.delayedGlobal(20L, afterAllTeleports));
     }
 
     private void equip(Player player) {
@@ -967,14 +971,16 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         org.bukkit.World bw = arenaOrigin.getWorld();
         if (bw == null) return;
 
-        WorldBorder border = bw.getWorldBorder();
+        Executors.global(() -> {
+            WorldBorder border = bw.getWorldBorder();
 
-        border.setCenter(savedBorder.center());
-        border.setSize(savedBorder.size());
-        border.setDamageAmount(savedBorder.damageAmount());
-        border.setDamageBuffer(savedBorder.damageBuffer());
-        border.setWarningDistance(savedBorder.warningDistance());
-        border.setWarningTime(savedBorder.warningTime());
+            border.setCenter(savedBorder.center());
+            border.setSize(savedBorder.size());
+            border.setDamageAmount(savedBorder.damageAmount());
+            border.setDamageBuffer(savedBorder.damageBuffer());
+            border.setWarningDistance(savedBorder.warningDistance());
+            border.setWarningTime(savedBorder.warningTime());
+        });
 
         savedBorder = null;
     }
@@ -1056,7 +1062,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         if (killer == null) killer = dead.getKiller();
 
         Player finalKiller = killer;
-        Executors.runSync(() -> role.eliminate(finalKiller));
+        Executors.runSync(role, () -> role.eliminate(finalKiller));
     }
 
     private int aliveCount() {
@@ -1081,11 +1087,13 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
         Set<UUID> hidden = hiddenByViewer.computeIfAbsent(viewerId, k -> new HashSet<>());
 
-        if (shouldSee) {
-            if (hidden.remove(targetId)) viewer.showPlayer(EventMain.getInstance(), target);
-        } else {
-            if (hidden.add(targetId)) viewer.hidePlayer(EventMain.getInstance(), target);
-        }
+        Executors.runSync(viewer, () -> {
+            if (shouldSee) {
+                if (hidden.remove(targetId)) viewer.showPlayer(EventMain.getInstance(), target);
+            } else {
+                if (hidden.add(targetId)) viewer.hidePlayer(EventMain.getInstance(), target);
+            }
+        });
     }
 
     private boolean forcedVisible(UUID viewerId, UUID targetId) {
@@ -1221,7 +1229,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             TNTPrimed tnt = location.getWorld().spawn(location.add(0.5, 0.5, 0.5), TNTPrimed.class);
             tnt.setFuseTicks(40);
             tnt.setSource(player);
-            Executors.delayedSync(120L, tnt::remove);
+            Executors.delayedSync(tnt, 120L, tnt::remove);
         }
 
     }

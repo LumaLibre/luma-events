@@ -94,7 +94,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             this.propHuntPlayers.put(new Hider(this, participant));
             participant.operatePlayer(player -> {
                 if (player.getGameMode() != GameMode.SURVIVAL) {
-                    Executors.runSync(() -> player.setGameMode(GameMode.SURVIVAL));
+                    player.setGameMode(GameMode.SURVIVAL);
                 }
             });
         }
@@ -129,7 +129,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                             float distance = (float) player.getLocation().distance(this.startLocation);
                             // increase by 0.8 for every 10 blocks, cap at 15.0f
                             float volume = Math.min(0.8f + (distance / 10f) * 0.8f, 15.0f);
-                            Executors.runSync(() -> {
+                            Executors.runSync(player, () -> {
                                 player.playSound(this.startLocation, Sound.ENTITY_WARDEN_EMERGE, volume, 1.0f);
                             });
                         }
@@ -164,8 +164,8 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             return;
         }
 
-        Executors.runSync(() -> {
-            for (PropHuntPlayer propHuntPlayer : this.propHuntPlayers) {
+        for (PropHuntPlayer propHuntPlayer : this.propHuntPlayers) {
+            Executors.runSync(propHuntPlayer.getEventPlayer(), () -> {
                 propHuntPlayer.onTick();
                 propHuntPlayer.getEventPlayer().operatePlayer(player -> {
                     if (player.getFoodLevel() < 20) {
@@ -173,8 +173,8 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                         player.setSaturation(10f);
                     }
                 });
-            }
-        });
+            });
+        }
     }
 
     @Override
@@ -190,12 +190,12 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             }
         });
 
-        Executors.runSync(() -> {
-            for (PropHuntPlayer propHuntPlayer : this.propHuntPlayers) {
+        for (PropHuntPlayer propHuntPlayer : this.propHuntPlayers) {
+            Executors.runSync(propHuntPlayer.getEventPlayer(), () -> {
                 propHuntPlayer.cleanup();
                 propHuntPlayer.getEventPlayer().teleportAsync(this.spawnLocation);
-            }
-        });
+            });
+        }
         this.scoreboard.handleGameEnd(this.audience, () -> {
             this.participants.forEach(participant -> participant.teleportAsync(this.spawnLocation));
             CountdownBossBar.builder()
@@ -356,7 +356,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                 Player otherPlayer = other.getEventPlayer().getPlayer();
                 Player selfPlayer = this.getEventPlayer().getPlayer();
                 if (otherPlayer != null && selfPlayer != null) {
-                    Executors.runSync(() -> otherPlayer.hidePlayer(EventMain.getInstance(), selfPlayer));
+                    Executors.runSync(otherPlayer, () -> otherPlayer.hidePlayer(EventMain.getInstance(), selfPlayer));
                 }
             }
             this.hidden = true;
@@ -369,7 +369,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                 Player otherPlayer = other.getEventPlayer().getPlayer();
                 Player selfPlayer = this.getEventPlayer().getPlayer();
                 if (otherPlayer != null && selfPlayer != null) {
-                    Executors.runSync(() -> otherPlayer.showPlayer(EventMain.getInstance(), selfPlayer));
+                    Executors.runSync(otherPlayer, () -> otherPlayer.showPlayer(EventMain.getInstance(), selfPlayer));
                 }
             }
             this.hidden = false;
@@ -758,7 +758,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
         public Spectator(PropHunt context, EventPlayer eventPlayer) {
             super(context, eventPlayer);
-            Executors.runSync(() -> {
+            Executors.runSync(eventPlayer, () -> {
                 this.hide(Seeker.class, Hider.class);
             });
         }
@@ -859,7 +859,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         public <T extends PropHuntPlayer> T swapRole(EventPlayer eventPlayer, Supplier<? extends PropHuntPlayer> newRoleSupplier) {
             PropHuntPlayer currentRole = this.get(eventPlayer.getUuid());
             if (currentRole != null) {
-                Executors.runSync(() -> {
+                Executors.runSync(eventPlayer, () -> {
                     currentRole.cleanup();
                 });
             }

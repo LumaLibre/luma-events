@@ -1,6 +1,5 @@
 package dev.lumas.events.games.logic;
 
-import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.TheNabbitsMinigameDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
@@ -11,18 +10,18 @@ import dev.lumas.events.games.models.Scoreboard;
 import dev.lumas.events.games.tokenformula.TheNabbitsTokenFormula;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.WorldTiedBoundingBox;
+import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -92,11 +91,7 @@ public final class TheNabbits extends InventoryUnifiedMinigame {
         for (EventPlayer participant : this.participants) {
             nabbitParticipants.add(new NabbitPlayer(participant));
             participant.teleportAsync(this.findValidSpawnLocation(true));
-            Player bukkitPlayer = participant.getPlayer();
-            if (bukkitPlayer == null) {
-                continue;
-            }
-            Bukkit.getScheduler().runTask(EventMain.getInstance(), bukkitPlayer::clearActivePotionEffects);
+            participant.operatePlayer(LivingEntity::clearActivePotionEffects);
         }
         NabbitPlayer randomNabbitPlayer = Util.getRandom(this.nabbitParticipants);
         randomNabbitPlayer.changeRole(NabbitPlayer.Role.NABBIT_BOOTSTRAP, false);
@@ -191,8 +186,11 @@ public final class TheNabbits extends InventoryUnifiedMinigame {
         if (this.countdownBossBar != null) {
             this.countdownBossBar.stop(false);
         }
-        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
-            this.boundingBox.getEntities(Item.class).forEach(Entity::remove);
+
+        unsafe(() -> {
+            this.boundingBox.getEntities(Item.class).forEach(entity -> {
+                Executors.runSync(entity, entity::remove);
+            });
         });
     }
 
@@ -344,7 +342,7 @@ public final class TheNabbits extends InventoryUnifiedMinigame {
             itemStack.editMeta((meta) -> meta.displayName(Component.text(Math.random())));
 
             // Spawn dropped item
-            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+            Executors.runSync(location, () -> {
                 location.getWorld().dropItem(location, itemStack);
             });
         }

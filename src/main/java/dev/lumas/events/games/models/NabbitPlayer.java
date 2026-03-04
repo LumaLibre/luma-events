@@ -3,6 +3,7 @@ package dev.lumas.events.games.models;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.games.interfaces.Scorer;
 import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.glowapi.colormanagers.ColorManager;
 import lombok.Getter;
@@ -98,13 +99,10 @@ public class NabbitPlayer implements Scorer {
     public void handleGameEnd(Runnable callback) {
         this.endDisguise();
 
-        Player bukkitPlayer = this.eventPlayer.getPlayer();
-        if (bukkitPlayer != null) {
-            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
-                ColorManager.updatePlayersColor(bukkitPlayer);
-                bukkitPlayer.removePotionEffect(PotionEffectType.GLOWING);
-            });
-        }
+        this.eventPlayer.operatePlayer(bukkitPlayer -> {
+            ColorManager.updatePlayersColor(bukkitPlayer);
+            bukkitPlayer.removePotionEffect(PotionEffectType.GLOWING);
+        });
 
         callback.run();
     }
@@ -229,11 +227,7 @@ public class NabbitPlayer implements Scorer {
     }
 
     public void addNabbitEffects() {
-        Player bukkitPlayer = this.eventPlayer.getPlayer();
-        if (bukkitPlayer == null) {
-            return;
-        }
-        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+        this.eventPlayer.operatePlayer(bukkitPlayer -> {
             ColorManager.setTempPlayerColor(bukkitPlayer, ChatColor.DARK_PURPLE);
             bukkitPlayer.addPotionEffect(GLOWING_5S);
             bukkitPlayer.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 100, 0, false, false, false));
@@ -241,11 +235,7 @@ public class NabbitPlayer implements Scorer {
     }
 
     public void addStandardGlow() {
-        Player bukkitPlayer = this.eventPlayer.getPlayer();
-        if (bukkitPlayer == null) {
-            return;
-        }
-        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+        this.eventPlayer.operatePlayer(bukkitPlayer -> {
             ColorManager.setTempPlayerColor(bukkitPlayer, Util.getRandom(ALT_COLORS));
             bukkitPlayer.addPotionEffect(GLOWING_1S);
         });
@@ -253,7 +243,7 @@ public class NabbitPlayer implements Scorer {
 
     private void endDisguise() {
         if (this.rabbitDisguise != null) {
-            Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
+            Executors.runSync(this.rabbitDisguise.getEntity(), () -> {
                 this.rabbitDisguise.stopDisguise();
                 this.rabbitDisguise = null;
             });
