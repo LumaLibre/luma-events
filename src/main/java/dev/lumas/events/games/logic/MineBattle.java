@@ -989,6 +989,12 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     public void onEntityDamagedByEntityEvent(EntityDamageByEntityEvent event) {
         this.ensureNotIllegal();
         if (!(event.getEntity() instanceof Player victim)) return;
+
+        if (event.getDamager() instanceof TNTPrimed && isParticipant(victim)) {
+            event.setDamage(event.getDamage() * 0.75);
+            return;
+        }
+
         if (!(event.getDamager() instanceof Player damager)) return;
         if (!isParticipant(victim) || !isParticipant(damager)) return;
         if (isActive(damager)) return;

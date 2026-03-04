@@ -1,6 +1,5 @@
 package dev.lumas.events.games.logic;
 
-import com.sk89q.worldedit.util.formatting.text.format.TextColor;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.TNTRunDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
@@ -71,8 +70,10 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     ContextLogger LOGGER = ContextLogger.getLogger(NamedTextColor.YELLOW, false);
 
     private static final BlockData AIR_BLOCK_DATA = Material.AIR.createBlockData();
-    private static final double DECAY_PRECISION = 1.0e-4;
     private static final NamespacedKey POWERUP_ID_KEY = new NamespacedKey(EventMain.getInstance(), "tnt-run-powerup");
+    private static final double FOOTPRINT_MARGIN = 1.0e-3;
+    private static final double MAX_EDGE_EPS = 1.0e-9;
+    private static final double FEET_Y_EPS = 1.0e-6;
 
     private final WorldEditStructure worldEditStructure;
     private final Location lobbyLocation;
@@ -178,8 +179,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         tickCounter++;
 
         processDecayQueue();
-
-        LOGGER.debug("Attempting to spawn powerups... (decayArmed="+decayArmed+",boundingBox!=null="+(boundingBox != null)+",powerupByEntity.size()="+powerupByEntity.size()+",powerupMaxAlive="+powerupMaxAlive+")");
         if (decayArmed && boundingBox != null && powerupByEntity.size() < powerupMaxAlive) {
             for (int i = 0; i <= powerupSpawnAttempts; i++) trySpawnRandomPowerup();
         }
@@ -289,18 +288,20 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     }
 
     private void scheduleDecayUnderFootprint(Player player) {
-        if (!this.decayArmed) {
-            return;
-        }
+        if (!this.decayArmed) return;
 
         BoundingBox bb = player.getBoundingBox();
-        int minX = (int) Math.floor(bb.getMinX() + DECAY_PRECISION);
-        int maxX = (int) Math.floor(bb.getMaxX() - DECAY_PRECISION);
-        int minZ = (int) Math.floor(bb.getMinZ() + DECAY_PRECISION);
-        int maxZ = (int) Math.floor(bb.getMaxZ() - DECAY_PRECISION);
-        int y0 = (int) Math.floor(bb.getMinY() - DECAY_PRECISION);
+        double minXf = bb.getMinX() - FOOTPRINT_MARGIN;
+        double maxXf = bb.getMaxX() + FOOTPRINT_MARGIN;
+        double minZf = bb.getMinZ() - FOOTPRINT_MARGIN;
+        double maxZf = bb.getMaxZ() + FOOTPRINT_MARGIN;
+        int minX = (int) Math.floor(minXf);
+        int maxX = (int) Math.floor(maxXf - MAX_EDGE_EPS);
+        int minZ = (int) Math.floor(minZf);
+        int maxZ = (int) Math.floor(maxZf - MAX_EDGE_EPS);
+        int y0 = (int) Math.floor(bb.getMinY() - FEET_Y_EPS);
 
-        org.bukkit.World w = player.getWorld();
+        World w = player.getWorld();
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
                 for (int dy = 0; dy <= 1; dy++) {
