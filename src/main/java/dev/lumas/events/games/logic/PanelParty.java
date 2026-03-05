@@ -26,6 +26,7 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.Tag;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -437,6 +438,11 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
         public void setItemInHand(ItemStack itemStack) {
             this.eventPlayer.operatePlayer(player -> {
+                for (ItemStack item : player.getInventory().getContents()) {
+                    if (item != null && !Tag.TERRACOTTA.isTagged(item.getType())) {
+                        return; // lazy fix, probably broke because of folia scheduling
+                    }
+                }
                 player.getInventory().setItemInMainHand(itemStack);
             });
         }
