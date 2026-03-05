@@ -71,9 +71,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     private static final BlockData AIR_BLOCK_DATA = Material.AIR.createBlockData();
     private static final NamespacedKey POWERUP_ID_KEY = new NamespacedKey(EventMain.getInstance(), "tnt-run-powerup");
-    private static final double FOOTPRINT_MARGIN = 1.0e-3;
-    private static final double MAX_EDGE_EPS = 1.0e-9;
-    private static final double FEET_Y_EPS = 1.0e-6;
+    private static final double FOOTPRINT_MARGIN = 1.0e-2;
 
     private final WorldEditStructure worldEditStructure;
     private final Location lobbyLocation;
@@ -291,27 +289,22 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         if (!this.decayArmed) return;
 
         BoundingBox bb = player.getBoundingBox();
-        double minXf = bb.getMinX() - FOOTPRINT_MARGIN;
-        double maxXf = bb.getMaxX() + FOOTPRINT_MARGIN;
-        double minZf = bb.getMinZ() - FOOTPRINT_MARGIN;
-        double maxZf = bb.getMaxZ() + FOOTPRINT_MARGIN;
-        int minX = (int) Math.floor(minXf);
-        int maxX = (int) Math.floor(maxXf - MAX_EDGE_EPS);
-        int minZ = (int) Math.floor(minZf);
-        int maxZ = (int) Math.floor(maxZf - MAX_EDGE_EPS);
-        int y0 = (int) Math.floor(bb.getMinY() - FEET_Y_EPS);
-
         World w = player.getWorld();
-        for (int x = minX; x <= maxX; x++) {
-            for (int z = minZ; z <= maxZ; z++) {
-                for (int dy = 0; dy <= 1; dy++) {
-                    Block block = w.getBlockAt(x, y0 - dy, z);
-                    Block above = w.getBlockAt(x, y0 - dy + 1, z);
-                    if (block.getType().isAir() || !above.getType().isAir()) continue;
-                    if (!block.getType().hasGravity()) continue;
-                    scheduleDecay(block);
-                }
-            }
+
+        int y = player.getLocation().getBlockY() - 1;
+
+        double minX = bb.getMinX() + FOOTPRINT_MARGIN;
+        double maxX = bb.getMaxX() - FOOTPRINT_MARGIN;
+        double minZ = bb.getMinZ() + FOOTPRINT_MARGIN;
+        double maxZ = bb.getMaxZ() - FOOTPRINT_MARGIN;
+
+        int[] xs = { (int)Math.floor(minX), (int)Math.floor(maxX) };
+        int[] zs = { (int)Math.floor(minZ), (int)Math.floor(maxZ) };
+
+        for (int x : xs) for (int z : zs) {
+            Block b = w.getBlockAt(x, y, z);
+            if (!b.getType().hasGravity() || b.getType().isAir()) continue;
+            scheduleDecay(b);
         }
     }
 
