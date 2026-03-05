@@ -425,9 +425,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
                 return;
             }
 
-            if (this.context.decayArmed) {
-                this.context.scheduleDecayUnderFootprint(player);
-            }
+            this.context.scheduleDecayUnderFootprint(player);
 
             // add score
             this.context.scoreboard.addScore(this.eventPlayer, 1);
