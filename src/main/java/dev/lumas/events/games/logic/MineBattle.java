@@ -289,7 +289,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
         AbstractMineBattlePlayer role = this.roleMap.remove(participant.getUuid());
         if (role != null) role.cleanup();
         UUID uuid = participant.getUuid();
@@ -308,7 +308,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             forceVisibleUntil.remove(uuid);
             for (Map<UUID, Long> m : forceVisibleUntil.values()) m.remove(uuid);
         });
-        return super.removeParticipant(participant);
+        return super.removeParticipant(participant, doTeleport);
     }
 
     @Override

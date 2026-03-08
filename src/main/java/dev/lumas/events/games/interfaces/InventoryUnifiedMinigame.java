@@ -65,7 +65,7 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
 
         for (EventPlayer p : removed) {
             Executors.runSync(p, () -> {
-                this.removeParticipant(p);
+                this.removeParticipant(p, false);
             });
         }
     }
@@ -98,7 +98,7 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
         Player player = participant.getPlayer();
         Executors.runSync(participant, () -> {
             if (player != null) {
@@ -114,7 +114,7 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
                 this.tokenHandler(participant);
             }
         });
-        return super.removeParticipant(participant);
+        return super.removeParticipant(participant, doTeleport);
     }
 
     @Nullable

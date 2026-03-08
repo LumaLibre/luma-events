@@ -31,7 +31,7 @@ public class MinigameQuitCommand implements CommandModule {
 
         Minigame current = MinigameManager.getInstance().getCurrent();
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
-        if (!current.removeParticipant(eventPlayer)) {
+        if (!current.removeParticipant(eventPlayer, true)) {
             Util.sendMsg(player, "No active minigame found.");
         }
         return true;

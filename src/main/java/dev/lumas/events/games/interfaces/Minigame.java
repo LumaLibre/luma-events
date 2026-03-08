@@ -51,9 +51,9 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
 
     protected long startTime = -1;
-    protected boolean open = false;
-    protected boolean active = false;
-    protected boolean stopping = false;
+    protected volatile boolean open = false;
+    protected volatile boolean active = false;
+    protected volatile boolean stopping = false;
     protected Audience audience;
     protected MinigameBoundingBox boundingBox;
     protected CountdownBossBar queueBossbar;
@@ -203,13 +203,14 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         return true;
     }
 
-    public boolean removeParticipant(EventPlayer player) {
+    public boolean removeParticipant(EventPlayer player, boolean doTeleport) {
         this.participants.remove(player);
         Location loc = this.getGameDropOffLocation();
-        Player bukkitPlayer = player.getPlayer();
-        if (bukkitPlayer != null && loc != null) {
-            bukkitPlayer.teleportAsync(loc);
-            Util.sendMsg(bukkitPlayer, "You have been removed from the active minigame!");
+        if (loc != null && doTeleport) {
+            player.operatePlayer(bukkitPlayer -> {
+                bukkitPlayer.teleportAsync(loc);
+                Util.sendMsg(bukkitPlayer, "You have been removed from the active minigame!");
+            });
         }
         this.audience = Audience.audience(participants.stream()
                 .map(EventPlayer::getPlayer).filter(Objects::nonNull).toList());

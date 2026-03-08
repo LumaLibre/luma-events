@@ -204,7 +204,7 @@ public final class BoatRace2 extends Minigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer player) {
+    public boolean removeParticipant(EventPlayer player, boolean doTeleport) {
         BoatRacePlayer racer = this.racers.stream()
                 .filter(r -> r.is(player))
                 .findFirst()
@@ -213,7 +213,7 @@ public final class BoatRace2 extends Minigame {
             racer.cleanup();
             this.racers.remove(racer);
         }
-        return super.removeParticipant(player);
+        return super.removeParticipant(player, doTeleport);
     }
 
     @EventHandler

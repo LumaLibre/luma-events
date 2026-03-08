@@ -63,6 +63,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 public final class TNTRun extends InventoryUnifiedMinigame {
@@ -99,14 +100,14 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     // TODO: Fix token formula
     private final TokenFormula<Double> tokenFormula = new DivisibleTokenFormula(90.0, 12);
     private final MinigameRoleMap<AbstractTNTRunPlayer> roleMap = new MinigameRoleMap<>(AbstractTNTRunPlayer::cleanup);
-    private final Map<BlockPos, Long> decayQueue = new HashMap<>();
+    private final Map<BlockPos, Long> decayQueue = new ConcurrentHashMap<>();
     private long tickCounter = 0L;
 
     private float powerupSpinAngle = 0f;
     private final Map<PowerupType, Integer> powerupWeights;
-    private final Map<UUID, String> powerupByEntity = new HashMap<>();
-    private final Map<UUID, ItemStack> powerupItemByEntity = new HashMap<>();
-    private final Map<UUID, Long> updraftCooldownUntilTick = new HashMap<>();
+    private final Map<UUID, String> powerupByEntity = new ConcurrentHashMap<>();
+    private final Map<UUID, ItemStack> powerupItemByEntity = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> updraftCooldownUntilTick = new ConcurrentHashMap<>();
     private final BlockAnimationPlatform tempPlatforms;
 
     public TNTRun(TNTRunDefinition def) {
@@ -244,11 +245,11 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
         AbstractTNTRunPlayer tntRunPlayer = this.roleMap.remove(participant.getUuid());
         tntRunPlayer.cleanup();
         participant.operatePlayer(p -> p.setFallDistance(0f));
-        return super.removeParticipant(participant);
+        return super.removeParticipant(participant, doTeleport);
     }
 
     private void teleportPlayersToArenaThenStartCountdown() {
@@ -412,6 +413,9 @@ public final class TNTRun extends InventoryUnifiedMinigame {
             }
 
             player.setFoodLevel(20);
+            if (player.getAllowFlight()) {
+                player.setAllowFlight(false);
+            }
 
             if (player.getLocation().getY() < this.context.eliminationHeight && this.context.decayArmed) {
                 this.eliminate();

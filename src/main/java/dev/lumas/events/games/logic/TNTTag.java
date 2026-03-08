@@ -141,7 +141,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer player) {
+    public boolean removeParticipant(EventPlayer player, boolean doTeleport) {
         TNTTagPlayer tntTagPlayer = this.tntTagPlayers.get(player.getUuid());
         if (tntTagPlayer != null) {
             tntTagPlayer.removeEffects(false);
@@ -152,7 +152,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         if (bukkitPlayer != null && this.roundCountdownBar != null) {
             this.roundCountdownBar.getBossBar().removeViewer(bukkitPlayer);
         }
-        return super.removeParticipant(player);
+        return super.removeParticipant(player, doTeleport);
     }
 
     public <T extends TNTTagPlayer> T swapRole(EventPlayer eventPlayer, Supplier<? extends TNTTagPlayer> newRoleSupplier) {

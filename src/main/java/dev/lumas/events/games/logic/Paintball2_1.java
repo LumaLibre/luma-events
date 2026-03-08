@@ -248,7 +248,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
         if (this.paintballTeams != null) {
             this.paintballTeams.stream()
                     .filter(t -> t.isMember(participant))
@@ -260,7 +260,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             ColorManager.updatePlayersColor(player);
             if (this.countdownBossBar != null) this.countdownBossBar.getBossBar().removeViewer(player);
         }
-        return super.removeParticipant(participant);
+        return super.removeParticipant(participant, doTeleport);
     }
 
     @EventHandler
@@ -308,8 +308,13 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
             event.setCancelled(true);
             event.setReviveHealth(20.0);
-            event.setDeathSound(Sound.ITEM_TOTEM_USE);
-            player.teleportAsync(victimTeam.getSpawnPoint().toCenterLocation());
+            unsafe(() -> {
+                event.setDeathSound(Sound.ITEM_TOTEM_USE);
+            });
+            unsafe(() -> {
+                Logging.log("Respawning player: " + player.getName() + " at team spawn point: " + victimTeam.getSpawnPoint() + " for " + eventPlayer.getName());
+                player.teleportAsync(victimTeam.getSpawnPoint().toCenterLocation());
+            });
             return;
         }
 
@@ -336,8 +341,13 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         // Respawn the player at their team's spawn point
         event.setCancelled(true);
         event.setReviveHealth(20.0);
-        event.setDeathSound(Sound.ITEM_TOTEM_USE);
-        player.teleportAsync(victimTeam.getSpawnPoint().toCenterLocation());
+        unsafe(() -> {
+            event.setDeathSound(Sound.ITEM_TOTEM_USE);
+        });
+        unsafe(() -> {
+            Logging.log("Respawning player: " + player.getName() + " at team spawn point: " + victimTeam.getSpawnPoint() + " for " + eventPlayer.getName());
+            player.teleportAsync(victimTeam.getSpawnPoint().toCenterLocation());
+        });
     }
 
 

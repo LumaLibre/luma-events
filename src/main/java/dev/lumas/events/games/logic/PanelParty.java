@@ -126,7 +126,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
         AbstractPanelPlayer role = this.roleMap.remove(participant.getUuid());
         if (role != null) {
             role.cleanup();
@@ -134,7 +134,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                 panelParticipant.checkEnd();
             }
         }
-        return super.removeParticipant(participant);
+        return super.removeParticipant(participant, doTeleport);
     }
 
     @Override
@@ -233,13 +233,19 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                     .title("<aqua><b>Game Over")
                     .seconds(10)
                     .callback(() -> {
-                        this.participants.forEach(eventPlayer -> {
-                            Location loc = this.getGameDropOffLocation();
-                            if (loc != null) {
-                                eventPlayer.teleportAsync(loc);
-                            }
-                            eventPlayer.sendMessage("This minigame has concluded.");
-                        });
+                        try {
+                            this.participants.forEach(eventPlayer -> {
+                                Location loc = this.getGameDropOffLocation();
+                                if (loc != null) {
+                                    Executors.runDelayedAsync(TimeUnit.MILLISECONDS, 100, (t) -> {
+                                        eventPlayer.teleportAsync(loc);
+                                    });
+                                }
+                                eventPlayer.sendMessage("This minigame has concluded.");
+                            });
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     })
                     .build()
                     .start();

@@ -30,12 +30,6 @@ public class MinigameInventoryRestoringQuitListener implements Listener {
         inventorySnapshot.restore(player);
         InventorySnapshotManager.INSTANCE.unregisterSnapshot(inventorySnapshot);
         EventPlayer eplayer = EventPlayerManager.getByUUID(player.getUniqueId());
-        minigame.removeParticipant(eplayer);
-        //minigame.sendAudienceMessage( eplayer.getName() + " has left the minigame.");
-
-        Location gameDropOffLocation = minigame.getGameDropOffLocation();
-        if (gameDropOffLocation != null) {
-            player.teleportAsync(gameDropOffLocation); // FIXME this probably won't be sufficient
-        }
+        minigame.removeParticipant(eplayer, false);
     }
 }

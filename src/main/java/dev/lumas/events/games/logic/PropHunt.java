@@ -221,12 +221,12 @@ public final class PropHunt extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
         PropHuntPlayer propHuntPlayer = this.propHuntPlayers.remove(participant.getUuid());
         if (propHuntPlayer != null) {
             propHuntPlayer.cleanup();
         }
-        return super.removeParticipant(participant);
+        return super.removeParticipant(participant, doTeleport);
     }
 
 

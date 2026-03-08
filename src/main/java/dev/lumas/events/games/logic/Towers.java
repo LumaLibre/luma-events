@@ -251,13 +251,13 @@ public final class Towers extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
         TowersPlayer towersPlayer = this.towersPlayers.remove(participant.getUuid());
         if (towersPlayer != null) {
             towersPlayer.cleanup();
         }
         Executors.runSync(participant, () -> releaseHidden(participant.getPlayer()));
-        return super.removeParticipant(participant);
+        return super.removeParticipant(participant, doTeleport);
     }
 
     @EventHandler
