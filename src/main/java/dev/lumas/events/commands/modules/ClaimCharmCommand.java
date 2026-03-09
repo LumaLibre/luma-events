@@ -7,6 +7,8 @@ import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Util;
+import dev.lumas.lumacore.manager.modules.AutoRegister;
+import dev.lumas.lumacore.manager.modules.RegisterType;
 import dev.lumas.lumaitems.api.LumaItemsAPI;
 import dev.lumas.lumaitems.model.CustomItem;
 import org.bukkit.Bukkit;
@@ -15,7 +17,7 @@ import org.bukkit.entity.Player;
 
 import java.util.List;
 
-//@AutoRegister(RegisterType.SUBCOMMAND)
+@AutoRegister(RegisterType.SUBCOMMAND)
 @CommandInfo(
         name = "claim",
         permission = "lumaevents.default",
@@ -38,7 +40,7 @@ public class ClaimCharmCommand implements CommandModule {
             return true;
         }
 
-        CustomItem customItem = LumaItemsAPI.getInstance().getCustomItem("christmas-charm");
+        CustomItem customItem = LumaItemsAPI.getInstance().getCustomItem("valentide-2026-charm");
         if (customItem == null) {
             Util.sendMsg(player, "Something went wrong trying to execute this command.");
             return true;
