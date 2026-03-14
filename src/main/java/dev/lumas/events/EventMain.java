@@ -1,5 +1,9 @@
 package dev.lumas.events;
 
+import dev.lumas.events.explorer.intention.ExplorerIntentContainer;
+import dev.lumas.events.explorer.intention.ExplorerIntents;
+import dev.lumas.events.explorer.mile.ExplorerMileContainer;
+import dev.lumas.events.explorer.mile.ExplorerMiles;
 import dev.lumas.events.items.CaramelAppleItem;
 import dev.lumas.events.tasks.PlaytimeCounterTask;
 import dev.lumas.lumacore.manager.modules.ModuleManager;
@@ -37,6 +41,10 @@ public final class EventMain extends JavaPlugin {
         okaeriConfigManager = new ConfigManager();
         moduleManager = new ModuleManager(this);
         moduleManager.reflectivelyRegisterModules();
+
+        // TODO: Temporary fields.
+        ExplorerIntentContainer c1 = ExplorerIntents.INSTANCE;
+        ExplorerMileContainer c2 = ExplorerMiles.INSTANCE;
 
 
         EventPlayerManager.loadAll();

@@ -5,10 +5,10 @@ import java.nio.charset.Charset
 plugins {
     id("java")
     id("com.gradleup.shadow") version "8.3.5"
-    id("io.freefair.lombok") version "8.10"
+    id("io.freefair.lombok") version "9.1.0"
     id("xyz.jpenilla.run-paper") version "2.3.1"
     kotlin("jvm")
-    kotlin("plugin.lombok") version "2.1.0"
+    kotlin("plugin.lombok") version "2.3.10"
 }
 
 group = "dev.lumas.events"

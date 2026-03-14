@@ -5,6 +5,7 @@ import com.destroystokyo.paper.profile.ProfileProperty;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.lumas.events.EventMain;
+import dev.lumas.events.explorer.mile.ActiveExplorerMile;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -44,7 +45,8 @@ import java.util.UUID;
 public final class Util {
 
     public static final Gson GSON = new GsonBuilder()
-            .excludeFieldsWithModifiers(Modifier.STATIC)
+            .registerTypeAdapter(ActiveExplorerMile.class, new ActiveExplorerMile.GsonTypeAdapter())
+            .excludeFieldsWithModifiers(Modifier.TRANSIENT, Modifier.STATIC)
             .setPrettyPrinting()
             .create();
     public static final Random RANDOM = new Random();

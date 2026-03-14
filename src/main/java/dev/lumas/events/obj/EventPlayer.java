@@ -1,10 +1,12 @@
 package dev.lumas.events.obj;
 
+import dev.lumas.events.explorer.mile.ActiveExplorerMile;
+import dev.lumas.events.explorer.mile.ExplorerMile;
+import dev.lumas.events.explorer.mile.ExplorerMileRegistry;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.Scorer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
@@ -19,25 +21,49 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 @Getter
 @Setter
-@AllArgsConstructor
 public class EventPlayer implements Serializable, Scorer {
+
+    private transient volatile Object LOCK;
 
     private final UUID uuid;
     private final Map<MinigameConstant, Integer> scores;
+    private final Set<ActiveExplorerMile> unlockedExplorerMiles;
     private boolean claimedCharm;
     private long secondsPlayed;
 
 
     // Initial creation
     public EventPlayer(UUID uuid) {
-        this(uuid, new HashMap<>(), false, 0L);
+        this(uuid, new HashMap<>(), new HashSet<>(), false, 0L);
+    }
+
+    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores, Set<ActiveExplorerMile> unlockedExplorerMiles, boolean claimedCharm, long secondsPlayed) {
+        this.uuid = uuid;
+        this.scores = scores;
+        this.unlockedExplorerMiles = unlockedExplorerMiles;
+        this.claimedCharm = claimedCharm;
+        this.secondsPlayed = secondsPlayed;
+    }
+
+    private Object getLock() {
+        if (LOCK == null) {
+            synchronized (this) {
+                if (LOCK == null) {
+                    LOCK = new Object();
+                }
+            }
+        }
+        return LOCK;
     }
 
 
@@ -146,6 +172,71 @@ public class EventPlayer implements Serializable, Scorer {
 
     public void addSecondsPlayed(long seconds) {
         this.secondsPlayed += seconds;
+    }
+
+
+    public <T> boolean hasUnlockedExplorerMile(ExplorerMile<T> explorerMile) {
+        for (ActiveExplorerMile activeExplorerMile : this.unlockedExplorerMiles) {
+            if (Objects.equals(activeExplorerMile.getMile().getFIELD_NAME(), explorerMile.getFIELD_NAME())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public <T> boolean unlockExplorerMile(ExplorerMile<T> explorerMile) {
+        return this.unlockedExplorerMiles.add(new ActiveExplorerMile(explorerMile));
+    }
+
+    public <T> ActiveExplorerMile getActiveExplorerMile(ExplorerMile<T> explorerMile) {
+        for (ActiveExplorerMile activeExplorerMile : unlockedExplorerMiles) {
+            if (Objects.equals(activeExplorerMile.getMile().getFIELD_NAME(), explorerMile.getFIELD_NAME())) {
+                return activeExplorerMile;
+            }
+        }
+        return null;
+    }
+
+    public <T> int getCurrentQuantity(ExplorerMile<T> explorerMile) {
+        for (ActiveExplorerMile activeExplorerMile : unlockedExplorerMiles) {
+            if (Objects.equals(activeExplorerMile.getMile().getFIELD_NAME(), explorerMile.getFIELD_NAME())) {
+                return activeExplorerMile.getCurrentQuantity();
+            }
+        }
+        return 0;
+    }
+
+    // TODO: Move this implementation to somewhere else
+    public void fireForExplorerMiles(Object event) {
+        synchronized (this.getLock()) {
+            Set<ActiveExplorerMile> testableExplorerMiles = new HashSet<>(this.unlockedExplorerMiles);
+
+            for (ExplorerMile<?> explorerMile : ExplorerMileRegistry.jvmUnifiedMap().values()) {
+                if (explorerMile.getEventClass() == event.getClass() && !hasUnlockedExplorerMile(explorerMile)) {
+                    //Util.log("Testing an ExplorerMile for which a player does not have any data for: " + explorerMile);
+                    testableExplorerMiles.add(new ActiveExplorerMile(explorerMile));
+                }
+            }
+
+
+            for (ActiveExplorerMile activeExplorerMile : testableExplorerMiles) {
+                if (activeExplorerMile == null) {
+                    continue;
+                }
+                if (activeExplorerMile.getMile().getEventClass() == event.getClass()) {
+                    activeExplorerMile.apply(event, this);
+                }
+            }
+
+            testableExplorerMiles.forEach(activeExplorerMile -> {
+                if (!hasUnlockedExplorerMile(activeExplorerMile.getMile())) {
+                    if (activeExplorerMile.hasProgress()) {
+                        this.unlockedExplorerMiles.add(activeExplorerMile);
+                        activeExplorerMile.playMilesUnlockEffect(this, null);
+                    }
+                }
+            });
+        }
     }
 
 }
