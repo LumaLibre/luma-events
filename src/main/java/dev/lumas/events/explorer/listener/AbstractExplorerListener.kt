@@ -9,13 +9,13 @@ import org.bukkit.entity.Player
 import org.bukkit.event.Listener
 import java.util.concurrent.TimeUnit
 
-abstract class AbstractExplorerListener : Listener {
-    fun fire(event: Any, entity: Entity) {
+interface AbstractExplorerListener : Listener {
+    fun fire(event: Any, entity: Entity, intentsOnly: Boolean = false) {
         ExplorerIntentRegistry.unifiedValues().forEach { intent ->
             intent.tryApply(entity.world, event)
         }
 
-        if (entity is Player) {
+        if (entity is Player && !intentsOnly) {
             Executors.runAsync { _ ->
                 val eventPlayer: EventPlayer = EventPlayerManager.getByUUID(entity.uniqueId)
                 eventPlayer.fireForExplorerMiles(event)
@@ -23,7 +23,7 @@ abstract class AbstractExplorerListener : Listener {
         }
     }
 
-    fun fireLater(event: Any, entity: Entity, delay: Long) {
+    fun fireLater(event: Any, entity: Entity, delay: Long, intentsOnly: Boolean = false) {
         Executors.delayedGlobal(delay) {
             Executors.runSync(entity) {
                 ExplorerIntentRegistry.unifiedValues().forEach { intent ->
@@ -32,7 +32,7 @@ abstract class AbstractExplorerListener : Listener {
             }
         }
 
-        if (entity is Player) {
+        if (entity is Player && !intentsOnly) {
             Executors.runDelayedAsync(TimeUnit.MILLISECONDS, delay * 50L) {
                 val eventPlayer: EventPlayer = EventPlayerManager.getByUUID(entity.uniqueId)
                 if (eventPlayer.isOnline()) {

@@ -16,12 +16,18 @@ import io.papermc.paper.event.player.PlayerFlowerPotManipulateEvent
 import io.papermc.paper.event.player.PlayerItemFrameChangeEvent
 import io.papermc.paper.event.player.PlayerNameEntityEvent
 import io.papermc.paper.event.player.PlayerShieldDisableEvent
+import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.command.UnknownCommandEvent
+import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.EntityDeathEvent
+import org.bukkit.event.entity.EntityExplodeEvent
+import org.bukkit.event.entity.EntityPotionEffectEvent
+import org.bukkit.event.entity.EntitySpawnEvent
+import org.bukkit.event.entity.EntityTameEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.entity.VillagerReplenishTradeEvent
 import org.bukkit.event.inventory.CraftItemEvent
@@ -45,7 +51,7 @@ import org.bukkit.event.player.PlayerRiptideEvent
 import org.bukkit.event.player.PlayerShearEntityEvent
 
 @AutoRegister(RegisterType.LISTENER)
-class ExplorerListeners : AbstractExplorerListener() {
+class ExplorerListeners : AbstractExplorerListener {
     @EventHandler
     fun onChat(event: AsyncChatEvent) {
         fire(event, event.getPlayer())
@@ -53,18 +59,20 @@ class ExplorerListeners : AbstractExplorerListener() {
 
     @EventHandler
     fun onBlockBreak(event: BlockBreakEvent) {
+        fire(event, event.player)
         fire(BlockBrokenExplorerEvent(event.block), event.player)
     }
 
     @EventHandler
     fun onBlockPlace(event: BlockPlaceEvent) {
+        fire(event, event.player)
         fire(BlockPlacedExplorerEvent(event.block), event.player)
     }
 
     @EventHandler
     fun onEntityDeath(event: EntityDeathEvent) {
-        val player = event.damageSource.causingEntity as? Player ?: return
-        fire(event, player)
+        val entity = event.damageSource.causingEntity as? Player ?: event.entity
+        fire(event, entity)
     }
 
     @EventHandler
@@ -242,5 +250,30 @@ class ExplorerListeners : AbstractExplorerListener() {
     @EventHandler
     fun onVillagerReplenishTrade(event: VillagerReplenishTradeEvent) {
         fire(event, event.entity)
+    }
+
+    @EventHandler
+    fun onEntitySpawn(event: EntitySpawnEvent) {
+        fire(event, event.entity)
+    }
+
+    @EventHandler
+    fun onEntityExplode(event: EntityExplodeEvent) {
+        fire(event, event.entity)
+    }
+
+    @EventHandler
+    fun onEntityDamage(event: EntityDamageEvent) {
+        fire(event, event.entity)
+    }
+
+    @EventHandler
+    fun onEntityPotionEffect(event: EntityPotionEffectEvent) {
+        fire(event, event.entity)
+    }
+
+    @EventHandler
+    fun onEntityTame(event: EntityTameEvent) {
+        fire(event, event.owner as? Entity ?: return)
     }
 }

@@ -9,7 +9,7 @@ import dev.lumas.events.games.exceptions.GameComponentIllegallyActive;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.MinigameBoundingBox;
-import dev.lumas.events.utility.AsynchronousRunnable;
+import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import dev.lumas.events.utility.Util;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;

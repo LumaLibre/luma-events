@@ -1,5 +1,6 @@
-package dev.lumas.events.utility;
+package dev.lumas.events.utility.scheduler;
 
+import dev.lumas.events.utility.Executors;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 

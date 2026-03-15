@@ -8,7 +8,7 @@ import dev.lumas.events.games.exceptions.GameAlreadyStartedException;
 import dev.lumas.events.games.exceptions.NoAvailableMinigames;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.logic.NonActiveMinigame;
-import dev.lumas.events.utility.AsynchronousRunnable;
+import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import dev.lumas.events.utility.Util;
 import eu.okaeri.configs.OkaeriConfig;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;

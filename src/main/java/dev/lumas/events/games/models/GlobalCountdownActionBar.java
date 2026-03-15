@@ -1,6 +1,6 @@
 package dev.lumas.events.games.models;
 
-import dev.lumas.events.utility.AsynchronousRunnable;
+import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.utility.Util;
