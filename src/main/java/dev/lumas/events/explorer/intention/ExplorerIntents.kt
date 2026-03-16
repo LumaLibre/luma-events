@@ -1,6 +1,7 @@
 package dev.lumas.events.explorer.intention
 
 import dev.lumas.events.EventMain
+import dev.lumas.events.EventPlayerManager
 import dev.lumas.events.explorer.custom.FullSecondRunnableEvent
 import dev.lumas.events.explorer.custom.HalfSecondRunnableEvent
 import dev.lumas.events.explorer.custom.TenSecondRunnableEvent
@@ -26,6 +27,7 @@ import org.bukkit.event.entity.EntityDeathEvent
 import org.bukkit.event.entity.EntityExplodeEvent
 import org.bukkit.event.entity.EntitySpawnEvent
 import org.bukkit.event.entity.EntityTameEvent
+import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.entity.VillagerReplenishTradeEvent
 import org.bukkit.event.inventory.InventoryOpenEvent
 import org.bukkit.event.inventory.InventoryType
@@ -35,7 +37,7 @@ import kotlin.random.Random
 
 object ExplorerIntents : ExplorerIntentContainer() {
 
-    private const val WORLD = "*" // TODO: Change me
+    private val WORLD = EventMain.getOkaeriConfig().suspendedWorlds // TODO: Change me
     private val TIMED_EXPLOSION = fun (loc: Location, delay: Long) {
         loc.world.playSound(loc, Sound.ENTITY_CREEPER_PRIMED, 1f, 1f)
         Executors.delayedSync(loc, delay) {
@@ -61,18 +63,26 @@ object ExplorerIntents : ExplorerIntentContainer() {
         InventoryType.LOOM
     )
 
-//    val DEATH_DELETE_INV = ExplorerIntent<PlayerDeathEvent>(
-//        title = "Death Deletes Inventory",
-//        desc = "On a player's death, their inventory is deleted.",
-//        world = WORLD,
-//        eventClass = PlayerDeathEvent::class,
-//    ) { event ->
-//        event.drops.clear()
-//        event.droppedExp = 0
-//        event.itemsToKeep.clear()
-//        event.entity.inventory.clear()
-//        event.player.exp = 0f
-//    }
+    val DEATH_DELETE_INV_AND_UNSUSPEND = ExplorerIntent<PlayerDeathEvent>(
+        title = "Death Deletes Inventory & Unsuspends",
+        desc = "On a player's death, their inventory is deleted and they are unsuspended.",
+        world = WORLD,
+        eventClass = PlayerDeathEvent::class,
+    ) { event ->
+        val player = event.player
+        event.isCancelled = true
+        event.drops.clear()
+        event.droppedExp = 0
+        event.itemsToKeep.clear()
+        player.inventory.clear()
+        player.exp = 0f
+        val eventPlayer = EventPlayerManager.getByUUIDOrNull(player.uniqueId)
+        if (eventPlayer != null) {
+            eventPlayer.unsuspend()
+        } else {
+            throw IllegalStateException("Player ${player.name} is not registered in the event player manager.")
+        }
+    }
 
     val CONTAINERS_BLOW_UP_WHEN_USED = ExplorerIntent<InventoryOpenEvent>(
         title = "Containers Explode When Opened",

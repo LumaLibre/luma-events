@@ -14,7 +14,10 @@ import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.annotation.Comment;
 import lombok.Getter;
 import lombok.Setter;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
@@ -48,10 +51,19 @@ public class Config extends OkaeriConfig {
             MinigameConstant.MINEBATTLE
     );
 
-    @Comment("Commands allowed while participating in a game")
+    @Comment("Commands allowed while participating in a game or while a player is suspended")
     private List<String> commandWhitelist = List.of(
-            "g", "l", "pc", "sc", "msg", "r", "tell", "partychat", "staffchat"
+            "g", "l", "lc", "pc", "p", "sc", "msg", "r", "w", "whisper", "tell", "partychat", "staffchat",
+            "event"
     );
+
+    @Comment("Any worlds not contained in this list a player will not be able to enter while they are suspended.")
+    private List<String> suspendedWorlds = List.of(
+            "world"
+    );
+
+    @Comment("The world to spawn the player back into after being unsuspended. If this world does not exist, a random world will be chosen.")
+    private String suspendRemovalWorld = "world_the_end";
 
 
     // valentines 2026
@@ -102,5 +114,15 @@ public class Config extends OkaeriConfig {
     @Comment("Minigame definition for 'The Nabbits'")
     private Map<String, TheNabbitsMinigameDefinition> theNabbitsMaps = Map.of();
 
+
+
+    @Nullable
+    public World getUnsuspendWorld() {
+        World world = Bukkit.getWorld(this.suspendRemovalWorld);
+        if (world == null) {
+            world = Bukkit.getWorlds().stream().filter(w -> !this.suspendedWorlds.contains(w.getName())).findFirst().orElse(null);
+        }
+        return world;
+    }
 }
 

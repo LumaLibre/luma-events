@@ -6,6 +6,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.explorer.mile.ActiveExplorerMile;
+import dev.lumas.events.utility.gson.GsonHolder;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -44,11 +45,7 @@ import java.util.UUID;
 
 public final class Util {
 
-    public static final Gson GSON = new GsonBuilder()
-            .registerTypeAdapter(ActiveExplorerMile.class, new ActiveExplorerMile.GsonTypeAdapter())
-            .excludeFieldsWithModifiers(Modifier.TRANSIENT, Modifier.STATIC)
-            .setPrettyPrinting()
-            .create();
+    public static final Gson GSON = GsonHolder.GSON;
     public static final Random RANDOM = new Random();
     public static final String PREFIX = "<b><gradient:#954381:#ee78c0:#ec6e95:#cb354e>Event</gradient></b> <dark_gray>»</dark_gray> ";
     public static final String TEXT_COLOR = "#EC6E95";

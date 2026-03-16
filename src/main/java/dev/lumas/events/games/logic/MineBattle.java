@@ -888,7 +888,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 border.getDamageAmount(),
                 border.getDamageBuffer(),
                 border.getWarningDistance(),
-                border.getWarningTime()
+                border.getWarningTimeTicks()
         );
 
         double start = (radius + 1) * 2.0 + 6.0; // diameter
@@ -900,7 +900,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         border.setDamageBuffer(1000000.0);
 
         border.setWarningDistance(5);
-        border.setWarningTime(5);
+        border.setWarningTimeTicks(5);
     }
 
     private void armAndShrinkWorldBorder() {
@@ -915,7 +915,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             border.setDamageAmount(3.5);
 
             long seconds = Math.max(1, timeLimitMillis / 1000L);
-            border.setSize(5.0 /*end diameter*/, seconds);
+            border.changeSize(5.0 /*end diameter*/, seconds);
         });
     }
 
@@ -979,7 +979,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             border.setDamageAmount(savedBorder.damageAmount());
             border.setDamageBuffer(savedBorder.damageBuffer());
             border.setWarningDistance(savedBorder.warningDistance());
-            border.setWarningTime(savedBorder.warningTime());
+            border.setWarningTimeTicks(savedBorder.warningTime());
         });
 
         savedBorder = null;

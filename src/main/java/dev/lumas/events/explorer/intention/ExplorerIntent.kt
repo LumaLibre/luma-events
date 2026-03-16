@@ -32,6 +32,14 @@ class ExplorerIntent<T : Any>(
         handler
     )
 
+    constructor(title: String, desc: String, world: List<String>, eventClass: KClass<T>, handler: ExplorerIntentEventHandler<T>) : this(
+        title,
+        desc,
+        world,
+        eventClass.java,
+        handler
+    )
+
     /**
      * Checks if the given world matches any of the patterns defined for this intent.
      * @param world the name of the world to check

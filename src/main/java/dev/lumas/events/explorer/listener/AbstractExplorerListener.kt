@@ -18,7 +18,9 @@ interface AbstractExplorerListener : Listener {
         if (entity is Player && !intentsOnly) {
             Executors.runAsync { _ ->
                 val eventPlayer: EventPlayer = EventPlayerManager.getByUUID(entity.uniqueId)
-                eventPlayer.fireForExplorerMiles(event)
+                if (!eventPlayer.isSuspended) {
+                    eventPlayer.fireForExplorerMiles(event)
+                }
             }
         }
     }
@@ -35,7 +37,7 @@ interface AbstractExplorerListener : Listener {
         if (entity is Player && !intentsOnly) {
             Executors.runDelayedAsync(TimeUnit.MILLISECONDS, delay * 50L) {
                 val eventPlayer: EventPlayer = EventPlayerManager.getByUUID(entity.uniqueId)
-                if (eventPlayer.isOnline()) {
+                if (eventPlayer.isOnline && !eventPlayer.isSuspended) {
                     eventPlayer.fireForExplorerMiles(event)
                 }
             }
