@@ -1,4 +1,4 @@
-package dev.lumas.events.games.events;
+package dev.lumas.events.listeners;
 
 import dev.lumas.core.annotation.Autowire;
 import dev.lumas.core.annotation.Register;
@@ -15,7 +15,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import java.util.concurrent.TimeUnit;
 
 @Register(Autowire.LISTENER)
-public class LateJoinListener implements Listener {
+public class JoinListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {

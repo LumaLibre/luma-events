@@ -13,6 +13,7 @@ import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Util;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.jspecify.annotations.NullMarked;
 
 import java.util.List;
 
@@ -24,6 +25,7 @@ import java.util.List;
         parent = CommandManager.class,
         usage = "/<command> quit"
 )
+@NullMarked
 public class MinigameQuitCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender sender, String s, String[] strings) {
@@ -31,6 +33,12 @@ public class MinigameQuitCommand implements CommandModule {
 
         Minigame current = MinigameManager.getInstance().getCurrent();
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
+
+        if (eventPlayer.isSuspended()) {
+            Util.sendMsg(sender, "You are suspended!");
+            return true;
+        }
+
         if (!current.removeParticipant(eventPlayer, true)) {
             Util.sendMsg(player, "No active minigame found.");
         }

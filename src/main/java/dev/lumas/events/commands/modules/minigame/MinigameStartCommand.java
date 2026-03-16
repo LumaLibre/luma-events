@@ -11,6 +11,7 @@ import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.utility.Util;
 import eu.okaeri.configs.OkaeriConfig;
 import org.bukkit.command.CommandSender;
+import org.jspecify.annotations.NullMarked;
 
 import java.util.Arrays;
 import java.util.List;
@@ -23,6 +24,7 @@ import java.util.List;
         parent = CommandManager.class,
         usage = "/<command> mgstart <minigame>"
 )
+@NullMarked
 public class MinigameStartCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {

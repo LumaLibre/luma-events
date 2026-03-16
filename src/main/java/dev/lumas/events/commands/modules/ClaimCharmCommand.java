@@ -30,6 +30,12 @@ public class ClaimCharmCommand implements CommandModule {
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
         Player player = (Player) commandSender;
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
+
+        if (eventPlayer.isSuspended()) {
+            Util.sendMsg(player, "You are suspended!");
+            return true;
+        }
+
         if (eventPlayer.isClaimedCharm()) {
             Util.sendMsg(player, "You have already claimed your event charm!");
             return true;

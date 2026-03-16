@@ -1,10 +1,7 @@
 package dev.lumas.events.games.logic;
 
 import com.destroystokyo.paper.event.player.PlayerJumpEvent;
-import dev.lumas.events.games.interfaces.TokenFormula;
-import dev.lumas.events.games.tokenformula.FlatIntTokenFormula;
-import dev.lumas.lumacore.utility.Logging;
-import dev.lumas.lumacore.utility.Text;
+import dev.lumas.core.util.Text;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.EventPlayerManager;
 import dev.lumas.events.configurable.MaterialCount;
@@ -12,13 +9,16 @@ import dev.lumas.events.configurable.sectors.TowersDefinition;
 import dev.lumas.events.configurable.sectors.TowersItems;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
+import dev.lumas.events.games.interfaces.TokenFormula;
 import dev.lumas.events.games.interfaces.structures.BoundCircularStructureGrid;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
+import dev.lumas.events.games.tokenformula.FlatIntTokenFormula;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
+import dev.lumas.lumacore.utility.Logging;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;

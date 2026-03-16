@@ -3,6 +3,7 @@ package dev.lumas.events;
 import com.google.gson.Gson;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Util;
+import org.bukkit.Bukkit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,90 +14,121 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
-// FIXME: lazy temporary solution, please lazy load players
 public final class EventPlayerManager {
-
-    // FIXME: This needs to lazy load players
-    public static final List<EventPlayer> EVENT_PLAYERS = new ArrayList<>();
-
+    private static final long EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
     private static final Gson gson = Util.GSON;
     private static final Path FOLDER = EventMain.getInstance()
             .getDataPath()
             .resolve("players");
+
+    private static final Map<UUID, CachedPlayer> cache = new ConcurrentHashMap<>();
+
     static {
         if (!FOLDER.toFile().exists()) {
             FOLDER.toFile().mkdirs();
         }
     }
 
-    public static List<EventPlayer> eventPlayers() {
-        return List.copyOf(EVENT_PLAYERS);
+    private record CachedPlayer(EventPlayer player, long lastAccessed) {}
+
+    /**
+     * Gets a player by UUID, loading from disk if necessary.
+     * Resets the expiry timer on each access.
+     */
+    @NotNull
+    public static EventPlayer getByUUID(UUID uuid) {
+        CachedPlayer cached = cache.compute(uuid, (key, existing) -> {
+            if (existing != null) {
+                return new CachedPlayer(existing.player(), System.currentTimeMillis());
+            }
+            EventMain.getInstance().getLogger().info("Loading player " + key + " from disk");
+            return new CachedPlayer(loadFromDisk(key), System.currentTimeMillis());
+        });
+        return cached.player();
     }
 
-    public static EventPlayer load(UUID uuid) {
-        EventPlayer eventPlayer = null;
-        try (FileReader fileReader = new FileReader(FOLDER.resolve(uuid.toString() + ".json").toFile())) {
-            eventPlayer = gson.fromJson(fileReader, EventPlayer.class);
-        } catch (IOException ignored) {
-        }
-        if (eventPlayer == null) {
-            eventPlayer = new EventPlayer(uuid);
-        }
-        EVENT_PLAYERS.add(eventPlayer);
-        return eventPlayer;
+    @Nullable
+    public static EventPlayer getByUUIDOrNull(UUID uuid) {
+        CachedPlayer cached = cache.computeIfPresent(uuid, (key, existing) ->
+                new CachedPlayer(existing.player(), System.currentTimeMillis()));
+        return cached != null ? cached.player() : null;
     }
 
-    public static void loadAll() {
-        File[] listedFiles = FOLDER.toFile().listFiles();
-        if (listedFiles == null) {
-            return;
-        }
-        for (File file : listedFiles) {
-            try (FileReader fileReader = new FileReader(file)) {
-                EVENT_PLAYERS.add(gson.fromJson(fileReader, EventPlayer.class));
+
+    public static void evictStale() {
+        long now = System.currentTimeMillis();
+        cache.forEach((uuid, cached) -> {
+            if (now - cached.lastAccessed() >= EXPIRY_MS && !cached.player().isOnline()) {
+                cache.remove(uuid);
+                save(cached.player());
+            }
+        });
+    }
+
+    private static EventPlayer loadFromDisk(UUID uuid) {
+        File file = FOLDER.resolve(uuid + ".json").toFile();
+        if (file.exists()) {
+            try (FileReader reader = new FileReader(file)) {
+                EventPlayer player = gson.fromJson(reader, EventPlayer.class);
+                if (player != null) return player;
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-        EventMain.getInstance().getLogger().info("Loaded " + EVENT_PLAYERS.size() + " Players");
+        return new EventPlayer(uuid);
     }
 
     public static void save(EventPlayer eventPlayer) {
-        try (FileWriter fileWriter = new FileWriter(FOLDER.resolve(eventPlayer.getUuid().toString() + ".json").toFile())) {
-            gson.toJson(eventPlayer, fileWriter);
+        try (FileWriter writer = new FileWriter(FOLDER.resolve(eventPlayer.getUuid() + ".json").toFile())) {
+            gson.toJson(eventPlayer, writer);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
+
     public static void saveAll() {
-        for (EventPlayer prisonMinePlayer : EVENT_PLAYERS) {
-            save(prisonMinePlayer);
-        }
-        EventMain.getInstance().getLogger().info("Saved " + EVENT_PLAYERS.size() + " Players");
+        EventMain.getInstance().getLogger().info("Saving " + cache.size() + " players");
+        cache.forEach((uuid, cached) -> save(cached.player()));
     }
 
-    @NotNull
-    public static EventPlayer getByUUID(UUID uuid) {
-        for (EventPlayer eventPlayer : EVENT_PLAYERS) {
-            if (eventPlayer.getUuid().equals(uuid)) {
-                return eventPlayer;
-            }
-        }
-        return load(uuid);
+    public static void saveAllAndClear() {
+        saveAll();
+        cache.clear();
     }
 
+    public static void loadOnlinePlayers() {
+        Bukkit.getOnlinePlayers().forEach(player -> {
+            getByUUID(player.getUniqueId());
+        });
+        EventMain.getInstance().getLogger().info("Loaded " + cache.size() + " players");
+    }
 
-    @Nullable
-    public static EventPlayer getByUUIDOrNull(UUID uuid) {
-        for (EventPlayer eventPlayer : EVENT_PLAYERS) {
-            if (eventPlayer.getUuid().equals(uuid)) {
-                return eventPlayer;
+    public static List<EventPlayer> loadAllFromDisk() {
+        File[] files = FOLDER
+                .toFile()
+                .listFiles();
+
+        if (files == null) return List.of();
+
+        List<EventPlayer> players = new ArrayList<>();
+        for (File file : files) {
+            try (FileReader reader = new FileReader(file)) {
+                EventPlayer player = Util.GSON.fromJson(reader, EventPlayer.class);
+                if (player != null) players.add(player);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
-        return null;
+        return players;
+    }
+
+    public static int cacheSize() {
+        return cache.size();
     }
 
 }

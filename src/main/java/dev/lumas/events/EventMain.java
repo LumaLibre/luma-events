@@ -40,17 +40,18 @@ public final class EventMain extends JavaPlugin {
         instance = this;
         okaeriConfigManager = new ConfigManager();
         moduleManager = new Modules(this);
-        moduleManager.register();
 
         // TODO: Temporary fields.
         ExplorerIntentContainer c1 = ExplorerIntents.INSTANCE;
         ExplorerMileContainer c2 = ExplorerMiles.INSTANCE;
 
 
-        EventPlayerManager.loadAll();
-        Executors.asyncTimer(TimeUnit.MINUTES, 0, 10, (task) -> EventPlayerManager.saveAll());
+        EventPlayerManager.loadOnlinePlayers();
+        Executors.asyncTimer(20 * 60L, 20 * 60L, t -> EventPlayerManager.evictStale());
 
         MinigameManager.getInstance().repeatingAsync(0, 600);
+
+        moduleManager.register();
 
         LocalCustomItemManager.addCustomItem(new CandiedAppleItem());
         LocalCustomItemManager.addCustomItem(new StartMinigameItem());
@@ -71,7 +72,7 @@ public final class EventMain extends JavaPlugin {
         STOPPING = true;
         moduleManager.unregister();
 
-        EventPlayerManager.saveAll();
+        EventPlayerManager.saveAllAndClear();
         Minigame current = MinigameManager.getInstance().getCurrent();
         if (current.isActive()) {
             current.stop();

@@ -40,6 +40,11 @@ public class MinigameJoinCommand implements CommandModule {
 
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
 
+        if (eventPlayer.isSuspended()) {
+            Util.sendMsg(commandSender, "You are suspended!");
+            return true;
+        }
+
         if (minigame.addParticipant(eventPlayer)) {
             Util.sendMsg(commandSender, "Joined!");
         }

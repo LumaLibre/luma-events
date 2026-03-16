@@ -10,6 +10,7 @@ import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.MinigameState;
 import dev.lumas.events.utility.Util;
 import org.bukkit.command.CommandSender;
+import org.jspecify.annotations.NullMarked;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -22,6 +23,7 @@ import java.util.concurrent.TimeUnit;
         parent = CommandManager.class,
         usage = "/<command> next"
 )
+@NullMarked
 public class NextMinigameCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {

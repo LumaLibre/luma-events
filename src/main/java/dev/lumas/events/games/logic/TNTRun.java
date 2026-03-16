@@ -1,6 +1,7 @@
 package dev.lumas.events.games.logic;
 
 import dev.lumas.core.util.ContextLogger;
+import dev.lumas.core.util.Text;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.TNTRunDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
@@ -19,7 +20,6 @@ import dev.lumas.events.obj.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.lumacore.utility.Logging;
-import dev.lumas.lumacore.utility.Text;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;

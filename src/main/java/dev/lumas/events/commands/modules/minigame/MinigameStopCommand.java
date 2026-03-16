@@ -10,6 +10,7 @@ import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.utility.Util;
 import org.bukkit.command.CommandSender;
+import org.jspecify.annotations.NullMarked;
 
 import java.util.List;
 
@@ -21,6 +22,7 @@ import java.util.List;
         parent = CommandManager.class,
         usage = "/<command> mgstop confirm"
 )
+@NullMarked
 public class MinigameStopCommand implements CommandModule {
 
     @Override
