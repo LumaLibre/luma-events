@@ -46,6 +46,8 @@ dependencies {
         exclude(group = "org.bukkit")
     }
 
+    implementation("me.outspending.biomesapi:BiomesAPI:1.2.0-a9e66a9")
+
     implementation("dev.thorinwasher.schem:schem-reader:1.0.0")
 
     implementation("eu.okaeri:okaeri-configs-yaml-bukkit:5.0.5")
@@ -79,10 +81,16 @@ tasks {
 
         relocate("eu.okaeri", "$pack.okaeri")
         relocate("dev.thorinwasher.schem", "$pack.schem")
+        relocate("me.outspending.biomesapi", "$pack.biomesapi")
         exclude("kotlin/**", "net/kyori/**", "org/joml/**")
         minimize()
         archiveClassifier.set("")
         archiveVersion.set("")
+
+
+        manifest {
+            attributes["paperweight-mappings-namespace"] = "mojang"
+        }
     }
 
     build {
