@@ -1,7 +1,7 @@
 package dev.lumas.events;
 
-import dev.lumas.lumacore.manager.modules.AutoRegister;
-import dev.lumas.lumacore.manager.modules.RegisterType;
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.Register;
 import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.event.EventHandler;
@@ -10,7 +10,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-@AutoRegister(RegisterType.LISTENER)
+@Register(Autowire.LISTENER)
 public class RunnerBootsRemoval implements Listener {
 
     @EventHandler
