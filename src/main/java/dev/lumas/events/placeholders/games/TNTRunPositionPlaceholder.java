@@ -1,19 +1,19 @@
 package dev.lumas.events.placeholders.games;
 
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.PlaceholderMeta;
+import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.placeholders.PlaceholderManager;
 import dev.lumas.events.placeholders.PlaceholderModule;
-import dev.lumas.lumacore.manager.modules.AutoRegister;
-import dev.lumas.lumacore.manager.modules.RegisterType;
-import dev.lumas.lumacore.manager.placeholder.PlaceholderInfo;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-@AutoRegister(RegisterType.PLACEHOLDER)
-@PlaceholderInfo(
+@Register(Autowire.PLACEHOLDER)
+@PlaceholderMeta(
         identifier = "tntrun",
         parent = PlaceholderManager.class
 )

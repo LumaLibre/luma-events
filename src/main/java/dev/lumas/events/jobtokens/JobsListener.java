@@ -2,8 +2,8 @@ package dev.lumas.events.jobtokens;
 
 import com.gamingmesh.jobs.api.JobsPrePaymentEvent;
 import com.gmail.nossr50.api.AbilityAPI;
-import dev.lumas.lumacore.manager.modules.AutoRegister;
-import dev.lumas.lumacore.manager.modules.RegisterType;
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.items.TokenExchanging;
@@ -15,7 +15,7 @@ import org.bukkit.event.Listener;
 
 import java.util.Random;
 
-@AutoRegister(RegisterType.LISTENER)
+@Register(value = Autowire.LISTENER, requires = "Jobs")
 public class JobsListener implements Listener {
 
     private static final Random RANDOM = new Random(); // intentionally new random seed for this

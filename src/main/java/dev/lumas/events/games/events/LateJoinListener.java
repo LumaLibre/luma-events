@@ -1,20 +1,20 @@
 package dev.lumas.events.games.events;
 
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventPlayerManager;
 import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Executors;
-import dev.lumas.lumacore.manager.modules.AutoRegister;
-import dev.lumas.lumacore.manager.modules.RegisterType;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
 import java.util.concurrent.TimeUnit;
 
-@AutoRegister(RegisterType.LISTENER)
+@Register(Autowire.LISTENER)
 public class LateJoinListener implements Listener {
 
     @EventHandler

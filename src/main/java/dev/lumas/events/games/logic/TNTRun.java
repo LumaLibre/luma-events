@@ -1,5 +1,6 @@
 package dev.lumas.events.games.logic;
 
+import dev.lumas.core.util.ContextLogger;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.TNTRunDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
@@ -17,7 +18,6 @@ import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
-import dev.lumas.lumacore.utility.ContextLogger;
 import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.lumacore.utility.Text;
 import net.kyori.adventure.bossbar.BossBar;
@@ -58,7 +58,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;

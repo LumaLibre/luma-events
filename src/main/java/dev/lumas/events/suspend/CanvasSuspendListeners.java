@@ -1,8 +1,8 @@
 package dev.lumas.events.suspend;
 
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.Register;
 import dev.lumas.events.utility.Util;
-import dev.lumas.lumacore.manager.modules.AutoRegister;
-import dev.lumas.lumacore.manager.modules.RegisterType;
 import io.canvasmc.canvas.event.EntityTeleportAsyncEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -12,7 +12,7 @@ import org.bukkit.event.Listener;
 import static dev.lumas.events.suspend.SuspendListeners.isPlayerSuspended;
 import static dev.lumas.events.suspend.SuspendListeners.isSuspendedOnlyWorld;
 
-@AutoRegister(value = RegisterType.LISTENER, requires = "io.canvasmc.canvas.event.EntityTeleportAsyncEvent")
+@Register(value = Autowire.LISTENER, requires = "io.canvasmc.canvas.event.EntityTeleportAsyncEvent")
 public class CanvasSuspendListeners implements Listener {
 
 

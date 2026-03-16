@@ -1,13 +1,13 @@
 package dev.lumas.events.commands.modules.minigame;
 
-import dev.lumas.lumacore.manager.commands.CommandInfo;
-import dev.lumas.lumacore.manager.modules.AutoRegister;
-import dev.lumas.lumacore.manager.modules.RegisterType;
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.CommandMeta;
+import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
-import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.MinigameManager;
+import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.utility.Util;
 import eu.okaeri.configs.OkaeriConfig;
 import org.bukkit.command.CommandSender;
@@ -15,8 +15,8 @@ import org.bukkit.command.CommandSender;
 import java.util.Arrays;
 import java.util.List;
 
-@AutoRegister(RegisterType.SUBCOMMAND)
-@CommandInfo(
+@Register(Autowire.SUBCOMMAND)
+@CommandMeta(
         name = "mgstart",
         permission = "lumaevents.admin",
         description = "Start a minigame",

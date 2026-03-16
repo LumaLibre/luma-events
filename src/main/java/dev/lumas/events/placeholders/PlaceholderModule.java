@@ -1,6 +1,6 @@
 package dev.lumas.events.placeholders;
 
-import dev.lumas.lumacore.manager.placeholder.AbstractPlaceholder;
+import dev.lumas.core.model.placeholder.AbstractPlaceholder;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.EventPlayerManager;
 import dev.lumas.events.games.constants.MinigameConstant;

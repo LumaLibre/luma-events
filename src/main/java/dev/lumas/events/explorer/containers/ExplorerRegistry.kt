@@ -1,6 +1,6 @@
 package dev.lumas.events.explorer.containers
 
-import dev.lumas.lumacore.utility.ContextLogger
+import dev.lumas.core.util.ContextLogger
 
 abstract class ExplorerRegistry<T : ContainerReflective> {
 

@@ -1,8 +1,8 @@
 package dev.lumas.events.hooks;
 
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.Register;
 import dev.lumas.lumacore.manager.models.Service;
-import dev.lumas.lumacore.manager.modules.AutoRegister;
-import dev.lumas.lumacore.manager.modules.RegisterType;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_TYPE;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
 import org.bukkit.Bukkit;
@@ -14,7 +14,7 @@ import org.jspecify.annotations.Nullable;
 import java.util.Optional;
 
 @NullMarked
-@AutoRegister(value = RegisterType.SERVICE, requires = "BetterRTP")
+@Register(value = Autowire.SERVICE, requires = "BetterRTP")
 public class BetterRTPService implements Service {
 
     @Nullable

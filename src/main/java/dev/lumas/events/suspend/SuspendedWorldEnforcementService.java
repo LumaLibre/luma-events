@@ -1,13 +1,13 @@
 package dev.lumas.events.suspend;
 
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.EventPlayerManager;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import dev.lumas.lumacore.manager.models.Service;
-import dev.lumas.lumacore.manager.modules.AutoRegister;
-import dev.lumas.lumacore.manager.modules.RegisterType;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -16,7 +16,7 @@ import org.bukkit.entity.Player;
 import java.util.List;
 
 // TODO: Use global thread
-@AutoRegister(RegisterType.SERVICE)
+@Register(Autowire.SERVICE)
 public class SuspendedWorldEnforcementService extends AsynchronousRunnable implements Service {
     @Override
     public void accept(ScheduledTask task) {

@@ -3,10 +3,10 @@ package dev.lumas.events.explorer.listener
 import com.destroystokyo.paper.event.player.PlayerClientOptionsChangeEvent
 import com.destroystokyo.paper.event.player.PlayerElytraBoostEvent
 import com.destroystokyo.paper.event.player.PlayerJumpEvent
+import dev.lumas.core.annotation.Autowire
+import dev.lumas.core.annotation.Register
 import dev.lumas.events.explorer.custom.BlockBrokenExplorerEvent
 import dev.lumas.events.explorer.custom.BlockPlacedExplorerEvent
-import dev.lumas.lumacore.manager.modules.AutoRegister
-import dev.lumas.lumacore.manager.modules.RegisterType
 import io.papermc.paper.event.block.PlayerShearBlockEvent
 import io.papermc.paper.event.player.AsyncChatEvent
 import io.papermc.paper.event.player.PlayerArmSwingEvent
@@ -50,7 +50,7 @@ import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.event.player.PlayerRiptideEvent
 import org.bukkit.event.player.PlayerShearEntityEvent
 
-@AutoRegister(RegisterType.LISTENER)
+@Register(Autowire.LISTENER)
 class ExplorerListeners : AbstractExplorerListener {
     @EventHandler
     fun onChat(event: AsyncChatEvent) {

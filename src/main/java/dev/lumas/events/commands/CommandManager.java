@@ -1,17 +1,17 @@
 package dev.lumas.events.commands;
 
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.CommandMeta;
+import dev.lumas.core.annotation.Register;
+import dev.lumas.core.model.command.AbstractCommandManager;
 import dev.lumas.events.EventMain;
-import dev.lumas.lumacore.manager.commands.AbstractCommandManager;
-import dev.lumas.lumacore.manager.commands.CommandInfo;
-import dev.lumas.lumacore.manager.modules.AutoRegister;
-import dev.lumas.lumacore.manager.modules.RegisterType;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-@AutoRegister(RegisterType.COMMAND)
-@CommandInfo(
+@Register(Autowire.COMMAND)
+@CommandMeta(
         name = "event",
         aliases = {"valentide", "valentines", "val"},
         permission = "lumaevents.default"

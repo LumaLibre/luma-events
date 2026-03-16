@@ -1,21 +1,21 @@
 package dev.lumas.events.placeholders.games;
 
-import dev.lumas.events.placeholders.PlaceholderManager;
-import dev.lumas.events.placeholders.PlaceholderModule;
-import dev.lumas.lumacore.manager.modules.AutoRegister;
-import dev.lumas.lumacore.manager.modules.RegisterType;
-import dev.lumas.lumacore.manager.placeholder.PlaceholderInfo;
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.PlaceholderMeta;
+import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.MinigameState;
+import dev.lumas.events.placeholders.PlaceholderManager;
+import dev.lumas.events.placeholders.PlaceholderModule;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-@AutoRegister(RegisterType.PLACEHOLDER)
-@PlaceholderInfo(
+@Register(Autowire.PLACEHOLDER)
+@PlaceholderMeta(
         identifier = "mgnext",
         parent = PlaceholderManager.class
 )

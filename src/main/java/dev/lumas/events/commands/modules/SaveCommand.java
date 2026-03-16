@@ -1,8 +1,8 @@
 package dev.lumas.events.commands.modules;
 
-import dev.lumas.lumacore.manager.commands.CommandInfo;
-import dev.lumas.lumacore.manager.modules.AutoRegister;
-import dev.lumas.lumacore.manager.modules.RegisterType;
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.CommandMeta;
+import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.EventPlayerManager;
 import dev.lumas.events.commands.CommandManager;
@@ -12,8 +12,8 @@ import org.bukkit.command.CommandSender;
 
 import java.util.List;
 
-@AutoRegister(RegisterType.SUBCOMMAND)
-@CommandInfo(
+@Register(Autowire.SUBCOMMAND)
+@CommandMeta(
         name = "save",
         permission = "lumaevents.admin",
         description = "Save data",

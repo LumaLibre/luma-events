@@ -1,21 +1,21 @@
 package dev.lumas.events;
 
+import dev.lumas.core.manager.Modules;
+import dev.lumas.events.configurable.Config;
+import dev.lumas.events.configurable.ConfigManager;
+import dev.lumas.events.configurable.MinigameState;
 import dev.lumas.events.explorer.intention.ExplorerIntentContainer;
 import dev.lumas.events.explorer.intention.ExplorerIntents;
 import dev.lumas.events.explorer.mile.ExplorerMileContainer;
 import dev.lumas.events.explorer.mile.ExplorerMiles;
-import dev.lumas.events.items.CaramelAppleItem;
-import dev.lumas.events.tasks.PlaytimeCounterTask;
-import dev.lumas.lumacore.manager.modules.ModuleManager;
-import dev.lumas.events.configurable.Config;
-import dev.lumas.events.configurable.ConfigManager;
-import dev.lumas.events.configurable.MinigameState;
-import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.interfaces.Minigame;
-import dev.lumas.events.items.StartMinigameItem;
+import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.items.CandiedAppleItem;
+import dev.lumas.events.items.CaramelAppleItem;
 import dev.lumas.events.items.LocalCustomItemManager;
+import dev.lumas.events.items.StartMinigameItem;
+import dev.lumas.events.tasks.PlaytimeCounterTask;
 import dev.lumas.lumaitems.util.extensions.Executors;
 import lombok.Getter;
 import net.kyori.adventure.audience.Audience;
@@ -29,7 +29,7 @@ public final class EventMain extends JavaPlugin {
 
     private static EventMain instance;
     private static ConfigManager okaeriConfigManager;
-    private static ModuleManager moduleManager;
+    private static Modules moduleManager;
     @Getter
     private static boolean withMcMMO = false;
 
@@ -39,8 +39,8 @@ public final class EventMain extends JavaPlugin {
     public void onEnable() {
         instance = this;
         okaeriConfigManager = new ConfigManager();
-        moduleManager = new ModuleManager(this);
-        moduleManager.reflectivelyRegisterModules();
+        moduleManager = new Modules(this);
+        moduleManager.register();
 
         // TODO: Temporary fields.
         ExplorerIntentContainer c1 = ExplorerIntents.INSTANCE;
@@ -69,7 +69,7 @@ public final class EventMain extends JavaPlugin {
     @Override
     public void onDisable() {
         STOPPING = true;
-        moduleManager.unregisterModules();
+        moduleManager.unregister();
 
         EventPlayerManager.saveAll();
         Minigame current = MinigameManager.getInstance().getCurrent();

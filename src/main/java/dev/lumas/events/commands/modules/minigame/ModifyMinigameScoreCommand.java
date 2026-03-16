@@ -1,9 +1,8 @@
 package dev.lumas.events.commands.modules.minigame;
 
-import dev.lumas.lumacore.manager.commands.CommandInfo;
-import dev.lumas.lumacore.manager.modules.AutoRegister;
-import dev.lumas.lumacore.manager.modules.RegisterType;
-import dev.lumas.lumacore.utility.Text;
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.CommandMeta;
+import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.EventPlayerManager;
 import dev.lumas.events.commands.CommandManager;
@@ -11,6 +10,7 @@ import dev.lumas.events.commands.CommandModule;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Util;
+import dev.lumas.lumacore.utility.Text;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
@@ -18,8 +18,8 @@ import org.bukkit.command.CommandSender;
 import java.util.Arrays;
 import java.util.List;
 
-@AutoRegister(RegisterType.SUBCOMMAND)
-@CommandInfo(
+@Register(Autowire.SUBCOMMAND)
+@CommandMeta(
         name = "modifymgscore",
         permission = "lumaevents.admin",
         description = "Modify a player's minigame score",

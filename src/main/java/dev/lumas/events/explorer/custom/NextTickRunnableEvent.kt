@@ -1,8 +1,8 @@
 package dev.lumas.events.explorer.custom
 
+import dev.lumas.core.annotation.Autowire
+import dev.lumas.core.annotation.Register
 import dev.lumas.events.explorer.listener.AbstractRunnableTicker
-import dev.lumas.lumacore.manager.modules.AutoRegister
-import dev.lumas.lumacore.manager.modules.RegisterType
 import org.bukkit.entity.Player
 
 /**
@@ -10,7 +10,7 @@ import org.bukkit.entity.Player
  */
 class NextTickRunnableEvent(val player: Player)
 
-@AutoRegister(RegisterType.SERVICE) // TODO
+@Register(Autowire.SERVICE) // TODO
 class NextTickRunner : AbstractRunnableTicker(1) {
     override fun doRun(player: Player) {
         fire(NextTickRunnableEvent(player), player, intentsOnly = true)

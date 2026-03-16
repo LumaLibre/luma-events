@@ -1,11 +1,11 @@
 package dev.lumas.events.suspend;
 
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.EventPlayerManager;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Util;
-import dev.lumas.lumacore.manager.modules.AutoRegister;
-import dev.lumas.lumacore.manager.modules.RegisterType;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -16,7 +16,7 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 
 import java.util.List;
 
-@AutoRegister(RegisterType.LISTENER)
+@Register(Autowire.LISTENER)
 public class SuspendListeners implements Listener {
 
     // Intentionally set to monitor. We want to interfere with any plugin trying to do this.
