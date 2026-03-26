@@ -1,6 +1,7 @@
 package dev.lumas.events.configurable;
 
 import dev.lumas.events.configurable.sectors.BoatRace2Definition;
+import dev.lumas.events.configurable.sectors.FreezeTagDefinition;
 import dev.lumas.events.configurable.sectors.ManorMinigameDefinition;
 import dev.lumas.events.configurable.sectors.MineBattleDefinition;
 import dev.lumas.events.configurable.sectors.MinigameDefinition;
@@ -65,6 +66,12 @@ public class Config extends OkaeriConfig {
     @Comment("The world to spawn the player back into after being unsuspended. If this world does not exist, a random world will be chosen.")
     private String suspendRemovalWorld = "world_the_end";
 
+    // easter 2026
+
+    @Comment("Minigame definition for 'Freeze Tag'")
+    private Map<String, FreezeTagDefinition> freezeTagMaps = Map.of(
+            "default", new FreezeTagDefinition()
+    );
 
     // valentines 2026
 
