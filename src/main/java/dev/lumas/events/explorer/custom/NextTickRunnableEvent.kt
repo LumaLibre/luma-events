@@ -13,6 +13,6 @@ class NextTickRunnableEvent(val player: Player)
 @Register(Autowire.SERVICE) // TODO
 class NextTickRunner : AbstractRunnableTicker(1) {
     override fun doRun(player: Player) {
-        fire(NextTickRunnableEvent(player), player, intentsOnly = true)
+        fire(NextTickRunnableEvent(player), player, ignoreMiles = true)
     }
 }

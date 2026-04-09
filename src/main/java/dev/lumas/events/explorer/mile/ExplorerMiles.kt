@@ -3,6 +3,8 @@ package dev.lumas.events.explorer.mile
 import com.destroystokyo.paper.event.player.PlayerClientOptionsChangeEvent
 import com.destroystokyo.paper.event.player.PlayerElytraBoostEvent
 import com.destroystokyo.paper.event.player.PlayerJumpEvent
+import dev.lumas.core.annotation.Autowire
+import dev.lumas.core.annotation.Register
 import dev.lumas.events.explorer.custom.BlockBrokenExplorerEvent
 import dev.lumas.events.explorer.custom.BlockPlacedExplorerEvent
 import io.papermc.paper.event.block.PlayerShearBlockEvent
@@ -42,6 +44,7 @@ import org.bukkit.event.player.PlayerRiptideEvent
 import org.bukkit.event.player.PlayerShearEntityEvent
 import org.bukkit.inventory.MainHand
 
+@Register(Autowire.SERVICE)
 @Suppress("UNUSED", "RemoveExplicitTypeArguments", "UNCHECKED_CAST")
 object ExplorerMiles : ExplorerMileContainer() {
 
@@ -824,7 +827,4 @@ object ExplorerMiles : ExplorerMileContainer() {
         levelSnapShot.currentQuantity += 1
     }
 
-    init {
-        ensureEnumerated()
-    }
 }

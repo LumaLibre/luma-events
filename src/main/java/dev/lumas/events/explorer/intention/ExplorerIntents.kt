@@ -1,12 +1,16 @@
 package dev.lumas.events.explorer.intention
 
+import dev.lumas.core.annotation.Autowire
+import dev.lumas.core.annotation.Register
 import dev.lumas.events.EventMain
-import dev.lumas.events.EventPlayerManager
 import dev.lumas.events.explorer.custom.FullSecondRunnableEvent
 import dev.lumas.events.explorer.custom.HalfSecondRunnableEvent
 import dev.lumas.events.explorer.custom.TenSecondRunnableEvent
+import dev.lumas.events.manager.EventPlayerManager
 import dev.lumas.events.utility.Executors
+import dev.lumas.events.utility.Util
 import org.bukkit.Location
+import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.Sound
 import org.bukkit.Tag
@@ -14,9 +18,12 @@ import org.bukkit.attribute.Attribute
 import org.bukkit.attribute.AttributeModifier
 import org.bukkit.damage.DamageType
 import org.bukkit.entity.Animals
+import org.bukkit.entity.Bee
 import org.bukkit.entity.Creeper
 import org.bukkit.entity.Enderman
 import org.bukkit.entity.Enemy
+import org.bukkit.entity.Entity
+import org.bukkit.entity.EntityType
 import org.bukkit.entity.Golem
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Mob
@@ -31,17 +38,34 @@ import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.entity.VillagerReplenishTradeEvent
 import org.bukkit.event.inventory.InventoryOpenEvent
 import org.bukkit.event.inventory.InventoryType
+import org.bukkit.inventory.BlockInventoryHolder
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
+import java.util.Queue
+import java.util.UUID
+import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.random.Random
 
+@Register(Autowire.SERVICE)
 object ExplorerIntents : ExplorerIntentContainer() {
 
     private val WORLD = EventMain.getOkaeriConfig().suspendedWorlds // TODO: Change me
-    private val TIMED_EXPLOSION = fun (loc: Location, delay: Long) {
+    private val TIMED_EXPLOSION = fun (loc: Location, delay: Long, player: Player) {
         loc.world.playSound(loc, Sound.ENTITY_CREEPER_PRIMED, 1f, 1f)
         Executors.delayedSync(loc, delay) {
             loc.world.createExplosion(loc, 25.0f)
+
+            Executors.delayedSync(loc, 1) {
+                for (player in loc.getNearbyPlayers(15.0)) {
+                    if (!player.isValid) {
+                        player.damage(1000.0)
+                    }
+                }
+
+                if (!loc.block.type.isAir) {
+                    loc.block.type = Material.AIR
+                }
+            }
         }
     }
     private val NAMESPACED_KEY = NamespacedKey(EventMain.getInstance(), "explorer_intents")
@@ -62,6 +86,18 @@ object ExplorerIntents : ExplorerIntentContainer() {
         InventoryType.SMITHING,
         InventoryType.LOOM
     )
+    private val IGNORED_AQUATIC_DAMAGES = listOf(
+        EntityType.DROWNED,
+        EntityType.PUFFERFISH,
+        EntityType.GUARDIAN,
+        EntityType.ELDER_GUARDIAN,
+        EntityType.ZOMBIE_NAUTILUS
+    )
+    private val IGNORE_WATER_DAMAGE_PREDICATE = { entity: Entity ->
+        val type = entity.type
+        Tag.ENTITY_TYPES_UNDEAD.isTagged(type) || IGNORED_AQUATIC_DAMAGES.contains(type)
+    }
+    private val DEATH_MESSAGE_COOLDOWN: Queue<UUID> = ConcurrentLinkedQueue()
 
     val DEATH_DELETE_INV_AND_UNSUSPEND = ExplorerIntent<PlayerDeathEvent>(
         title = "Death Deletes Inventory & Unsuspends",
@@ -77,10 +113,16 @@ object ExplorerIntents : ExplorerIntentContainer() {
         player.inventory.clear()
         player.exp = 0f
         val eventPlayer = EventPlayerManager.getByUUIDOrNull(player.uniqueId)
-        if (eventPlayer != null) {
+        if (eventPlayer != null && eventPlayer.isSuspended) {
             eventPlayer.unsuspend()
-        } else {
-            throw IllegalStateException("Player ${player.name} is not registered in the event player manager.")
+        }
+
+        if (!DEATH_MESSAGE_COOLDOWN.contains(player.uniqueId)) {
+            Util.broadcast(event.deathMessage())
+            DEATH_MESSAGE_COOLDOWN.add(player.uniqueId)
+            Executors.delayedGlobal(10) {
+                DEATH_MESSAGE_COOLDOWN.remove(player.uniqueId)
+            }
         }
     }
 
@@ -92,7 +134,14 @@ object ExplorerIntents : ExplorerIntentContainer() {
     ) { event ->
         val type = event.inventory.type
         if (!VALID_CONTAINERS.contains(type)) {
-            TIMED_EXPLOSION(event.player.location, 60L)
+            val holder = event.inventory.holder ?: return@ExplorerIntent
+            val loc =
+                when (holder) {
+                    is BlockInventoryHolder -> holder.block.location
+                    is Entity -> holder.location
+                    else -> event.player.location
+                }
+            TIMED_EXPLOSION(loc, 3L, event.player as Player)
         }
     }
 
@@ -115,6 +164,14 @@ object ExplorerIntents : ExplorerIntentContainer() {
         if (player.isInRain || player.isInWater) {
             player.damage(0.5)
             player.world.playSound(player.location, Sound.ENCHANT_THORNS_HIT, 1f, 1f)
+        }
+
+        val nearbyEntities = player.location.getNearbyLivingEntities(65.0)
+        nearbyEntities.filterNot(IGNORE_WATER_DAMAGE_PREDICATE).forEach {
+            if (it.isInRain || it.isInWater) {
+                it.damage(0.5)
+                it.world.playSound(it.location, Sound.ENCHANT_THORNS_HIT, 1f, 1f)
+            }
         }
     }
 
@@ -156,7 +213,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
         // Let's just put a hard cap at 50 in a 150-block radius.
         val nearbyCreepers = entity.location.getNearbyEntitiesByType(Creeper::class.java, 150.0)
 
-        if (nearbyCreepers.size >= 50) {
+        if (nearbyCreepers.size >= 150) {
             return@ExplorerIntent
         }
 
@@ -241,7 +298,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
     ) { event ->
         val player = event.player
         val nearbyEnemies = player.location.getNearbyLivingEntities(65.0)
-            .filter { ((it is Enemy || it is Golem) && it !is Enderman) }
+            .filter { ((it is Enemy || it is Golem || it is Bee) && it !is Enderman) }
             .map { it as Mob }
 
         nearbyEnemies.forEach {
@@ -271,11 +328,25 @@ object ExplorerIntents : ExplorerIntentContainer() {
         world = WORLD,
         eventClass = EntityTameEvent::class,
     ) { event ->
-        TIMED_EXPLOSION(event.entity.location, 60L)
+        TIMED_EXPLOSION(event.entity.location, 10L, event.owner as? Player ?: return@ExplorerIntent)
     }
 
 
-    init {
-        ensureEnumerated()
+    val RANDOM_LIGHTNING = ExplorerIntent<TenSecondRunnableEvent>(
+        title = "Random Lightning",
+        desc = "Lightning strikes randomly.",
+        world = WORLD,
+        eventClass = TenSecondRunnableEvent::class,
+    ) { event ->
+        val player = event.player
+        // get a random location at least 60 blocks away from the player
+        fun randomSign() = if (Random.nextBoolean()) 1.0 else -1.0
+
+        val randomLocation = player.location.clone().add(
+            Random.nextDouble(1.0, 100.0) * randomSign(),
+            0.0,
+            Random.nextDouble(1.0, 100.0) * randomSign()
+        )
+        player.world.strikeLightning(randomLocation)
     }
 }

@@ -4,7 +4,7 @@ import dev.lumas.core.annotation.Autowire;
 import dev.lumas.core.annotation.PlaceholderMeta;
 import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
-import dev.lumas.events.services.LeaderboardCacheService;
+import dev.lumas.events.manager.LeaderboardCacheManager;
 import dev.lumas.events.utility.Util;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.Nullable;
@@ -27,7 +27,7 @@ public class PlaytimePlaceholder implements PlaceholderModule {
         if (args.isEmpty()) return null;
 
         int position = Util.getInt(args.getFirst(), 1);
-        LeaderboardCacheService.PlaytimeEntry entry = LeaderboardCacheService.getPlaytimePosition(position);
+        LeaderboardCacheManager.PlaytimeEntry entry = LeaderboardCacheManager.getPlaytimePosition(position);
 
         if (entry == null) {
             return "#" + position + " Empty - 0h";

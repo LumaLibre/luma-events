@@ -1,6 +1,6 @@
 package dev.lumas.events.tasks;
 
-import dev.lumas.events.EventPlayerManager;
+import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.obj.EventPlayer;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;

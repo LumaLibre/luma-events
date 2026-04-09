@@ -6,6 +6,9 @@ import dev.lumas.events.EventMain;
 import dev.lumas.events.explorer.mile.ActiveExplorerMile;
 import dev.lumas.events.explorer.mile.ExplorerMile;
 import dev.lumas.events.explorer.mile.ExplorerMileRegistry;
+import dev.lumas.events.explorer.order.ActiveOrder;
+import dev.lumas.events.explorer.order.ExplorerOrder;
+import dev.lumas.events.explorer.order.ExplorerOrderRegistry;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.Scorer;
 import dev.lumas.events.hooks.BetterRTPService;
@@ -56,14 +59,17 @@ public class EventPlayer implements Serializable, Scorer {
     private PersistentInventoryState storedInventoryState;
     private float suspendedExperience;
     private @Nullable ItemStack @Nullable[] suspendedInventory;
+    private final Set<ActiveOrder> activeOrders;
+    @Getter @Setter
+    private int souls;
 
 
     // Initial creation
     public EventPlayer(UUID uuid) {
-        this(uuid, new HashMap<>(), new HashSet<>(), false, 0L, false,PersistentInventoryState.TRANSIENT_INVENTORY, 0f, null);
+        this(uuid, new HashMap<>(), new HashSet<>(), false, 0L, false, PersistentInventoryState.TRANSIENT_INVENTORY, 0f, null, new HashSet<>(), 0);
     }
 
-    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores, Set<ActiveExplorerMile> activeExplorerMiles, boolean claimedCharm, long secondsPlayed, boolean suspended, PersistentInventoryState storedInventoryState, float suspendedExperience, @Nullable ItemStack @Nullable[] suspendedInventory) {
+    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores, Set<ActiveExplorerMile> activeExplorerMiles, boolean claimedCharm, long secondsPlayed, boolean suspended, PersistentInventoryState storedInventoryState, float suspendedExperience, @Nullable ItemStack @Nullable[] suspendedInventory, Set<ActiveOrder> activeOrders, int souls) {
         this.uuid = uuid;
         this.scores = scores;
         this.activeExplorerMiles = activeExplorerMiles;
@@ -73,6 +79,8 @@ public class EventPlayer implements Serializable, Scorer {
         this.storedInventoryState = storedInventoryState;
         this.suspendedExperience = suspendedExperience;
         this.suspendedInventory = suspendedInventory;
+        this.activeOrders = activeOrders;
+        this.souls = souls;
     }
 
     private Object getLock() {
@@ -257,6 +265,32 @@ public class EventPlayer implements Serializable, Scorer {
                     }
                 }
             });
+        }
+    }
+
+    public boolean hasStartedAside(ExplorerOrder<?> explorerOrder) {
+        for (ActiveOrder activeOrder : this.activeOrders) {
+            if (activeOrder == null) continue;
+            if (Objects.equals(activeOrder.getExplorerOrder().getFIELD_NAME(), explorerOrder.getFIELD_NAME())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void fireForAsides(World world, Object event) {
+        synchronized (this.getLock()) {
+            for (ExplorerOrder<?> nonActiveExplorerOrder : ExplorerOrderRegistry.jvmUnifiedMap().values()) {
+                if (nonActiveExplorerOrder.getEventClass() == event.getClass() && !hasStartedAside(nonActiveExplorerOrder)) {
+                    activeOrders.add(new ActiveOrder(nonActiveExplorerOrder, 0, false));
+                }
+            }
+
+            for (ActiveOrder activeOrder : this.activeOrders) {
+                if (activeOrder != null && activeOrder.getExplorerOrder().getEventClass() == event.getClass()) {
+                    activeOrder.apply(world, event, this);
+                }
+            }
         }
     }
 

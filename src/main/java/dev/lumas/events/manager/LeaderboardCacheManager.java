@@ -1,9 +1,5 @@
-package dev.lumas.events.services;
+package dev.lumas.events.manager;
 
-import dev.lumas.core.annotation.Autowire;
-import dev.lumas.core.annotation.Register;
-import dev.lumas.core.model.Service;
-import dev.lumas.events.EventPlayerManager;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
@@ -18,8 +14,10 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-@Register(Autowire.SERVICE)
-public final class LeaderboardCacheService extends AsynchronousRunnable implements Service {
+
+public final class LeaderboardCacheManager extends AsynchronousRunnable {
+
+    private static final LeaderboardCacheManager INSTANCE = new LeaderboardCacheManager();
 
     private static final long REFRESH_INTERVAL = 20 * 60L;
     private static final Map<MinigameConstant, List<LeaderboardEntry>> leaderboards = new ConcurrentHashMap<>();
@@ -28,14 +26,9 @@ public final class LeaderboardCacheService extends AsynchronousRunnable implemen
     public record LeaderboardEntry(UUID uuid, String name, int score) {}
     public record PlaytimeEntry(UUID uuid, String name, long secondsPlayed) {}
 
-    @Override
-    public void register() {
-        this.repeatingAsync(0L, REFRESH_INTERVAL);
-    }
 
-    @Override
-    public void unregister() {
-        this.cancel();
+    public static void start() {
+        INSTANCE.repeatingAsync(0L, REFRESH_INTERVAL);
     }
 
     @Override

@@ -3,7 +3,7 @@ package dev.lumas.events.suspend;
 import dev.lumas.core.annotation.Autowire;
 import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
-import dev.lumas.events.EventPlayerManager;
+import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Util;
 import org.bukkit.World;

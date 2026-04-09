@@ -8,8 +8,10 @@ import me.outspending.biomesapi.biome.CustomBiome;
 import me.outspending.biomesapi.exceptions.MissingPacketManipulatorLibraryException;
 import me.outspending.biomesapi.registry.BiomeResourceKey;
 import me.outspending.biomesapi.renderer.packet.PacketHandler;
+import me.outspending.biomesapi.renderer.packet.data.BlockReplacement;
 import me.outspending.biomesapi.renderer.packet.data.PhonyCustomBiome;
 import me.outspending.biomesapi.wrapper.BiomeSettings;
+import org.bukkit.Material;
 
 @Register(Autowire.SERVICE)
 public class SuspendWorldBiomeService implements Service {
@@ -30,11 +32,19 @@ public class SuspendWorldBiomeService implements Service {
                 .settings(BiomeSettings.defaultSettings())
                 .fogColor("#FFFFFF") // #db4929
                 .foliageColor("#F5F2EB")
-                .skyColor("#000000")
-                .waterColor("#F5F2EB") // #F5F2EB
+                .skyColor("#FFFFFF")
+                .waterColor("#000000") // #F5F2EB
                 .waterFogColor("#000000")
-                .grassColor("#FFFFFF")
+                .grassColor("#FAF5EA")
                 .dryFoliageColor("#FFFFFF")
+                .blockReplacements(
+                        BlockReplacement.of(Material.SAND, Material.WHITE_CONCRETE_POWDER),
+                        BlockReplacement.of(Material.RED_SAND, Material.WHITE_CONCRETE_POWDER),
+                        BlockReplacement.of(Material.GRAVEL, Material.WHITE_CONCRETE_POWDER),
+                        BlockReplacement.of(Material.BIRCH_LEAVES, Material.ACACIA_LEAVES),
+                        BlockReplacement.of(Material.SPRUCE_LEAVES, Material.WHITE_STAINED_GLASS),
+                        BlockReplacement.of(Material.SPRUCE_LOG, Material.STRIPPED_PALE_OAK_LOG)
+                )
                 .build();
 
         baseWhiteBiome.register();

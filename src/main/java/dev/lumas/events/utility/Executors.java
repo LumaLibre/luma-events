@@ -8,6 +8,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
+import org.jspecify.annotations.Nullable;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -39,8 +41,16 @@ public final class Executors {
     // TODO: Log if entity was retired
     // Synchronous
 
+    @Nullable
     public static ScheduledTask delayedSync(Entity entity, long delay, Runnable runnable) {
         return entity.getScheduler().runDelayed(instance, t -> runnable.run(), null, delay);
+    }
+
+    @Nullable
+    public static ScheduledTask delayedSync(EventPlayer eventPlayer, long delay, Runnable runnable) {
+        Player player = eventPlayer.getPlayer();
+        if (player == null) return null;
+        return delayedSync(player, delay, runnable);
     }
 
     public static ScheduledTask delayedSync(Location location, long delay, Runnable runnable) {

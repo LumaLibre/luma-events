@@ -11,6 +11,6 @@ class FullSecondRunnableEvent(val player: Player)
 @Register(Autowire.SERVICE) // TODO
 class FullSecondRunner : AbstractRunnableTicker(20) {
     override fun doRun(player: Player) {
-        fire(FullSecondRunnableEvent(player), player, intentsOnly = true)
+        fire(FullSecondRunnableEvent(player), player, ignoreMiles = true)
     }
 }

@@ -4,10 +4,6 @@ import dev.lumas.core.manager.Modules;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.ConfigManager;
 import dev.lumas.events.configurable.MinigameState;
-import dev.lumas.events.explorer.intention.ExplorerIntentContainer;
-import dev.lumas.events.explorer.intention.ExplorerIntents;
-import dev.lumas.events.explorer.mile.ExplorerMileContainer;
-import dev.lumas.events.explorer.mile.ExplorerMiles;
 import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.models.CountdownBossBar;
@@ -15,6 +11,8 @@ import dev.lumas.events.items.CandiedAppleItem;
 import dev.lumas.events.items.CaramelAppleItem;
 import dev.lumas.events.items.LocalCustomItemManager;
 import dev.lumas.events.items.StartMinigameItem;
+import dev.lumas.events.manager.EventPlayerManager;
+import dev.lumas.events.manager.LeaderboardCacheManager;
 import dev.lumas.events.tasks.PlaytimeCounterTask;
 import dev.lumas.lumaitems.util.extensions.Executors;
 import lombok.Getter;
@@ -41,17 +39,13 @@ public final class EventMain extends JavaPlugin {
         okaeriConfigManager = new ConfigManager();
         moduleManager = new Modules(this);
 
-        // TODO: Temporary fields.
-        ExplorerIntentContainer c1 = ExplorerIntents.INSTANCE;
-        ExplorerMileContainer c2 = ExplorerMiles.INSTANCE;
-
+        moduleManager.register();
 
         EventPlayerManager.loadOnlinePlayers();
+        LeaderboardCacheManager.start();
+
         Executors.asyncTimer(20 * 60L, 20 * 60L, t -> EventPlayerManager.evictStale());
-
         MinigameManager.getInstance().repeatingAsync(0, 600);
-
-        moduleManager.register();
 
         LocalCustomItemManager.addCustomItem(new CandiedAppleItem());
         LocalCustomItemManager.addCustomItem(new StartMinigameItem());

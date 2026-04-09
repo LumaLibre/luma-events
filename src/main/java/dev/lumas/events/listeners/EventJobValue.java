@@ -1,4 +1,4 @@
-package dev.lumas.events.jobtokens;
+package dev.lumas.events.listeners;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

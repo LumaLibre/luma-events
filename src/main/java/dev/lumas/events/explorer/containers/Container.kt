@@ -1,5 +1,6 @@
 package dev.lumas.events.explorer.containers
 
+import dev.lumas.core.model.Service
 import dev.lumas.core.util.ContextLogger
 
 /**
@@ -9,7 +10,7 @@ import dev.lumas.core.util.ContextLogger
  *
  * @param T the type of object managed by this container, extending [ContainerReflective].
  */
-abstract class Container<T : ContainerReflective> {
+abstract class Container<T : ContainerReflective>(val registry: ExplorerRegistry<T>) : Service {
 
     companion object {
         val LOGGER: ContextLogger = ContextLogger.getLogger(true)
@@ -17,6 +18,14 @@ abstract class Container<T : ContainerReflective> {
 
     protected val keys: MutableMap<String, T> = LinkedHashMap()
     private var enumerated = false
+
+    override fun register() {
+        ensureEnumerated()
+    }
+
+    override fun unregister() {
+        // no-op
+    }
 
     /**
      * Lists the fields of this container, populating the [keys] map with the field names and their corresponding objects.
@@ -26,17 +35,12 @@ abstract class Container<T : ContainerReflective> {
             enumerated = true
             enumerate()
             if (keys.isNotEmpty()) {
-                registry().register(this)
+                registry.register(this)
             } else {
                 LOGGER.info("No applicable fields found in ${this::class.java.simpleName}, ignoring.")
             }
         }
     }
-
-    /**
-     * Retrieves the [ExplorerRegistry] associated with this container.
-     */
-    abstract fun registry(): ExplorerRegistry<T>
 
     /**
      * Retrieves the map of field names to objects in this container.

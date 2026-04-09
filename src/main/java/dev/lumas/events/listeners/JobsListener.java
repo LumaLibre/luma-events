@@ -1,4 +1,4 @@
-package dev.lumas.events.jobtokens;
+package dev.lumas.events.listeners;
 
 import com.gamingmesh.jobs.api.JobsPrePaymentEvent;
 import com.gmail.nossr50.api.AbilityAPI;

@@ -7,9 +7,7 @@ import com.google.gson.stream.JsonWriter;
 import org.bukkit.inventory.ItemStack;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.List;
 
 public class ItemStackArrayAdapter extends TypeAdapter<ItemStack[]> {
 
@@ -19,15 +17,10 @@ public class ItemStackArrayAdapter extends TypeAdapter<ItemStack[]> {
             out.nullValue();
             return;
         }
-        out.beginArray();
-        for (ItemStack item : items) {
-            if (item == null) {
-                out.nullValue();
-            } else {
-                out.value(Base64.getEncoder().encodeToString(item.serializeAsBytes()));
-            }
-        }
-        out.endArray();
+
+        byte[] serialized = ItemStack.serializeItemsAsBytes(items);
+        String serializedString = Base64.getEncoder().encodeToString(serialized);
+        out.value(serializedString);
     }
 
     @Override
@@ -36,18 +29,14 @@ public class ItemStackArrayAdapter extends TypeAdapter<ItemStack[]> {
             in.nextNull();
             return null;
         }
-        List<ItemStack> items = new ArrayList<>();
-        in.beginArray();
-        while (in.hasNext()) {
-            if (in.peek() == JsonToken.NULL) {
-                in.nextNull();
-                items.add(null);
-            } else {
-                byte[] bytes = Base64.getDecoder().decode(in.nextString());
-                items.add(ItemStack.deserializeBytes(bytes));
-            }
+
+        String serializedString = in.nextString();
+        if (serializedString.isEmpty()) {
+            return new ItemStack[0];
         }
-        in.endArray();
-        return items.toArray(new ItemStack[0]);
+
+        byte[] serialized = Base64.getDecoder().decode(serializedString);
+        ItemStack[] items = ItemStack.deserializeItemsFromBytes(serialized);
+        return items;
     }
 }

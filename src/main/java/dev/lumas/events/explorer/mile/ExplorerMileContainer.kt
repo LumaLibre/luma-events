@@ -2,14 +2,9 @@ package dev.lumas.events.explorer.mile
 
 import dev.lumas.events.explorer.containers.Container
 import dev.lumas.events.explorer.containers.ContainerType
-import dev.lumas.events.explorer.containers.ExplorerRegistry
 
 @ContainerType(ExplorerMile::class)
-abstract class ExplorerMileContainer : Container<ExplorerMile<*>>() {
-
-    override fun registry(): ExplorerRegistry<ExplorerMile<*>> {
-        return ExplorerMileRegistry
-    }
+abstract class ExplorerMileContainer : Container<ExplorerMile<*>>(ExplorerMileRegistry) {
 
     // Lazy init for external plugins and problematic ExplorerMiles
     protected inline fun <T> safeLazy(crossinline block: () -> T?): Lazy<T?> {

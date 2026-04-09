@@ -71,7 +71,7 @@ class ExplorerListeners : AbstractExplorerListener {
 
     @EventHandler
     fun onEntityDeath(event: EntityDeathEvent) {
-        val entity = event.damageSource.causingEntity as? Player ?: event.entity
+        val entity = event.entity.killer ?: event.entity
         fire(event, entity)
     }
 

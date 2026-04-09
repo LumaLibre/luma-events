@@ -13,6 +13,6 @@ class QuarterSecondRunnableEvent(val player: Player)
 @Register(Autowire.SERVICE)
 class QuarterSecondRunner : AbstractRunnableTicker(5) {
     override fun doRun(player: Player) {
-        fire(QuarterSecondRunnableEvent(player), player, intentsOnly = true)
+        fire(QuarterSecondRunnableEvent(player), player, ignoreMiles = true)
     }
 }

@@ -1,8 +1,8 @@
 package dev.lumas.events.games.events;
 
 import dev.lumas.events.EventMain;
-import dev.lumas.events.EventPlayerManager;
 import dev.lumas.events.games.interfaces.Minigame;
+import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.MinigameBoundingBox;
 import org.bukkit.entity.Player;

@@ -3,9 +3,7 @@ package dev.lumas.events.utility;
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import dev.lumas.events.EventMain;
-import dev.lumas.events.explorer.mile.ActiveExplorerMile;
 import dev.lumas.events.utility.gson.GsonHolder;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
@@ -33,7 +31,6 @@ import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.Color;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -64,6 +61,10 @@ public final class Util {
 
     public static void broadcast(String message) {
         Bukkit.broadcast(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)));
+    }
+
+    public static void broadcast(Component message) {
+        Bukkit.broadcast(color(PREFIX).append(message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)));
     }
 
     public static void broadcastSound(Sound sound, float volume, float pitch) {

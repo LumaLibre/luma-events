@@ -13,6 +13,6 @@ class TenSecondRunnableEvent(val player: Player)
 @Register(Autowire.SERVICE) // TODO
 class TenSecondRunner : AbstractRunnableTicker(200) {
     override fun doRun(player: Player) {
-        fire(TenSecondRunnableEvent(player), player, intentsOnly = true)
+        fire(TenSecondRunnableEvent(player), player, ignoreMiles = true)
     }
 }

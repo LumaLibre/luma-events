@@ -1,8 +1,8 @@
 package dev.lumas.events.games.logic.microgame;
 
-import dev.lumas.events.EventPlayerManager;
 import dev.lumas.events.games.interfaces.Microgame;
 import dev.lumas.events.games.interfaces.structures.GenericStructure;
+import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.obj.EventPlayer;
 import org.bukkit.entity.Player;
 

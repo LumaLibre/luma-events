@@ -13,6 +13,6 @@ class HalfSecondRunnableEvent(val player: Player)
 @Register(Autowire.SERVICE) // TODO
 class HalfSecondRunner : AbstractRunnableTicker(10) {
     override fun doRun(player: Player) {
-        fire(HalfSecondRunnableEvent(player), player, intentsOnly = true)
+        fire(HalfSecondRunnableEvent(player), player, ignoreMiles = true)
     }
 }
