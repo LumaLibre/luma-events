@@ -5,6 +5,7 @@ import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.sectors.MineBattleDefinition;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.logic.BoatRace2;
+import dev.lumas.events.games.logic.FreezeTag;
 import dev.lumas.events.games.logic.Manor;
 import dev.lumas.events.games.logic.MineBattle;
 import dev.lumas.events.games.logic.Paintball2_1;
@@ -25,6 +26,7 @@ import java.util.Map;
 public enum MinigameConstant {
 
     // This enum should only contain real minigames!
+    FREEZE_TAG(FreezeTag::new, "freezetag", "freeze_tag"),
     PAINTBALL2_1(Paintball2_1::new, "paintball2.1", "paintball2_1"),
     BOATRACE2(BoatRace2::new,"boatrace2", "boatrace"),
     TNTTAG(TNTTag::new, "tnttag"),
@@ -50,6 +52,7 @@ public enum MinigameConstant {
         Config cfg = EventMain.getOkaeriConfig();
 
         return switch (this) {
+            case FREEZE_TAG -> (Map<String, T>) cfg.getFreezeTagMaps();
             case PAINTBALL2_1 -> (Map<String, T>) cfg.getPaintballMaps();
             case BOATRACE2 -> (Map<String, T>) cfg.getBoatRaceMaps();
             case TNTTAG -> (Map<String, T>) cfg.getTntTagMaps();

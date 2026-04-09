@@ -22,9 +22,9 @@ public class LocationTransformer extends BidirectionalTransformer<String, Locati
             throw new IllegalArgumentException("Invalid location format: " + data);
         }
         World world = Bukkit.getWorld(parts[0]);
-        int x = Integer.parseInt(parts[1]);
-        int y = Integer.parseInt(parts[2]);
-        int z = Integer.parseInt(parts[3]);
+        double x = Double.parseDouble(parts[1]);
+        double y = Double.parseDouble(parts[2]);
+        double z = Double.parseDouble(parts[3]);
         if (parts.length == 6) {
             float yaw = Float.parseFloat(parts[4]);
             float pitch = Float.parseFloat(parts[5]);
