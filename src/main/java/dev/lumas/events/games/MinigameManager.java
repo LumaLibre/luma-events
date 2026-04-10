@@ -2,14 +2,14 @@ package dev.lumas.events.games;
 
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.Config;
-import dev.lumas.events.configurable.MinigameState;
+import dev.lumas.events.configurable.PersistentStates;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.exceptions.GameAlreadyStartedException;
 import dev.lumas.events.games.exceptions.NoAvailableMinigames;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.logic.NonActiveMinigame;
-import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import dev.lumas.events.utility.Util;
+import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import eu.okaeri.configs.OkaeriConfig;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.AccessLevel;
@@ -29,7 +29,7 @@ public final class MinigameManager extends AsynchronousRunnable {
     private static MinigameManager instance;
 
     private final Config cfg = EventMain.getOkaeriConfig();
-    private final MinigameState minigameState = EventMain.getMinigameState();
+    private final PersistentStates persistentStates = EventMain.getPersistentStates();
 
 
     @NotNull
@@ -144,7 +144,7 @@ public final class MinigameManager extends AsynchronousRunnable {
 
         // We can't start another minigame if the cooldown hasn't passed!
         long currentTime = System.currentTimeMillis();
-        long lastMinigameTime = this.minigameState.getLastGameLaunchTime();
+        long lastMinigameTime = this.persistentStates.getLastGameLaunchTime();
 
 
         return (currentTime - lastMinigameTime) >= this.cfg.getAutomaticMinigameCooldown();
@@ -162,15 +162,15 @@ public final class MinigameManager extends AsynchronousRunnable {
             throw new NoAvailableMinigames("Cannot start automatic minigame: No available minigames configured!");
         }
 
-        int lastIndex = availableMinigames.indexOf(this.minigameState.getLastMinigame());
+        int lastIndex = availableMinigames.indexOf(this.persistentStates.getLastMinigame());
         if (lastIndex == -1) {
             lastIndex = 0; // Start from the beginning if the last minigame is not found
         }
         MinigameConstant nextMinigame = availableMinigames.get((lastIndex + 1) % availableMinigames.size());
 
-        this.minigameState.setLastGameLaunchTime(System.currentTimeMillis());
-        this.minigameState.setLastMinigame(nextMinigame);
-        this.minigameState.save();
+        this.persistentStates.setLastGameLaunchTime(System.currentTimeMillis());
+        this.persistentStates.setLastMinigame(nextMinigame);
+        this.persistentStates.save();
         this.newMinigame(nextMinigame, false);
     }
 

@@ -7,7 +7,7 @@ import dev.lumas.events.EventMain;
 import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
 import dev.lumas.events.configurable.Config;
-import dev.lumas.events.configurable.MinigameState;
+import dev.lumas.events.configurable.PersistentStates;
 import dev.lumas.events.utility.Util;
 import org.bukkit.command.CommandSender;
 import org.jspecify.annotations.NullMarked;
@@ -28,9 +28,9 @@ public class NextMinigameCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
         Config cfg = EventMain.getOkaeriConfig();
-        MinigameState minigameState = EventMain.getMinigameState();
+        PersistentStates persistentStates = EventMain.getPersistentStates();
 
-        long timeSinceLast = System.currentTimeMillis() - minigameState.getLastGameLaunchTime();
+        long timeSinceLast = System.currentTimeMillis() - persistentStates.getLastGameLaunchTime();
         long timeCombined = cfg.getAutomaticMinigameCooldown() - timeSinceLast;
         // print how long until the next minigame
         Util.sendMsg(commandSender, "The next minigame will be in <gold>" + millisToMins(timeCombined) + "</gold>.");

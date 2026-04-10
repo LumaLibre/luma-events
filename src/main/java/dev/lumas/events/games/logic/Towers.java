@@ -16,6 +16,7 @@ import dev.lumas.events.games.tokenformula.FlatIntTokenFormula;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.WorldTiedBoundingBox;
+import dev.lumas.events.obj.team.EventTeam;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.lumacore.utility.Logging;
@@ -88,6 +89,8 @@ public final class Towers extends InventoryUnifiedMinigame {
     private double forceGameArenaYLevel;
     private List<Location> gridLocations;
 
+    private final Scoreboard<EventTeam> teamScoreboard; // TODO: implement
+
     public Towers(TowersDefinition def) {
         super(def.isEscalation() ? "Escalation Towers" : "Towers", "Don't fall.", 480000, TICK_INTERVAL, true, false, false, false);
 
@@ -101,6 +104,12 @@ public final class Towers extends InventoryUnifiedMinigame {
         this.tokenFormula = new FlatIntTokenFormula(15);
         this.isEscalation = def.isEscalation();
         this.forceGameArenaYLevel = this.centerPoint.getY() - 10;
+        this.teamScoreboard = new Scoreboard<>();
+    }
+
+    @Override
+    protected boolean requiresTeams() {
+        return true;
     }
 
     @Override

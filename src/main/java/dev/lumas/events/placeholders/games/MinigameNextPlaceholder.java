@@ -5,7 +5,7 @@ import dev.lumas.core.annotation.PlaceholderMeta;
 import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.Config;
-import dev.lumas.events.configurable.MinigameState;
+import dev.lumas.events.configurable.PersistentStates;
 import dev.lumas.events.placeholders.PlaceholderManager;
 import dev.lumas.events.placeholders.PlaceholderModule;
 import org.bukkit.OfflinePlayer;
@@ -29,9 +29,9 @@ public class MinigameNextPlaceholder implements PlaceholderModule {
             return "∞m";
         }
 
-        MinigameState minigameState = EventMain.getMinigameState();
+        PersistentStates persistentStates = EventMain.getPersistentStates();
 
-        long timeSinceLast = System.currentTimeMillis() - minigameState.getLastGameLaunchTime();
+        long timeSinceLast = System.currentTimeMillis() - persistentStates.getLastGameLaunchTime();
         long timeCombined = cfg.getAutomaticMinigameCooldown() - timeSinceLast;
         return String.format("%dm", TimeUnit.MILLISECONDS.toMinutes(timeCombined));
     }

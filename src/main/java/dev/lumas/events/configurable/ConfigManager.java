@@ -12,13 +12,13 @@ import java.nio.file.Path;
 public class ConfigManager {
 
     private final Config config;
-    private final MinigameState minigameState;
+    private final PersistentStates persistentStates;
 
     public ConfigManager() {
         Path dataPath = EventMain.getInstance().getDataPath();
 
         this.config = loadConfig(Config.class, dataPath.resolve("config.yml"));
-        this.minigameState = loadConfig(MinigameState.class, dataPath.resolve("minigame-state.yml"));
+        this.persistentStates = loadConfig(PersistentStates.class, dataPath.resolve("minigame-state.yml"));
     }
 
     private <T extends OkaeriConfig> T loadConfig(Class<T> configClass, Path path) {

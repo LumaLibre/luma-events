@@ -3,7 +3,7 @@ package dev.lumas.events;
 import dev.lumas.core.manager.Modules;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.ConfigManager;
-import dev.lumas.events.configurable.MinigameState;
+import dev.lumas.events.configurable.PersistentStates;
 import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.models.CountdownBossBar;
@@ -12,6 +12,7 @@ import dev.lumas.events.items.CaramelAppleItem;
 import dev.lumas.events.items.LocalCustomItemManager;
 import dev.lumas.events.items.StartMinigameItem;
 import dev.lumas.events.manager.EventPlayerManager;
+import dev.lumas.events.manager.EventTeamManager;
 import dev.lumas.events.manager.LeaderboardCacheManager;
 import dev.lumas.events.tasks.PlaytimeCounterTask;
 import dev.lumas.lumaitems.util.extensions.Executors;
@@ -42,6 +43,7 @@ public final class EventMain extends JavaPlugin {
         moduleManager.register();
 
         EventPlayerManager.loadOnlinePlayers();
+        EventTeamManager.loadAll();
         LeaderboardCacheManager.start();
 
         Executors.asyncTimer(20 * 60L, 20 * 60L, t -> EventPlayerManager.evictStale());
@@ -87,7 +89,7 @@ public final class EventMain extends JavaPlugin {
         return okaeriConfigManager.getConfig();
     }
 
-    public static MinigameState getMinigameState() {
-        return okaeriConfigManager.getMinigameState();
+    public static PersistentStates getPersistentStates() {
+        return okaeriConfigManager.getPersistentStates();
     }
 }
