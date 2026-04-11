@@ -1,7 +1,7 @@
 package dev.lumas.events.games.logic;
 
 import dev.lumas.events.EventMain;
-import dev.lumas.events.EventPlayerManager;
+import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.configurable.sectors.FreezeTagDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
