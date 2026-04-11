@@ -31,7 +31,7 @@ repositories {
 dependencies {
     compileOnly("dev.lumas.core:LumaCore:f25f237")
     compileOnly("dev.lumas.lumaitems:LumaItems:a5ce560")
-    compileOnly("dev.lumas.glowapi:LumaGlowAPI:c57567c")
+    compileOnly("dev.lumas.glowapi:LumaGlowAPI:325d91d")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("com.nuclyon.technicallycoded.inventoryrollback:InventoryRollbackPlus:1.7.3")
     compileOnly("com.github.Zrips:jobs:v4.17.2")

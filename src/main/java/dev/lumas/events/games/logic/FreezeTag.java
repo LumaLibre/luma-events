@@ -1,13 +1,13 @@
 package dev.lumas.events.games.logic;
 
 import dev.lumas.events.EventMain;
-import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.configurable.sectors.FreezeTagDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.Scorer;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.tokenformula.FreezeTagTokenFormula;
+import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
@@ -48,6 +48,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+// TODO: Add scarlet/ivory team stuff
+// TODO: Swap LumaGlowAPI references
 public final class FreezeTag extends InventoryUnifiedMinigame {
 
     private static final List<String> EGG_TEXTURES = List.of(

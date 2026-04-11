@@ -10,14 +10,18 @@ import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
 import dev.lumas.events.games.tokenformula.Paintball2_1TokenFormula;
 import dev.lumas.events.manager.EventPlayerManager;
+import dev.lumas.events.manager.EventTeamManager;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.Sphere;
 import dev.lumas.events.obj.WorldTiedBoundingBox;
+import dev.lumas.events.obj.team.EventTeam;
+import dev.lumas.events.obj.team.IvoryTeam;
+import dev.lumas.events.obj.team.ScarletTeam;
 import dev.lumas.events.utility.BlockFaces;
 import dev.lumas.events.utility.Couple;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
-import dev.lumas.glowapi.colormanagers.ColorManager;
+import dev.lumas.glowapi.model.GlowColorManager;
 import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.lumaitems.particles.ParticleDisplay;
 import dev.lumas.lumaitems.particles.Particles;
@@ -87,15 +91,31 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         this.tokenFormula = new Paintball2_1TokenFormula();
     }
 
+    @Override
+    protected boolean requiresTeams() {
+        return true;
+    }
 
     @Override
     protected void handleStart() {
         // Split participants into 2 teams
+        /*
         ColorKits colorKits = ColorKits.random();
         int middle = this.participants.size() / 2;
         this.paintballTeams = List.of(
                 new PaintballTeam(this.participants.subList(0, middle), colorKits.getTeam1(), def.getTeam1SpawnLocation(), def.getTeam1BedParts()),
                 new PaintballTeam(this.participants.subList(middle, this.participants.size()), colorKits.getTeam2(), def.getTeam2SpawnLocation(), def.getTeam2BedParts())
+        );
+         */
+        List<EventPlayer> scarletPlayers = this.participants.stream().filter(it -> EventTeamManager.getByMemberOrThrow(it) instanceof ScarletTeam)
+                .toList();
+        List<EventPlayer> ivoryPlayers = this.participants.stream().filter(it -> EventTeamManager.getByMemberOrThrow(it) instanceof IvoryTeam)
+                .toList();
+
+        ColorKits colorKit = ColorKits.SCARLET_AND_IVORY;
+        this.paintballTeams = List.of(
+                new PaintballTeam(scarletPlayers, colorKit.getTeam1(), def.getTeam1SpawnLocation(), def.getTeam1BedParts(), "Scarlet"),
+                new PaintballTeam(ivoryPlayers, colorKit.getTeam2(), def.getTeam2SpawnLocation(), def.getTeam2BedParts(), "Ivory")
         );
         this.scoreboard.addScorers(this.paintballTeams);
 
@@ -108,7 +128,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                         player.setGameMode(GameMode.SURVIVAL);
                     }
 
-                    ColorManager.setTempPlayerColor(player, Util.chatColorFromNamedTextColor(team.getGlowColor()));
+                    GlowColorManager.getInstance().setTransientColor(player, team.getGlowColor());
                 });
             }
         }
@@ -136,7 +156,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             ).forEach(p -> {
                 Player player = p.getPlayer();
                 player.teleportAsync(def.getSpawnLocation());
-                ColorManager.updatePlayersColor(player);
+                GlowColorManager.getInstance().update(player);
             });
             Location loc = this.getGameDropOffLocation();
 
@@ -180,6 +200,10 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 tokenFormula.giveTokens(member, couple);
                 member.addPermanentScore(MinigameConstant.PAINTBALL2_1, score);
                 position++;
+
+                // team score
+                EventTeam eventTeam = EventTeamManager.getByMemberOrThrow(member);
+                eventTeam.addPoints(score);
             }
         }
     }
@@ -256,7 +280,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
         Player player = participant.getPlayer();
         if (player != null) {
-            ColorManager.updatePlayersColor(player);
+            GlowColorManager.getInstance().update(player);
             if (this.countdownBossBar != null) this.countdownBossBar.getBossBar().removeViewer(player);
         }
         return super.removeParticipant(participant, doTeleport);
@@ -285,6 +309,16 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 .orElseThrow(() -> new IllegalStateException("Player is not a member of any team."));
         snowball.setItem(paintballTeam.getSnowballMaterial());
         snowball.setVelocity(snowball.getVelocity().multiply(0.4));
+
+        Location locationBelowPlayer = shooter.getLocation().add(0, -1, 0);
+        Block blockBelowPlayer = locationBelowPlayer.getBlock();
+        if (!this.blacklistedMaterials.contains(blockBelowPlayer.getType())) {
+            this.paint(locationBelowPlayer, paintballTeam, eventPlayer, 1);
+        }
+
+        Executors.delayedSync(shooter, 1, () -> {
+            shooter.launchProjectile(Snowball.class); // launch another one to cover more ground
+        });
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -465,9 +499,10 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         private final ItemStack paintball;
         private final ItemStack snowballMaterial;
         private final NamedTextColor glowColor;
+        private final String name;
 
 
-        public PaintballTeam(List<EventPlayer> members, ColorKit colorKit, Location spawnPoint, List<TeamBedPart> teamBedParts) {
+        public PaintballTeam(List<EventPlayer> members, ColorKit colorKit, Location spawnPoint, List<TeamBedPart> teamBedParts, String name) {
             this.scoreMap = new HashMap<>();
             this.killMap = new HashMap<>();
             for (EventPlayer member : members) {
@@ -480,10 +515,11 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             this.spawnPoint = spawnPoint;
             this.paintball = new ItemStack(Material.SNOWBALL);
             this.snowballMaterial = new ItemStack(Material.valueOf(colorKit.model.toUpperCase()));
+            this.name = name;
 
             this.paintball.setAmount(16);
             this.paintball.editMeta(meta -> {
-                meta.displayName(Component.text(shortName() + " Paintball").color(textColor).decoration(TextDecoration.ITALIC, false));
+                meta.displayName(Component.text(name + " Paintball").color(textColor).decoration(TextDecoration.ITALIC, false));
                 meta.lore(List.of(Component.text("Throw to paint blocks!").color(NamedTextColor.GRAY)));
                 meta.addAttributeModifier(Attribute.BLOCK_INTERACTION_RANGE, ATTRIBUTE_MODIFIER);
             });
@@ -505,7 +541,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                         bed.setFacing(BlockFaces.yawToFace(l.getYaw(), false).getOppositeFace());
                         blockState.setBlockData(bed);
                     } else {
-                        Logging.log("<red>Failed to set bed data for team: " + shortName() + " at location: " + l);
+                        Logging.log("<red>Failed to set bed data for team: " + name + " at location: " + l);
                     }
                     blockState.update(true, false);
                 });
@@ -542,14 +578,14 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             scoreMap.put(player, scoreMap.get(player) + points);
         }
 
-        public String shortName() {
+        public String colorName() {
             String materialName = material.name().replace("_WOOL", "");
             return Util.formatMaterialName(materialName);
         }
 
         @Override
         public String getName() {
-            return shortName() + " Team";
+            return name + " Team";
         }
 
         public int killCount(EventPlayer player) {
@@ -572,7 +608,8 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         // YELLOW
         PINK(Material.PINK_WOOL, Material.PINK_BED, TextColor.fromHexString("#f4b8da"), "pink_dye", NamedTextColor.WHITE),
         LIGHT_BLUE(Material.LIGHT_BLUE_WOOL, Material.LIGHT_BLUE_BED, NamedTextColor.AQUA, "light_blue_dye"),
-        MAGENTA(Material.MAGENTA_WOOL, Material.MAGENTA_BED, TextColor.fromHexString("#d630d6"), "magenta_dye", NamedTextColor.LIGHT_PURPLE);
+        MAGENTA(Material.MAGENTA_WOOL, Material.MAGENTA_BED, TextColor.fromHexString("#d630d6"), "magenta_dye", NamedTextColor.LIGHT_PURPLE),
+        WHITE(Material.WHITE_WOOL, Material.WHITE_BED, NamedTextColor.WHITE, "white_dye", NamedTextColor.WHITE),;
 
         private final Material material;
         private final Material bed;
@@ -601,6 +638,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         public static final ColorKits J = of(ColorKit.GREEN, ColorKit.PINK);
         public static final ColorKits K = of(ColorKit.ORANGE, ColorKit.LIGHT_BLUE);
         public static final ColorKits L = of(ColorKit.BLUE, ColorKit.ORANGE);
+        public static final ColorKits SCARLET_AND_IVORY = of(ColorKit.RED, ColorKit.WHITE);
 
 
         private final ColorKit team1;

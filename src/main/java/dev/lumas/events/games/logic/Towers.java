@@ -9,20 +9,27 @@ import dev.lumas.events.configurable.sectors.TowersItems;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.TokenFormula;
+import dev.lumas.events.games.interfaces.models.MinigameRole;
+import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
 import dev.lumas.events.games.interfaces.structures.BoundCircularStructureGrid;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
 import dev.lumas.events.games.tokenformula.FlatIntTokenFormula;
 import dev.lumas.events.manager.EventPlayerManager;
+import dev.lumas.events.manager.EventTeamManager;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.WorldTiedBoundingBox;
 import dev.lumas.events.obj.team.EventTeam;
+import dev.lumas.events.obj.team.IvoryTeam;
+import dev.lumas.events.obj.team.ScarletTeam;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
+import dev.lumas.glowapi.model.GlowColorManager;
 import dev.lumas.lumacore.utility.Logging;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.GameMode;
@@ -58,13 +65,10 @@ import org.bukkit.util.Vector;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 
 
 public final class Towers extends InventoryUnifiedMinigame {
@@ -78,7 +82,9 @@ public final class Towers extends InventoryUnifiedMinigame {
     private final TowersItems towersItems;
     private final int maxRadius;
     private final Location centerPoint;
-    private final Map<UUID, TowersPlayer> towersPlayers;
+    private final Location ivoryCenterPoint;
+    private final Location scarletCenterPoint;
+    private final MinigameRoleMap<TowersPlayer> towersPlayers;
     private final Scoreboard<EventPlayer> scoreboard;
     private final TokenFormula<Integer> tokenFormula;
     private final boolean isEscalation;
@@ -87,9 +93,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     private boolean started = false;
 
     private double forceGameArenaYLevel;
-    private List<Location> gridLocations;
-
-    private final Scoreboard<EventTeam> teamScoreboard; // TODO: implement
+    private final List<Location> gridLocations;
 
     public Towers(TowersDefinition def) {
         super(def.isEscalation() ? "Escalation Towers" : "Towers", "Don't fall.", 480000, TICK_INTERVAL, true, false, false, false);
@@ -98,13 +102,17 @@ public final class Towers extends InventoryUnifiedMinigame {
         this.spawnLocation = def.getSpawnLocation().toCenterLocation();
         this.towersItems = def.getTowersItems();
         this.maxRadius = def.getMaxRadius();
-        this.centerPoint = def.getCenterPoint();
-        this.towersPlayers = new HashMap<>();
+        this.centerPoint = def.getCenterPoint().toCenterLocation();
+        this.ivoryCenterPoint = def.getIvoryCenterPoint().toCenterLocation();
+        this.scarletCenterPoint = def.getScarletCenterPoint().toCenterLocation();
+        this.towersPlayers = new MinigameRoleMap<>(TowersPlayer::cleanup);
         this.scoreboard = new Scoreboard<>();
         this.tokenFormula = new FlatIntTokenFormula(15);
         this.isEscalation = def.isEscalation();
         this.forceGameArenaYLevel = this.centerPoint.getY() - 10;
-        this.teamScoreboard = new Scoreboard<>();
+        this.gridLocations = new ArrayList<>();
+
+        this.scarletCenterPoint.setY(this.ivoryCenterPoint.getY()); // enforce same y level
     }
 
     @Override
@@ -139,17 +147,26 @@ public final class Towers extends InventoryUnifiedMinigame {
             });
         }
 
-        BoundCircularStructureGrid grid = new BoundCircularStructureGrid(this.centerPoint, this.maxRadius, 20, 22);
-        this.gridLocations = grid.generateSpawnLocations(this.towersPlayers.size());
-        List<Location> locations = new ArrayList<>(this.gridLocations);
+        List<ActivePlayer> ivoryPlayers = this.towersPlayers.predicate(ActivePlayer.class, k -> k.getTeam() instanceof IvoryTeam);
+        List<ActivePlayer> scarletPlayers = this.towersPlayers.predicate(ActivePlayer.class, k -> k.getTeam() instanceof ScarletTeam);
 
-        for (TowersPlayer towersPlayer : this.towersPlayers.values()) {
-            if (!(towersPlayer instanceof ActivePlayer activePlayer)) {
-                Logging.errorLog("Expected all players to be an ActivePlayer at game start.");
-                continue;
-            }
-            Location spawnLoc = locations.removeFirst();
-            activePlayer.onNewRound(spawnLoc);
+        BoundCircularStructureGrid ivoryGrid = new BoundCircularStructureGrid(this.ivoryCenterPoint, this.maxRadius, 10, 15);
+        BoundCircularStructureGrid scarletGrid = new BoundCircularStructureGrid(this.scarletCenterPoint, this.maxRadius, 10, 15);
+
+        List<Location> ivoryLocations = ivoryGrid.generateSpawnLocations(ivoryPlayers.size());
+        List<Location> scarletLocations = scarletGrid.generateSpawnLocations(scarletPlayers.size());
+
+        this.gridLocations.addAll(ivoryLocations);
+        this.gridLocations.addAll(scarletLocations);
+
+        for (ActivePlayer ivoryPlayer : ivoryPlayers) {
+            Location spawnLoc = ivoryLocations.removeFirst();
+            ivoryPlayer.onNewRound(spawnLoc);
+        }
+
+        for (ActivePlayer scarletPlayer : scarletPlayers) {
+            Location spawnLoc = scarletLocations.removeFirst();
+            scarletPlayer.onNewRound(spawnLoc);
         }
 
         AtomicInteger count = new AtomicInteger(3);
@@ -171,7 +188,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         if (!this.started) return;
 
 
-        if (this.getActivePlayers().size() <= 1) {
+        if (this.towersPlayers.getMatching(ActivePlayer.class).size() <= 1) {
             this.stop();
             return;
         }
@@ -200,7 +217,7 @@ public final class Towers extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStop() {
-        this.getActivePlayers().forEach(activePlayer -> {
+        this.towersPlayers.getMatching(ActivePlayer.class).forEach(activePlayer -> {
             this.scoreboard.addScore(activePlayer.getEventPlayer(), 4);
         });
 
@@ -212,6 +229,9 @@ public final class Towers extends InventoryUnifiedMinigame {
                     player.teleportAsync(this.spawnLocation);
                 });
             });
+
+            // give team points here, not in tokenHandler for rn
+            towersPlayer.getTeam().addPoints(this.scoreboard.getScore(towersPlayer.getEventPlayer()));
         });
 
         this.boundingBox.operate(block -> {
@@ -304,6 +324,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         TowersPlayer attackerTowersPlayer = this.towersPlayers.get(unboxedAttacker);
         if ((attackerTowersPlayer == null || attackerTowersPlayer instanceof Spectator) && !(entity instanceof Player)) {
             entity.setHealth(0);
+            event.setCancelled(true);
             return;
         }
 
@@ -320,6 +341,9 @@ public final class Towers extends InventoryUnifiedMinigame {
         TowersPlayer victimTowersPlayer = this.towersPlayers.get(victim.getUniqueId());
         if (victimTowersPlayer instanceof ActivePlayer activePlayer) {
             activePlayer.setLastAttacker(unboxedAttacker);
+            if (attackerTowersPlayer instanceof ActivePlayer activeAttacker) {
+                activePlayer.onDamaged(activeAttacker, event);
+            }
         }
     }
 
@@ -409,18 +433,6 @@ public final class Towers extends InventoryUnifiedMinigame {
     }
 
     @EventHandler
-    public void onEntityDamage(EntityDamageByEntityEvent event) {
-        this.ensureNotIllegal();
-        if (!(event.getEntity() instanceof Player targetPlayer)) {
-            return;
-        }
-        TowersPlayer towersPlayer = this.towersPlayers.get(targetPlayer.getUniqueId());
-        if (towersPlayer instanceof Spectator) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler
     public void onPlayerDropItem(PlayerDropItemEvent event) {
         this.ensureNotIllegal();
         Player bukkitPlayer = event.getPlayer();
@@ -474,33 +486,6 @@ public final class Towers extends InventoryUnifiedMinigame {
     }
 
 
-
-    private <T extends TowersPlayer> T swapRole(Class<? extends TowersPlayer> ifRole, TowersPlayer towersPlayer, Supplier<? extends TowersPlayer> newRoleSupplier) {
-        if (ifRole.isInstance(towersPlayer)) {
-            return this.swapRole(towersPlayer.getEventPlayer(), newRoleSupplier);
-        }
-        return (T) towersPlayer;
-    }
-    private <T extends TowersPlayer> T swapRole(EventPlayer eventPlayer, Supplier<? extends TowersPlayer> newRoleSupplier) {
-        TowersPlayer currentRole = towersPlayers.get(eventPlayer.getUuid());
-        if (currentRole != null) {
-            Executors.runSync(currentRole.getEventPlayer(), currentRole::cleanup);
-        }
-        TowersPlayer newRole = newRoleSupplier.get();
-        towersPlayers.put(eventPlayer.getUuid(), newRole);
-        return (T) newRole;
-    }
-
-    private List<ActivePlayer> getActivePlayers() {
-        List<ActivePlayer> activePlayers = new ArrayList<>();
-        for (TowersPlayer towersPlayer : this.towersPlayers.values()) {
-            if (towersPlayer instanceof ActivePlayer activePlayer) {
-                activePlayers.add(activePlayer);
-            }
-        }
-        return activePlayers;
-    }
-
     private CountdownBossBar newItemTimer() {
         String title = "<b><yellow>Next drop in: %s";
         if (this.isEscalation) {
@@ -520,7 +505,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     }
 
     private void newItem() { // cleanup
-        for (ActivePlayer activePlayer : this.getActivePlayers()) {
+        for (ActivePlayer activePlayer : this.towersPlayers.getMatching(ActivePlayer.class)) {
             Executors.runSync(activePlayer.getEventPlayer(), () -> {
                 ItemStack itemStack;
                 if (RANDOM.nextInt(100) <= 20) {
@@ -558,20 +543,18 @@ public final class Towers extends InventoryUnifiedMinigame {
 
 
     @Getter
-    private abstract static class TowersPlayer {
-        protected final EventPlayer eventPlayer;
+    private abstract static class TowersPlayer extends MinigameRole {
         protected final Towers context;
         protected Location respawnLocation;
+        protected final EventTeam team;
 
         public TowersPlayer(EventPlayer eventPlayer, Towers context) {
-            this.eventPlayer = eventPlayer;
+            super(eventPlayer);
             this.context = context;
+            this.team = EventTeamManager.getByMemberOrThrow(eventPlayer);
         }
 
-        public UUID getUuid() {
-            return this.eventPlayer.getUuid();
-        }
-
+        public void onDamaged(TowersPlayer attacker, EntityDamageByEntityEvent event) {}
         public abstract void onTick(long timeLeft);
         public abstract void onDeath(PlayerDeathEvent event);
         public abstract void cleanup();
@@ -583,12 +566,17 @@ public final class Towers extends InventoryUnifiedMinigame {
     private static class ActivePlayer extends TowersPlayer {
 
         private static final int MINECRAFT_MIN_Y = -63;
+        private static final PotionEffect GLOWING = new PotionEffect(PotionEffectType.GLOWING, 320, 0, false, false, false);
         private UUID lastAttacker = null;
         private int kills = 0;
         private boolean dirty = false;
 
         public ActivePlayer(EventPlayer eventPlayer, Towers context) {
             super(eventPlayer, context);
+            this.eventPlayer.operatePlayer(player -> {
+                NamedTextColor color = this.getTeam() instanceof ScarletTeam ? NamedTextColor.RED : NamedTextColor.WHITE;
+                GlowColorManager.getInstance().setTransientColor(player, color);
+            });
         }
 
         public void onNewRound(Location spawnLocation) {
@@ -618,6 +606,14 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
 
         @Override
+        public void onDamaged(TowersPlayer attacker, EntityDamageByEntityEvent event) {
+            if (attacker.getTeam().equals(this.getTeam())) {
+                event.setCancelled(true);
+                attacker.getEventPlayer().sendMessage("You cannot attack teammates.");
+            }
+        }
+
+        @Override
         public void onTick(long timeLeft) {
             Player player = this.eventPlayer.getPlayer();
             if (player == null) {
@@ -635,13 +631,15 @@ public final class Towers extends InventoryUnifiedMinigame {
                 player.setFlying(false);
             }
 
+            player.addPotionEffect(GLOWING);
+
             String floorString = this.context.isEscalation ? " <yellow>| <aqua>Floor: " + ((int)player.getLocation().getY()) + "/" + ((int) this.context.forceGameArenaYLevel) : "";
             player.sendActionBar(Text.mm("<yellow>Time left: " + Util.millisToSecs(timeLeft) + "s | <green>Kills: " + this.kills + floorString));
         }
 
         @Override
         public void onDeath(PlayerDeathEvent event) {
-            this.context.swapRole(ActivePlayer.class, this, () -> new Spectator(this.getEventPlayer(), this.context));
+            this.context.towersPlayers.swapRole(this, () -> new Spectator(this.getEventPlayer(), this.context));
 
             if (!dirty) {
                 this.dirty = true;
@@ -678,7 +676,10 @@ public final class Towers extends InventoryUnifiedMinigame {
 
         @Override
         public void cleanup() {
-
+            this.eventPlayer.operatePlayer(player -> {
+                player.removePotionEffect(PotionEffectType.GLOWING);
+                GlowColorManager.getInstance().update(player);
+            });
         }
     }
 

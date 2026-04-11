@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class MinigameRoleMap<T extends MinigameRole> extends HashMap<UUID, T> implements Iterable<T> {
@@ -51,6 +52,14 @@ public class MinigameRoleMap<T extends MinigameRole> extends HashMap<UUID, T> im
             return type.cast(player);
         }
         return null;
+    }
+
+    public <K extends T> List<K> predicate(Class<K> type, Predicate<K> predicate) {
+        return this.values().stream()
+                .filter(type::isInstance)
+                .map(type::cast)
+                .filter(predicate)
+                .toList();
     }
 
     public <S extends MinigameRole> T swapRole(S rolePlayer, Supplier<T> newRoleSupplier) {

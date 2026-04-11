@@ -8,6 +8,7 @@ import dev.lumas.events.obj.team.IvoryTeam;
 import dev.lumas.events.obj.team.ScarletTeam;
 import dev.lumas.events.utility.gson.GsonHolder;
 import lombok.Getter;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.io.FileReader;
@@ -92,6 +93,15 @@ public final class EventTeamManager {
             }
         }
         return null;
+    }
+
+    @NonNull
+    public static EventTeam getByMemberOrThrow(EventPlayer eventPlayer) {
+        EventTeam team = getByMember(eventPlayer);
+        if (team == null) {
+            throw new IllegalArgumentException("Player " + eventPlayer.getName() + " is not a member of any team.");
+        }
+        return team;
     }
 
 
