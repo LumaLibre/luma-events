@@ -1,6 +1,7 @@
 package dev.lumas.events.configurable;
 
 import dev.lumas.events.configurable.sectors.BoatRace2Definition;
+import dev.lumas.events.configurable.sectors.BunnyArenaDefinition;
 import dev.lumas.events.configurable.sectors.FreezeTagDefinition;
 import dev.lumas.events.configurable.sectors.ManorMinigameDefinition;
 import dev.lumas.events.configurable.sectors.MineBattleDefinition;
@@ -65,6 +66,10 @@ public class Config extends OkaeriConfig {
 
     @Comment("The world to spawn the player back into after being unsuspended. If this world does not exist, a random world will be chosen.")
     private String suspendRemovalWorld = "world_the_end";
+
+
+    @Comment("Bunny Arena where bunnies with different values spawn")
+    private BunnyArenaDefinition bunnyArena = new BunnyArenaDefinition();
 
     // easter 2026
 

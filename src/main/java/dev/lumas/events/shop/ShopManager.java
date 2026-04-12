@@ -316,7 +316,7 @@ public final class ShopManager {
             return null;
         }
 
-        ItemStack base = customItem.createItem().getSecond().clone();
+        ItemStack base = customItem.createItem().getSecond();
         ItemMeta meta = base.getItemMeta();
         if (meta == null) return base;
 
