@@ -26,13 +26,17 @@ import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.block.data.Ageable;
+import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.EntityType;
-import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
+import org.bukkit.Particle;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.util.Vector;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -52,27 +56,8 @@ import java.util.concurrent.ConcurrentHashMap;
 // TODO: Swap LumaGlowAPI references
 public final class FreezeTag extends InventoryUnifiedMinigame {
 
-    private static final List<String> EGG_TEXTURES = List.of(
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDY0MmFmYTM5Njg1M2I4MWIxN2JlZjVjOGQ3YTQ0YzEyZGU2ODlhNTZhZjQ3NDg0NjY3OTgzOTlkYTNjZmVhZSJ9fX0=",
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMTM5NjQyNWIyNjc3NDFkZGU0YTNhYzQ4OTBiN2Y5NWE4YjI5ODJkYTlmNGE5NWE2ZWE0ZDU1NjFkOTczNyJ9fX0=",
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvM2YxYzI1YmY2MWEyYmJjN2E5OTU4ZTliOWRiYzlmZjdlMDg3N2M2MjJlNDdmYmNkNTUzNmU5YmUzZDAxMWIzMyJ9fX0=",
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZmMyMzNlOTI3ZWNmNjE4ZWE4YWY4NTI0ZjU4Mzk3NWFjOWM4NmQ1ZThkNzFlZTdmZTM4MzQzMTY0Y2I2In19fQ==",
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZmRlMGE1MGIyYzA3NjVmMDY4NjhmNjBjYWNlYzNmMmNhYWNkY2RkODU1NGI0Y2FkYjlkNjQ2NDAyNzVkNzE5NiJ9fX0=",
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMTdmMGRjOThkZTRiZDIzMWVlODM0OGQ3NzdkMjkxYjdhNGEyYWQ5ZGY0MWJiMzllZGNmODcwYTllM2ZhYzZlNCJ9fX0=",
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMTg0ZTc2ZGM4NzMzZjk2YTg0NjhkMzhmNzNhNWY3NzA4OTZkNWExMjljY2E4YzI5ZWZlOTkxOTdjYjY2NmFmMiJ9fX0=",
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjIzZmNiMTU2ZTQ1ZmViNGM3NzU5MjZiZWQ4MjMwZjhkNjUwYzdiZmJjMzQ2MGQwYmI2ZWExMDhiYjFjZWQ5ZCJ9fX0=",
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODBiOGVmNTJmYjdkNWZjMDE2ODJlNmYxYjAyNGUwY2MxYjc2YzJhZTQxYzk2YTdlNTRlNWZmNWE1MTU4NjlkYyJ9fX0=",
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODQxMmFmNjhlZGMzZWFkN2UzYWE5OWU5MjM4MTY2MzU5ZmVlNjE4OTA0ZWNlY2ZhYzNhYWJlNGIyNzc1M2VkMyJ9fX0=",
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNTBjZDc5NWViOTRlYmJlNDA1ZTZhNjAwYWVlOTVmZmZhZmMyYjhjNzQ0ODY1MGMwYmFhOTdmYzcwMjFjMzU0NCJ9fX0=",
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMmNiZWQ4YTgzMzU4NTQ0MDMyYzMxNGIzODFlYmJiMWVjNGY0MGZiNTI3M2Y0NWUxNTZhZWM3YjJjMDdlZGZkZCJ9fX0=",
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWI5ZTZlMzRiNWI2MGZkNTNkNTdmZGE5OTgwZDdlOTk3YjUwNDY0Y2IxZjUxZGJjMzU3YTM3MmYzNjc2NTAzIn19fQ==",
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZmQ1NWQ3Nzc0ZDFhN2Q2ZWQ0NTU2MDQxZTk2YmVhODIwYjI1ZGQ4ZjEzZmM1YTNlODI1NzYxZDBjMWZhNzZiYSJ9fX0="
-    );
-
-    private static final AttributeModifier FREEZE_SPEED_MOD = new AttributeModifier(
-            new NamespacedKey(EventMain.getInstance(), "freeze_tag_speed"), -1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
-    private static final AttributeModifier FREEZE_JUMP_MOD = new AttributeModifier(
-            new NamespacedKey(EventMain.getInstance(), "freeze_tag_jump"), -1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
+    private static final AttributeModifier FREEZE_MOD = new AttributeModifier(
+            new NamespacedKey(EventMain.getInstance(), "freeze_tag"), -1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
 
     private final FreezeTagDefinition settings;
     private final FreezeTagTokenFormula tokenFormula;
@@ -200,26 +185,28 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
                     continue;
                 }
 
-                int required = settings.getFreezeHitsRequired();
-                int takenHits = pendingFreezeHits.getOrDefault(member.getUuid(), 0);
-                int livesLeft = Math.max(0, required - takenHits);
+                Component middlePart;
+                if (frozenPlayers.containsKey(member.getUuid())) {
+                    int unfreezeRequired = settings.getUnfreezeHitsRequired();
+                    int unfreezeTaken = pendingUnfreezeHits.getOrDefault(member.getUuid(), 0);
+                    int hitsLeft = Math.max(0, unfreezeRequired - unfreezeTaken);
+                    middlePart = Component.text("❄".repeat(hitsLeft)).color(NamedTextColor.AQUA)
+                            .append(Component.text("❄".repeat(unfreezeRequired - hitsLeft)).color(NamedTextColor.DARK_GRAY));
+                } else {
+                    int required = settings.getFreezeHitsRequired();
+                    int takenHits = pendingFreezeHits.getOrDefault(member.getUuid(), 0);
+                    int livesLeft = Math.max(0, required - takenHits);
+                    middlePart = Component.text(heartsDisplay(livesLeft, required))
+                            .color(NamedTextColor.RED);
+                }
 
                 Component myTeamPart = Component.text(team.getName() + " ❄ " + myFrozen + "/" + team.getMembers().size())
                         .color(team.getColor());
 
-                Component livesPart = Component.text(heartsDisplay(livesLeft, required))
-                        .color(NamedTextColor.RED);
-
                 Component enemyTeamPart = Component.text(enemy.getName() + " ❄ " + enemyFrozen + "/" + enemy.getMembers().size())
                         .color(enemy.getColor());
 
-                Component bar = myTeamPart
-                        .append(sep)
-                        .append(livesPart)
-                        .append(sep)
-                        .append(enemyTeamPart);
-
-                member.sendActionBar(bar);
+                member.sendActionBar(myTeamPart.append(sep).append(middlePart).append(sep).append(enemyTeamPart));
             }
         }
     }
@@ -307,7 +294,6 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         if (victimFrozen) {
             if (attackerTeam == victimTeam) {
                 int hits = pendingUnfreezeHits.merge(victimUuid, 1, Integer::sum);
-                updateFrozenEggPosition(victim);
                 int required = settings.getUnfreezeHitsRequired();
                 if (hits >= required) {
                     pendingUnfreezeHits.remove(victimUuid);
@@ -315,9 +301,13 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
                     EventPlayer attackerEp = EventPlayerManager.getByUUID(attacker.getUniqueId());
                     attackerTeam.addScore(attackerEp, settings.getUnfreezePoints());
                 } else {
+                    updateIceAge(victim);
                     pauseStatusActionBar(attacker, 1500);
-                    attacker.playSound(attacker.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 1f, 2f);
+                    victim.getWorld().playSound(victim.getLocation(), Sound.BLOCK_GLASS_BREAK, 1f, 0.8f);
                     attacker.sendActionBar(Util.color("<green>Unfreezing <white>" + victim.getName() + "<green>: " + hits + "<dark_gray>/<green>" + required));
+                    Location crackCenter = victim.getLocation().clone().add(0, victim.getHeight() / 2.0, 0);
+                    victim.getWorld().spawnParticle(Particle.BLOCK, crackCenter, 20, 0.35, 0.7, 0.35, 0.05,
+                            Material.FROSTED_ICE.createBlockData());
                 }
             }
         } else {
@@ -332,7 +322,8 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
                 } else {
                     applyHitKnockback(attacker, victim);
                     pauseStatusActionBar(attacker, 1500);
-                    attacker.playSound(attacker.getLocation(), Sound.ENTITY_SNOWBALL_THROW, 1f, 1.5f);
+                    victim.getWorld().playSound(victim.getLocation(), Sound.ENTITY_SNOWBALL_THROW, 1f, 1.5f);
+                    victim.getWorld().playSound(victim.getLocation(), Sound.ENTITY_PLAYER_HURT_FREEZE, 0.6f, 1.3f);
                     attacker.sendActionBar(Util.color("<aqua>Freezing <white>" + victim.getName() + "<aqua>: " + hits + "<dark_gray>/<aqua>" + required));
                 }
             } else {
@@ -350,12 +341,14 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
                     int livesLeft = required - healedHits;
 
                     pauseStatusActionBar(attacker, 1500);
-                    attacker.playSound(attacker.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1.6f);
                     attacker.sendActionBar(Util.color("<green>Healing <white>" + victim.getName() + "<green>: " + livesLeft + "<dark_gray>/<green>" + required));
 
                     pauseStatusActionBar(victim, 1500);
-                    victim.playSound(victim.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1.8f);
+                    victim.getWorld().playSound(victim.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1.7f);
                     victim.sendActionBar(Util.color("<green>Healed by <white>" + attacker.getName() + "<green>: " + livesLeft + "<dark_gray>/<green>" + required));
+
+                    Location healCenter = victim.getLocation().clone().add(0, victim.getHeight() + 0.2, 0);
+                    victim.getWorld().spawnParticle(Particle.HEART, healCenter, 6, 0.3, 0.1, 0.3, 0);
                 } else {
                     pauseStatusActionBar(attacker, 1000);
                     attacker.playSound(attacker.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1f, 1.8f);
@@ -382,21 +375,20 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onPlayerMove(org.bukkit.event.player.PlayerMoveEvent event) {
+    public void onFrozenPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
-
         FrozenState state = frozenPlayers.get(player.getUniqueId());
         if (state == null) return;
 
         Location from = event.getFrom();
         Location to = event.getTo();
+        if (from.getX() == to.getX() && from.getY() == to.getY() && from.getZ() == to.getZ()) return;
 
-        // ignore rotations
-        if (from.getX() == to.getX() && from.getY() == to.getY() && from.getZ() == to.getZ()) {
-            return;
-        }
-
-        updateFrozenEggPosition(player);
+        player.setVelocity(new Vector(0, 0, 0));
+        Location back = state.frozenAt().clone();
+        back.setYaw(to.getYaw());
+        back.setPitch(to.getPitch());
+        player.teleportAsync(back);
     }
 
     private void pauseStatusActionBar(Player player, long millis) {
@@ -419,38 +411,41 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         UUID uuid = player.getUniqueId();
         pendingUnfreezeHits.remove(uuid);
 
-        Location loc = player.getEyeLocation().add(0, 0.5, 0);
-        loc.setYaw(0);
-        loc.setPitch(0);
+        Location frozenAt = player.getLocation().clone();
+        Location displayLoc = frozenAt.clone();
+        displayLoc.setYaw(0);
+        displayLoc.setPitch(0);
 
         Executors.runSync(player, () -> {
-            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-            Util.setPlayerHead(head, EGG_TEXTURES.get(RANDOM.nextInt(EGG_TEXTURES.size())));
+            BlockDisplay iceDisplay = (BlockDisplay) player.getWorld().spawnEntity(displayLoc, EntityType.BLOCK_DISPLAY);
+            iceDisplay.setPersistent(false);
+            iceDisplay.setInterpolationDuration(0);
+            iceDisplay.setInterpolationDelay(-1);
 
-            ItemDisplay egg = (ItemDisplay) player.getWorld().spawnEntity(loc, EntityType.ITEM_DISPLAY);
-            egg.setPersistent(false);
-            egg.setItemStack(head);
-            egg.setInterpolationDuration(0);
-            egg.setInterpolationDelay(-1);
+            Ageable frostedIce = (Ageable) Bukkit.createBlockData(Material.FROSTED_ICE);
+            frostedIce.setAge(0);
+            iceDisplay.setBlock(frostedIce);
 
             BoundingBox bb = player.getBoundingBox();
-            Transformation transformation = egg.getTransformation();
-            transformation.getScale().set(
-                    (float) (bb.getWidthX() * 3),
-                    (float) (bb.getHeight() * 3),
-                    (float) (bb.getWidthZ() * 3)
-            );
-            egg.setTransformation(transformation);
+            float w = (float) bb.getWidthX() + 0.4f;
+            float h = (float) bb.getHeight() + 0.2f;
+            Transformation t = iceDisplay.getTransformation();
+            t.getTranslation().set(-w / 2f, 0f, -w / 2f);
+            t.getScale().set(w, h, w);
+            iceDisplay.setTransformation(t);
 
             int durationTicks = Math.max(20, (int) (this.getDuration() / 50L) + 40);
             player.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, durationTicks, 0, false, false, false));
             applyFreezeAttributes(player);
+            player.setVelocity(new Vector(0, 0, 0));
 
-            frozenPlayers.put(uuid, new FrozenState(egg));
-            updateFrozenEggPosition(player);
+            frozenPlayers.put(uuid, new FrozenState(iceDisplay, frozenAt));
+
+            Location center = frozenAt.clone().add(0, player.getHeight() / 2.0, 0);
+            player.getWorld().spawnParticle(Particle.SNOWFLAKE, center, 60, 0.4, 0.9, 0.4, 0.08);
 
             player.showTitle(Util.title("<aqua><b>FROZEN!", "<gray>A teammate must unfreeze you."));
-            player.playSound(player.getLocation(), Sound.ENTITY_GUARDIAN_ATTACK, 1f, 0.8f);
+            player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PLAYER_HURT_FREEZE, 1f, 0.7f);
         });
 
         EventPlayer frozenEp = EventPlayerManager.getByUUID(uuid);
@@ -462,24 +457,23 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         }
     }
 
-    private void updateFrozenEggPosition(Player player) {
-        FrozenState state = frozenPlayers.get(player.getUniqueId());
-        if (state == null) return;
+    private int iceAgeForHits(int hits, int required) {
+        if (required <= 1) return 0;
+        return Math.min(3, hits * 4 / required);
+    }
 
+    private void updateIceAge(Player player) {
         int required = Math.max(1, settings.getUnfreezeHitsRequired());
         int hits = pendingUnfreezeHits.getOrDefault(player.getUniqueId(), 0);
+        int age = iceAgeForHits(hits, required);
 
-        double progress = Math.min(1.0, hits / (double) required);
-        double baseY = 0.5;
-        double maxDrop = 0.85;
-        double yOffset = baseY - (maxDrop * 1.5 * progress);
-
-        Location loc = player.getEyeLocation().clone().add(0, yOffset, 0);
-        loc.setYaw(0);
-        loc.setPitch(0);
-
-        ItemDisplay egg = state.egg();
-        egg.teleportAsync(loc);
+        Executors.runSync(player, () -> {
+            FrozenState state = frozenPlayers.get(player.getUniqueId());
+            if (state == null) return;
+            Ageable frostedIce = (Ageable) Bukkit.createBlockData(Material.FROSTED_ICE);
+            frostedIce.setAge(age);
+            state.iceDisplay().setBlock(frostedIce);
+        });
     }
 
     private void unfreezePlayer(Player player, FreezeTagTeam team) {
@@ -489,12 +483,17 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         if (state == null) return;
 
         Executors.runSync(player, () -> {
-            state.egg().remove();
+            Location center = player.getLocation().clone().add(0, player.getHeight() / 2.0, 0);
+            player.getWorld().spawnParticle(Particle.BLOCK, center, 80, 0.4, 0.9, 0.4, 0.15,
+                    Material.FROSTED_ICE.createBlockData());
+            player.getWorld().spawnParticle(Particle.SNOWFLAKE, center, 40, 0.5, 0.9, 0.5, 0.1);
+
+            state.iceDisplay().remove();
             player.removePotionEffect(PotionEffectType.GLOWING);
             removeFreezeAttributes(player);
             ColorManager.setTempPlayerColor(player, team.getColor());
             player.showTitle(Util.title("<green><b>UNFROZEN!", "<gray>You're free to move again!"));
-            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.5f);
+            player.getWorld().playSound(player.getLocation(), Sound.BLOCK_GLASS_BREAK, 1f, 1.5f);
         });
     }
 
@@ -503,7 +502,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         if (state == null) return;
 
         Executors.runSync(player, () -> {
-            state.egg().remove();
+            state.iceDisplay().remove();
             player.removePotionEffect(PotionEffectType.GLOWING);
             removeFreezeAttributes(player);
             ColorManager.updatePlayersColor(player);
@@ -520,16 +519,20 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
 
     private static void applyFreezeAttributes(Player player) {
         AttributeInstance speed = player.getAttribute(Attribute.MOVEMENT_SPEED);
-        if (speed != null) speed.addTransientModifier(FREEZE_SPEED_MOD);
+        if (speed != null) speed.addTransientModifier(FREEZE_MOD);
         AttributeInstance jump = player.getAttribute(Attribute.JUMP_STRENGTH);
-        if (jump != null) jump.addTransientModifier(FREEZE_JUMP_MOD);
+        if (jump != null) jump.addTransientModifier(FREEZE_MOD);
+        AttributeInstance gravity = player.getAttribute(Attribute.GRAVITY);
+        if (gravity != null) gravity.addTransientModifier(FREEZE_MOD);
     }
 
     private static void removeFreezeAttributes(Player player) {
         AttributeInstance speed = player.getAttribute(Attribute.MOVEMENT_SPEED);
-        if (speed != null) speed.removeModifier(FREEZE_SPEED_MOD);
+        if (speed != null) speed.removeModifier(FREEZE_MOD);
         AttributeInstance jump = player.getAttribute(Attribute.JUMP_STRENGTH);
-        if (jump != null) jump.removeModifier(FREEZE_JUMP_MOD);
+        if (jump != null) jump.removeModifier(FREEZE_MOD);
+        AttributeInstance gravity = player.getAttribute(Attribute.GRAVITY);
+        if (gravity != null) gravity.removeModifier(FREEZE_MOD);
     }
 
     private void handleTokens() {
@@ -611,5 +614,5 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         }
     }
 
-    private record FrozenState(ItemDisplay egg) {}
+    private record FrozenState(BlockDisplay iceDisplay, Location frozenAt) {}
 }
