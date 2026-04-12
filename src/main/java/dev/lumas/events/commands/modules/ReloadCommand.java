@@ -7,7 +7,7 @@ import dev.lumas.events.EventMain;
 import dev.lumas.events.bunnyarena.BunnyArenaSchedulerService;
 import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
-import dev.lumas.events.shop.ShopManager;
+import dev.lumas.events.shop.ShopManagerService;
 import dev.lumas.events.utility.Util;
 import org.bukkit.command.CommandSender;
 
@@ -25,7 +25,7 @@ public class ReloadCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
         EventMain.getOkaeriConfig().load(true);
-        ShopManager.getInstance().reload();
+        ShopManagerService.getInstance().reload();
         BunnyArenaSchedulerService.getInstance().refreshBunnyArenaRegionHandler();
         Util.sendMsg(commandSender, "Reloaded config");
         return true;

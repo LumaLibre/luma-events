@@ -14,7 +14,6 @@ import dev.lumas.events.items.StartMinigameItem;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.EventTeamManager;
 import dev.lumas.events.manager.LeaderboardCacheManager;
-import dev.lumas.events.shop.ShopManager;
 import dev.lumas.events.tasks.PlaytimeCounterTask;
 import dev.lumas.lumaitems.util.extensions.Executors;
 import lombok.Getter;
@@ -39,7 +38,6 @@ public final class EventMain extends JavaPlugin {
     public void onEnable() {
         instance = this;
         okaeriConfigManager = new ConfigManager();
-        ShopManager.getInstance().load();
         moduleManager = new Modules(this);
 
         moduleManager.register();
@@ -75,7 +73,6 @@ public final class EventMain extends JavaPlugin {
         if (current.isActive()) {
             current.stop();
         }
-        ShopManager.getInstance().shutdown();
         CountdownBossBar.stopAll(false);
 
         for (BossBar bossBar : CountdownBossBar.activeCountdowns.stream().map(CountdownBossBar::getBossBar).toList()) {

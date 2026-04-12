@@ -1,5 +1,7 @@
 package dev.lumas.events.bunnyarena;
 
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.Register;
 import dev.lumas.core.manager.Services;
 import dev.lumas.core.model.Service;
 import dev.lumas.events.EventMain;
@@ -8,6 +10,7 @@ import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 
+@Register(Autowire.SERVICE)
 @Getter
 public class BunnyArenaSchedulerService extends AsynchronousRunnable implements Service {
 

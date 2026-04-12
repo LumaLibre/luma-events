@@ -21,7 +21,7 @@ public class ShopListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onClick(InventoryClickEvent event) {
         Inventory topInv = event.getView().getTopInventory();
-        if (!(topInv.getHolder() instanceof ShopManager.ShopHolder)) return;
+        if (!(topInv.getHolder() instanceof ShopManagerService.ShopHolder)) return;
 
         event.setCancelled(true);
 
@@ -31,19 +31,19 @@ public class ShopListener implements Listener {
         if (!event.getClick().isLeftClick()) return;
 
         int slot = event.getSlot();
-        ShopEntry entry = ShopManager.getInstance().getEntry(slot);
+        ShopEntry entry = ShopManagerService.getInstance().getEntry(slot);
         if (!(entry instanceof ShopEntry.Item shopItem)) return;
 
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
-        ShopManager.PurchaseResult result = ShopManager.getInstance().tryPurchase(player, eventPlayer, slot);
-        ShopLang lang = ShopManager.getInstance().lang();
+        ShopManagerService.PurchaseResult result = ShopManagerService.getInstance().tryPurchase(player, eventPlayer, slot);
+        ShopLang lang = ShopManagerService.getInstance().lang();
 
         switch (result) {
             case SUCCESS -> {
                 String msg = lang.get("purchase_success")
                         .replace("{souls}", String.valueOf(eventPlayer.getSouls()));
                 Util.sendMsg(player, msg);
-                ShopManager.getInstance().refreshInventory(topInv, player.getUniqueId());
+                ShopManagerService.getInstance().refreshInventory(topInv, player.getUniqueId());
             }
             case LIMIT_REACHED -> {
                 String msg = shopItem.maxPerPlayer() == 1
@@ -66,7 +66,7 @@ public class ShopListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onDrag(InventoryDragEvent event) {
-        if (!(event.getView().getTopInventory().getHolder() instanceof ShopManager.ShopHolder)) return;
+        if (!(event.getView().getTopInventory().getHolder() instanceof ShopManagerService.ShopHolder)) return;
         int topSize = event.getView().getTopInventory().getSize();
         for (int slot : event.getRawSlots()) {
             if (slot < topSize) {
@@ -78,7 +78,7 @@ public class ShopListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onDrop(PlayerDropItemEvent event) {
-        if (ShopManager.isDisplayItem(event.getItemDrop().getItemStack())) {
+        if (ShopManagerService.isDisplayItem(event.getItemDrop().getItemStack())) {
             event.setCancelled(true);
             event.getItemDrop().remove();
         }
@@ -86,7 +86,7 @@ public class ShopListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onSwap(PlayerSwapHandItemsEvent event) {
-        if (ShopManager.isDisplayItem(event.getMainHandItem())) event.setCancelled(true);
-        if (ShopManager.isDisplayItem(event.getOffHandItem())) event.setCancelled(true);
+        if (ShopManagerService.isDisplayItem(event.getMainHandItem())) event.setCancelled(true);
+        if (ShopManagerService.isDisplayItem(event.getOffHandItem())) event.setCancelled(true);
     }
 }

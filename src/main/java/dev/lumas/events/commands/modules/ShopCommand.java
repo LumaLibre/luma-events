@@ -6,7 +6,7 @@ import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
-import dev.lumas.events.shop.ShopManager;
+import dev.lumas.events.shop.ShopManagerService;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -26,7 +26,7 @@ public class ShopCommand implements CommandModule {
     @Override
     public boolean execute(@NotNull EventMain eventMain, @NotNull CommandSender commandSender, String s, String[] strings) {
         Player player = (Player) commandSender;
-        ShopManager.getInstance().openShop(player);
+        ShopManagerService.getInstance().openShop(player);
         return true;
     }
 

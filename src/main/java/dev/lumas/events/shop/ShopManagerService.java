@@ -4,6 +4,10 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import dev.lumas.core.annotation.Autowire;
+import dev.lumas.core.annotation.Register;
+import dev.lumas.core.manager.Services;
+import dev.lumas.core.model.Service;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.obj.EventPlayer;
@@ -41,12 +45,13 @@ import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class ShopManager {
+@Register(Autowire.SERVICE)
+public final class ShopManagerService implements Service {
 
     public static final NamespacedKey DISPLAY_ITEM_KEY =
             new NamespacedKey(EventMain.getInstance(), "shop_display");
 
-    private static ShopManager instance;
+    private static ShopManagerService instance;
 
     private final Logger logger = EventMain.getInstance().getLogger();
     private final File shopDir;
@@ -61,7 +66,7 @@ public final class ShopManager {
     private final Map<String, Integer> remainingStock = new HashMap<>();
     private final Map<String, Map<UUID, Integer>> purchasers = new HashMap<>();
 
-    private ShopManager() {
+    private ShopManagerService() {
         File dataFolder = EventMain.getInstance().getDataFolder();
         this.shopDir = new File(dataFolder, "shop");
         this.shopConfigFile = new File(shopDir, "shop.json");
@@ -69,11 +74,22 @@ public final class ShopManager {
         this.lang = new ShopLang(shopDir);
     }
 
-    public static ShopManager getInstance() {
+    public static ShopManagerService getInstance() {
         if (instance == null) {
-            instance = new ShopManager();
+            instance = (ShopManagerService) Services.getTracked(ShopManagerService.class);
         }
         return instance;
+    }
+
+    @Override
+    public void register() {
+        instance = this;
+        load();
+    }
+
+    @Override
+    public void unregister() {
+        shutdown();
     }
 
     public ShopLang lang() {

@@ -19,7 +19,7 @@ public enum EventJobValue {
     MINER(9);
 
 
-    private final int bound = 10_000; //90_000; inflated tokens
+    private final int bound = 90_000;
     private final int chance;
 
 }
