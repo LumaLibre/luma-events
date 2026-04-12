@@ -267,6 +267,14 @@ public final class ShopManager {
         }
     }
 
+    public void shutdown() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getOpenInventory().getTopInventory().getHolder() instanceof ShopHolder) {
+                player.closeInventory();
+            }
+        }
+    }
+
     public void openShop(Player player) {
         Executors.runSync(player, () -> {
             Inventory inv = buildInventory(player.getUniqueId());
@@ -319,6 +327,10 @@ public final class ShopManager {
         ItemStack base = customItem.createItem().getSecond();
         ItemMeta meta = base.getItemMeta();
         if (meta == null) return base;
+
+        for (NamespacedKey key : new ArrayList<>(meta.getPersistentDataContainer().getKeys())) {
+            meta.getPersistentDataContainer().remove(key);
+        }
 
         if (shopItem.displayName() != null) {
             meta.displayName(Util.color(shopItem.displayName()).decoration(TextDecoration.ITALIC, false));

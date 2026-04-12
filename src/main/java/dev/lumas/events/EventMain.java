@@ -75,6 +75,7 @@ public final class EventMain extends JavaPlugin {
         if (current.isActive()) {
             current.stop();
         }
+        ShopManager.getInstance().shutdown();
         CountdownBossBar.stopAll(false);
 
         for (BossBar bossBar : CountdownBossBar.activeCountdowns.stream().map(CountdownBossBar::getBossBar).toList()) {
