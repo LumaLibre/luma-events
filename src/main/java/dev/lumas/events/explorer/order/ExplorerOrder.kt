@@ -3,7 +3,7 @@ package dev.lumas.events.explorer.order
 import dev.lumas.events.explorer.containers.ContainerReflective
 import kotlin.reflect.KClass
 
-typealias ExplorerOrderEventHandler<T> = (event: T, completion: OrderCompletion) -> Unit
+typealias ExplorerOrderEventHandler<T> = (event: T, completion: ExplorerOrderCompletion) -> Unit
 
 class ExplorerOrder<T : Any>(
     val name: String,

@@ -4,11 +4,16 @@ import dev.lumas.events.obj.EventPlayer
 import dev.lumas.events.utility.Executors
 import org.bukkit.Sound
 
-class OrderCompletion(
+class ExplorerOrderCompletion(
     val explorerOrder: ExplorerOrder<*>,
     var currentQuantity: Int,
     val maxQuantity: Int
 ) {
+
+    companion object {
+        @JvmStatic
+        fun empty(explorerOrder: ExplorerOrder<*>) = ExplorerOrderCompletion(explorerOrder, 0, explorerOrder.quantity)
+    }
 
     fun isCompleted(): Boolean {
         return currentQuantity >= maxQuantity

@@ -14,7 +14,7 @@ interface AbstractExplorerListener : Listener {
         if (entity is Player) {
             val eventPlayer: EventPlayer = EventPlayerManager.getByUUID(entity.uniqueId)
             if (eventPlayer.isSuspended) {
-                eventPlayer.fireForAsides(entity.world, event)
+                eventPlayer.fireForExplorerOrders(entity.world, event)
             }
         }
 
@@ -39,7 +39,7 @@ interface AbstractExplorerListener : Listener {
 
             Executors.delayedSync(entity, delay) {
                 if (eventPlayer.isOnline && eventPlayer.isSuspended) {
-                    eventPlayer.fireForAsides(entity.world, event)
+                    eventPlayer.fireForExplorerOrders(entity.world, event)
                 }
             }
         }

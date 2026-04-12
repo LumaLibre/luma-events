@@ -14,8 +14,6 @@ import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.Sound
 import org.bukkit.Tag
-import org.bukkit.attribute.Attribute
-import org.bukkit.attribute.AttributeModifier
 import org.bukkit.damage.DamageType
 import org.bukkit.entity.Animals
 import org.bukkit.entity.Bee
@@ -106,12 +104,12 @@ object ExplorerIntents : ExplorerIntentContainer() {
         eventClass = PlayerDeathEvent::class,
     ) { event ->
         val player = event.player
-        event.isCancelled = true
-        event.drops.clear()
-        event.droppedExp = 0
-        event.itemsToKeep.clear()
-        player.inventory.clear()
-        player.exp = 0f
+//        event.isCancelled = true
+//        event.drops.clear()
+//        event.droppedExp = 0
+//        event.itemsToKeep.clear()
+//        player.inventory.clear()
+//        player.exp = 0f
         val eventPlayer = EventPlayerManager.getByUUIDOrNull(player.uniqueId)
         if (eventPlayer != null && eventPlayer.isSuspended) {
             eventPlayer.unsuspend()
@@ -182,7 +180,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
         eventClass = EntitySpawnEvent::class
     ) { event ->
         val entity = event.entity as? LivingEntity ?: return@ExplorerIntent
-        entity.getAttribute(Attribute.MAX_HEALTH)?.let {
+        /*entity.getAttribute(Attribute.MAX_HEALTH)?.let {
             if (it.getModifier(NAMESPACED_KEY) == null) {
                 val value = it.value * 2.0
                 it.addModifier(AttributeModifier(NAMESPACED_KEY, value, AttributeModifier.Operation.ADD_NUMBER))
@@ -194,7 +192,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
                 val value = it.value * 1.2
                 it.addModifier(AttributeModifier(NAMESPACED_KEY, value, AttributeModifier.Operation.ADD_NUMBER))
             }
-        }
+        }*/
 
         if (entity is Creeper) {
             entity.isPowered = true
@@ -332,21 +330,21 @@ object ExplorerIntents : ExplorerIntentContainer() {
     }
 
 
-    val RANDOM_LIGHTNING = ExplorerIntent<TenSecondRunnableEvent>(
-        title = "Random Lightning",
-        desc = "Lightning strikes randomly.",
-        world = WORLD,
-        eventClass = TenSecondRunnableEvent::class,
-    ) { event ->
-        val player = event.player
-        // get a random location at least 60 blocks away from the player
-        fun randomSign() = if (Random.nextBoolean()) 1.0 else -1.0
-
-        val randomLocation = player.location.clone().add(
-            Random.nextDouble(1.0, 100.0) * randomSign(),
-            0.0,
-            Random.nextDouble(1.0, 100.0) * randomSign()
-        )
-        player.world.strikeLightning(randomLocation)
-    }
+//    val RANDOM_LIGHTNING = ExplorerIntent<TenSecondRunnableEvent>(
+//        title = "Random Lightning",
+//        desc = "Lightning strikes randomly.",
+//        world = WORLD,
+//        eventClass = TenSecondRunnableEvent::class,
+//    ) { event ->
+//        val player = event.player
+//        // get a random location at least 60 blocks away from the player
+//        fun randomSign() = if (Random.nextBoolean()) 1.0 else -1.0
+//
+//        val randomLocation = player.location.clone().add(
+//            Random.nextDouble(1.0, 100.0) * randomSign(),
+//            0.0,
+//            Random.nextDouble(1.0, 100.0) * randomSign()
+//        )
+//        player.world.strikeLightning(randomLocation)
+//    }
 }

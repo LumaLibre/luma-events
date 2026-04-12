@@ -13,6 +13,7 @@ import me.outspending.biomesapi.renderer.packet.data.PhonyCustomBiome;
 import me.outspending.biomesapi.wrapper.BiomeSettings;
 import org.bukkit.Material;
 
+@SuppressWarnings("UnstableApiUsage")
 @Register(Autowire.SERVICE)
 public class SuspendWorldBiomeService implements Service {
 

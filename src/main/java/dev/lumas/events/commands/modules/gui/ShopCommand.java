@@ -1,4 +1,4 @@
-package dev.lumas.events.commands.modules;
+package dev.lumas.events.commands.modules.gui;
 
 import dev.lumas.core.annotation.Autowire;
 import dev.lumas.core.annotation.CommandMeta;

@@ -2,12 +2,12 @@ package dev.lumas.events.suspend;
 
 import dev.lumas.core.annotation.Autowire;
 import dev.lumas.core.annotation.Register;
+import dev.lumas.core.model.Service;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
-import dev.lumas.lumacore.manager.models.Service;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
 import org.bukkit.World;

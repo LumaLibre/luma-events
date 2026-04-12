@@ -2,7 +2,7 @@ package dev.lumas.events.hooks;
 
 import dev.lumas.core.annotation.Autowire;
 import dev.lumas.core.annotation.Register;
-import dev.lumas.lumacore.manager.models.Service;
+import dev.lumas.core.model.Service;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_TYPE;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
 import org.bukkit.Bukkit;

@@ -8,7 +8,7 @@ import dev.lumas.core.util.ContextLogger
 import dev.lumas.events.obj.EventPlayer
 import org.bukkit.World
 
-class ActiveOrder(
+class ActiveExplorerOrder(
     val explorerOrder: ExplorerOrder<*>,
     var currentQuantity: Int,
     var completed: Boolean
@@ -20,10 +20,10 @@ class ActiveOrder(
 
     fun apply(world: World, event: Any, eventPlayer: EventPlayer) {
         if (explorerOrder.matches(world.name)) {
-            val completion = OrderCompletion(explorerOrder, currentQuantity, explorerOrder.quantity)
+            val completion = ExplorerOrderCompletion(explorerOrder, currentQuantity, explorerOrder.quantity)
             if (!this.completed) {
                 @Suppress("UNCHECKED_CAST")
-                val handler = explorerOrder.handler as Function2<Any, OrderCompletion, Unit>
+                val handler = explorerOrder.handler as Function2<Any, ExplorerOrderCompletion, Unit>
                 handler(event, completion)
                 currentQuantity = completion.currentQuantity.coerceAtMost(completion.maxQuantity)
 
@@ -35,9 +35,10 @@ class ActiveOrder(
         }
     }
 
+    fun getImmutableCompletion() = ExplorerOrderCompletion(explorerOrder, currentQuantity, explorerOrder.quantity)
 
-    class GsonTypeAdapter : TypeAdapter<ActiveOrder>() {
-        override fun write(out: JsonWriter, aside: ActiveOrder?) {
+    class GsonTypeAdapter : TypeAdapter<ActiveExplorerOrder>() {
+        override fun write(out: JsonWriter, aside: ActiveExplorerOrder?) {
             if (aside == null) {
                 return
             }
@@ -48,7 +49,7 @@ class ActiveOrder(
             out.endObject()
         }
 
-        override fun read(reader: JsonReader): ActiveOrder? {
+        override fun read(reader: JsonReader): ActiveExplorerOrder? {
             val asideImplName: String
             var currentQuantity = 0
             var completed = false
@@ -82,7 +83,7 @@ class ActiveOrder(
                 return null
             }
 
-            return ActiveOrder(aside, currentQuantity, completed)
+            return ActiveExplorerOrder(aside, currentQuantity, completed)
         }
     }
 }

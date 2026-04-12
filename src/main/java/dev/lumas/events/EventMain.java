@@ -1,6 +1,7 @@
 package dev.lumas.events;
 
 import dev.lumas.core.manager.Modules;
+import dev.lumas.core.manager.Reflect;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.ConfigManager;
 import dev.lumas.events.configurable.PersistentStates;
@@ -22,6 +23,7 @@ import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public final class EventMain extends JavaPlugin {
@@ -37,6 +39,9 @@ public final class EventMain extends JavaPlugin {
     @Override
     public void onEnable() {
         instance = this;
+        Set<Class<?>> classes = Reflect.from(getClass()).scan();
+        System.out.println(classes);
+
         okaeriConfigManager = new ConfigManager();
         moduleManager = new Modules(this);
 

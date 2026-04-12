@@ -1,8 +1,6 @@
 package dev.lumas.events.commands.modules;
 
-import dev.lumas.core.annotation.Autowire;
 import dev.lumas.core.annotation.CommandMeta;
-import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
@@ -17,7 +15,7 @@ import org.bukkit.entity.Player;
 
 import java.util.List;
 
-@Register(Autowire.SUBCOMMAND)
+//@Register(Autowire.SUBCOMMAND)
 @CommandMeta(
         name = "claim",
         permission = "lumaevents.default",
