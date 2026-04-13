@@ -44,7 +44,7 @@ public class JoinTeamCommand implements CommandModule {
         // Cycle through the teams
         EventTeamManager.Provider nextTeam = getNextTeam(lastChosenTeam);
         EventTeam actualTeam = EventTeamManager.getByClass(nextTeam.getTeamClass());
-        actualTeam.addMember(player.getUniqueId());
+        actualTeam.addMember(eventPlayer);
         states.setLastChosenTeam(nextTeam);
         states.save();
 

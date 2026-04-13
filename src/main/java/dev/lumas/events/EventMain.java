@@ -47,7 +47,10 @@ public final class EventMain extends JavaPlugin {
         EventTeamManager.loadAll();
         LeaderboardCacheManager.start();
 
-        Executors.asyncTimer(20 * 60L, 20 * 60L, t -> EventPlayerManager.evictStale());
+        Executors.asyncTimer(20 * 60L, 20 * 60L, t -> {
+            EventPlayerManager.evictStale();
+            EventTeamManager.saveAll();
+        });
         MinigameManager.getInstance().repeatingAsync(0, 600);
 
         LocalCustomItemManager.addCustomItem(new CandiedAppleItem());
@@ -70,6 +73,7 @@ public final class EventMain extends JavaPlugin {
         moduleManager.unregister();
 
         EventPlayerManager.saveAllAndClear();
+        EventTeamManager.saveAll();
         Minigame current = MinigameManager.getInstance().getCurrent();
         if (current.isActive()) {
             current.stop();

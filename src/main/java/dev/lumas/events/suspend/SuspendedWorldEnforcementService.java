@@ -22,7 +22,7 @@ public class SuspendedWorldEnforcementService extends AsynchronousRunnable imple
     public void accept(ScheduledTask task) {
         World unsuspendWorld = EventMain.getOkaeriConfig().getUnsuspendWorld();
         if (unsuspendWorld == null) return;
-        List<String> worldNames = EventMain.getOkaeriConfig().getSuspendedWorlds();
+        List<String> worldNames = EventMain.getOkaeriConfig().getExplorer().getSuspendedWorlds();
 
         for (String worldName : worldNames) {
             World world = Bukkit.getWorld(worldName);

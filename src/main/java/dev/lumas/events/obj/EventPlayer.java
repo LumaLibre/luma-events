@@ -3,6 +3,7 @@ package dev.lumas.events.obj;
 import com.google.common.base.Preconditions;
 import dev.lumas.core.util.ContextLogger;
 import dev.lumas.events.EventMain;
+import dev.lumas.events.configurable.Config;
 import dev.lumas.events.explorer.mile.ActiveExplorerMile;
 import dev.lumas.events.explorer.mile.ExplorerMile;
 import dev.lumas.events.explorer.mile.ExplorerMileRegistry;
@@ -19,6 +20,7 @@ import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -46,6 +48,7 @@ import java.util.function.Consumer;
 public class EventPlayer implements Serializable, Scorer {
 
     private static final ContextLogger LOGGER = ContextLogger.getLogger();
+    private static final Config CONFIG = EventMain.getOkaeriConfig();
     @Nullable
     private transient volatile Object LOCK;
 
@@ -124,7 +127,7 @@ public class EventPlayer implements Serializable, Scorer {
         if (player == null) {
             return;
         }
-        player.sendMessage(m);
+        player.sendMessage(m.colorIfAbsent(TextColor.fromHexString(Util.TEXT_COLOR)));
     }
 
     public void sendActionBar(String m) {
@@ -210,6 +213,10 @@ public class EventPlayer implements Serializable, Scorer {
         return this.scores.getOrDefault(minigame, 0);
     }
 
+    public Map<MinigameConstant, Integer> getPermanentScores() {
+        return Map.copyOf(this.scores);
+    }
+
     public void addSecondsPlayed(long seconds) {
         this.secondsPlayed += seconds;
     }
@@ -238,17 +245,12 @@ public class EventPlayer implements Serializable, Scorer {
         return null;
     }
 
-    public <T> int getCurrentQuantity(ExplorerMile<T> explorerMile) {
-        for (ActiveExplorerMile activeExplorerMile : activeExplorerMiles) {
-            if (Objects.equals(activeExplorerMile.getMile().getFIELD_NAME(), explorerMile.getFIELD_NAME())) {
-                return activeExplorerMile.getCurrentQuantity();
-            }
-        }
-        return 0;
-    }
-
     // TODO: Move this implementation to somewhere else
     public void fireForExplorerMiles(Object event) {
+        if (!CONFIG.getExplorer().isExplorerMiles()) {
+            return;
+        }
+
         synchronized (this.getLock()) {
             Set<ActiveExplorerMile> testableExplorerMiles = new HashSet<>(this.activeExplorerMiles);
 
@@ -301,6 +303,10 @@ public class EventPlayer implements Serializable, Scorer {
     }
 
     public void fireForExplorerOrders(World world, Object event) {
+        if (!CONFIG.getExplorer().isExplorerOrders()) {
+            return;
+        }
+
         synchronized (this.getLock()) {
             for (ExplorerOrder<?> nonActiveExplorerOrder : ExplorerOrderRegistry.jvmUnifiedMap().values()) {
                 if (nonActiveExplorerOrder.getEventClass() == event.getClass() && !hasStartedExplorerOrder(nonActiveExplorerOrder)) {
@@ -341,8 +347,12 @@ public class EventPlayer implements Serializable, Scorer {
     }
 
     public void suspend() {
+        if (!CONFIG.getExplorer().isExplorerOrders()) {
+            return;
+        }
+
         this.operatePlayer(player ->  {
-            List<String> worldNames = EventMain.getOkaeriConfig().getSuspendedWorlds();
+            List<String> worldNames = EventMain.getOkaeriConfig().getExplorer().getSuspendedWorlds();
             Preconditions.checkState(!worldNames.isEmpty(), "No suspended worlds are configured");
             World world = Preconditions.checkNotNull(Bukkit.getWorld(worldNames.getFirst()));
 

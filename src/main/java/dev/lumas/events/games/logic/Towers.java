@@ -188,7 +188,13 @@ public final class Towers extends InventoryUnifiedMinigame {
         if (!this.started) return;
 
 
-        if (this.towersPlayers.getMatching(ActivePlayer.class).size() <= 1) {
+        // lazy but whatever
+        if (this.towersPlayers.predicate(ActivePlayer.class, k -> k.getTeam() instanceof IvoryTeam).isEmpty()) {
+            this.sendAudienceMessage("Team Ivory has won!");
+            this.stop();
+            return;
+        } else if (this.towersPlayers.predicate(ActivePlayer.class, k -> k.getTeam() instanceof ScarletTeam).isEmpty()) {
+            this.sendAudienceMessage("Team Scarlet has won!");
             this.stop();
             return;
         }
@@ -766,23 +772,3 @@ public final class Towers extends InventoryUnifiedMinigame {
     }
 
 }
-
-//                if (false) { // short circuiting-tnt towers nonsense
-//                    if (RANDOM.nextInt(100) <= 10) {
-//                        ItemStack flintAndSteel;
-//                        if (RANDOM.nextBoolean()) {
-//                            flintAndSteel = ItemStack.of(Material.FLINT_AND_STEEL, 1);
-//                        } else {
-//                            flintAndSteel = ItemStack.of(Material.FISHING_ROD, 1);
-//                        }
-//                        activePlayer.giveItem(flintAndSteel);
-//                        activePlayer.getEventPlayer().sendMessage("You got: " + Util.formatMaterialName(flintAndSteel.getType().toString()) + " x" + flintAndSteel.getAmount());
-//                        return;
-//                    }
-//
-//                    int amount = RANDOM.nextInt(1, 40);
-//                    ItemStack tnt = ItemStack.of(Material.TNT, amount);
-//                    activePlayer.giveItem(tnt);
-//                    activePlayer.getEventPlayer().sendMessage("You got: " + Util.formatMaterialName(tnt.getType().toString()) + " x" + tnt.getAmount());
-//                    return;
-//                }

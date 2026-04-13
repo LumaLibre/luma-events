@@ -43,7 +43,7 @@ public final class EventTeamManager {
         Provider provider = Provider.fromClass(teamClass);
         EventTeam eventTeam = null;
         try (FileReader fileReader = new FileReader(FOLDER.resolve(provider + ".json").toFile())) {
-            eventTeam = GSON.fromJson(fileReader, EventTeam.class);
+            eventTeam = GSON.fromJson(fileReader, teamClass);
         } catch (IOException ignored) {
         }
         if (eventTeam == null) {
@@ -78,6 +78,12 @@ public final class EventTeamManager {
 
 
     @SuppressWarnings("unchecked")
+    public static <T extends EventTeam> T getByProvider(Provider provider) {
+        return (T) getByClass(provider.getTeamClass());
+    }
+
+
+    @SuppressWarnings("unchecked")
     public static <T extends EventTeam> T getByClass(Class<T> teamClass) {
         return (T) EVENT_TEAMS.stream()
                 .filter(team -> team.getClass().equals(teamClass))
@@ -88,7 +94,7 @@ public final class EventTeamManager {
     @Nullable
     public static EventTeam getByMember(EventPlayer eventPlayer) {
         for (EventTeam eventTeam : EVENT_TEAMS) {
-            if (eventTeam.isMember(eventPlayer.getUuid())) {
+            if (eventTeam.isMember(eventPlayer)) {
                 return eventTeam;
             }
         }

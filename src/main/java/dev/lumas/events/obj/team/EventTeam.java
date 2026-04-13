@@ -2,6 +2,7 @@ package dev.lumas.events.obj.team;
 
 import dev.lumas.events.games.interfaces.Scorer;
 import dev.lumas.events.manager.EventPlayerManager;
+import dev.lumas.events.manager.EventTeamManager;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Util;
 import lombok.Getter;
@@ -46,12 +47,23 @@ public abstract class EventTeam implements Scorer {
         return null;
     }
 
-    public boolean isMember(UUID uuid) {
-        return members.contains(uuid);
+    public boolean isMember(EventPlayer eventPlayer) {
+        return members.contains(eventPlayer.getUuid());
     }
 
-    public boolean addMember(UUID uuid) {
-        return members.add(uuid);
+    public boolean addMember(EventPlayer eventPlayer) {
+        EventTeam existing = EventTeamManager.getByMember(eventPlayer);
+        if (existing != null) {
+            throw new IllegalArgumentException("Player " + eventPlayer.getName() + " is already a member of " + existing.getName());
+        }
+        return members.add(eventPlayer.getUuid());
+    }
+
+    public boolean removeMember(EventPlayer eventPlayer) {
+        if (!members.contains(eventPlayer.getUuid())) {
+            throw new IllegalArgumentException("Player " + eventPlayer.getName() + " is not a member of " + getName());
+        }
+        return members.remove(eventPlayer.getUuid());
     }
 
 
@@ -74,8 +86,7 @@ public abstract class EventTeam implements Scorer {
     }
 
     public Component formatMessage(String msg) {
-        return displayName.append(Util.color(" <dark_gray>»</dark_gray> " + msg))
-                .colorIfAbsent(TextColor.fromHexString(Util.TEXT_COLOR));
+        return displayName.append(Util.color("<!b> <dark_gray>»</dark_gray> " + msg).colorIfAbsent(TextColor.fromHexString(Util.TEXT_COLOR)));
     }
 
     public static <T extends EventTeam> T instance(Class<T> teamClass) {

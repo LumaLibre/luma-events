@@ -2,6 +2,7 @@ package dev.lumas.events.configurable;
 
 import dev.lumas.events.configurable.sectors.BoatRace2Definition;
 import dev.lumas.events.configurable.sectors.BunnyArenaDefinition;
+import dev.lumas.events.configurable.sectors.ExplorerDefinition;
 import dev.lumas.events.configurable.sectors.FreezeTagDefinition;
 import dev.lumas.events.configurable.sectors.ManorMinigameDefinition;
 import dev.lumas.events.configurable.sectors.MineBattleDefinition;
@@ -48,9 +49,9 @@ public class Config extends OkaeriConfig {
 
     @Comment("Enabled minigames for automatic selection")
     private List<MinigameConstant> enabledAutomaticMinigames = List.of(
-            MinigameConstant.PANEL_PARTY,
-            MinigameConstant.TNTRUN,
-            MinigameConstant.MINEBATTLE
+            MinigameConstant.FREEZE_TAG,
+            MinigameConstant.TOWERS,
+            MinigameConstant.PAINTBALL2_1
     );
 
     @Comment("Commands allowed while participating in a game or while a player is suspended")
@@ -59,13 +60,8 @@ public class Config extends OkaeriConfig {
             "event"
     );
 
-    @Comment("Any worlds not contained in this list a player will not be able to enter while they are suspended.")
-    private List<String> suspendedWorlds = List.of(
-            "world"
-    );
 
-    @Comment("The world to spawn the player back into after being unsuspended. If this world does not exist, a random world will be chosen.")
-    private String suspendRemovalWorld = "world_the_end";
+    private ExplorerDefinition explorer = new ExplorerDefinition();
 
 
     @Comment("Bunny Arena where bunnies with different values spawn")
@@ -130,9 +126,9 @@ public class Config extends OkaeriConfig {
 
     @Nullable
     public World getUnsuspendWorld() {
-        World world = Bukkit.getWorld(this.suspendRemovalWorld);
+        World world = Bukkit.getWorld(this.explorer.getSuspendRemovalWorld());
         if (world == null) {
-            world = Bukkit.getWorlds().stream().filter(w -> !this.suspendedWorlds.contains(w.getName())).findFirst().orElse(null);
+            world = Bukkit.getWorlds().stream().filter(w -> !this.explorer.getSuspendedWorlds().contains(w.getName())).findFirst().orElse(null);
         }
         return world;
     }

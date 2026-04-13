@@ -47,7 +47,7 @@ public class SuspendListeners implements Listener {
 
 
     static boolean isSuspendedOnlyWorld(World world) {
-        List<String> worldNames = EventMain.getOkaeriConfig().getSuspendedWorlds();
+        List<String> worldNames = EventMain.getOkaeriConfig().getExplorer().getSuspendedWorlds();
         return worldNames.contains(world.getName());
     }
 

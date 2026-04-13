@@ -13,7 +13,7 @@ import org.bukkit.event.entity.PlayerDeathEvent
 @Register(Autowire.SERVICE)
 object ExplorerOrders : ExplorerOrderContainer() {
 
-    private val WORLDS = EventMain.getOkaeriConfig().suspendedWorlds
+    private val WORLDS = EventMain.getOkaeriConfig().explorer.suspendedWorlds
 
     // Wardens have 50% more health than normal and also deal 25% more damage.
     // Wardens are hard to find and are only underground, so other mobs will be hell to deal with.

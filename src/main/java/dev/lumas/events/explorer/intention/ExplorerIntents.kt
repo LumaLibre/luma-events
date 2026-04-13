@@ -47,7 +47,7 @@ import kotlin.random.Random
 @Register(Autowire.SERVICE)
 object ExplorerIntents : ExplorerIntentContainer() {
 
-    private val WORLD = EventMain.getOkaeriConfig().suspendedWorlds // TODO: Change me
+    private val WORLD = EventMain.getOkaeriConfig().explorer.suspendedWorlds // TODO: Change me
     private val TIMED_EXPLOSION = fun (loc: Location, delay: Long, player: Player) {
         loc.world.playSound(loc, Sound.ENTITY_CREEPER_PRIMED, 1f, 1f)
         Executors.delayedSync(loc, delay) {

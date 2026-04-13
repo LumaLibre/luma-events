@@ -53,7 +53,7 @@ public class SuspendWorldBiomeService implements Service {
         PhonyCustomBiome phonyCustomBiome = PhonyCustomBiome.builder()
                 .setCustomBiome(baseWhiteBiome)
                 .setConditional((player, chunkLocation) ->
-                        EventMain.getOkaeriConfig().getSuspendedWorlds().contains(player.getWorld().getName())
+                        EventMain.getOkaeriConfig().getExplorer().getSuspendedWorlds().contains(player.getWorld().getName())
                 )
                 .setPriority(PacketHandler.Priority.LOW)
                 .build();
