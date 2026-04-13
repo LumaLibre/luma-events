@@ -8,11 +8,13 @@ import dev.lumas.events.games.interfaces.Scorer;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.tokenformula.FreezeTagTokenFormula;
 import dev.lumas.events.manager.EventPlayerManager;
+import dev.lumas.events.manager.EventTeamManager;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.obj.WorldTiedBoundingBox;
+import dev.lumas.events.obj.team.EventTeam;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
-import dev.lumas.glowapi.colormanagers.ColorManager;
+import dev.lumas.glowapi.model.GlowColorManager;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
@@ -22,6 +24,7 @@ import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -30,18 +33,17 @@ import org.bukkit.block.data.Ageable;
 import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
-import org.bukkit.Particle;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.util.Vector;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Transformation;
+import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -52,8 +54,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-// TODO: Add scarlet/ivory team stuff
-// TODO: Swap LumaGlowAPI references
 public final class FreezeTag extends InventoryUnifiedMinigame {
 
     private static final AttributeModifier FREEZE_MOD = new AttributeModifier(
@@ -81,17 +81,36 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         List<EventPlayer> shuffled = new ArrayList<>(this.participants);
         Collections.shuffle(shuffled);
 
+        /*
         int middle = shuffled.size() / 2;
         this.teams = List.of(
                 new FreezeTagTeam(shuffled.subList(0, middle), settings.getTeam1(), settings.getTeam1SpawnLocation()),
                 new FreezeTagTeam(shuffled.subList(middle, shuffled.size()), settings.getTeam2(), settings.getTeam2SpawnLocation())
+        );
+         */
+
+        FreezeTagDefinition.TeamConfig scarletConfig = settings.getTeam1();
+        FreezeTagDefinition.TeamConfig ivoryConfig = settings.getTeam2();
+
+        List<EventPlayer> scarletPlayers = shuffled.stream().filter(it -> {
+            EventTeam team = EventTeamManager.getByMemberOrThrow(it);
+            return scarletConfig.getProvider().getTeamClass().equals(team.getClass());
+        }).toList();
+        List<EventPlayer> ivoryPlayers = shuffled.stream().filter(it -> {
+            EventTeam team = EventTeamManager.getByMemberOrThrow(it);
+            return ivoryConfig.getProvider().getTeamClass().equals(team.getClass());
+        }).toList();
+
+        this.teams = List.of(
+                new FreezeTagTeam(scarletPlayers, scarletConfig, settings.getTeam1SpawnLocation()),
+                new FreezeTagTeam(ivoryPlayers, ivoryConfig, settings.getTeam2SpawnLocation())
         );
 
         for (FreezeTagTeam team : teams) {
             for (EventPlayer member : team.getMembers()) {
                 member.operatePlayer(player -> {
                     player.teleportAsync(team.getSpawnLocation().toCenterLocation());
-                    ColorManager.setTempPlayerColor(player, Util.chatColorFromNamedTextColor(team.getColor()));
+                    GlowColorManager.getInstance().setTransientColor(player, team.getColor());
                     player.getInventory().setChestplate(coloredLeather(Material.LEATHER_CHESTPLATE, team.getArmorColor()));
                     //player.getInventory().setLeggings(coloredLeather(Material.LEATHER_LEGGINGS, team.getArmorColor()));
                     //player.getInventory().setBoots(coloredLeather(Material.LEATHER_BOOTS, team.getArmorColor()));
@@ -114,6 +133,13 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
     protected void handleStop() {
         if (countdownBossBar != null) {
             countdownBossBar.stop(false);
+        }
+
+        // TODO: Move to token handler and have this be # of tokens earned
+        for (FreezeTagTeam team : teams) {
+            EventTeam delegate = team.getEventTeam();
+            int total = team.getScoreMap().values().stream().mapToInt(Integer::intValue).sum();
+            delegate.addPoints(total);
         }
 
         FreezeTagTeam winner = determineWinner();
@@ -240,7 +266,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
             actionBarPauseUntil.remove(uuid);
             pendingFreezeHits.remove(uuid);
             pendingUnfreezeHits.remove(uuid);
-            ColorManager.updatePlayersColor(player);
+            GlowColorManager.getInstance().update(player);
             if (countdownBossBar != null) countdownBossBar.getBossBar().removeViewer(player);
         }
 
@@ -491,7 +517,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
             state.iceDisplay().remove();
             player.removePotionEffect(PotionEffectType.GLOWING);
             removeFreezeAttributes(player);
-            ColorManager.setTempPlayerColor(player, team.getColor());
+            GlowColorManager.getInstance().setTransientColor(player, team.getColor());
             player.showTitle(Util.title("<green><b>UNFROZEN!", "<gray>You're free to move again!"));
             player.getWorld().playSound(player.getLocation(), Sound.BLOCK_GLASS_BREAK, 1f, 1.5f);
         });
@@ -505,7 +531,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
             state.iceDisplay().remove();
             player.removePotionEffect(PotionEffectType.GLOWING);
             removeFreezeAttributes(player);
-            ColorManager.updatePlayersColor(player);
+            GlowColorManager.getInstance().update(player);
         });
     }
 
@@ -571,6 +597,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         private final Color armorColor;
         private final Location spawnLocation;
         private final String teamName;
+        private final EventTeam eventTeam;
         private final Map<EventPlayer, Integer> scoreMap;
 
         public FreezeTagTeam(List<EventPlayer> members, FreezeTagDefinition.TeamConfig config, Location spawnLocation) {
@@ -579,6 +606,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
             this.spawnLocation = spawnLocation;
             this.teamName = config.getName();
             this.scoreMap = new HashMap<>();
+            this.eventTeam = EventTeamManager.getByProvider(config.getProvider());
             for (EventPlayer member : members) {
                 scoreMap.put(member, 0);
             }

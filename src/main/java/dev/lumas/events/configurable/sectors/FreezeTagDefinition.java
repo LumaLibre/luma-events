@@ -1,5 +1,6 @@
 package dev.lumas.events.configurable.sectors;
 
+import dev.lumas.events.manager.EventTeamManager;
 import eu.okaeri.configs.OkaeriConfig;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,11 +14,11 @@ import org.bukkit.Location;
 public class FreezeTagDefinition extends OkaeriConfig {
 
     private Location lobbyLocation;
-    private Location team1SpawnLocation;
-    private Location team2SpawnLocation;
+    private Location team1SpawnLocation; // TODO: Move this into TeamConfig
+    private Location team2SpawnLocation; // TODO: Move this into TeamConfig
     private Region region = new Region();
-    private TeamConfig team1 = new TeamConfig("Team Yellow", "yellow");
-    private TeamConfig team2 = new TeamConfig("Team Blue", "blue");
+    private TeamConfig team1 = new TeamConfig(EventTeamManager.Provider.SCARLET, "Scarlet", "red");
+    private TeamConfig team2 = new TeamConfig(EventTeamManager.Provider.IVORY, "Ivory", "ivory");
     private int timeLimitSeconds = 360;
     private int freezeHitsRequired = 3;
     private int unfreezeHitsRequired = 2;
@@ -34,6 +35,7 @@ public class FreezeTagDefinition extends OkaeriConfig {
     @AllArgsConstructor
     public static class TeamConfig extends OkaeriConfig {
 
+        private EventTeamManager.Provider provider;
         private String name;
         private String color;
 

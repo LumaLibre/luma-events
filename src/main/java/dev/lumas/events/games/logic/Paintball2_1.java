@@ -202,6 +202,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 position++;
 
                 // team score
+                // TODO: Move to token handler and have this be # of tokens earned
                 EventTeam eventTeam = EventTeamManager.getByMemberOrThrow(member);
                 eventTeam.addPoints(score);
             }

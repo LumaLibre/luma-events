@@ -237,6 +237,7 @@ public final class Towers extends InventoryUnifiedMinigame {
             });
 
             // give team points here, not in tokenHandler for rn
+            // TODO: Move to token handler and have this be # of tokens earned
             towersPlayer.getTeam().addPoints(this.scoreboard.getScore(towersPlayer.getEventPlayer()));
         });
 
