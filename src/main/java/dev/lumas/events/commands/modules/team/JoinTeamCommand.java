@@ -20,9 +20,9 @@ import java.util.List;
 @Register(Autowire.SUBCOMMAND)
 @CommandMeta(
         parent = CommandManager.class,
-        name = "team",
+        name = "jointeam",
         description = "Join a team",
-        usage = "/<command> team",
+        usage = "/<command> jointeam",
         permission = "lumaevents.default",
         playerOnly = true
 )

@@ -81,7 +81,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     private List<PaintballTeam> paintballTeams;
 
     public Paintball2_1(Paintball2_1Definition def) {
-        super("Paintball 2.1", "Cover as much area as possible.", 240000L, 20, true, true, false);
+        super("Paintball 2.1", "Cover as much area as possible.", 180000L, 20, true, true, false);
         this.def = def;
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.paintedLocations = new ConcurrentHashMap<>();
