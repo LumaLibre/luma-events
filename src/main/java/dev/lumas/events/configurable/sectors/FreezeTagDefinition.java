@@ -18,7 +18,7 @@ public class FreezeTagDefinition extends OkaeriConfig {
     private Location team2SpawnLocation; // TODO: Move this into TeamConfig
     private Region region = new Region();
     private TeamConfig team1 = new TeamConfig(EventTeamManager.Provider.SCARLET, "Scarlet", "red");
-    private TeamConfig team2 = new TeamConfig(EventTeamManager.Provider.IVORY, "Ivory", "ivory");
+    private TeamConfig team2 = new TeamConfig(EventTeamManager.Provider.IVORY, "Ivory", "white");
     private int timeLimitSeconds = 360;
     private int freezeHitsRequired = 3;
     private int unfreezeHitsRequired = 2;

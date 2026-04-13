@@ -92,7 +92,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
                 new FreezeTagTeam(shuffled.subList(0, middle), settings.getTeam1(), settings.getTeam1SpawnLocation()),
                 new FreezeTagTeam(shuffled.subList(middle, shuffled.size()), settings.getTeam2(), settings.getTeam2SpawnLocation())
         );
-         */
+        */
 
         FreezeTagDefinition.TeamConfig scarletConfig = settings.getTeam1();
         FreezeTagDefinition.TeamConfig ivoryConfig = settings.getTeam2();
