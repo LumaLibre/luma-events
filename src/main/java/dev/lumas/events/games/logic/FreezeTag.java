@@ -77,6 +77,11 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
     }
 
     @Override
+    protected boolean requiresTeams() {
+        return true;
+    }
+
+    @Override
     protected void handleStart() {
         List<EventPlayer> shuffled = new ArrayList<>(this.participants);
         Collections.shuffle(shuffled);
