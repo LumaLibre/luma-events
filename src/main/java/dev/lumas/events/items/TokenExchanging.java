@@ -1,12 +1,11 @@
 package dev.lumas.events.items;
 
-import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.utility.Util;
+import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.lumaitems.LumaItems;
-import dev.lumas.lumaitems.model.CustomItem;
+import dev.lumas.lumaitems.model.item.CustomItem;
 import lombok.Getter;
-import net.kyori.adventure.text.minimessage.internal.parser.TokenType;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;

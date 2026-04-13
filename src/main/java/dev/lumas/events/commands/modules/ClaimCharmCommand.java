@@ -8,7 +8,7 @@ import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Util;
 import dev.lumas.lumaitems.api.LumaItemsAPI;
-import dev.lumas.lumaitems.model.CustomItem;
+import dev.lumas.lumaitems.model.item.CustomItem;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;

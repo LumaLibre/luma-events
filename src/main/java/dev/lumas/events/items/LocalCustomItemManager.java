@@ -1,7 +1,7 @@
 package dev.lumas.events.items;
 
 import dev.lumas.lumaitems.api.LumaItemsAPI;
-import dev.lumas.lumaitems.model.CustomItem;
+import dev.lumas.lumaitems.model.item.CustomItem;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.inventory.ItemStack;

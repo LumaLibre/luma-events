@@ -14,7 +14,7 @@ import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.lumaitems.api.LumaItemsAPI;
-import dev.lumas.lumaitems.model.CustomItem;
+import dev.lumas.lumaitems.model.item.CustomItem;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
