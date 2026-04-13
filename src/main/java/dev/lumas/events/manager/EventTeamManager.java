@@ -95,6 +95,7 @@ public final class EventTeamManager {
     public static EventTeam getByMember(EventPlayer eventPlayer) {
         for (EventTeam eventTeam : EVENT_TEAMS) {
             if (eventTeam.isMember(eventPlayer)) {
+                eventPlayer.updateLazyTeam(eventTeam);
                 return eventTeam;
             }
         }

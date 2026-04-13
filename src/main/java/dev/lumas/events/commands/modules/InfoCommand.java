@@ -49,7 +49,7 @@ public class InfoCommand implements CommandModule {
 
         eventPlayer.sendNoPrefixedMessage(BORDER);
         eventPlayer.sendNoPrefixedMessage("Stats for: <gold>" + player.getName() + " " + Util.getRandom(FACES));
-        eventPlayer.sendNoPrefixedMessage(Text.mm("Team: ").append((eventTeam == null ? Text.mm("<gray>None") : eventTeam.getDisplayName())));
+        eventPlayer.sendNoPrefixedMessage(Text.mm("Team: " + (eventTeam == null ? "<gray>None" : eventTeam.getDisplayName() + " <gold>(" + eventTeam.getOnlineMembers() + "/" + eventTeam.getTotalMembers() + ")")));
         eventPlayer.sendNoPrefixedMessage("Souls: <gold>" + eventPlayer.getSouls());
         eventPlayer.sendNoPrefixedMessage("Suspended: <gold>" + (eventPlayer.isSuspended() ? "Yes" : "No"));
         for (var entry : eventPlayer.getPermanentScores().entrySet()) {

@@ -6,6 +6,7 @@ import dev.lumas.events.EventMain
 import dev.lumas.events.explorer.custom.FullSecondRunnableEvent
 import dev.lumas.events.explorer.custom.HalfSecondRunnableEvent
 import dev.lumas.events.explorer.custom.TenSecondRunnableEvent
+import dev.lumas.events.explorer.gui.ExplorerGui
 import dev.lumas.events.manager.EventPlayerManager
 import dev.lumas.events.utility.Executors
 import dev.lumas.events.utility.Util
@@ -133,6 +134,10 @@ object ExplorerIntents : ExplorerIntentContainer() {
         val type = event.inventory.type
         if (!VALID_CONTAINERS.contains(type)) {
             val holder = event.inventory.holder ?: return@ExplorerIntent
+            if (holder is ExplorerGui) {
+                return@ExplorerIntent // safe gui
+            }
+
             val loc =
                 when (holder) {
                     is BlockInventoryHolder -> holder.block.location

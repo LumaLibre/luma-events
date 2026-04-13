@@ -32,6 +32,7 @@ dependencies {
     compileOnly("dev.lumas.core:LumaCore:f25f237")
     compileOnly("dev.lumas.lumaitems:LumaItems:f760f14")
     compileOnly("dev.lumas.glowapi:LumaGlowAPI:325d91d")
+    compileOnly("dev.jsinco.chatheads:ChatHeads:1.8")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("com.nuclyon.technicallycoded.inventoryrollback:InventoryRollbackPlus:1.7.3")
     compileOnly("com.github.Zrips:jobs:v4.17.2")

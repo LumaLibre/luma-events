@@ -1,6 +1,5 @@
 package dev.lumas.events.explorer.gui;
 
-import dev.lumas.core.model.gui.AbstractGui;
 import dev.lumas.events.explorer.mile.ActiveExplorerMile;
 import dev.lumas.events.explorer.mile.ExplorerMile;
 import dev.lumas.events.explorer.mile.ExplorerMileLevelSnapshot;
@@ -31,7 +30,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class ExplorerMilesGui extends AbstractGui {
+public class ExplorerMilesGui extends ExplorerGui {
 
     private final Inventory baseInv = GuiUtil.getBaseInv(this, 54, "Explorer Miles");
     private PaginatedGui paginatedGui;

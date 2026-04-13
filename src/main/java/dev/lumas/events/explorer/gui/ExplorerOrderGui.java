@@ -1,6 +1,5 @@
 package dev.lumas.events.explorer.gui;
 
-import dev.lumas.core.model.gui.AbstractGui;
 import dev.lumas.core.model.gui.items.IndexedGuiItem;
 import dev.lumas.events.explorer.order.ActiveExplorerOrder;
 import dev.lumas.events.explorer.order.ExplorerOrder;
@@ -27,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @NullMarked
-public class ExplorerOrderGui extends AbstractGui {
+public class ExplorerOrderGui extends ExplorerGui {
 
     private final Inventory baseInv = GuiUtil.getBaseInv(this, 54, "Explorer Miles");
     private final EventPlayer eventPlayer;

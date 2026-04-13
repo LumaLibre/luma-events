@@ -13,6 +13,8 @@ import dev.lumas.events.explorer.order.ExplorerOrderRegistry;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.Scorer;
 import dev.lumas.events.hooks.BetterRTPService;
+import dev.lumas.events.manager.EventTeamManager;
+import dev.lumas.events.obj.team.EventTeam;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.constant.PersistentInventoryState;
@@ -38,6 +40,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -51,6 +54,8 @@ public class EventPlayer implements Serializable, Scorer {
     private static final Config CONFIG = EventMain.getOkaeriConfig();
     @Nullable
     private transient volatile Object LOCK;
+    @Nullable
+    private transient Optional<EventTeam> lazyTeam;
 
     private final UUID uuid;
     private final Map<MinigameConstant, Integer> scores;
@@ -407,5 +412,28 @@ public class EventPlayer implements Serializable, Scorer {
                 LOGGER.warning("No unsuspend world available.");
             }
         });
+    }
+
+
+    /**
+     * Prefer {@link EventTeamManager#getByMember(EventPlayer)}.
+     * This method should only be used for repetitive lookups.
+     * @return the {@link EventTeam} this player is in, or null if they are not in a team.
+     */
+    @Nullable
+    public EventTeam getLazyTeam() {
+        if (this.lazyTeam == null) {
+            EventTeam team = EventTeamManager.getByMember(this);
+            this.lazyTeam = Optional.ofNullable(team);
+        }
+        return this.lazyTeam.orElse(null);
+    }
+
+    public void invalidateLazyTeam() {
+        this.lazyTeam = null; // forces re-lookup on next call
+    }
+
+    public void updateLazyTeam(@Nullable EventTeam team) {
+        this.lazyTeam = Optional.ofNullable(team);
     }
 }
