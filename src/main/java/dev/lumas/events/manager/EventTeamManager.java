@@ -73,7 +73,7 @@ public final class EventTeamManager {
         for (EventTeam eventTeam : EVENT_TEAMS) {
             save(eventTeam);
         }
-        EventMain.getInstance().getLogger().info("Saved " + EVENT_TEAMS.size() + " teams.");
+        //EventMain.getInstance().getLogger().info("Saved " + EVENT_TEAMS.size() + " teams.");
     }
 
 

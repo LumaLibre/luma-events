@@ -74,14 +74,13 @@ public final class EventMain extends JavaPlugin {
 
         EventPlayerManager.saveAllAndClear();
         EventTeamManager.saveAll();
+        CountdownBossBar.stopAll(false);
+        for (BossBar bossBar : CountdownBossBar.activeCountdowns.stream().map(CountdownBossBar::getBossBar).toList()) {
+            bossBar.removeViewer(Audience.audience(Bukkit.getOnlinePlayers()));
+        }
         Minigame current = MinigameManager.getInstance().getCurrent();
         if (current.isActive()) {
             current.stop();
-        }
-        CountdownBossBar.stopAll(false);
-
-        for (BossBar bossBar : CountdownBossBar.activeCountdowns.stream().map(CountdownBossBar::getBossBar).toList()) {
-            bossBar.removeViewer(Audience.audience(Bukkit.getOnlinePlayers()));
         }
     }
 

@@ -24,7 +24,8 @@ object ExplorerOrders : ExplorerOrderContainer() {
         quantity = 1,
         souls = 40,
         world = WORLDS,
-        eventClass = EntityDeathEvent::class
+        eventClass = EntityDeathEvent::class,
+        icon = Material.WARDEN_SPAWN_EGG
     ) { event, completion ->
         if (event.entityType == EntityType.WARDEN) {
             completion.progress()
@@ -39,7 +40,8 @@ object ExplorerOrders : ExplorerOrderContainer() {
         quantity = 100,
         souls = 10,
         world = WORLDS,
-        eventClass = EntityDeathEvent::class
+        eventClass = EntityDeathEvent::class,
+        icon = Material.CREEPER_SPAWN_EGG
     ) { event, completion ->
         if (event.entityType == EntityType.CREEPER) {
             completion.progress()
@@ -54,7 +56,8 @@ object ExplorerOrders : ExplorerOrderContainer() {
         quantity = 2,
         souls = 10,
         world = WORLDS,
-        eventClass = EntityDeathEvent::class
+        eventClass = EntityDeathEvent::class,
+        icon = Material.ELDER_GUARDIAN_SPAWN_EGG
     ) { event, completion ->
         if (event.entityType == EntityType.ELDER_GUARDIAN) {
             completion.progress()
@@ -69,7 +72,8 @@ object ExplorerOrders : ExplorerOrderContainer() {
         quantity = 250,
         souls = 15,
         world = WORLDS,
-        eventClass = BlockBrokenExplorerEvent::class
+        eventClass = BlockBrokenExplorerEvent::class,
+        icon = Material.DIAMOND_ORE
     ) { event, completion ->
         if (Tag.DIAMOND_ORES.isTagged(event.type)) {
             completion.progress()
@@ -83,7 +87,8 @@ object ExplorerOrders : ExplorerOrderContainer() {
         quantity = 1,
         souls = 1,
         world = WORLDS,
-        eventClass = PlayerDeathEvent::class
+        eventClass = PlayerDeathEvent::class,
+        icon = Material.AMETHYST_SHARD
     ) { _, completion ->
         completion.progress()
     }
@@ -98,7 +103,8 @@ object ExplorerOrders : ExplorerOrderContainer() {
         quantity = 20,
         souls = 20,
         world = WORLDS,
-        eventClass = BlockBrokenExplorerEvent::class
+        eventClass = BlockBrokenExplorerEvent::class,
+        icon = Material.ANCIENT_DEBRIS
     ) { event, completion ->
         if (event.type == Material.ANCIENT_DEBRIS) {
             completion.progress()

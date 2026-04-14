@@ -1,6 +1,7 @@
 package dev.lumas.events.explorer.intention
 
 import dev.lumas.events.explorer.containers.ContainerReflective
+import org.bukkit.Material
 import org.bukkit.World
 import kotlin.reflect.KClass
 
@@ -15,6 +16,7 @@ class ExplorerIntent<T : Any>(
     val desc: String,
     val worlds: List<String>,
     val eventClass: Class<T>,
+    val icon: Material = Material.MAP,
     val handler: ExplorerIntentEventHandler<T>,
 ): ContainerReflective() {
 
@@ -24,19 +26,21 @@ class ExplorerIntent<T : Any>(
     }
 
 
-    constructor(title: String, desc: String, world: String, eventClass: KClass<T>, handler: ExplorerIntentEventHandler<T>) : this(
+    constructor(title: String, desc: String, world: String, eventClass: KClass<T>, icon: Material, handler: ExplorerIntentEventHandler<T>) : this(
         title,
         desc,
         listOf(world),
         eventClass.java,
+        icon,
         handler
     )
 
-    constructor(title: String, desc: String, world: List<String>, eventClass: KClass<T>, handler: ExplorerIntentEventHandler<T>) : this(
+    constructor(title: String, desc: String, world: List<String>, eventClass: KClass<T>, icon: Material, handler: ExplorerIntentEventHandler<T>) : this(
         title,
         desc,
         world,
         eventClass.java,
+        icon,
         handler
     )
 

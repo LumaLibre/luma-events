@@ -15,6 +15,8 @@ import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.Sound
 import org.bukkit.Tag
+import org.bukkit.attribute.Attribute
+import org.bukkit.attribute.AttributeModifier
 import org.bukkit.damage.DamageType
 import org.bukkit.entity.Animals
 import org.bukkit.entity.Bee
@@ -23,10 +25,11 @@ import org.bukkit.entity.Enderman
 import org.bukkit.entity.Enemy
 import org.bukkit.entity.Entity
 import org.bukkit.entity.EntityType
+import org.bukkit.entity.Fish
 import org.bukkit.entity.Golem
-import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Mob
 import org.bukkit.entity.Player
+import org.bukkit.entity.Squid
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.EntityDeathEvent
@@ -52,10 +55,10 @@ object ExplorerIntents : ExplorerIntentContainer() {
     private val TIMED_EXPLOSION = fun (loc: Location, delay: Long, player: Player) {
         loc.world.playSound(loc, Sound.ENTITY_CREEPER_PRIMED, 1f, 1f)
         Executors.delayedSync(loc, delay) {
-            loc.world.createExplosion(loc, 25.0f)
+            loc.world.createExplosion(loc, 20.0f)
 
             Executors.delayedSync(loc, 1) {
-                for (player in loc.getNearbyPlayers(15.0)) {
+                for (player in loc.getNearbyPlayers(10.0)) {
                     if (!player.isValid) {
                         player.damage(1000.0)
                     }
@@ -99,10 +102,11 @@ object ExplorerIntents : ExplorerIntentContainer() {
     private val DEATH_MESSAGE_COOLDOWN: Queue<UUID> = ConcurrentLinkedQueue()
 
     val DEATH_DELETE_INV_AND_UNSUSPEND = ExplorerIntent<PlayerDeathEvent>(
-        title = "Death Deletes Inventory & Unsuspends",
-        desc = "On a player's death, their inventory is deleted and they are unsuspended.",
+        title = "Death Unsuspends",
+        desc = "On a player's death, they will be unsuspended and removed from the world.",
         world = WORLD,
         eventClass = PlayerDeathEvent::class,
+        icon = Material.WEATHERED_COPPER_CHEST
     ) { event ->
         val player = event.player
 //        event.isCancelled = true
@@ -117,7 +121,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
         }
 
         if (!DEATH_MESSAGE_COOLDOWN.contains(player.uniqueId)) {
-            Util.broadcast(event.deathMessage())
+            Util.broadcast(event.deathMessage()) // TODO Change
             DEATH_MESSAGE_COOLDOWN.add(player.uniqueId)
             Executors.delayedGlobal(10) {
                 DEATH_MESSAGE_COOLDOWN.remove(player.uniqueId)
@@ -130,6 +134,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
         desc = "Real containers of any kind explode when opened.",
         world = WORLD,
         eventClass = InventoryOpenEvent::class,
+        icon = Material.CHEST
     ) { event ->
         val type = event.inventory.type
         if (!VALID_CONTAINERS.contains(type)) {
@@ -152,7 +157,8 @@ object ExplorerIntents : ExplorerIntentContainer() {
         title = "Villagers Never Restock",
         desc = "Villagers never restock their trades.",
         world = WORLD,
-        eventClass = VillagerReplenishTradeEvent::class
+        eventClass = VillagerReplenishTradeEvent::class,
+        icon = Material.VILLAGER_SPAWN_EGG
     ) { event ->
         event.isCancelled = true
     }
@@ -161,7 +167,8 @@ object ExplorerIntents : ExplorerIntentContainer() {
         title = "Standing in Water Deals Damage",
         desc = "Players standing in the water or rain take damage every half of a second.",
         world = WORLD,
-        eventClass = HalfSecondRunnableEvent::class
+        eventClass = HalfSecondRunnableEvent::class,
+        icon = Material.PUFFERFISH_BUCKET
     ) { event ->
         val player = event.player
         if (player.isInRain || player.isInWater) {
@@ -179,25 +186,21 @@ object ExplorerIntents : ExplorerIntentContainer() {
     }
 
     val MOBS_ARE_STRONGER = ExplorerIntent<EntitySpawnEvent>(
-        title = "Increase Mob Health & Damage",
-        desc = "Mobs are significantly stronger than normal.",
+        title = "Stronger Enemies",
+        desc = "All enemies have 40% extra health and creepers spawn charged.",
         world = WORLD,
-        eventClass = EntitySpawnEvent::class
+        eventClass = EntitySpawnEvent::class,
+        icon = Material.DRAGON_BREATH
     ) { event ->
-        val entity = event.entity as? LivingEntity ?: return@ExplorerIntent
-        /*entity.getAttribute(Attribute.MAX_HEALTH)?.let {
+        val entity = event.entity as? Enemy ?: return@ExplorerIntent
+
+        entity.getAttribute(Attribute.MAX_HEALTH)?.let {
             if (it.getModifier(NAMESPACED_KEY) == null) {
-                val value = it.value * 2.0
+                val value = it.value * 1.4
                 it.addModifier(AttributeModifier(NAMESPACED_KEY, value, AttributeModifier.Operation.ADD_NUMBER))
-                entity.health = it.value
+                entity.health = it.value + value
             }
         }
-        entity.getAttribute(Attribute.ATTACK_DAMAGE)?.let {
-            if (it.getModifier(NAMESPACED_KEY) == null) {
-                val value = it.value * 1.2
-                it.addModifier(AttributeModifier(NAMESPACED_KEY, value, AttributeModifier.Operation.ADD_NUMBER))
-            }
-        }*/
 
         if (entity is Creeper) {
             entity.isPowered = true
@@ -209,7 +212,8 @@ object ExplorerIntents : ExplorerIntentContainer() {
         title = "Duplicating Creepers",
         desc = "Creepers will duplicate when exploding.",
         world = WORLD,
-        eventClass = EntityExplodeEvent::class
+        eventClass = EntityExplodeEvent::class,
+        icon = Material.CREEPER_SPAWN_EGG
     ) { event ->
         val entity = event.entity as? Creeper ?: return@ExplorerIntent
         // Folia regions should be able to handle this no problem.
@@ -229,7 +233,8 @@ object ExplorerIntents : ExplorerIntentContainer() {
         title = "Creepers are Immune to Explosions",
         desc = "Creepers are immune to explosions.",
         world = WORLD,
-        eventClass = EntityDamageEvent::class
+        eventClass = EntityDamageEvent::class,
+        icon = Material.CREEPER_BANNER_PATTERN
     ) { event ->
         if (event.entity !is Creeper) return@ExplorerIntent
 
@@ -244,10 +249,11 @@ object ExplorerIntents : ExplorerIntentContainer() {
         title = "Animals Yield Nothing",
         desc = "Animals yield nothing when killed.",
         world = WORLD,
-        eventClass = EntityDeathEvent::class
+        eventClass = EntityDeathEvent::class,
+        icon = Material.PORKCHOP
     ) { event ->
         val entity = event.entity
-        if (entity is Animals) {
+        if (entity is Animals || entity is Fish || entity is Squid) {
             event.drops.clear()
         }
     }
@@ -256,7 +262,8 @@ object ExplorerIntents : ExplorerIntentContainer() {
         title = "Miner's Hell",
         desc = "Digging at or below Y level 4 grants mining fatigue and blindness.",
         world = WORLD,
-        eventClass = TenSecondRunnableEvent::class
+        eventClass = TenSecondRunnableEvent::class,
+        icon = Material.DIAMOND_PICKAXE
     ) { event ->
         val player = event.player
         if (player.location.blockY <= 4) {
@@ -270,7 +277,8 @@ object ExplorerIntents : ExplorerIntentContainer() {
         title = "Fire & Lava Instantly Kills",
         desc = "Fire and lava deal massive damage.",
         world = WORLD,
-        eventClass = EntityDamageEvent::class
+        eventClass = EntityDamageEvent::class,
+        icon = Material.BLAZE_POWDER
     ) { event ->
         val player = event.entity as? Player ?: return@ExplorerIntent
         if (event.cause == EntityDamageEvent.DamageCause.FIRE || event.cause == EntityDamageEvent.DamageCause.LAVA) {
@@ -278,26 +286,13 @@ object ExplorerIntents : ExplorerIntentContainer() {
         }
     }
 
-//    val NO_BENEFICIAL_POTION_EFFECTS = ExplorerIntent<EntityPotionEffectEvent>(
-//        title = "No Beneficial Potion Effects",
-//        desc = "Players do not receive any potion effects.",
-//        world = WORLD,
-//        eventClass = EntityPotionEffectEvent::class
-//    ) { event ->
-//        val player = event.entity as? Player ?: return@ExplorerIntent
-//        val potionEffect = event.newEffect ?: return@ExplorerIntent
-//        val type = potionEffect.type
-//        if (type.category == PotionEffectTypeCategory.BENEFICIAL || type.effectCategory == PotionEffectType.Category.BENEFICIAL) {
-//            event.isCancelled = true
-//        }
-//    }
-
 
     val ALWAYS_HOSTILE = ExplorerIntent<FullSecondRunnableEvent>(
         title = "Always Hostile",
-        desc = "Neutral enemies are always hostile, hostile enemies will be able to target players from further away.",
+        desc = "Neutral enemies are always hostile, hostile enemies will be able to target players from further away (excluding endermen).",
         world = WORLD,
         eventClass = FullSecondRunnableEvent::class,
+        icon = Material.ENDER_EYE
     ) { event ->
         val player = event.player
         val nearbyEnemies = player.location.getNearbyLivingEntities(65.0)
@@ -316,6 +311,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
         desc = "Logs may not drop when broken.",
         world = WORLD,
         eventClass = BlockBreakEvent::class,
+        icon = Material.OAK_LOG
     ) { event ->
         val block = event.block
         if (Tag.LOGS.isTagged(block.type) && Random.nextBoolean()) {
@@ -330,26 +326,11 @@ object ExplorerIntents : ExplorerIntentContainer() {
         desc = "Tamed entities explode when tamed.",
         world = WORLD,
         eventClass = EntityTameEvent::class,
+        icon = Material.BONE
     ) { event ->
         TIMED_EXPLOSION(event.entity.location, 10L, event.owner as? Player ?: return@ExplorerIntent)
     }
 
 
-//    val RANDOM_LIGHTNING = ExplorerIntent<TenSecondRunnableEvent>(
-//        title = "Random Lightning",
-//        desc = "Lightning strikes randomly.",
-//        world = WORLD,
-//        eventClass = TenSecondRunnableEvent::class,
-//    ) { event ->
-//        val player = event.player
-//        // get a random location at least 60 blocks away from the player
-//        fun randomSign() = if (Random.nextBoolean()) 1.0 else -1.0
-//
-//        val randomLocation = player.location.clone().add(
-//            Random.nextDouble(1.0, 100.0) * randomSign(),
-//            0.0,
-//            Random.nextDouble(1.0, 100.0) * randomSign()
-//        )
-//        player.world.strikeLightning(randomLocation)
-//    }
+
 }

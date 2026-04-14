@@ -470,4 +470,8 @@ public final class Util {
         }
         return false;
     }
+
+    public static String paleSideColor(String s) {
+        return "<gradient:#7B859D:#996779:#A7957B:#6B496B><b>" + s + "</b></gradient>";
+    }
 }

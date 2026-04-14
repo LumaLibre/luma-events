@@ -6,15 +6,11 @@ import dev.lumas.events.explorer.order.ExplorerOrder;
 import dev.lumas.events.explorer.order.ExplorerOrderCompletion;
 import dev.lumas.events.explorer.order.ExplorerOrderRegistry;
 import dev.lumas.events.obj.EventPlayer;
-import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.gui.GuiUtil;
 import dev.lumas.events.utility.gui.PaginatedGui;
-import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
-import org.bukkit.Material;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.HumanEntity;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
@@ -28,9 +24,8 @@ import java.util.List;
 @NullMarked
 public class ExplorerOrderGui extends ExplorerGui {
 
-    private final Inventory baseInv = GuiUtil.getBaseInv(this, 54, "Explorer Miles");
+    private final Inventory baseInv = GuiUtil.getBaseInv(this, 54, "Explorer Orders");
     private final EventPlayer eventPlayer;
-    private PaginatedGui paginatedGui;
 
     private final IndexedGuiItem previousPage = IndexedGuiItem.of(
             48,
@@ -66,29 +61,27 @@ public class ExplorerOrderGui extends ExplorerGui {
         List<ItemStack> items = new ArrayList<>();
 
         for (ExplorerOrder<?> explorerOrder : ExplorerOrderRegistry.jvmUnifiedValues()) {
+            ActiveExplorerOrder activeExplorerOrder = eventPlayer.getActiveExplorerOrder(explorerOrder);
+            ExplorerOrderCompletion snapshot = activeExplorerOrder != null ? activeExplorerOrder.getImmutableCompletion() : ExplorerOrderCompletion.empty(explorerOrder);
 
-            Material type = Material.AMETHYST_SHARD;
-            ItemStack explorerMilePostCard = ItemStack.of(type);
+            ItemStack explorerMilePostCard = ItemStack.of(explorerOrder.getIcon());
 
             explorerMilePostCard.editMeta(meta -> {
-                ActiveExplorerOrder activeExplorerOrder = eventPlayer.getActiveExplorerOrder(explorerOrder);
-                ExplorerOrderCompletion snapshot = activeExplorerOrder != null ? activeExplorerOrder.getImmutableCompletion() : ExplorerOrderCompletion.empty(explorerOrder);
-
-                String displayName = "<light_purple><b>" + explorerOrder.getName();
-                List<String> lore = this.createExplorerMileLore(explorerOrder.getObjective(), snapshot);
+                String displayName = Util.paleSideColor(explorerOrder.getName());
+                List<String> lore = this.createExplorerOrderLore(explorerOrder.getObjective(), snapshot);
 
                 if (snapshot.isCompleted()) {
                     meta.addEnchant(Enchantment.UNBREAKING, 1, true);
                 }
                 meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
                 meta.displayName(Util.color(displayName));
-                meta.lore(Util.color(lore, NamedTextColor.WHITE));
+                meta.lore(Util.color(lore, TextColor.fromHexString(Util.TEXT_COLOR)));
             });
             items.add(explorerMilePostCard);
         }
 
         this.paginatedGui = new PaginatedGui.Builder()
-                .name("Explorer Miles")
+                .name("Pale Side Orders")
                 .base(baseInv)
                 .items(items)
                 .startEndSlots(20, 34)
@@ -96,7 +89,7 @@ public class ExplorerOrderGui extends ExplorerGui {
                 .build();
     }
 
-    private List<String> createExplorerMileLore(String desc, ExplorerOrderCompletion snapshot) {
+    private List<String> createExplorerOrderLore(String desc, ExplorerOrderCompletion snapshot) {
         List<String> lore = new ArrayList<>();
 
         lore.addAll(GuiUtil.formatLore(desc.split("\n")));
@@ -115,23 +108,13 @@ public class ExplorerOrderGui extends ExplorerGui {
     }
 
     @Override
-    public void onInventoryClose(InventoryCloseEvent inventoryCloseEvent) {
+    public void onInventoryClose(InventoryCloseEvent event) {
 
     }
 
     @Override
     public Inventory getInventory() {
         return baseInv;
-    }
-
-    @Override
-    public void open(HumanEntity humanEntity) {
-        Inventory first = this.paginatedGui.getFirst();
-        if (!Bukkit.isOwnedByCurrentRegion(humanEntity)) {
-            Executors.runSync(humanEntity, () -> humanEntity.openInventory(first));
-        } else {
-            humanEntity.openInventory(first);
-        }
     }
 
 }

@@ -7,17 +7,14 @@ import dev.lumas.events.explorer.mile.ExplorerMileRegistry;
 import dev.lumas.events.items.TokenExchanging;
 import dev.lumas.events.obj.DialogueText;
 import dev.lumas.events.obj.EventPlayer;
-import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.gui.GuiUtil;
 import dev.lumas.events.utility.gui.PaginatedGui;
 import dev.lumas.lumacore.manager.guis.GuiItem;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
@@ -33,7 +30,6 @@ import java.util.List;
 public class ExplorerMilesGui extends ExplorerGui {
 
     private final Inventory baseInv = GuiUtil.getBaseInv(this, 54, "Explorer Miles");
-    private PaginatedGui paginatedGui;
     private EventPlayer eventPlayer;
     private DialogueText dialogueText;
 
@@ -184,16 +180,6 @@ public class ExplorerMilesGui extends ExplorerGui {
     @Override
     public @NotNull Inventory getInventory() {
         return baseInv;
-    }
-
-    @Override
-    public void open(HumanEntity humanEntity) {
-        Inventory first = this.paginatedGui.getFirst();
-        if (!Bukkit.isOwnedByCurrentRegion(humanEntity)) {
-            Executors.runSync(humanEntity, () -> humanEntity.openInventory(first));
-        } else {
-            humanEntity.openInventory(first);
-        }
     }
 
 
