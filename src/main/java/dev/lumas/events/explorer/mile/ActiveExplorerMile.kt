@@ -5,8 +5,8 @@ import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 import dev.lumas.core.util.ContextLogger
-import dev.lumas.events.obj.DialogueText
-import dev.lumas.events.obj.EventPlayer
+import dev.lumas.events.model.DialogueText
+import dev.lumas.events.model.EventPlayer
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Sound
 

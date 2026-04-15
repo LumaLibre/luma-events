@@ -5,7 +5,7 @@ import dev.lumas.events.explorer.order.ActiveExplorerOrder;
 import dev.lumas.events.explorer.order.ExplorerOrder;
 import dev.lumas.events.explorer.order.ExplorerOrderCompletion;
 import dev.lumas.events.explorer.order.ExplorerOrderRegistry;
-import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.gui.GuiUtil;
 import dev.lumas.events.utility.gui.PaginatedGui;
@@ -68,7 +68,7 @@ public class ExplorerOrderGui extends ExplorerGui {
 
             explorerMilePostCard.editMeta(meta -> {
                 String displayName = Util.paleSideColor(explorerOrder.getName());
-                List<String> lore = this.createExplorerOrderLore(explorerOrder.getObjective(), snapshot);
+                List<String> lore = this.createExplorerOrderLore(explorerOrder.getObjective(), snapshot, explorerOrder.getSouls());
 
                 if (snapshot.isCompleted()) {
                     meta.addEnchant(Enchantment.UNBREAKING, 1, true);
@@ -89,12 +89,13 @@ public class ExplorerOrderGui extends ExplorerGui {
                 .build();
     }
 
-    private List<String> createExplorerOrderLore(String desc, ExplorerOrderCompletion snapshot) {
+    private List<String> createExplorerOrderLore(String desc, ExplorerOrderCompletion snapshot, int souls) {
         List<String> lore = new ArrayList<>();
 
         lore.addAll(GuiUtil.formatLore(desc.split("\n")));
         lore.add("");
         lore.add("<#EEE1D5><st>       </st>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>       </st></#EEE1D5>");
+        lore.add("Souls<gray>:</gray> " + souls);
         lore.add("Completed<gray>:</gray> " + snapshot.isCompleted());
         lore.add("Progress " + snapshot.getCurrentQuantity() + "/" + snapshot.getMaxQuantity());
         lore.add("<#EEE1D5><st>       </st>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>       </st></#EEE1D5>");

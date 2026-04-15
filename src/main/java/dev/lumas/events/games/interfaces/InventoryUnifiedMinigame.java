@@ -1,11 +1,11 @@
 package dev.lumas.events.games.interfaces;
 
-import dev.lumas.lumacore.utility.Logging;
+import dev.lumas.events.games.InventorySnapshotManager;
 import dev.lumas.events.games.events.MinigameInventoryRestoringQuitListener;
 import dev.lumas.events.games.models.InventorySnapshot;
-import dev.lumas.events.games.InventorySnapshotManager;
-import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
+import dev.lumas.lumacore.utility.Logging;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;

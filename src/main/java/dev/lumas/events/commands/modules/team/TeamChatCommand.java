@@ -8,8 +8,9 @@ import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.EventTeamManager;
-import dev.lumas.events.obj.EventPlayer;
-import dev.lumas.events.obj.team.EventTeam;
+import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.model.team.EventTeam;
+import dev.lumas.events.model.team.EventTeamPlayerHandle;
 import net.kyori.adventure.text.Component;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -40,7 +41,8 @@ public class TeamChatCommand implements CommandModule {
         }
 
         if (args.length == 0) {
-            boolean result = eventTeam.togglePersistentTeamChat(eventPlayer);
+            EventTeamPlayerHandle handle = eventTeam.getMember(eventPlayer);
+            boolean result = handle.togglePersistentTeamChat();
             eventPlayer.sendMessage("Team chat is now " + (result ? "enabled" : "disabled") + ".");
             return true;
         }

@@ -10,9 +10,11 @@ import dev.lumas.events.commands.CommandModule;
 import dev.lumas.events.shop.ShopManagerService;
 import dev.lumas.events.utility.Util;
 import org.bukkit.command.CommandSender;
+import org.jspecify.annotations.NullMarked;
 
 import java.util.List;
 
+@NullMarked
 @Register(Autowire.SUBCOMMAND)
 @CommandMeta(
         name = "reload",

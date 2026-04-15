@@ -1,8 +1,8 @@
 package dev.lumas.events.games.models;
 
-import dev.lumas.lumacore.utility.Logging;
-import dev.lumas.events.obj.WorldTiedBoundingBox;
+import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
+import dev.lumas.lumacore.utility.Logging;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import lombok.Setter;

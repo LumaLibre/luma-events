@@ -1,6 +1,6 @@
 package dev.lumas.events.games.interfaces.models;
 
-import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.model.EventPlayer;
 import lombok.Getter;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;

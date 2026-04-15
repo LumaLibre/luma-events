@@ -2,10 +2,10 @@ package dev.lumas.events.manager;
 
 import com.google.gson.Gson;
 import dev.lumas.events.EventMain;
-import dev.lumas.events.obj.EventPlayer;
-import dev.lumas.events.obj.team.EventTeam;
-import dev.lumas.events.obj.team.IvoryTeam;
-import dev.lumas.events.obj.team.ScarletTeam;
+import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.model.team.EventTeam;
+import dev.lumas.events.model.team.IvoryTeam;
+import dev.lumas.events.model.team.ScarletTeam;
 import dev.lumas.events.utility.gson.GsonHolder;
 import lombok.Getter;
 import org.jspecify.annotations.NonNull;
@@ -16,7 +16,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -113,8 +112,8 @@ public final class EventTeamManager {
 
 
     public enum Provider {
-        IVORY(IvoryTeam.class, () -> new IvoryTeam(new HashSet<>(), 0)),
-        SCARLET(ScarletTeam.class, () -> new ScarletTeam(new HashSet<>(), 0));
+        IVORY(IvoryTeam.class, IvoryTeam::new),
+        SCARLET(ScarletTeam.class, ScarletTeam::new);
 
         @Getter
         private final Class<? extends EventTeam> teamClass;

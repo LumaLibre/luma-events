@@ -1,11 +1,10 @@
-package dev.lumas.events.obj.team;
+package dev.lumas.events.model.team;
 
 import dev.lumas.core.util.Text;
 import dev.lumas.events.games.interfaces.Scorer;
 import dev.lumas.events.hooks.ChatHeadsService;
-import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.EventTeamManager;
-import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Util;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
@@ -15,9 +14,9 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -28,69 +27,30 @@ public abstract class EventTeam implements Scorer {
     private static final Component SPACE_TEXT_COMPONENT = Component.text(" ");
     private static final Set<UUID> TEAM_CHAT_SPIES = new HashSet<>();
 
-
-    private transient final Set<UUID> inTeamChat = new HashSet<>();
     private transient final String identifier;
-
     private transient final String displayName;
     private transient final Component formattedDisplayName;
     private transient final String plainTextDisplayName;
 
     // data
-    private final Set<UUID> members; // TODO Use separate object
-    private final Set<UUID> disabledTeamChat; // TODO Use separate object
-    private int points;
+    private final Map<UUID, EventTeamPlayerHandle> members;
 
 
 
-    public EventTeam(String identifier, String name, Set<UUID> members, Set<UUID> disabledTeamChat, int points) {
+    public EventTeam(String identifier, String name, Map<UUID, EventTeamPlayerHandle> members) {
         this.identifier = identifier;
         this.displayName = name;
         this.members = members;
-        this.disabledTeamChat = disabledTeamChat;
-        this.points = points;
-
         this.formattedDisplayName = Util.color(name);
         this.plainTextDisplayName = PlainTextComponentSerializer.plainText().serialize(this.formattedDisplayName);
     }
 
-
-    @Nullable
-    public EventPlayer getPlayer(UUID uuid) {
-        if (members.contains(uuid)) {
-            EventPlayer eventPlayer = EventPlayerManager.getByUUID(uuid);
-            eventPlayer.updateLazyTeam(this);
-            return eventPlayer;
+    private EventTeamPlayerHandle getHandle(EventPlayer eventPlayer) {
+        EventTeamPlayerHandle handle = members.get(eventPlayer.getUuid());
+        if (handle != null) {
+            return handle;
         }
-        return null;
-    }
-
-    public boolean isMember(EventPlayer eventPlayer) {
-        eventPlayer.updateLazyTeam(this);
-        return members.contains(eventPlayer.getUuid());
-    }
-
-    public boolean addMember(EventPlayer eventPlayer) {
-        EventTeam existing = EventTeamManager.getByMember(eventPlayer);
-        if (existing != null) {
-            throw new IllegalArgumentException("Player " + eventPlayer.getName() + " is already a member of " + existing.getName());
-        }
-        eventPlayer.updateLazyTeam(this);
-        return members.add(eventPlayer.getUuid());
-    }
-
-    public boolean removeMember(EventPlayer eventPlayer) {
-        if (!members.contains(eventPlayer.getUuid())) {
-            throw new IllegalArgumentException("Player " + eventPlayer.getName() + " is not a member of " + getName());
-        }
-        eventPlayer.invalidateLazyTeam();
-        inTeamChat.remove(eventPlayer.getUuid());
-        return members.remove(eventPlayer.getUuid());
-    }
-
-
-    public void addPoints(int points) {
-        this.points += points;
+        throw new IllegalArgumentException("Player " + eventPlayer.getName() + " is not a member of " + getName());
     }
 
     @Override
@@ -98,10 +58,55 @@ public abstract class EventTeam implements Scorer {
         return plainTextDisplayName;
     }
 
+    public void addPoints(EventPlayer who, int points) {
+        EventTeamPlayerHandle handle = getHandle(who);
+        handle.setPoints(handle.getPoints() + points);
+    }
+
+    public int getPoints(EventPlayer who) {
+        return getHandle(who).getPoints();
+    }
+
+    public int getPoints() {
+        return members.values().stream().mapToInt(EventTeamPlayerHandle::getPoints).sum();
+    }
+
+    public void addMember(EventPlayer eventPlayer) {
+        EventTeam existing = EventTeamManager.getByMember(eventPlayer);
+        if (existing != null) {
+            throw new IllegalArgumentException("Player " + eventPlayer.getName() + " is already a member of " + existing.getName());
+        }
+
+        EventTeamPlayerHandle handle = new EventTeamPlayerHandle(eventPlayer);
+        members.put(eventPlayer.getUuid(), handle);
+        eventPlayer.updateLazyTeam(this);
+    }
+
+    public void removeMember(EventPlayer eventPlayer) {
+        EventTeamPlayerHandle handle = members.remove(eventPlayer.getUuid());
+        if (handle != null) {
+            handle.getEventPlayer().invalidateLazyTeam();
+            return;
+        }
+        throw new IllegalArgumentException("Player " + eventPlayer.getName() + " is not a member of " + getName());
+    }
+
+    public boolean isMember(EventPlayer eventPlayer) {
+        return members.containsKey(eventPlayer.getUuid());
+    }
+
+
+    public EventTeamPlayerHandle getMember(EventPlayer eventPlayer) {
+        EventTeamPlayerHandle handle = getHandle(eventPlayer);
+        eventPlayer.updateLazyTeam(this);
+        return handle;
+    }
+
+
     public void sendTeamMessage(String msg) {
         Component msgComponent = formatMessage(msg);
         for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
-            if (members.contains(onlinePlayer.getUniqueId())) {
+            if (members.containsKey(onlinePlayer.getUniqueId())) {
                 onlinePlayer.sendMessage(msgComponent);
             }
         }
@@ -123,7 +128,7 @@ public abstract class EventTeam implements Scorer {
         ChatHeadsService chatHeadsService = ChatHeadsService.getInstance().orElse(null);
 
         for (Player bukkitPlayer : Bukkit.getOnlinePlayers()) {
-            if (!members.contains(bukkitPlayer.getUniqueId()) && !TEAM_CHAT_SPIES.contains(bukkitPlayer.getUniqueId())) {
+            if (!members.containsKey(bukkitPlayer.getUniqueId()) && !TEAM_CHAT_SPIES.contains(bukkitPlayer.getUniqueId())) {
                 continue;
             }
 
@@ -145,25 +150,6 @@ public abstract class EventTeam implements Scorer {
     }
 
 
-    public boolean togglePersistentTeamChat(EventPlayer eventPlayer) {
-        if (inTeamChat.contains(eventPlayer.getUuid())) {
-            inTeamChat.remove(eventPlayer.getUuid());
-            return false;
-        } else {
-            inTeamChat.add(eventPlayer.getUuid());
-            return true;
-        }
-    }
-
-    public void removePersistentTeamChat(EventPlayer eventPlayer) {
-        inTeamChat.remove(eventPlayer.getUuid());
-    }
-
-    public boolean isPersistentTeamChat(EventPlayer eventPlayer) {
-        return inTeamChat.contains(eventPlayer.getUuid());
-    }
-
-
     public int getTotalMembers() {
         return members.size();
     }
@@ -171,7 +157,7 @@ public abstract class EventTeam implements Scorer {
     public int getOnlineMembers() {
         int count = 0;
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (members.contains(player.getUniqueId())) {
+            if (members.containsKey(player.getUniqueId())) {
                 count++;
             }
         }

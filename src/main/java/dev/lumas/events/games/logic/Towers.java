@@ -17,11 +17,11 @@ import dev.lumas.events.games.models.Scoreboard;
 import dev.lumas.events.games.tokenformula.FlatIntTokenFormula;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.EventTeamManager;
-import dev.lumas.events.obj.EventPlayer;
-import dev.lumas.events.obj.WorldTiedBoundingBox;
-import dev.lumas.events.obj.team.EventTeam;
-import dev.lumas.events.obj.team.IvoryTeam;
-import dev.lumas.events.obj.team.ScarletTeam;
+import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.model.WorldTiedBoundingBox;
+import dev.lumas.events.model.team.EventTeam;
+import dev.lumas.events.model.team.IvoryTeam;
+import dev.lumas.events.model.team.ScarletTeam;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.glowapi.model.GlowColorManager;
@@ -122,10 +122,14 @@ public final class Towers extends InventoryUnifiedMinigame {
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
-        int finalScore = this.scoreboard.getScore(participant);
-
-        this.tokenFormula.giveTokens(participant, finalScore);
+        int rawScore = this.scoreboard.getScore(participant);
+        int finalScore = this.tokenFormula.giveTokens(participant, rawScore);
         participant.addPermanentScore(MinigameConstant.TOWERS, finalScore);
+
+        EventTeam eventTeam = participant.getLazyTeam();
+        if (eventTeam != null) {
+            eventTeam.addPoints(participant, finalScore);
+        }
     }
 
     @Override
@@ -235,10 +239,6 @@ public final class Towers extends InventoryUnifiedMinigame {
                     player.teleportAsync(this.spawnLocation);
                 });
             });
-
-            // give team points here, not in tokenHandler for rn
-            // TODO: Move to token handler and have this be # of tokens earned
-            towersPlayer.getTeam().addPoints(this.scoreboard.getScore(towersPlayer.getEventPlayer()));
         });
 
         this.boundingBox.operate(block -> {

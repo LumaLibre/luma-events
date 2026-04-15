@@ -2,7 +2,7 @@ package dev.lumas.events.bunnyarena;
 
 import dev.lumas.events.configurable.sectors.BunnyArenaDefinition;
 import dev.lumas.events.items.TokenExchanging;
-import dev.lumas.events.obj.WorldTiedBoundingBox;
+import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import lombok.Getter;

@@ -1,4 +1,4 @@
-package dev.lumas.events.obj;
+package dev.lumas.events.model;
 
 import dev.lumas.lumaitems.particles.ParticleDisplay;
 import dev.lumas.lumaitems.particles.Particles;

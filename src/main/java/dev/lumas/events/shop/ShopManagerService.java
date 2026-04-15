@@ -10,7 +10,7 @@ import dev.lumas.core.manager.Services;
 import dev.lumas.core.model.Service;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.manager.EventPlayerManager;
-import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.lumaitems.api.LumaItemsAPI;

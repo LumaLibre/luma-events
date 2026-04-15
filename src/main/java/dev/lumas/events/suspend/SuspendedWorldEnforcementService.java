@@ -5,7 +5,7 @@ import dev.lumas.core.annotation.Register;
 import dev.lumas.core.model.Service;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.manager.EventPlayerManager;
-import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;

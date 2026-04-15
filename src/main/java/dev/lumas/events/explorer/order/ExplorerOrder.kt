@@ -14,6 +14,7 @@ class ExplorerOrder<T : Any>(
     val worlds: List<String>,
     val eventClass: Class<T>,
     val icon: Material,
+    biome: PaleSideBiome? = null,
     val handler: ExplorerOrderEventHandler<T>
 ) : ContainerReflective() {
 
@@ -22,7 +23,11 @@ class ExplorerOrder<T : Any>(
         if (it == "*") null else Regex(it)
     }
 
-    constructor(name: String, objective: String, quantity: Int, souls: Int, world: List<String>, eventClass: KClass<T>, icon: Material, handler: ExplorerOrderEventHandler<T>) : this(
+    val biome: PaleSideBiome? by lazy {
+        biome?.simplify(this)
+    }
+
+    constructor(name: String, objective: String, quantity: Int, souls: Int, world: List<String>, eventClass: KClass<T>, icon: Material, biome: PaleSideBiome? = null, handler: ExplorerOrderEventHandler<T>) : this(
         name,
         objective,
         quantity,
@@ -30,6 +35,7 @@ class ExplorerOrder<T : Any>(
         world,
         eventClass.java,
         icon,
+        biome,
         handler
     )
 

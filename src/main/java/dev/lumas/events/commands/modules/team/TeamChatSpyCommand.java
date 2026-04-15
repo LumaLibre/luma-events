@@ -6,7 +6,7 @@ import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
-import dev.lumas.events.obj.team.EventTeam;
+import dev.lumas.events.model.team.EventTeam;
 import dev.lumas.events.utility.Util;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;

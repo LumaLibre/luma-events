@@ -25,7 +25,7 @@ public enum BunnyType {
     RARE("<b><#6CF380>R<#87EC80>a<#A3E47F>r<#BEDD7F>e <#D9D57E>B<#E2C675>u<#EBB86C>n<#F4A962>n<#FD9A59>y", false, 35, 1, 3),
     SPEED("<b><#6CF380>S<#84EC80>p<#9CE67F>e<#B5DF7F>e<#CDD87E>d <#DDCE7A>B<#E5C172>u<#EDB469>n<#F5A761>n<#FD9A59>y", false, 12, 1,4),
     TINY("<b><#6CF380>T<#87EC80>i<#A3E47F>n<#BEDD7F>y <#D9D57E>B<#E2C675>u<#EBB86C>n<#F4A962>n<#FD9A59>y", true, 20, 1,4),
-    GOLDEN("<b><#E7DF71>G<#E7DD6F>o<#E7DA6C>l<#E8D86A>d<#E8D667>e<#E8D465>n <#E8D163>B<#E8CF60>u<#E9CD5E>n<#E9CA5B>n<#E9C859>y", false, 1, 1,26);
+    GOLDEN("<b><#E7DF71>G<#E7DD6F>o<#E7DA6C>l<#E8D86A>d<#E8D667>e<#E8D465>n <#E8D163>B<#E8CF60>u<#E9CD5E>n<#E9CA5B>n<#E9C859>y", false, 1, 1,13);
 
     private final List<Rabbit.Type> bunnyTypes = List.of(Rabbit.Type.BROWN, Rabbit.Type.WHITE, Rabbit.Type.BLACK, Rabbit.Type.SALT_AND_PEPPER);
     private final String customName;

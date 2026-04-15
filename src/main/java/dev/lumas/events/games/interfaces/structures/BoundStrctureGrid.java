@@ -1,6 +1,6 @@
 package dev.lumas.events.games.interfaces.structures;
 
-import dev.lumas.events.obj.WorldTiedBoundingBox;
+import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Util;
 import org.bukkit.Location;
 

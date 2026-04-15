@@ -15,6 +15,7 @@ import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.Sound
 import org.bukkit.Tag
+import org.bukkit.World
 import org.bukkit.attribute.Attribute
 import org.bukkit.attribute.AttributeModifier
 import org.bukkit.damage.DamageType
@@ -30,6 +31,7 @@ import org.bukkit.entity.Golem
 import org.bukkit.entity.Mob
 import org.bukkit.entity.Player
 import org.bukkit.entity.Squid
+import org.bukkit.entity.WitherSkeleton
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.EntityDeathEvent
@@ -74,6 +76,8 @@ object ExplorerIntents : ExplorerIntentContainer() {
     private val MINING_FATIGUE = PotionEffect(PotionEffectType.MINING_FATIGUE, 250, 0)
     private val BLINDNESS = PotionEffect(PotionEffectType.BLINDNESS, 250, 0)
     private val DARKNESS = PotionEffect(PotionEffectType.DARKNESS, 250, 0)
+    private val SLOWNESS_1 = PotionEffect(PotionEffectType.SLOWNESS, 250, 0)
+    private val SLOWNESS_2 = PotionEffect(PotionEffectType.SLOWNESS, 250, 1)
     private val VALID_CONTAINERS = listOf(
         InventoryType.BLAST_FURNACE,
         InventoryType.BEACON,
@@ -90,14 +94,13 @@ object ExplorerIntents : ExplorerIntentContainer() {
     )
     private val IGNORED_AQUATIC_DAMAGES = listOf(
         EntityType.DROWNED,
-        EntityType.PUFFERFISH,
         EntityType.GUARDIAN,
         EntityType.ELDER_GUARDIAN,
         EntityType.ZOMBIE_NAUTILUS
     )
     private val IGNORE_WATER_DAMAGE_PREDICATE = { entity: Entity ->
         val type = entity.type
-        Tag.ENTITY_TYPES_UNDEAD.isTagged(type) || IGNORED_AQUATIC_DAMAGES.contains(type)
+        Tag.ENTITY_TYPES_UNDEAD.isTagged(type) || Tag.ENTITY_TYPES_AQUATIC.isTagged(type) || IGNORED_AQUATIC_DAMAGES.contains(type)
     }
     private val DEATH_MESSAGE_COOLDOWN: Queue<UUID> = ConcurrentLinkedQueue()
 
@@ -117,7 +120,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
 //        player.exp = 0f
         val eventPlayer = EventPlayerManager.getByUUIDOrNull(player.uniqueId)
         if (eventPlayer != null && eventPlayer.isSuspended) {
-            eventPlayer.unsuspend()
+            eventPlayer.unsuspend(false)
         }
 
         if (!DEATH_MESSAGE_COOLDOWN.contains(player.uniqueId)) {
@@ -198,7 +201,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
             if (it.getModifier(NAMESPACED_KEY) == null) {
                 val value = it.value * 1.4
                 it.addModifier(AttributeModifier(NAMESPACED_KEY, value, AttributeModifier.Operation.ADD_NUMBER))
-                entity.health = it.value + value
+                entity.health = it.value
             }
         }
 
@@ -259,23 +262,31 @@ object ExplorerIntents : ExplorerIntentContainer() {
     }
 
     val MINERS_HELL = ExplorerIntent<TenSecondRunnableEvent>(
-        title = "Miner's Hell",
-        desc = "Digging at or below Y level 4 grants mining fatigue and blindness.",
+        title = "Nuisance",
+        desc = "Slowness I, Mining Fatigue I (y < 12 in overworld), and Blindness I (y < 12 in overworld).",
         world = WORLD,
         eventClass = TenSecondRunnableEvent::class,
         icon = Material.DIAMOND_PICKAXE
     ) { event ->
         val player = event.player
-        if (player.location.blockY <= 4) {
+        val y = player.location.blockY
+        val env = player.world.environment
+        if (env == World.Environment.NORMAL) {
+            if (y <= 11) {
+                player.addPotionEffect(MINING_FATIGUE)
+                player.addPotionEffect(BLINDNESS)
+                //player.addPotionEffect(DARKNESS)
+            }
+        } else {
             player.addPotionEffect(MINING_FATIGUE)
-            player.addPotionEffect(BLINDNESS)
-            player.addPotionEffect(DARKNESS)
         }
+
+        player.addPotionEffect(SLOWNESS_1)
     }
 
     val FIRE_KILLS_WHEN_TOUCHED = ExplorerIntent<EntityDamageEvent>(
         title = "Fire & Lava Instantly Kills",
-        desc = "Fire and lava deal massive damage.",
+        desc = "Fire and lava will set your health to 0.",
         world = WORLD,
         eventClass = EntityDamageEvent::class,
         icon = Material.BLAZE_POWDER
@@ -289,7 +300,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
 
     val ALWAYS_HOSTILE = ExplorerIntent<FullSecondRunnableEvent>(
         title = "Always Hostile",
-        desc = "Neutral enemies are always hostile, hostile enemies will be able to target players from further away (excluding endermen).",
+        desc = "Neutral enemies are always hostile and all enemies will be able to target players from further away (excluding endermen).",
         world = WORLD,
         eventClass = FullSecondRunnableEvent::class,
         icon = Material.ENDER_EYE
@@ -332,5 +343,38 @@ object ExplorerIntents : ExplorerIntentContainer() {
     }
 
 
+
+    val ENDERMEN_INSTA_KILL = ExplorerIntent<EntityDamageEvent>(
+        title = "Endermen Instantly Kill",
+        desc = "Endermen instantly kill players.",
+        world = WORLD,
+        eventClass = EntityDamageEvent::class,
+        icon = Material.ENDER_PEARL
+    ) { event ->
+        val damaged = event.entity as? Player ?: return@ExplorerIntent
+
+        if (event.damageSource.directEntity is Enderman) {
+            damaged.health = 0.0
+            event.isCancelled = true
+        }
+    }
+
+    val WITHER_SKELETON_EXTREMA = ExplorerIntent<EntityDamageEvent>(
+        title = "Wither Skeleton Extrema",
+        desc = "Wither skeletons are stronger.",
+        world = WORLD,
+        eventClass = EntityDamageEvent::class,
+        icon = Material.WITHER_SKELETON_SKULL
+    ) { event ->
+        val damaged = event.entity as? Player ?: return@ExplorerIntent
+        val causer = event.damageSource.causingEntity as? WitherSkeleton ?: return@ExplorerIntent
+
+        // knockback away from skeleton
+        val skeletonLoc = causer.location
+        damaged.knockback(20.0, damaged.location.x - skeletonLoc.x, damaged.location.z - skeletonLoc.z)
+
+        // 50% extra damage
+        event.damage *= 1.5
+    }
 
 }

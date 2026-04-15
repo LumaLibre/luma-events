@@ -1,4 +1,4 @@
-package dev.lumas.events.obj;
+package dev.lumas.events.model;
 
 import com.google.common.base.Preconditions;
 import dev.lumas.events.utility.Executors;

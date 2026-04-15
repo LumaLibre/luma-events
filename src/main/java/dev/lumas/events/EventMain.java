@@ -4,6 +4,8 @@ import dev.lumas.core.manager.Modules;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.ConfigManager;
 import dev.lumas.events.configurable.PersistentStates;
+import dev.lumas.events.explorer.order.ExplorerOrder;
+import dev.lumas.events.explorer.order.ExplorerOrderRegistry;
 import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.models.CountdownBossBar;
@@ -15,6 +17,7 @@ import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.EventTeamManager;
 import dev.lumas.events.manager.LeaderboardCacheManager;
 import dev.lumas.events.tasks.PlaytimeCounterTask;
+import dev.lumas.events.utility.Externals;
 import dev.lumas.lumaitems.util.extensions.Executors;
 import lombok.Getter;
 import net.kyori.adventure.audience.Audience;
@@ -43,6 +46,8 @@ public final class EventMain extends JavaPlugin {
 
         moduleManager.register();
 
+        ExplorerOrderRegistry.jvmUnifiedValues().forEach(ExplorerOrder::getBiome);
+
         EventPlayerManager.loadOnlinePlayers();
         EventTeamManager.loadAll();
         LeaderboardCacheManager.start();
@@ -62,7 +67,7 @@ public final class EventMain extends JavaPlugin {
         PlaytimeCounterTask task = new PlaytimeCounterTask(60, TimeUnit.SECONDS);
         Bukkit.getAsyncScheduler().runAtFixedRate(this, task, 0, 60, TimeUnit.SECONDS);
 
-        if (Bukkit.getPluginManager().getPlugin("mcMMO") != null) {
+        if (Externals.pluginExists("mcMMO")) {
             withMcMMO = true;
         }
     }

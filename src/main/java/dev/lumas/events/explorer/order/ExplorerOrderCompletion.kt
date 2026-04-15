@@ -1,6 +1,6 @@
 package dev.lumas.events.explorer.order
 
-import dev.lumas.events.obj.EventPlayer
+import dev.lumas.events.model.EventPlayer
 import dev.lumas.events.utility.Executors
 import org.bukkit.Sound
 

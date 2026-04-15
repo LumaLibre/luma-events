@@ -4,7 +4,7 @@ import dev.lumas.events.games.InventorySnapshotManager;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.models.InventorySnapshot;
 import dev.lumas.events.manager.EventPlayerManager;
-import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.model.EventPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;

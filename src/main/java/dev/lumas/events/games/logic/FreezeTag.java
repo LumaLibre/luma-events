@@ -9,9 +9,9 @@ import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.tokenformula.FreezeTagTokenFormula;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.EventTeamManager;
-import dev.lumas.events.obj.EventPlayer;
-import dev.lumas.events.obj.WorldTiedBoundingBox;
-import dev.lumas.events.obj.team.EventTeam;
+import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.model.WorldTiedBoundingBox;
+import dev.lumas.events.model.team.EventTeam;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.glowapi.model.GlowColorManager;
@@ -138,13 +138,6 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
     protected void handleStop() {
         if (countdownBossBar != null) {
             countdownBossBar.stop(false);
-        }
-
-        // TODO: Move to token handler and have this be # of tokens earned
-        for (FreezeTagTeam team : teams) {
-            EventTeam delegate = team.getEventTeam();
-            int total = team.getScoreMap().values().stream().mapToInt(Integer::intValue).sum();
-            delegate.addPoints(total);
         }
 
         FreezeTagTeam winner = determineWinner();
@@ -571,8 +564,13 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         for (FreezeTagTeam team : teams) {
             for (EventPlayer member : team.getMembers()) {
                 int score = team.getScore(member);
-                tokenFormula.giveTokens(member, score);
+                int finalScore = tokenFormula.giveTokens(member, score);
                 member.addPermanentScore(MinigameConstant.FREEZE_TAG, score);
+
+                EventTeam eventTeam = member.getLazyTeam();
+                if (eventTeam != null) {
+                    eventTeam.addPoints(member, finalScore);
+                }
             }
         }
     }

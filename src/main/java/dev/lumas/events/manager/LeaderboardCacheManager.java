@@ -1,7 +1,7 @@
 package dev.lumas.events.manager;
 
 import dev.lumas.events.games.constants.MinigameConstant;
-import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;

@@ -1,6 +1,6 @@
 package dev.lumas.events.games.interfaces.models;
 
-import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import org.jetbrains.annotations.NotNull;

@@ -1,4 +1,4 @@
-package dev.lumas.events.obj;
+package dev.lumas.events.model;
 
 import dev.lumas.events.EventMain;
 import dev.lumas.events.utility.MonoUpperFont;

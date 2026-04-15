@@ -5,13 +5,14 @@ import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 import dev.lumas.core.util.ContextLogger
-import dev.lumas.events.obj.EventPlayer
+import dev.lumas.events.model.EventPlayer
 import org.bukkit.World
 
 class ActiveExplorerOrder(
     val explorerOrder: ExplorerOrder<*>,
     var currentQuantity: Int,
-    var completed: Boolean
+    var completed: Boolean,
+    var completedAt: Long
 ) {
 
     companion object {
@@ -29,7 +30,9 @@ class ActiveExplorerOrder(
 
                 if (completion.isCompleted()) {
                     this.completed = true
+                    this.completedAt = System.currentTimeMillis()
                     completion.completionEffects(eventPlayer)
+                    eventPlayer.resortExplorerOrders()
                 }
             }
         }
@@ -46,6 +49,7 @@ class ActiveExplorerOrder(
             out.name("orderImplName").value(aside.explorerOrder.FIELD_NAME)
             out.name("currentQuantity").value(aside.currentQuantity)
             out.name("completed").value(aside.completed)
+            out.name("completedAt").value(aside.completedAt)
             out.endObject()
         }
 
@@ -53,6 +57,7 @@ class ActiveExplorerOrder(
             val asideImplName: String
             var currentQuantity = 0
             var completed = false
+            var completedAt = -1L
 
             when (reader.peek()) {
                 JsonToken.STRING -> {
@@ -66,6 +71,7 @@ class ActiveExplorerOrder(
                             "orderImplName" -> name = reader.nextString()
                             "currentQuantity" -> currentQuantity = reader.nextInt()
                             "completed" -> completed = reader.nextBoolean()
+                            "completedAt" -> completedAt = reader.nextLong()
                             else -> reader.skipValue()
                         }
                     }
@@ -83,7 +89,7 @@ class ActiveExplorerOrder(
                 return null
             }
 
-            return ActiveExplorerOrder(aside, currentQuantity, completed)
+            return ActiveExplorerOrder(aside, currentQuantity, completed, completedAt)
         }
     }
 }

@@ -3,8 +3,9 @@ package dev.lumas.events.listeners;
 import dev.lumas.core.annotation.Autowire;
 import dev.lumas.core.annotation.Register;
 import dev.lumas.events.manager.EventPlayerManager;
-import dev.lumas.events.obj.EventPlayer;
-import dev.lumas.events.obj.team.EventTeam;
+import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.model.team.EventTeam;
+import dev.lumas.events.model.team.EventTeamPlayerHandle;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -21,9 +22,13 @@ public class EventTeamChatListener implements Listener {
         }
 
         EventTeam eventTeam = eventPlayer.getLazyTeam();
-        if (eventTeam != null && eventTeam.isPersistentTeamChat(eventPlayer)) {
-            eventTeam.sendTeamChat(eventPlayer, event.message());
-            event.setCancelled(true);
+
+        if (eventTeam != null) {
+            EventTeamPlayerHandle handle = eventTeam.getMember(eventPlayer);
+            if (handle.isPersistentTeamChat()) {
+                eventTeam.sendTeamChat(eventPlayer, event.message());
+                event.setCancelled(true);
+            }
         }
     }
 
@@ -33,9 +38,14 @@ public class EventTeamChatListener implements Listener {
         if (eventPlayer == null) {
             return;
         }
+
         EventTeam eventTeam = eventPlayer.getLazyTeam();
-        if (eventTeam != null && eventTeam.isPersistentTeamChat(eventPlayer)) {
-            eventTeam.removePersistentTeamChat(eventPlayer);
+
+        if (eventTeam != null) {
+            EventTeamPlayerHandle handle = eventTeam.getMember(eventPlayer);
+            if (handle.isPersistentTeamChat()) {
+                handle.setPersistentTeamChat(false);
+            }
         }
     }
 }

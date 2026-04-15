@@ -11,12 +11,12 @@ import dev.lumas.events.games.models.Scoreboard;
 import dev.lumas.events.games.tokenformula.Paintball2_1TokenFormula;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.EventTeamManager;
-import dev.lumas.events.obj.EventPlayer;
-import dev.lumas.events.obj.Sphere;
-import dev.lumas.events.obj.WorldTiedBoundingBox;
-import dev.lumas.events.obj.team.EventTeam;
-import dev.lumas.events.obj.team.IvoryTeam;
-import dev.lumas.events.obj.team.ScarletTeam;
+import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.model.Sphere;
+import dev.lumas.events.model.WorldTiedBoundingBox;
+import dev.lumas.events.model.team.EventTeam;
+import dev.lumas.events.model.team.IvoryTeam;
+import dev.lumas.events.model.team.ScarletTeam;
 import dev.lumas.events.utility.BlockFaces;
 import dev.lumas.events.utility.Couple;
 import dev.lumas.events.utility.Executors;
@@ -197,14 +197,15 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 int score = mapEntry.getValue();
                 Couple<Integer, Boolean> couple = Couple.of(position, team.equals(winningTeam));
 
-                tokenFormula.giveTokens(member, couple);
+                int finalScore = tokenFormula.giveTokens(member, couple);
                 member.addPermanentScore(MinigameConstant.PAINTBALL2_1, score);
                 position++;
 
                 // team score
-                // TODO: Move to token handler and have this be # of tokens earned
-                EventTeam eventTeam = EventTeamManager.getByMemberOrThrow(member);
-                eventTeam.addPoints(score);
+                EventTeam eventTeam = member.getLazyTeam();
+                if (eventTeam != null) {
+                    eventTeam.addPoints(member, finalScore);
+                }
             }
         }
     }

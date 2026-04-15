@@ -8,9 +8,11 @@ import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.lumaitems.LumaItems;
 import dev.lumas.lumaitems.commands.SubCommand;
 import org.bukkit.command.CommandSender;
+import org.jspecify.annotations.NullMarked;
 
 import java.util.List;
 
+@NullMarked
 @Register(Autowire.SUBCOMMAND)
 @CommandMeta(
         name = "stopcountdownbossbars",

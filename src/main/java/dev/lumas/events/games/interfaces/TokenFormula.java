@@ -1,7 +1,7 @@
 package dev.lumas.events.games.interfaces;
 
-import dev.lumas.events.obj.EventPlayer;
 import dev.lumas.events.items.TokenExchanging;
+import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import org.bukkit.entity.Player;
 
@@ -28,18 +28,19 @@ public abstract class TokenFormula<C> {
         return "Did not provide a description for this token formula.";
     }
 
-    public final void giveTokens(EventPlayer player, C context) {
+    public final int giveTokens(EventPlayer player, C context) {
         int amount = tokens(context);
         Player bukkitPlayer = player.getPlayer();
         UUID uuid = player.getUuid();
         if (amount < 1 || bukkitPlayer == null || isDirty(uuid)) {
-            return;
+            return 0;
         }
 
         makeDirty(uuid, amount);
         Executors.runSync(bukkitPlayer, () -> {
             TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.CARAMEL_APPLE, amount, "Minigame");
         });
+        return amount;
     }
 
 

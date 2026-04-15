@@ -3,7 +3,7 @@ package dev.lumas.events.shop;
 import dev.lumas.core.annotation.Autowire;
 import dev.lumas.core.annotation.Register;
 import dev.lumas.events.manager.EventPlayerManager;
-import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Util;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;

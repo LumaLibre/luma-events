@@ -13,7 +13,7 @@ import org.jetbrains.annotations.NotNull;
 @Register(Autowire.COMMAND)
 @CommandMeta(
         name = "event",
-        aliases = {"wonderland", "wland", "wonder"},
+        aliases = {"wonderland", "wland", "wonder", "explorer"},
         permission = "lumaevents.default"
 )
 public class CommandManager extends AbstractCommandManager<EventMain, CommandModule> {

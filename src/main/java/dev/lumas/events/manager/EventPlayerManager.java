@@ -2,7 +2,7 @@ package dev.lumas.events.manager;
 
 import com.google.gson.Gson;
 import dev.lumas.events.EventMain;
-import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Util;
 import org.bukkit.Bukkit;
 import org.jetbrains.annotations.NotNull;

@@ -2,7 +2,7 @@ package dev.lumas.events.utility;
 
 import dev.lumas.events.EventMain;
 import dev.lumas.events.games.interfaces.models.MinigameRole;
-import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.model.EventPlayer;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;

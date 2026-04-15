@@ -6,6 +6,8 @@ import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
+import dev.lumas.events.manager.EventPlayerManager;
+import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.shop.ShopManagerService;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -26,7 +28,12 @@ public class ShopCommand implements CommandModule {
     @Override
     public boolean execute(@NotNull EventMain eventMain, @NotNull CommandSender commandSender, String s, String[] strings) {
         Player player = (Player) commandSender;
-        ShopManagerService.getInstance().openShop(player);
+        EventPlayer eventPlayer = EventPlayerManager.getByUUIDOrNull(player.getUniqueId());
+        if (eventPlayer == null || !eventPlayer.isSuspended()) {
+            ShopManagerService.getInstance().openShop(player);
+        } else {
+            eventPlayer.sendMessage("You cannot access the shop while suspended.");
+        }
         return true;
     }
 

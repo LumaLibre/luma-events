@@ -13,14 +13,16 @@ import me.outspending.biomesapi.renderer.packet.data.PhonyCustomBiome;
 import me.outspending.biomesapi.wrapper.BiomeSettings;
 import org.bukkit.Material;
 
-@SuppressWarnings("UnstableApiUsage")
+@SuppressWarnings({"UnstableApiUsage", "LombokGetterMayBeUsed"})
 @Register(Autowire.SERVICE)
-public class SuspendWorldBiomeService implements Service {
+public class SuspendedWorldBiomeService implements Service {
 
+    private static SuspendedWorldBiomeService instance;
     private PacketHandler packetHandler;
 
     @Override
     public void register() {
+        instance = this;
         try {
             packetHandler = PacketHandler.of(EventMain.getInstance(), PacketHandler.Manipulator.PROTOCOLLIB);
         } catch (MissingPacketManipulatorLibraryException e) {
@@ -65,5 +67,15 @@ public class SuspendWorldBiomeService implements Service {
     @Override
     public void unregister() {
         packetHandler.unregister();
+        instance = null;
+    }
+
+    @SuppressWarnings("") // lombok - kotlin
+    public static SuspendedWorldBiomeService getInstance() {
+        return instance;
+    }
+
+    public PacketHandler getPacketHandler() {
+        return packetHandler;
     }
 }

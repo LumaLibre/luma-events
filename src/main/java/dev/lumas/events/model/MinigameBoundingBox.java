@@ -1,4 +1,4 @@
-package dev.lumas.events.obj;
+package dev.lumas.events.model;
 
 import org.bukkit.Location;
 import org.bukkit.block.Block;

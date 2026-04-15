@@ -1,6 +1,6 @@
 package dev.lumas.events.configurable.sectors;
 
-import dev.lumas.events.obj.WorldTiedBoundingBox;
+import dev.lumas.events.model.WorldTiedBoundingBox;
 import eu.okaeri.configs.OkaeriConfig;
 import lombok.Getter;
 import org.bukkit.Location;

@@ -1,6 +1,6 @@
 package dev.lumas.events.games.models;
 
-import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.model.EventPlayer;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 

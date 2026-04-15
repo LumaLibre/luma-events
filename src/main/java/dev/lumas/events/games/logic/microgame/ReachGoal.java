@@ -2,8 +2,8 @@ package dev.lumas.events.games.logic.microgame;
 
 import dev.lumas.events.games.interfaces.Microgame;
 import dev.lumas.events.games.interfaces.structures.GenericStructure;
-import dev.lumas.events.obj.EventPlayer;
-import dev.lumas.events.obj.WorldTiedBoundingBox;
+import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.model.WorldTiedBoundingBox;
 import lombok.Setter;
 import org.bukkit.entity.Player;
 

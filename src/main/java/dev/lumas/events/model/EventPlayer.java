@@ -1,4 +1,4 @@
-package dev.lumas.events.obj;
+package dev.lumas.events.model;
 
 import com.google.common.base.Preconditions;
 import dev.lumas.core.util.ContextLogger;
@@ -14,7 +14,7 @@ import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.Scorer;
 import dev.lumas.events.hooks.BetterRTPService;
 import dev.lumas.events.manager.EventTeamManager;
-import dev.lumas.events.obj.team.EventTeam;
+import dev.lumas.events.model.team.EventTeam;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.constant.PersistentInventoryState;
@@ -35,6 +35,7 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -45,6 +46,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 @Getter
 @NullMarked
@@ -56,10 +58,11 @@ public class EventPlayer implements Serializable, Scorer {
     private transient volatile Object LOCK;
     @Nullable
     private transient Optional<EventTeam> lazyTeam;
+    private transient boolean sortedExplorerOrders;
 
     private final UUID uuid;
     private final Map<MinigameConstant, Integer> scores;
-    private final Set<ActiveExplorerMile> activeExplorerMiles;
+    private final List<ActiveExplorerMile> activeExplorerMiles;
     @Setter
     private boolean claimedCharm;
     private long secondsPlayed;
@@ -67,7 +70,7 @@ public class EventPlayer implements Serializable, Scorer {
     private PersistentInventoryState storedInventoryState;
     private float suspendedExperience;
     private @Nullable ItemStack @Nullable[] suspendedInventory;
-    private final Set<ActiveExplorerOrder> activeExplorerOrders;
+    private final List<ActiveExplorerOrder> activeExplorerOrders;
     @Getter @Setter
     private int souls;
 
@@ -77,19 +80,19 @@ public class EventPlayer implements Serializable, Scorer {
         this(
                 uuid,
                 new HashMap<>(),
-                new HashSet<>(),
+                new ArrayList<>(),
                 false,
                 0L,
                 false,
                 PersistentInventoryState.TRANSIENT_INVENTORY,
                 0f,
                 null,
-                new HashSet<>(),
+                new ArrayList<>(),
                 0
         );
     }
 
-    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores, Set<ActiveExplorerMile> activeExplorerMiles, boolean claimedCharm, long secondsPlayed, boolean suspended, PersistentInventoryState storedInventoryState, float suspendedExperience, @Nullable ItemStack @Nullable[] suspendedInventory, Set<ActiveExplorerOrder> activeExplorerOrders, int souls) {
+    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores, List<ActiveExplorerMile> activeExplorerMiles, boolean claimedCharm, long secondsPlayed, boolean suspended, PersistentInventoryState storedInventoryState, float suspendedExperience, @Nullable ItemStack @Nullable[] suspendedInventory, List<ActiveExplorerOrder> activeExplorerOrders, int souls) {
         this.uuid = uuid;
         this.scores = scores;
         this.activeExplorerMiles = activeExplorerMiles;
@@ -297,6 +300,27 @@ public class EventPlayer implements Serializable, Scorer {
         return false;
     }
 
+    public void resortExplorerOrders() {
+        this.sortedExplorerOrders = true;
+        this.activeExplorerOrders.sort((o1, o2) ->
+                Long.compare(o2.getCompletedAt(), o1.getCompletedAt()));
+    }
+
+    @Nullable
+    public ActiveExplorerOrder getLastExplorerOrder(Predicate<ActiveExplorerOrder> filter) {
+        if (!this.sortedExplorerOrders) {
+            // sort by completion time with latest time coming first
+            resortExplorerOrders();
+        }
+
+        for (ActiveExplorerOrder activeOrder : this.activeExplorerOrders) {
+            if (filter.test(activeOrder)) {
+                return activeOrder;
+            }
+        }
+        return null;
+    }
+
     @Nullable
     public <T> ActiveExplorerOrder getActiveExplorerOrder(ExplorerOrder<T> explorerOrder) {
         for (ActiveExplorerOrder activeExplorerMile : activeExplorerOrders) {
@@ -315,7 +339,7 @@ public class EventPlayer implements Serializable, Scorer {
         synchronized (this.getLock()) {
             for (ExplorerOrder<?> nonActiveExplorerOrder : ExplorerOrderRegistry.jvmUnifiedMap().values()) {
                 if (nonActiveExplorerOrder.getEventClass() == event.getClass() && !hasStartedExplorerOrder(nonActiveExplorerOrder)) {
-                    activeExplorerOrders.add(new ActiveExplorerOrder(nonActiveExplorerOrder, 0, false));
+                    activeExplorerOrders.add(new ActiveExplorerOrder(nonActiveExplorerOrder, 0, false, -1));
                 }
             }
 
@@ -391,8 +415,12 @@ public class EventPlayer implements Serializable, Scorer {
         });
     }
 
-    // TODO: Use global thread
+
     public void unsuspend() {
+        unsuspend(true);
+    }
+
+    public void unsuspend(boolean teleport) {
         this.operatePlayer(player -> {
             Preconditions.checkState(this.suspended, "Player is not suspended");
             Preconditions.checkState(this.storedInventoryState == PersistentInventoryState.MAIN_INVENTORY, "Player inventory is not in main state");

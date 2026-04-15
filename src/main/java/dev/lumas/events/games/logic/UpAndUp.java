@@ -2,7 +2,7 @@ package dev.lumas.events.games.logic;
 
 import dev.lumas.events.configurable.sectors.UpAndUpDefinition;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
-import dev.lumas.events.obj.EventPlayer;
+import dev.lumas.events.model.EventPlayer;
 
 public final class UpAndUp extends InventoryUnifiedMinigame {
 

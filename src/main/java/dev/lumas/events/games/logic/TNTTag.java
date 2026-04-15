@@ -1,22 +1,21 @@
 package dev.lumas.events.games.logic;
 
-import dev.lumas.events.utility.Executors;
-import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.MinigameDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
-import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
+import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
 import dev.lumas.events.games.tokenformula.TNTTagTokenFormula;
-import dev.lumas.events.obj.EventPlayer;
-import dev.lumas.events.obj.WorldTiedBoundingBox;
+import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.EditMeta;
+import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
+import dev.lumas.lumacore.utility.Logging;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
-import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.GameMode;
 import org.bukkit.Location;

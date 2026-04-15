@@ -3,29 +3,48 @@ package dev.lumas.events.explorer.order
 import dev.lumas.core.annotation.Autowire
 import dev.lumas.core.annotation.Register
 import dev.lumas.events.EventMain
-import dev.lumas.events.explorer.custom.BlockBrokenExplorerEvent
 import org.bukkit.Material
+import org.bukkit.NamespacedKey
 import org.bukkit.Tag
 import org.bukkit.entity.EntityType
+import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.EntityDeathEvent
 import org.bukkit.event.entity.PlayerDeathEvent
+import org.bukkit.event.player.PlayerAttemptPickupItemEvent
+import org.bukkit.inventory.ItemStack
+import org.bukkit.persistence.PersistentDataType
 
 @Register(Autowire.SERVICE)
 object ExplorerOrders : ExplorerOrderContainer() {
 
     private val WORLDS = EventMain.getOkaeriConfig().explorer.suspendedWorlds
+    private val ORDER_KEY = NamespacedKey(EventMain.getInstance(), "explorer_order")
+
+    fun ItemStack.flag() {
+        val meta = this.itemMeta ?: return
+        meta.persistentDataContainer.set(ORDER_KEY, PersistentDataType.BOOLEAN, true)
+        this.itemMeta = meta
+    }
+
+    fun ItemStack.isFlagged(): Boolean {
+        val meta = this.itemMeta ?: return false
+        return meta.persistentDataContainer.has(ORDER_KEY)
+    }
 
     // Wardens have 50% more health than normal and also deal 25% more damage.
     // Wardens are hard to find and are only underground, so other mobs will be hell to deal with.
     // I don't know if this is possible to beat.
     val SH3LL = ExplorerOrder(
-        name = "#0 sh3ll",
+        name = "#0 shell",
         objective = "Kill a Warden.",
         quantity = 1,
-        souls = 40,
+        souls = 50,
         world = WORLDS,
         eventClass = EntityDeathEvent::class,
-        icon = Material.WARDEN_SPAWN_EGG
+        icon = Material.WARDEN_SPAWN_EGG,
+        biome = PaleSideBiome.of("sh3ll")
+            .foliageColor("#F8DAF7")
+            .grassColor("#FFF9FF")
     ) { event, completion ->
         if (event.entityType == EntityType.WARDEN) {
             completion.progress()
@@ -35,13 +54,16 @@ object ExplorerOrders : ExplorerOrderContainer() {
     // Creepers are always charged and duplicate when they explode.
     // Probably possible to beat.
     val NIHIL1ST = ExplorerOrder(
-        name = "#1 nihil1st",
+        name = "#1 nihilist",
         objective = "Kill 100 Creepers.",
         quantity = 100,
         souls = 10,
         world = WORLDS,
         eventClass = EntityDeathEvent::class,
-        icon = Material.CREEPER_SPAWN_EGG
+        icon = Material.CREEPER_SPAWN_EGG,
+        biome = PaleSideBiome.of("nihil1st")
+            .foliageColor("#DAF7F8")
+            .grassColor("#F9FFFF")
     ) { event, completion ->
         if (event.entityType == EntityType.CREEPER) {
             completion.progress()
@@ -57,7 +79,10 @@ object ExplorerOrders : ExplorerOrderContainer() {
         souls = 10,
         world = WORLDS,
         eventClass = EntityDeathEvent::class,
-        icon = Material.ELDER_GUARDIAN_SPAWN_EGG
+        icon = Material.ELDER_GUARDIAN_SPAWN_EGG,
+        biome = PaleSideBiome.of("br3athe")
+            .foliageColor("#DAF8E1")
+            .grassColor("#F9FFF9")
     ) { event, completion ->
         if (event.entityType == EntityType.ELDER_GUARDIAN) {
             completion.progress()
@@ -67,22 +92,27 @@ object ExplorerOrders : ExplorerOrderContainer() {
     // Mining Fatigue I + Darkness + Blindness when below Y level 4.
     // It's possible, but very time-consuming.
     val F4TIGUE = ExplorerOrder(
-        name = "#3 f4tigue",
+        name = "#3 fatigue",
         objective = "Break 250 Diamond ores.",
         quantity = 250,
         souls = 15,
         world = WORLDS,
-        eventClass = BlockBrokenExplorerEvent::class,
-        icon = Material.DIAMOND_ORE
+        eventClass = BlockBreakEvent::class,
+        icon = Material.DIAMOND_ORE,
+        biome = PaleSideBiome.of("f4tigue")
+            .foliageColor("#F6F8DA")
+            .grassColor("#FEFFF9")
     ) { event, completion ->
-        if (Tag.DIAMOND_ORES.isTagged(event.type)) {
+        if (Tag.DIAMOND_ORES.isTagged(event.block.type)) {
+            event.isDropItems = false
+            event.block.world.dropItemNaturally(event.block.location.toCenterLocation(), ItemStack(Material.DIAMOND))
             completion.progress()
         }
     }
 
     // Possible.
     val P1TY = ExplorerOrder(
-        name = "#4 p1ty",
+        name = "#4 pity",
         objective = "Die.",
         quantity = 1,
         souls = 1,
@@ -103,10 +133,100 @@ object ExplorerOrders : ExplorerOrderContainer() {
         quantity = 20,
         souls = 20,
         world = WORLDS,
-        eventClass = BlockBrokenExplorerEvent::class,
-        icon = Material.ANCIENT_DEBRIS
+        eventClass = BlockBreakEvent::class,
+        icon = Material.ANCIENT_DEBRIS,
+        biome = PaleSideBiome.of("regret")
+            .foliageColor("#F8EADA")
+            .grassColor("#FFFDF9")
     ) { event, completion ->
-        if (event.type == Material.ANCIENT_DEBRIS) {
+        if (event.block.type == Material.ANCIENT_DEBRIS) {
+            event.isDropItems = false
+            event.block.world.dropItemNaturally(event.block.location.toCenterLocation(), ItemStack(Material.NETHERITE_SCRAP))
+            completion.progress()
+        }
+    }
+
+
+    val CRUSH = ExplorerOrder(
+        name = "#6 crush",
+        objective = "Obtain 2 maces.",
+        quantity = 2,
+        souls = 20,
+        world = WORLDS,
+        eventClass = PlayerAttemptPickupItemEvent::class,
+        icon = Material.MACE,
+        biome = PaleSideBiome.of("crvsh")
+            .foliageColor("#F8DADA")
+            .grassColor("#FFF9F9")
+    ) { event, completion ->
+        val item = event.item.itemStack
+        if (item.type == Material.MACE && !item.isFlagged()) {
+            item.flag()
+            completion.progress()
+        }
+    }
+
+    val EXPENSE = ExplorerOrder(
+        name = "#7 expense",
+        objective = "Kill 250 endermen.",
+        quantity = 250,
+        souls = 30,
+        world = WORLDS,
+        eventClass = EntityDeathEvent::class,
+        icon = Material.ENDER_PEARL,
+        biome = PaleSideBiome.of("exp3nse")
+            .foliageColor("#F8DAF1")
+            .grassColor("#FFF9FE")
+    ) { event, completion ->
+        if (event.entityType == EntityType.ENDERMAN) {
+            completion.progress()
+        }
+    }
+
+
+    val MELTING_POINT = ExplorerOrder(
+        name = "#8 melting point",
+        objective = "Obtain 30 blaze rods.",
+        quantity = 30,
+        souls = 13,
+        world = WORLDS,
+        eventClass = PlayerAttemptPickupItemEvent::class,
+        icon = Material.BLAZE_ROD,
+        biome = PaleSideBiome.of("m3lting_p01nt")
+            .foliageColor("#EDF8DA")
+            .grassColor("#FEFFF9")
+    ) { event, completion ->
+        val item = event.item.itemStack
+        if (item.type == Material.BLAZE_ROD && !item.isFlagged()) {
+            item.flag()
+            completion.progress(item.amount)
+        }
+    }
+
+    val DESPAIR = ExplorerOrder(
+        name = "#9 despair",
+        objective = "Kill 30 Wither Skeletons.",
+        quantity = 30,
+        souls = 10,
+        world = WORLDS,
+        eventClass = EntityDeathEvent::class,
+        icon = Material.WITHER_SKELETON_SKULL
+    ) { event, completion ->
+        if (event.entityType == EntityType.WITHER_SKELETON) {
+            completion.progress()
+        }
+    }
+
+    val ABYSS = ExplorerOrder(
+        name = "#10 abyss",
+        objective = "Kill the Ender Dragon.",
+        quantity = 1,
+        souls = 20,
+        world = WORLDS,
+        eventClass = EntityDeathEvent::class,
+        icon = Material.DRAGON_HEAD
+    ) { event, completion ->
+        if (event.entityType == EntityType.ENDER_DRAGON) {
             completion.progress()
         }
     }

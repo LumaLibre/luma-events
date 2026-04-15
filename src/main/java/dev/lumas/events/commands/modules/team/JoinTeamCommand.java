@@ -6,16 +6,16 @@ import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
-import dev.lumas.events.configurable.PersistentStates;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.EventTeamManager;
-import dev.lumas.events.obj.EventPlayer;
-import dev.lumas.events.obj.team.EventTeam;
+import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.model.team.EventTeam;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jspecify.annotations.NullMarked;
 
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Register(Autowire.SUBCOMMAND)
 @CommandMeta(
@@ -38,16 +38,9 @@ public class JoinTeamCommand implements CommandModule {
             return true;
         }
 
-        PersistentStates states = EventMain.getPersistentStates();
-
-        EventTeamManager.Provider lastChosenTeam = states.getLastChosenTeam();
-        // Cycle through the teams
-        EventTeamManager.Provider nextTeam = getNextTeam(lastChosenTeam);
+        EventTeamManager.Provider nextTeam = getNextTeam();
         EventTeam actualTeam = EventTeamManager.getByClass(nextTeam.getTeamClass());
         actualTeam.addMember(eventPlayer);
-        states.setLastChosenTeam(nextTeam);
-        states.save();
-
         actualTeam.sendTeamMessage(player.getName() + " has joined the team!");
         return true;
     }
@@ -57,13 +50,16 @@ public class JoinTeamCommand implements CommandModule {
         return List.of();
     }
 
-    private EventTeamManager.Provider getNextTeam(EventTeamManager.Provider lastChosenTeam) {
-        EventTeamManager.Provider[] values = EventTeamManager.Provider.values();
-        for (int i = 0; i < values.length; i++) {
-            if (values[i] == lastChosenTeam) {
-                return values[(i + 1) % values.length];
-            }
-        }
-        return values[0];
+    private EventTeamManager.Provider getNextTeam() {
+        var providers = List.of(EventTeamManager.Provider.values());
+        int min = providers.stream()
+                .mapToInt(p -> EventTeamManager.getByClass(p.getTeamClass()).getTotalMembers())
+                .min().orElse(0);
+
+        var smallest = providers.stream()
+                .filter(p -> EventTeamManager.getByClass(p.getTeamClass()).getTotalMembers() == min)
+                .toList();
+
+        return smallest.get(ThreadLocalRandom.current().nextInt(smallest.size()));
     }
 }
