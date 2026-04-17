@@ -15,4 +15,8 @@ public class BunnyArenaDefinition extends OkaeriConfig {
 
     @Comment("Should be an area inside the playRegion where bunnies spawn")
     private Region spawnRegion = new Region();
+
+    private int defaultMaxBunnies = 256;
+
+    private int extraBunniesPerPlayer = 30;
 }

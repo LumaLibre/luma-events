@@ -1,11 +1,9 @@
 package dev.lumas.events.bunnyarena;
 
 
-import dev.lumas.events.EventMain;
 import dev.lumas.events.items.TokenExchanging;
 import dev.lumas.events.utility.Util;
 import lombok.Getter;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Entity;
@@ -57,7 +55,7 @@ public enum BunnyType {
      * Creates a rabbit with the effects for the rarity without spawning it in any worlds
      */
     public Rabbit createBunny(Location location) {
-        Rabbit rabbit = location.getWorld().createEntity(location, Rabbit.class);
+        Rabbit rabbit = location.getWorld().spawn(location, Rabbit.class);
         this.applyEffects(rabbit);
         return rabbit;
     }
@@ -76,18 +74,16 @@ public enum BunnyType {
         bunny.getAttribute(Attribute.MAX_HEALTH).setBaseValue(40);
         bunny.setHealth(40);
 
-        Bukkit.getScheduler().runTask(EventMain.getInstance(), () -> {
-            if (this == GOLDEN) {
-                bunny.setRabbitType(Rabbit.Type.GOLD);
-                bunny.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, Integer.MAX_VALUE, 0, false, false));
-            } else {
-                bunny.setRabbitType(Util.getRandom(bunnyTypes));
-            }
+        if (this == GOLDEN) {
+            bunny.setRabbitType(Rabbit.Type.GOLD);
+            bunny.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, Integer.MAX_VALUE, 0, false, false));
+        } else {
+            bunny.setRabbitType(Util.getRandom(bunnyTypes));
+        }
 
-            if (this == SPEED) {
-                bunny.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, Integer.MAX_VALUE, 1, false, false));
-            }
-        });
+        if (this == SPEED) {
+            bunny.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, Integer.MAX_VALUE, 1, false, false));
+        }
     }
 
     @Nullable

@@ -19,16 +19,17 @@ import java.util.function.Consumer;
 @Setter
 public class BunnyArenaRegionHandler {
 
-    private static final int EXTRA_BUNNIES_PER_PLAYER = 9;
-    private static final int DEFAULT_MAX_BUNNIES = 60;
-
     private final WorldTiedBoundingBox playArea;
     private final WorldTiedBoundingBox spawnArea;
+    private final int defaultMaxBunnies;
+    private final int extraBunniesPerPlayer;
     private boolean anySpawned = false;
 
     public BunnyArenaRegionHandler(BunnyArenaDefinition def) {
         this.playArea = WorldTiedBoundingBox.of(def.getPlayRegion().getLoc1(), def.getPlayRegion().getLoc2());
         this.spawnArea = WorldTiedBoundingBox.of(def.getSpawnRegion().getLoc1(), def.getSpawnRegion().getLoc2());
+        this.defaultMaxBunnies = def.getDefaultMaxBunnies();
+        this.extraBunniesPerPlayer = def.getExtraBunniesPerPlayer();
     }
 
 
@@ -36,21 +37,23 @@ public class BunnyArenaRegionHandler {
      * Automatically spawns as many bunnies as possible in the arena.
      */
     public void autoSpawnBunnies() {
-        if (this.getPlayersInRegionSize() < 1) {
-            return; // no players in the area
-        }
+        Executors.runSync(playArea.getCenterLocation(), () -> {
+            if (this.getPlayersInRegionSize() < 1) {
+                return; // no players in the area
+            }
 
-        int max = DEFAULT_MAX_BUNNIES + (this.getPlayersInRegionSize() * EXTRA_BUNNIES_PER_PLAYER);
-        int current = this.getBunnyCount();
-        if (current >= max) {
-            return; // already at max bunnies
-        }
+            int max = defaultMaxBunnies + (this.getPlayersInRegionSize() * extraBunniesPerPlayer);
+            int current = this.getBunnyCount();
+            if (current >= max) {
+                return; // already at max bunnies
+            }
 
-        int amountToSpawn = max - current;
+            int amountToSpawn = max - current;
 
-        for (int i = 0; i < amountToSpawn; i++) {
-            this.spawnBunnyAsynchronously(null);
-        }
+            for (int i = 0; i < amountToSpawn; i++) {
+                this.spawnBunny(null);
+            }
+        });
     }
 
 
@@ -59,8 +62,8 @@ public class BunnyArenaRegionHandler {
      * Spawns a bunny in the arena using a random bunny type. Using as many async operations as possible.
      * @param consumer the consumer to call after the bunny is spawned
      */
-    public void spawnBunnyAsynchronously(@Nullable Consumer<Rabbit> consumer) {
-        Executors.runAsync(() -> {
+    public void spawnBunny(@Nullable Consumer<Rabbit> consumer) {
+        Executors.runSync(this.spawnArea.getCenterLocation(), () -> {
             Location location = this.getValidSpawnLocation();
             BunnyType bunnyType = BunnyType.randomType();
             handleRabbitSpawn(consumer, location, bunnyType);
@@ -73,8 +76,8 @@ public class BunnyArenaRegionHandler {
      * @param bunnyType the type of bunny to spawn
      * @param consumer the consumer to call after the bunny is spawned
      */
-    public void spawnBunnyAsynchronously(BunnyType bunnyType, @Nullable Consumer<Rabbit> consumer) {
-        Executors.runAsync(() -> {
+    public void spawnBunny(BunnyType bunnyType, @Nullable Consumer<Rabbit> consumer) {
+        Executors.runSync(this.spawnArea.getCenterLocation(), () -> {
             Location location = this.getValidSpawnLocation();
             handleRabbitSpawn(consumer, location, bunnyType);
         });
@@ -135,7 +138,6 @@ public class BunnyArenaRegionHandler {
     private void handleRabbitSpawn(@Nullable Consumer<Rabbit> consumer, Location location, BunnyType bunnyType) {
         Executors.runSync(location, () -> {
             Rabbit bunny = bunnyType.createBunny(location);
-            location.getWorld().addEntity(bunny);
             if (consumer != null) {
                 consumer.accept(bunny);
             }
