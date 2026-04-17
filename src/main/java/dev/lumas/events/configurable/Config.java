@@ -73,6 +73,7 @@ public class Config extends OkaeriConfig {
     );
 
 
+    @Comment("Explorer miles and orders")
     private ExplorerDefinition explorer = new ExplorerDefinition();
 
 
