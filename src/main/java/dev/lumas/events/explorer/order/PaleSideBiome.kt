@@ -88,7 +88,7 @@ class PaleSideBiome(
 
         biome?.register() ?: throw IllegalStateException("CustomBiome is not initialized")
 
-        val handler = SuspendedWorldBiomeService.getInstance().packetHandler ?: throw IllegalStateException("SuspendedWorldBiomeService is not initialized")
+        val handler = SuspendedWorldBiomeService.getInstance()?.packetHandler ?: return this
         handler.appendBiome(phonyBiome ?: throw IllegalStateException("PhonyBiome is not initialized"))
         println("registered biome: ${biome?.resourceKey}")
         return this

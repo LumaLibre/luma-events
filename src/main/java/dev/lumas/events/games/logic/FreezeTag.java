@@ -6,12 +6,13 @@ import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.Scorer;
 import dev.lumas.events.games.models.CountdownBossBar;
-import dev.lumas.events.games.tokenformula.FreezeTagTokenFormula;
+import dev.lumas.events.games.tokenformula.Paintball2_1TokenFormula;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.EventTeamManager;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.model.team.EventTeam;
+import dev.lumas.events.utility.Couple;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.glowapi.model.GlowColorManager;
@@ -60,7 +61,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
             new NamespacedKey(EventMain.getInstance(), "freeze_tag"), -1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
 
     private final FreezeTagDefinition settings;
-    private final FreezeTagTokenFormula tokenFormula;
+    private final Paintball2_1TokenFormula tokenFormula;
     private CountdownBossBar countdownBossBar;
     private List<FreezeTagTeam> teams;
 
@@ -73,7 +74,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         super("Freeze Tag", "Freeze all enemy players to win!", Util.secsToMillis(settings.getTimeLimitSeconds()), 10, true, true, false);
         this.settings = settings;
         this.boundingBox = WorldTiedBoundingBox.of(settings.getRegion().getLoc1(), settings.getRegion().getLoc2());
-        this.tokenFormula = new FreezeTagTokenFormula(settings.getMinimumTokens(), settings.getTokensPerPoint());
+        this.tokenFormula = new Paintball2_1TokenFormula();
     }
 
     @Override
@@ -150,13 +151,17 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
 
         this.audience.showTitle(Util.title("<yellow>Game Over!", "<gold>" + winnerName + " wins!"));
 
-        Location dropOff = this.getGameDropOffLocation();
         CountdownBossBar.builder()
                 .audience(this.audience)
                 .color(BossBar.Color.BLUE)
                 .title("<aqua><b>Game Over")
                 .seconds(10)
                 .callback(() -> this.participants.forEach(ep -> {
+                    EventTeam team = ep.getLazyTeam();
+                    EventTeamManager.Provider provider = EventTeamManager.Provider.fromTeam(team);
+
+                    Location dropOff = this.getGameDropOffLocationForTeam(provider);
+
                     if (dropOff != null) ep.teleportAsync(dropOff);
                     ep.sendMessage("This minigame has concluded.");
                 }))
@@ -561,10 +566,14 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
 
     private void handleTokens() {
         if (teams == null) return;
+
+        FreezeTagTeam winner = determineWinner();
+
         for (FreezeTagTeam team : teams) {
             for (EventPlayer member : team.getMembers()) {
                 int score = team.getScore(member);
-                int finalScore = tokenFormula.giveTokens(member, score);
+                boolean isWinner = team == winner;
+                int finalScore = tokenFormula.giveTokens(member, Couple.of(score, isWinner));
                 member.addPermanentScore(MinigameConstant.FREEZE_TAG, score);
 
                 EventTeam eventTeam = member.getLazyTeam();

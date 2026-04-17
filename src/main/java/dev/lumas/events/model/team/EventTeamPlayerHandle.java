@@ -16,10 +16,13 @@ public class EventTeamPlayerHandle {
     private final UUID uuid;
     private int points;
     private boolean disabledTeamChat;
+    private String lastKnownName;
     private transient boolean persistentTeamChat;
+    private transient boolean checkedLastKnownName;
 
     public EventTeamPlayerHandle(EventPlayer eventPlayer) {
         this.uuid = eventPlayer.getUuid();
+        this.lastKnownName = eventPlayer.getName();
         this.points = 0;
         this.disabledTeamChat = false;
     }

@@ -107,7 +107,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         this.scarletCenterPoint = def.getScarletCenterPoint().toCenterLocation();
         this.towersPlayers = new MinigameRoleMap<>(TowersPlayer::cleanup);
         this.scoreboard = new Scoreboard<>();
-        this.tokenFormula = new FlatIntTokenFormula(15);
+        this.tokenFormula = new FlatIntTokenFormula(34);
         this.isEscalation = def.isEscalation();
         this.forceGameArenaYLevel = this.centerPoint.getY() - 10;
         this.gridLocations = new ArrayList<>();
@@ -228,7 +228,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     @Override
     protected void handleStop() {
         this.towersPlayers.getMatching(ActivePlayer.class).forEach(activePlayer -> {
-            this.scoreboard.addScore(activePlayer.getEventPlayer(), 4);
+            this.scoreboard.addScore(activePlayer.getEventPlayer(), 10);
         });
 
         this.towersPlayers.values().forEach(towersPlayer -> {
@@ -271,7 +271,14 @@ public final class Towers extends InventoryUnifiedMinigame {
                     .seconds(15)
                     .callback(() -> {
                         this.participants.forEach(eventPlayer -> {
-                            eventPlayer.teleportAsync(this.getGameDropOffLocation());
+                            EventTeam team = eventPlayer.getLazyTeam();
+                            EventTeamManager.Provider provider = EventTeamManager.Provider.fromTeam(team);
+
+                            Location loc = this.getGameDropOffLocationForTeam(provider);
+
+                            if (loc != null) {
+                                eventPlayer.teleportAsync(loc);
+                            }
                             eventPlayer.sendMessage("This minigame has concluded.");
                         });
                     })
@@ -668,7 +675,7 @@ public final class Towers extends InventoryUnifiedMinigame {
             }
 
             TowersPlayer attackerPlayer = this.context.towersPlayers.get(this.lastAttacker);
-            this.context.scoreboard.addScore(attackerPlayer.getEventPlayer(), 4);
+            this.context.scoreboard.addScore(attackerPlayer.getEventPlayer(), 6);
             if (attackerPlayer instanceof ActivePlayer activePlayer) {
                 activePlayer.kills++;
                 Player bukkitAttacker = activePlayer.getEventPlayer().getPlayer();

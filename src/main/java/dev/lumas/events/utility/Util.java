@@ -44,8 +44,8 @@ public final class Util {
 
     public static final Gson GSON = GsonHolder.GSON;
     public static final Random RANDOM = new Random();
-    public static final String PREFIX = "<b><gradient:#954381:#ee78c0:#ec6e95:#cb354e>Event</gradient></b> <dark_gray>»</dark_gray> ";
-    public static final String TEXT_COLOR = "#EC6E95";
+    public static final String PREFIX = "<b><gradient:#5d85dc:#E56A91:#F3AA4C:#CA51CB>Event</gradient></b> <dark_gray>»</dark_gray> ";
+    public static final String TEXT_COLOR = "#F3AA4C";
 
 
     public static void sendMsg(CommandSender receiver, String message) {
@@ -61,6 +61,10 @@ public final class Util {
 
     public static void broadcast(String message) {
         Bukkit.broadcast(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)));
+    }
+
+    public static void broadcast(Component message, String permission) {
+        Bukkit.broadcast(color(PREFIX).append(message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)), permission);
     }
 
     public static void broadcast(Component message) {

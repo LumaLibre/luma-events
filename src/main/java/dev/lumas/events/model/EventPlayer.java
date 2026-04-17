@@ -68,11 +68,16 @@ public class EventPlayer implements Serializable, Scorer {
     private long secondsPlayed;
     private volatile boolean suspended;
     private PersistentInventoryState storedInventoryState;
+    private int suspendedLevels;
     private float suspendedExperience;
     private @Nullable ItemStack @Nullable[] suspendedInventory;
     private final List<ActiveExplorerOrder> activeExplorerOrders;
-    @Getter @Setter
+    @Setter
     private int souls;
+    @Setter
+    private int lives;
+    @Setter
+    private boolean initialSpawn;
 
 
     // Initial creation
@@ -88,11 +93,13 @@ public class EventPlayer implements Serializable, Scorer {
                 0f,
                 null,
                 new ArrayList<>(),
-                0
+                0,
+                0,
+                false
         );
     }
 
-    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores, List<ActiveExplorerMile> activeExplorerMiles, boolean claimedCharm, long secondsPlayed, boolean suspended, PersistentInventoryState storedInventoryState, float suspendedExperience, @Nullable ItemStack @Nullable[] suspendedInventory, List<ActiveExplorerOrder> activeExplorerOrders, int souls) {
+    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores, List<ActiveExplorerMile> activeExplorerMiles, boolean claimedCharm, long secondsPlayed, boolean suspended, PersistentInventoryState storedInventoryState, float suspendedExperience, @Nullable ItemStack @Nullable[] suspendedInventory, List<ActiveExplorerOrder> activeExplorerOrders, int souls, int lives, boolean initialSpawn) {
         this.uuid = uuid;
         this.scores = scores;
         this.activeExplorerMiles = activeExplorerMiles;
@@ -104,6 +111,8 @@ public class EventPlayer implements Serializable, Scorer {
         this.suspendedInventory = suspendedInventory;
         this.activeExplorerOrders = activeExplorerOrders;
         this.souls = souls;
+        this.lives = lives;
+        this.initialSpawn = initialSpawn;
     }
 
     private Object getLock() {
@@ -354,6 +363,7 @@ public class EventPlayer implements Serializable, Scorer {
     private synchronized void switchInventory() {
         this.operatePlayer(player -> {
             PlayerInventory inv = player.getInventory();
+            int level = player.getLevel();
             float experience = player.getExp();
             @Nullable ItemStack[] contentsClone = inv.getContents().clone();
 
@@ -364,11 +374,14 @@ public class EventPlayer implements Serializable, Scorer {
             }
 
             if (this.suspendedExperience > 0) {
+                player.setLevel(this.suspendedLevels);
                 player.setExp(this.suspendedExperience);
             } else {
+                player.setLevel(0);
                 player.setExp(0);
             }
 
+            this.suspendedLevels = level;
             this.suspendedExperience = experience;
             this.suspendedInventory = contentsClone;
             this.storedInventoryState = this.storedInventoryState.opposite();
@@ -403,6 +416,7 @@ public class EventPlayer implements Serializable, Scorer {
                 }
                 this.switchInventory();
 
+                player.clearActivePotionEffects();
 
                 // Finished preparing and putting the player into this world with their new inventory.
                 BetterRTPService.getInstance().ifPresentOrElse(service -> {
@@ -430,12 +444,14 @@ public class EventPlayer implements Serializable, Scorer {
 
             World unsuspendedWorld = EventMain.getOkaeriConfig().getUnsuspendWorld();
 
-            if (unsuspendedWorld != null) {
+            if (unsuspendedWorld != null && teleport) {
                 player.teleportAsync(unsuspendedWorld.getSpawnLocation()).thenAccept(success -> {
                     if (!success) {
                         LOGGER.warning("Failed to teleport player to unsuspend world spawn after unsuspending.");
                     }
                 });
+
+                player.clearActivePotionEffects();
             } else {
                 LOGGER.warning("No unsuspend world available.");
             }

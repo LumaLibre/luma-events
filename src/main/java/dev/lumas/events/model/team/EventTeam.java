@@ -15,6 +15,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jspecify.annotations.NullMarked;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -48,6 +49,13 @@ public abstract class EventTeam implements Scorer {
     private EventTeamPlayerHandle getHandle(EventPlayer eventPlayer) {
         EventTeamPlayerHandle handle = members.get(eventPlayer.getUuid());
         if (handle != null) {
+            if (!handle.isCheckedLastKnownName()) {
+                handle.setCheckedLastKnownName(true);
+                String currentName = eventPlayer.getName();
+                if (currentName != null) {
+                    handle.setLastKnownName(currentName);
+                }
+            }
             return handle;
         }
         throw new IllegalArgumentException("Player " + eventPlayer.getName() + " is not a member of " + getName());
@@ -69,6 +77,10 @@ public abstract class EventTeam implements Scorer {
 
     public int getPoints() {
         return members.values().stream().mapToInt(EventTeamPlayerHandle::getPoints).sum();
+    }
+
+    public Collection<EventTeamPlayerHandle> getMembers() {
+        return Set.copyOf(members.values());
     }
 
     public void addMember(EventPlayer eventPlayer) {

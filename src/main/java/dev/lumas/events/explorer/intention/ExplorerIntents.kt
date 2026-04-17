@@ -53,7 +53,7 @@ import kotlin.random.Random
 @Register(Autowire.SERVICE)
 object ExplorerIntents : ExplorerIntentContainer() {
 
-    private val WORLD = EventMain.getOkaeriConfig().explorer.suspendedWorlds // TODO: Change me
+    private val WORLD = { EventMain.getOkaeriConfig().explorer.suspendedWorlds }
     private val TIMED_EXPLOSION = fun (loc: Location, delay: Long, player: Player) {
         loc.world.playSound(loc, Sound.ENTITY_CREEPER_PRIMED, 1f, 1f)
         Executors.delayedSync(loc, delay) {
@@ -112,21 +112,30 @@ object ExplorerIntents : ExplorerIntentContainer() {
         icon = Material.WEATHERED_COPPER_CHEST
     ) { event ->
         val player = event.player
-//        event.isCancelled = true
-//        event.drops.clear()
-//        event.droppedExp = 0
-//        event.itemsToKeep.clear()
-//        player.inventory.clear()
-//        player.exp = 0f
+        for (item in player.inventory) {
+            if (item != null) {
+                player.world.dropItemNaturally(player.location, item)
+            }
+        }
+        event.isCancelled = true
+        player.inventory.clear()
+        player.exp = 0f
+        event.drops.clear()
+        event.droppedExp = 0
+        event.itemsToKeep.clear()
         val eventPlayer = EventPlayerManager.getByUUIDOrNull(player.uniqueId)
-        if (eventPlayer != null && eventPlayer.isSuspended) {
-            eventPlayer.unsuspend(false)
+        Executors.delayedSync(eventPlayer, 1) {
+            if (eventPlayer != null && eventPlayer.isSuspended) {
+                eventPlayer.unsuspend()
+                eventPlayer.lives -= 1
+                EventPlayerManager.save(eventPlayer)
+            }
         }
 
         if (!DEATH_MESSAGE_COOLDOWN.contains(player.uniqueId)) {
-            Util.broadcast(event.deathMessage()) // TODO Change
+            Util.broadcast(event.deathMessage(), "lumaevents.default") // TODO Change
             DEATH_MESSAGE_COOLDOWN.add(player.uniqueId)
-            Executors.delayedGlobal(10) {
+            Executors.delayedGlobal(6000) {
                 DEATH_MESSAGE_COOLDOWN.remove(player.uniqueId)
             }
         }
@@ -319,13 +328,13 @@ object ExplorerIntents : ExplorerIntentContainer() {
 
     val LOGS_MAY_NOT_DROP = ExplorerIntent<BlockBreakEvent>(
         title = "Logs May Not Drop",
-        desc = "Logs may not drop when broken.",
+        desc = "Logs may not drop when broken. (50% chance)",
         world = WORLD,
         eventClass = BlockBreakEvent::class,
         icon = Material.OAK_LOG
     ) { event ->
         val block = event.block
-        if (Tag.LOGS.isTagged(block.type) && Random.nextBoolean()) {
+        if (Tag.LOGS.isTagged(block.type) && Random.nextInt(101) > 50) {
             event.isDropItems = false
             block.world.playSound(block.location, Sound.ENTITY_ALLAY_ITEM_TAKEN, 1f, 1f)
         }

@@ -27,6 +27,7 @@ import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -274,8 +275,15 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         HandlerList.unregisterAll(listener);
     }
 
+    @Nullable
     public Location getGameDropOffLocation() {
         return EventMain.getOkaeriConfig().getGameDropOffLocation();
+    }
+
+    @Nullable
+    public Location getGameDropOffLocationForTeam(EventTeamManager.@Nullable Provider provider) {
+        if (provider == null) return null;
+        return EventMain.getOkaeriConfig().getTeamSpawnLocations().get(provider);
     }
 
     public void sendAudienceMessage(String m) {

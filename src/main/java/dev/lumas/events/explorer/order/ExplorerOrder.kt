@@ -11,15 +11,16 @@ class ExplorerOrder<T : Any>(
     val objective: String,
     val quantity: Int,
     val souls: Int,
-    val worlds: List<String>,
+    private val worldsProvider: () -> List<String>,
     val eventClass: Class<T>,
     val icon: Material,
     biome: PaleSideBiome? = null,
     val handler: ExplorerOrderEventHandler<T>
 ) : ContainerReflective() {
 
-    val isGlobal: Boolean = worlds.contains("*")
-    val patterns: List<Regex> = worlds.mapNotNull {
+    val worlds: List<String> get() = worldsProvider()
+    val isGlobal: Boolean get() = worlds.contains("*")
+    val patterns: List<Regex> get() = worlds.mapNotNull {
         if (it == "*") null else Regex(it)
     }
 
@@ -27,7 +28,7 @@ class ExplorerOrder<T : Any>(
         biome?.simplify(this)
     }
 
-    constructor(name: String, objective: String, quantity: Int, souls: Int, world: List<String>, eventClass: KClass<T>, icon: Material, biome: PaleSideBiome? = null, handler: ExplorerOrderEventHandler<T>) : this(
+    constructor(name: String, objective: String, quantity: Int, souls: Int, world: () -> List<String>, eventClass: KClass<T>, icon: Material, biome: PaleSideBiome? = null, handler: ExplorerOrderEventHandler<T>) : this(
         name,
         objective,
         quantity,

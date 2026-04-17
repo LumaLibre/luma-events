@@ -47,7 +47,7 @@ public class TokenExchanging {
             return;
         }
 
-        if (type == TokenType.CARAMEL_APPLE) {
+        if (type == TokenType.AMINATA_SHROOM) {
             Util.giveItem(player, itemStack, Math.min(finalAmount, 15)); // TODO hard cap - remove later
         } else {
             Util.giveItem(player, itemStack, finalAmount);
@@ -81,8 +81,8 @@ public class TokenExchanging {
 
     @Getter
     public enum TokenType {
-        CANDIED_APPLE(CandiedAppleItem.class, "<gradient:#DD2785:#fc5b8d:#cb354e>Candied Apple</gradient>", "candied-apple"),
-        CARAMEL_APPLE(CaramelAppleItem.class, "<gradient:#a76d3c:#d2b48c:#c79c6b:#f3e7c4:#9b7652>Caramel Apple</gradient>", "caramel-apple"),
+        WAXCAP_SHROOM(WaxcapShroomItem.class, "<b><gradient:#3f2615:#775d46:#f0af91:#fecdbb:#ead3c1>Waxcap Shroom</gradient></b>", "waxcap-shroom"),
+        AMINATA_SHROOM(AmanitaShroomItem.class, "<b><gradient:#da2022:#ea6867:#efa2a1:#f7f1f0:#ceda5c>Aminata Shroom</gradient></b>", "aminata-shroom"),
         ;
 
         private final Class<? extends CustomItem> tokenClass;

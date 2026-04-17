@@ -158,7 +158,6 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 player.teleportAsync(def.getSpawnLocation());
                 GlowColorManager.getInstance().update(player);
             });
-            Location loc = this.getGameDropOffLocation();
 
             CountdownBossBar.builder()
                     .audience(this.audience)
@@ -166,6 +165,11 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                     .title("<red><b>Game Over")
                     .seconds(15)
                     .callback(() -> this.participants.forEach(eventPlayer -> {
+                        EventTeam team = eventPlayer.getLazyTeam();
+                        EventTeamManager.Provider provider = EventTeamManager.Provider.fromTeam(team);
+
+                        Location loc = this.getGameDropOffLocationForTeam(provider);
+
                         if (loc != null) {
                             eventPlayer.teleportAsync(loc);
                         }

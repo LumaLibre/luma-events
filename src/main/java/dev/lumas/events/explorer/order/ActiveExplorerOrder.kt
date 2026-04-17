@@ -6,6 +6,7 @@ import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 import dev.lumas.core.util.ContextLogger
 import dev.lumas.events.model.EventPlayer
+import dev.lumas.events.suspend.SuspendedWorldBiomeService
 import org.bukkit.World
 
 class ActiveExplorerOrder(
@@ -33,6 +34,11 @@ class ActiveExplorerOrder(
                     this.completedAt = System.currentTimeMillis()
                     completion.completionEffects(eventPlayer)
                     eventPlayer.resortExplorerOrders()
+
+                    val biomeUpdater = SuspendedWorldBiomeService.getInstance()?.biomeUpdater ?: return
+                    eventPlayer.operatePlayer {
+                        biomeUpdater.updateChunksForPlayer(it)
+                    }
                 }
             }
         }

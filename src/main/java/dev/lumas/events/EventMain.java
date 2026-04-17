@@ -9,10 +9,10 @@ import dev.lumas.events.explorer.order.ExplorerOrderRegistry;
 import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.models.CountdownBossBar;
-import dev.lumas.events.items.CandiedAppleItem;
-import dev.lumas.events.items.CaramelAppleItem;
+import dev.lumas.events.items.AmanitaShroomItem;
 import dev.lumas.events.items.LocalCustomItemManager;
 import dev.lumas.events.items.StartMinigameItem;
+import dev.lumas.events.items.WaxcapShroomItem;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.EventTeamManager;
 import dev.lumas.events.manager.LeaderboardCacheManager;
@@ -58,9 +58,9 @@ public final class EventMain extends JavaPlugin {
         });
         MinigameManager.getInstance().repeatingAsync(0, 600);
 
-        LocalCustomItemManager.addCustomItem(new CandiedAppleItem());
+        LocalCustomItemManager.addCustomItem(new WaxcapShroomItem());
         LocalCustomItemManager.addCustomItem(new StartMinigameItem());
-        LocalCustomItemManager.addCustomItem(new CaramelAppleItem());
+        LocalCustomItemManager.addCustomItem(new AmanitaShroomItem());
         LocalCustomItemManager.registerCustomItems();
 
         // playtime counter

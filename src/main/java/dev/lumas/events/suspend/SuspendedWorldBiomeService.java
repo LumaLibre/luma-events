@@ -4,6 +4,7 @@ import dev.lumas.core.annotation.Autowire;
 import dev.lumas.core.annotation.Register;
 import dev.lumas.core.model.Service;
 import dev.lumas.events.EventMain;
+import me.outspending.biomesapi.BiomeUpdater;
 import me.outspending.biomesapi.biome.CustomBiome;
 import me.outspending.biomesapi.exceptions.MissingPacketManipulatorLibraryException;
 import me.outspending.biomesapi.registry.BiomeResourceKey;
@@ -12,13 +13,16 @@ import me.outspending.biomesapi.renderer.packet.data.BlockReplacement;
 import me.outspending.biomesapi.renderer.packet.data.PhonyCustomBiome;
 import me.outspending.biomesapi.wrapper.BiomeSettings;
 import org.bukkit.Material;
+import org.jspecify.annotations.Nullable;
 
 @SuppressWarnings({"UnstableApiUsage", "LombokGetterMayBeUsed"})
-@Register(Autowire.SERVICE)
+@Register(value = Autowire.SERVICE, requires = "ProtocolLib")
 public class SuspendedWorldBiomeService implements Service {
 
+    @Nullable
     private static SuspendedWorldBiomeService instance;
     private PacketHandler packetHandler;
+    private BiomeUpdater biomeUpdater;
 
     @Override
     public void register() {
@@ -29,9 +33,10 @@ public class SuspendedWorldBiomeService implements Service {
             e.printStackTrace();
             return;
         }
+        biomeUpdater = BiomeUpdater.of(EventMain.getInstance());
 
         CustomBiome baseWhiteBiome = CustomBiome.builder()
-                .resourceKey(BiomeResourceKey.of("lumaevents", "pale"))
+                .resourceKey(BiomeResourceKey.of("explorer", "pale"))
                 .settings(BiomeSettings.defaultSettings())
                 .fogColor("#FFFFFF") // #db4929
                 .foliageColor("#F5F2EB")
@@ -70,6 +75,7 @@ public class SuspendedWorldBiomeService implements Service {
         instance = null;
     }
 
+    @Nullable
     @SuppressWarnings("") // lombok - kotlin
     public static SuspendedWorldBiomeService getInstance() {
         return instance;
@@ -77,5 +83,9 @@ public class SuspendedWorldBiomeService implements Service {
 
     public PacketHandler getPacketHandler() {
         return packetHandler;
+    }
+
+    public BiomeUpdater getBiomeUpdater() {
+        return biomeUpdater;
     }
 }

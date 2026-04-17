@@ -17,7 +17,7 @@ import org.bukkit.persistence.PersistentDataType
 @Register(Autowire.SERVICE)
 object ExplorerOrders : ExplorerOrderContainer() {
 
-    private val WORLDS = EventMain.getOkaeriConfig().explorer.suspendedWorlds
+    private val WORLDS = { EventMain.getOkaeriConfig().explorer.suspendedWorlds }
     private val ORDER_KEY = NamespacedKey(EventMain.getInstance(), "explorer_order")
 
     fun ItemStack.flag() {

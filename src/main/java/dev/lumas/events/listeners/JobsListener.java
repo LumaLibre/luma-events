@@ -39,7 +39,7 @@ public class JobsListener implements Listener {
             if (player == null) {
                 return;
             }
-            TokenExchanging.give(player, TokenExchanging.TokenType.CANDIED_APPLE, RANDOM.nextInt(1, 3), jobName);
+            TokenExchanging.give(player, TokenExchanging.TokenType.WAXCAP_SHROOM, RANDOM.nextInt(1, 3), jobName);
         }
     }
 

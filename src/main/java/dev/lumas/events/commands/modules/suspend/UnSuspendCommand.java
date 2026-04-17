@@ -9,7 +9,6 @@ import dev.lumas.events.commands.CommandModule;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Util;
-import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -23,22 +22,20 @@ import java.util.List;
         permission = "lumaevents.default",
         description = "Unsuspend a player/yourself",
         parent = CommandManager.class,
-        usage = "/<command> unsuspend"
+        usage = "/<command> unsuspend",
+        playerOnly = true
 )
 public class UnSuspendCommand implements CommandModule {
     @Override
     public boolean execute(@NotNull EventMain eventMain, @NotNull CommandSender commandSender, @NotNull String s, @NotNull String[] strings) {
-        Player target = strings.length > 0 ? Bukkit.getPlayerExact(strings[0]) : (Player) commandSender; // TODO: cast exception if console sender
-        if (target == null) {
-            return false;
-        }
+        Player target = (Player) commandSender;
 
         EventPlayer eventPlayer = EventPlayerManager.getByUUIDOrNull(target.getUniqueId());
         if (eventPlayer == null || !eventPlayer.isSuspended()) {
-            Util.sendMsg(commandSender, target.getName() + " is not suspended.");
+            Util.sendMsg(commandSender, "You are not suspended.");
         } else {
             eventPlayer.unsuspend();
-            Util.sendMsg(commandSender, target.getName() + " has been unsuspended.");
+            eventPlayer.sendMessage("You have been unsuspended.");
         }
 
         return true;
@@ -47,6 +44,6 @@ public class UnSuspendCommand implements CommandModule {
     @Nullable
     @Override
     public List<String> tabComplete(@NotNull EventMain eventMain, @NotNull CommandSender commandSender, @NotNull String[] strings) {
-        return null;
+        return List.of();
     }
 }

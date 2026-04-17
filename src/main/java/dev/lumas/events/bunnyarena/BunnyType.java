@@ -41,7 +41,7 @@ public enum BunnyType {
         this.chance = chance;
         this.tokenMin = base;
         this.tokenMax = bound;
-        this.tokenType = TokenExchanging.TokenType.CANDIED_APPLE;
+        this.tokenType = TokenExchanging.TokenType.WAXCAP_SHROOM;
     }
 
     BunnyType(String customName, boolean baby, int chance, int base, int bound, TokenExchanging.TokenType tokenType) {

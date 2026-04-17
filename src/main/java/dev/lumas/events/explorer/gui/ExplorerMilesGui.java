@@ -50,7 +50,7 @@ public class ExplorerMilesGui extends ExplorerGui {
             (event, guiItem) -> {
                 Player bukkitPlayer = (Player) event.getWhoClicked();
                 bukkitPlayer.closeInventory();
-                int amount = TokenExchanging.getAmount(bukkitPlayer, TokenExchanging.TokenType.CANDIED_APPLE);
+                int amount = TokenExchanging.getAmount(bukkitPlayer, TokenExchanging.TokenType.WAXCAP_SHROOM);
                 if (amount < 40) {
                     dialogueText.queueText(
                             "Hey hey,",
@@ -62,7 +62,7 @@ public class ExplorerMilesGui extends ExplorerGui {
                     return;
                 }
 
-                if (!TokenExchanging.take(bukkitPlayer, TokenExchanging.TokenType.CANDIED_APPLE, 40)) {
+                if (!TokenExchanging.take(bukkitPlayer, TokenExchanging.TokenType.WAXCAP_SHROOM, 40)) {
                     return;
                 }
 

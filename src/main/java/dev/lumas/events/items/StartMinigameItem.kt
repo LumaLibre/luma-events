@@ -16,7 +16,7 @@ import org.bukkit.inventory.ItemStack
 class StartMinigameItem : CustomItemFunctions() {
     override fun createItem(): Pair<String, ItemStack> {
         fun grad(s: String): String {
-            return "<gradient:#2c272c:#842e5e:#bc6997:#f87626:#f7a425:#83b14f>$s</gradient>"
+            return "<gradient:#5d85dc:#E56A91:#F3AA4C:#CA51CB>$s</gradient>"
         }
 
         return ItemFactory.builder()
@@ -30,8 +30,8 @@ class StartMinigameItem : CustomItemFunctions() {
                 "<red>Cooldown: 1h</red>",
             )
             .material(Material.BLAZE_POWDER)
-            .persistentData("halloween-start-minigame")
-            .tier(Tier.HALLOWEEN_2025)
+            .persistentData("start-minigame")
+            .tier(Tier.WONDERLAND_2026)
             .buildPair()
     }
 
@@ -44,10 +44,11 @@ class StartMinigameItem : CustomItemFunctions() {
             return
         }
 
+        val item = event.item ?: return
+
 
         if (MinigameManager.getInstance().tryNewMinigameSafely(true)) {
-            val item = event.item
-            item!!.amount = item.amount - 1
+            item.amount -= 1
             QuickTasks.addCooldown(this, player.uniqueId, 72000L)
             Util.broadcast(player.name + " has started a minigame!")
         } else {

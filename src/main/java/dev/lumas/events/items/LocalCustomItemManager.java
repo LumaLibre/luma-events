@@ -26,10 +26,16 @@ public class LocalCustomItemManager {
             lumaItemsAPI.registerCustomItem(customItem);
             if (customItem instanceof CustomItemFunctionsWithRecipe withRecipe) {
                 var pair = withRecipe.recipe();
+                // Folia safety
+                /*
                 if (Bukkit.getRecipe(pair.getFirst()) != null) {
                     Bukkit.removeRecipe(pair.getFirst());
                 }
                 Bukkit.addRecipe(pair.getSecond());
+                 */
+                if (Bukkit.getRecipe(pair.getFirst()) == null) {
+                    Bukkit.addRecipe(pair.getSecond());
+                }
             }
         }
     }

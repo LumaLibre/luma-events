@@ -14,28 +14,20 @@ typealias ExplorerIntentEventHandler<T> = (event: T) -> Unit
 class ExplorerIntent<T : Any>(
     val title: String,
     val desc: String,
-    val worlds: List<String>,
+    private val worldsProvider: () -> List<String>,
     val eventClass: Class<T>,
     val icon: Material = Material.MAP,
     val handler: ExplorerIntentEventHandler<T>,
 ): ContainerReflective() {
 
-    val isGlobal: Boolean = worlds.contains("*")
-    val patterns: List<Regex> = worlds.mapNotNull {
+    val worlds: List<String> get() = worldsProvider()
+    val isGlobal: Boolean get() = worlds.contains("*")
+    val patterns: List<Regex> get() = worlds.mapNotNull {
         if (it == "*") null else Regex(it)
     }
 
 
-    constructor(title: String, desc: String, world: String, eventClass: KClass<T>, icon: Material, handler: ExplorerIntentEventHandler<T>) : this(
-        title,
-        desc,
-        listOf(world),
-        eventClass.java,
-        icon,
-        handler
-    )
-
-    constructor(title: String, desc: String, world: List<String>, eventClass: KClass<T>, icon: Material, handler: ExplorerIntentEventHandler<T>) : this(
+    constructor(title: String, desc: String, world: () -> List<String>, eventClass: KClass<T>, icon: Material, handler: ExplorerIntentEventHandler<T>) : this(
         title,
         desc,
         world,

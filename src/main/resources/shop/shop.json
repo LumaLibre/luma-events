@@ -1,65 +1,89 @@
 {
-  "title": "<b><gradient:#5d85dc:#E56A91:#F3AA4C:#CA51CB>Event Shop</gradient></b>",
+  "title": "<b><gradient:#7B859D:#996779:#A7957B:#6B496B>Pale Side: Soul Shop</gradient></b>",
   "size": 54,
 
   "default_lore": [
-    "<#A7957B>Stock <dark_gray>» <gradient:#6FA8FF:#AFC7FF>{stock} / {max_stock}</gradient>",
-    "<#A7957B>Cost <dark_gray>» <gradient:#F6C65B:#F3AA4C:#E884C9>{price} souls</gradient>",
-    "",
+    "<#A7957B>Stock<dark_gray>: <#7B859D>{stock}/{max_stock}",
+    "<#A7957B>Souls<dark_gray>: <#7B859D>{price}",
     "{purchase_status}"
   ],
 
   "slots": {
-    "0,5,8,17,27,36,45,50,53": {
-      "material": "BLUE_STAINED_GLASS_PANE",
+    "0,8,45,53": {
+      "material": "GRAY_STAINED_GLASS_PANE",
       "hide_tooltip": true
     },
-    "1,6,9,18,26,35,46,51": {
-      "material": "PINK_STAINED_GLASS_PANE",
+    "1,7,46,52": {
+      "material": "DEAD_FIRE_CORAL_FAN",
       "hide_tooltip": true
     },
-    "2,7,27,44,47,52": {
-      "material": "ORANGE_STAINED_GLASS_PANE",
+    "2,6,47,51": {
+      "material": "OPEN_EYEBLOSSOM",
       "hide_tooltip": true
     },
-    "3,4,48,49": {
-      "material": "PURPLE_STAINED_GLASS_PANE",
+    "3,5,48,50": {
+      "material": "DEAD_FIRE_CORAL_FAN",
+      "hide_tooltip": true
+    },
+    "4,49": {
+      "material": "PALE_OAK_SAPLING",
       "hide_tooltip": true
     },
 
-    "10": {
-      "luma_item": "crown-jewel-of-elsewhere",
-      "max_per_player": 10,
-      "global_stock": 100,
-      "price": 10
+    "20": {
+      "luma_item": "ventanas-mattock",
+      "max_per_player": 1,
+      "global_stock": 20,
+      "price": 40
     },
 
-    "11": {
-      "luma_item": "charged-breeze-rod",
-      "max_per_player": 3,
+    "21": {
+      "luma_item": "horizons-toolkit",
+      "max_per_player": 1,
+      "global_stock": 20,
+      "price": 40
+    },
+
+    "22": {
+      "luma_item": "ventanas-spade",
+      "max_per_player": 1,
+      "global_stock": 10,
+      "price": 40
+    },
+
+    "23": {
+      "luma_item": "dark-moon-claymore",
+      "max_per_player": 1,
       "global_stock": 15,
       "price": 35
     },
 
-    "12": {
-      "luma_item": "piglin-mask",
-      "max_per_player": 2,
-      "global_stock": 25,
-      "price": 75
+    "24": {
+      "luma_item": "boreal-hatchet",
+      "max_per_player": 1,
+      "global_stock": 8,
+      "price": 35
     },
 
-    "13": {
+    "29": {
       "luma_item": "sowing-bundle",
       "max_per_player": 1,
-      "global_stock": 16,
-      "price": 100
+      "global_stock": 12,
+      "price": 30
     },
 
-    "14": {
-      "luma_item": "verdigris-idol",
+    "30": {
+      "luma_item": "hauynes-pickaxe",
       "max_per_player": 1,
-      "global_stock": 12,
-      "price": 100
+      "global_stock": 8,
+      "price": 40
+    },
+
+    "31": {
+      "luma_item": "kamoris-rake",
+      "max_per_player": 1,
+      "global_stock": 6,
+      "price": 40
     }
   }
 }

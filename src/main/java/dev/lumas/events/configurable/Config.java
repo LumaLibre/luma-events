@@ -13,6 +13,7 @@ import dev.lumas.events.configurable.sectors.TNTRunDefinition;
 import dev.lumas.events.configurable.sectors.TheNabbitsMinigameDefinition;
 import dev.lumas.events.configurable.sectors.TowersDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
+import dev.lumas.events.manager.EventTeamManager;
 import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.annotation.Comment;
 import lombok.Getter;
@@ -22,6 +23,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.jspecify.annotations.Nullable;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -44,8 +46,18 @@ public class Config extends OkaeriConfig {
     @Comment("Location for /event")
     private Location eventSpawnLocation = null;
 
+    @Comment("Initial location for /event")
+    private Location initialEventSpawnLocation = null;
+
     @Comment("Game drop-off location for minigames")
     private Location gameDropOffLocation = null;
+
+    @Comment("Game drop-off locations for teams")
+    private Map<EventTeamManager.Provider, Location> teamSpawnLocations = new HashMap<>();
+    {
+        teamSpawnLocations.put(EventTeamManager.Provider.IVORY, null);
+        teamSpawnLocations.put(EventTeamManager.Provider.SCARLET, null);
+    }
 
     @Comment("Enabled minigames for automatic selection")
     private List<MinigameConstant> enabledAutomaticMinigames = List.of(

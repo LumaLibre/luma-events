@@ -141,5 +141,19 @@ public final class EventTeamManager {
             }
             throw new IllegalArgumentException("No provider found for class: " + teamClass.getName());
         }
+
+        @Nullable
+        public static Provider fromTeam(EventTeam team) {
+            if (team == null) {
+                return null;
+            }
+
+            for (Provider provider : values()) {
+                if (provider.teamClass.equals(team.getClass())) {
+                    return provider;
+                }
+            }
+            throw new IllegalArgumentException("No provider found for team: " + team.getClass().getName());
+        }
     }
 }
