@@ -352,7 +352,8 @@ public class EventPlayer implements Serializable, Scorer {
                 }
             }
 
-            for (ActiveExplorerOrder activeOrder : this.activeExplorerOrders) {
+            // copying to prevent downstream mutation problems
+            for (ActiveExplorerOrder activeOrder : List.copyOf(this.activeExplorerOrders)) {
                 if (activeOrder != null && activeOrder.getExplorerOrder().getEventClass() == event.getClass()) {
                     activeOrder.apply(world, event, this);
                 }

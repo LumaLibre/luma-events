@@ -328,13 +328,13 @@ object ExplorerIntents : ExplorerIntentContainer() {
 
     val LOGS_MAY_NOT_DROP = ExplorerIntent<BlockBreakEvent>(
         title = "Logs May Not Drop",
-        desc = "Logs may not drop when broken. (50% chance)",
+        desc = "Logs may not drop when broken. (90% chance to drop nothing)",
         world = WORLD,
         eventClass = BlockBreakEvent::class,
         icon = Material.OAK_LOG
     ) { event ->
         val block = event.block
-        if (Tag.LOGS.isTagged(block.type) && Random.nextInt(101) > 50) {
+        if (Tag.LOGS.isTagged(block.type) && Random.nextDouble() > 0.1) {
             event.isDropItems = false
             block.world.playSound(block.location, Sound.ENTITY_ALLAY_ITEM_TAKEN, 1f, 1f)
         }

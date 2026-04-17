@@ -34,7 +34,7 @@ object ExplorerOrders : ExplorerOrderContainer() {
     // Wardens have 50% more health than normal and also deal 25% more damage.
     // Wardens are hard to find and are only underground, so other mobs will be hell to deal with.
     // I don't know if this is possible to beat.
-    val SH3LL = ExplorerOrder(
+    val SHELL = ExplorerOrder(
         name = "#0 shell",
         objective = "Kill a Warden.",
         quantity = 1,
@@ -53,7 +53,7 @@ object ExplorerOrders : ExplorerOrderContainer() {
 
     // Creepers are always charged and duplicate when they explode.
     // Probably possible to beat.
-    val NIHIL1ST = ExplorerOrder(
+    val NIHILIST = ExplorerOrder(
         name = "#1 nihilist",
         objective = "Kill 100 Creepers.",
         quantity = 100,
@@ -91,7 +91,7 @@ object ExplorerOrders : ExplorerOrderContainer() {
 
     // Mining Fatigue I + Darkness + Blindness when below Y level 4.
     // It's possible, but very time-consuming.
-    val F4TIGUE = ExplorerOrder(
+    val FATIGUE = ExplorerOrder(
         name = "#3 fatigue",
         objective = "Break 250 Diamond ores.",
         quantity = 250,
@@ -111,7 +111,7 @@ object ExplorerOrders : ExplorerOrderContainer() {
     }
 
     // Possible.
-    val P1TY = ExplorerOrder(
+    val PITY = ExplorerOrder(
         name = "#4 pity",
         objective = "Die.",
         quantity = 1,

@@ -11,6 +11,7 @@ import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.hooks.VaultService;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.constant.Ranks;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
@@ -36,7 +37,7 @@ public class SuspendCommand implements CommandModule {
     @Override
     public boolean execute(@NotNull EventMain eventMain, @NotNull CommandSender commandSender, @NotNull String s, @NotNull String[] strings) {
         if (!EventMain.getOkaeriConfig().getExplorer().isExplorerOrders()) {
-            commandSender.sendMessage("Not enabled.");
+            Util.sendMsg(commandSender, "Not enabled.");
             return false;
         }
 
@@ -65,9 +66,13 @@ public class SuspendCommand implements CommandModule {
         }
 
         if (isLivesNeeded(eventPlayer, rank)) {
+            if (!confirmed) {
+                // message was already sent by isLivesNeeded, just wait for --confirm
+                return true;
+            }
 
             int purchased = purchaseLives(eventPlayer, rank);
-            if (confirmed && purchased > 0) {
+            if (purchased > 0) {
                 eventPlayer.setLives(eventPlayer.getLives() + purchased);
                 EventPlayerManager.save(eventPlayer);
             } else {
@@ -90,11 +95,11 @@ public class SuspendCommand implements CommandModule {
 
     private boolean isLivesNeeded(EventPlayer eventPlayer, Ranks rank) {
         if (eventPlayer.getLives() <= 0) {
-            eventPlayer.sendMessage("You have no Pale Side lives. Purchase a life by running this command again with <gold>--confirm</gold> at the end.");
-            if (eventPlayer.getActiveExplorerMiles().isEmpty()) {
-                eventPlayer.sendMessage("This will cost you <gold>" + String.format("%,.2f", rank.getPaleSideEntryCost()) + "</gold> to purchase. (3 lives)");
+            eventPlayer.sendMessage("You have no Pale Side lives. Purchase lives by running this command again with <gold>--confirm</gold> at the end.");
+            if (eventPlayer.getActiveExplorerOrders().isEmpty()) {
+                eventPlayer.sendMessage("This will cost you <gold>$" + String.format("%,d", (long) rank.getPaleSideEntryCost()) + "</gold> to purchase. (3 lives)");
             } else {
-                eventPlayer.sendMessage("This will cost you <gold>" + String.format("%,.2f", rank.getPaleSideLifeCost()) + "</gold> to purchase. (1 life)");
+                eventPlayer.sendMessage("This will cost you <gold>$" + String.format("%,d", (long) rank.getPaleSideLifeCost()) + "</gold> to purchase. (1 life)");
             }
             return true;
         }
@@ -109,14 +114,14 @@ public class SuspendCommand implements CommandModule {
 
         Economy econ = VaultService.getInstance().getEconomy();
         if (econ == null) {
-            eventPlayer.sendMessage("No economy provider found.");
+            eventPlayer.sendMessage("No economy provider found, purchased 1 Pale Side life.");
             return 1;
         }
 
         EconomyResponse response;
         int expectedAmount;
 
-        if (eventPlayer.getActiveExplorerMiles().isEmpty()) { // initial purchase
+        if (eventPlayer.getActiveExplorerOrders().isEmpty()) { // initial purchase
             response = econ.withdrawPlayer(player, rank.getPaleSideEntryCost());
             expectedAmount = 3;
         } else {
