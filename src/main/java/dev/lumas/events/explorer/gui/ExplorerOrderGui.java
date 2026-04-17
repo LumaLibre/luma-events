@@ -24,7 +24,7 @@ import java.util.List;
 @NullMarked
 public class ExplorerOrderGui extends ExplorerGui {
 
-    private final Inventory baseInv = GuiUtil.getBaseInv(this, 54, "Explorer Orders");
+    private final Inventory baseInv = GuiUtil.getPaleSideInv(this, "Explorer Orders");
     private final EventPlayer eventPlayer;
 
     private final IndexedGuiItem previousPage = IndexedGuiItem.of(
@@ -73,7 +73,7 @@ public class ExplorerOrderGui extends ExplorerGui {
                 if (snapshot.isCompleted()) {
                     meta.addEnchant(Enchantment.UNBREAKING, 1, true);
                 }
-                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+                meta.addItemFlags(ItemFlag.values());
                 meta.displayName(Util.color(displayName));
                 meta.lore(Util.color(lore, TextColor.fromHexString(Util.TEXT_COLOR)));
             });
@@ -81,7 +81,7 @@ public class ExplorerOrderGui extends ExplorerGui {
         }
 
         this.paginatedGui = new PaginatedGui.Builder()
-                .name("Pale Side Orders")
+                .name("<b><gradient:#7B859D:#996779:#A7957B:#6B496B>Pale Side: Orders</gradient></b>")
                 .base(baseInv)
                 .items(items)
                 .startEndSlots(20, 34)

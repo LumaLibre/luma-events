@@ -35,12 +35,8 @@ public enum Ranks {
         this.permission = permission;
     }
 
-    public int getCost() {
-        return cost;
-    }
-
     public double getPaleSideEntryCost() {
-        return cost * 0.25;
+        return cost * 0.10;
     }
 
     public double getPaleSideLifeCost() {

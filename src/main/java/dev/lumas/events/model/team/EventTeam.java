@@ -8,7 +8,6 @@ import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Util;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
@@ -30,6 +29,8 @@ public abstract class EventTeam implements Scorer {
 
     private transient final String identifier;
     private transient final String displayName;
+    private transient final String color;
+    private transient final String chatColor;
     private transient final Component formattedDisplayName;
     private transient final String plainTextDisplayName;
 
@@ -38,9 +39,11 @@ public abstract class EventTeam implements Scorer {
 
 
 
-    public EventTeam(String identifier, String name, Map<UUID, EventTeamPlayerHandle> members) {
+    public EventTeam(String identifier, String name, String color, String chatColor, Map<UUID, EventTeamPlayerHandle> members) {
         this.identifier = identifier;
         this.displayName = name;
+        this.color = color;
+        this.chatColor = chatColor;
         this.members = members;
         this.formattedDisplayName = Util.color(name);
         this.plainTextDisplayName = PlainTextComponentSerializer.plainText().serialize(this.formattedDisplayName);
@@ -135,7 +138,7 @@ public abstract class EventTeam implements Scorer {
             throw new IllegalStateException("Player is not online!");
         }
         Component finalMsg = getFormattedSender(player.getName())
-                .append(msg.color(NamedTextColor.WHITE))
+                .append(msg.color(TextColor.fromHexString(chatColor)))
                 .colorIfAbsent(TextColor.fromHexString(Util.TEXT_COLOR));
         ChatHeadsService chatHeadsService = ChatHeadsService.getInstance().orElse(null);
 
@@ -158,7 +161,7 @@ public abstract class EventTeam implements Scorer {
     }
 
     public Component getFormattedSender(String sender) {
-        return Text.mm(displayName + " <reset><gray>|</gray> " + sender + "<gray>:</gray> ");
+        return Text.mm(displayName + " <reset><gray>|</gray> <" + color + ">" + sender + "<gray>:</gray> ");
     }
 
 

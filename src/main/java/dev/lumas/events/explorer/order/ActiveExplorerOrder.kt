@@ -91,7 +91,7 @@ class ActiveExplorerOrder(
             }
 
             val aside = ExplorerOrderRegistry.unifiedValueOf(asideImplName) ?: run {
-                LOGGER.info("Missing an ExplorerAside implementation for $asideImplName, was it removed?")
+                LOGGER.info("Missing an ExplorerOrder implementation for $asideImplName, was it removed?")
                 return null
             }
 

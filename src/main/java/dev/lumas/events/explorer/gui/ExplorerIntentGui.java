@@ -21,7 +21,7 @@ import java.util.List;
 @NullMarked
 public class ExplorerIntentGui extends ExplorerGui {
 
-    private final Inventory baseInv = GuiUtil.getBaseInv(this, 54, "Explorer Intents");
+    private final Inventory baseInv = GuiUtil.getPaleSideInv(this, "Explorer Intents");
 
     private final IndexedGuiItem previousPage = IndexedGuiItem.of(
             48,
@@ -54,7 +54,7 @@ public class ExplorerIntentGui extends ExplorerGui {
                 String displayName = Util.paleSideColor(explorerIntent.getTitle());
                 List<String> lore = GuiUtil.formatLore(explorerIntent.getDesc().split("\n"));
                 meta.addEnchant(Enchantment.UNBREAKING, 1, true);
-                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+                meta.addItemFlags(ItemFlag.values());
                 meta.displayName(Util.color(displayName));
                 meta.lore(Util.color(lore, TextColor.fromHexString(Util.TEXT_COLOR)));
             });
@@ -63,7 +63,7 @@ public class ExplorerIntentGui extends ExplorerGui {
         }
 
         this.paginatedGui = new PaginatedGui.Builder()
-                .name("Pale Side Intents")
+                .name("<b><gradient:#7B859D:#996779:#A7957B:#6B496B>Pale Side: Intents</gradient></b>")
                 .base(baseInv)
                 .items(items)
                 .startEndSlots(20, 34)

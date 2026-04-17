@@ -60,8 +60,8 @@ public class SuspendCommand implements CommandModule {
 
         Ranks rank = Ranks.getRank(target);
 
-        if (rank.ordinal() < Ranks.STELLARIS.ordinal()) {
-            eventPlayer.sendMessage("Only players with <gold>Stellaris</gold> or higher can participate in this.");
+        if (rank.ordinal() < Ranks.REVELATION.ordinal()) {
+            eventPlayer.sendMessage("Only players with <gold>Revelation</gold> or higher can participate in Pale Side.");
             return true;
         }
 

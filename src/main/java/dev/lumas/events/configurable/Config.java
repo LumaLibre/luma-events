@@ -69,7 +69,7 @@ public class Config extends OkaeriConfig {
     @Comment("Commands allowed while participating in a game or while a player is suspended")
     private List<String> commandWhitelist = List.of(
             "g", "l", "lc", "pc", "p", "sc", "msg", "r", "w", "whisper", "tell", "partychat", "staffchat",
-            "event"
+            "event", "wonderland", "wland", "wonder", "explorer"
     );
 
 

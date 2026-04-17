@@ -16,62 +16,97 @@ import org.bukkit.inventory.meta.SkullMeta;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 public class GuiUtil {
 
-    private static final Map<ItemStack, int[]> defaultItems = new HashMap<>();
     private static final UUID STATIC_UUID = UUID.fromString("dac456f8-bf29-40ce-9373-96947782b57f");
 
-    static {
-        defaultItems.put(borderItem(Material.GREEN_STAINED_GLASS_PANE), new int[]{0, 8, 45, 53});
-        defaultItems.put(borderItem(Material.SHORT_GRASS), new int[]{1, 7, 46, 52});
-        defaultItems.put(borderItem(Material.FERN), new int[]{2, 6, 47, 51});
-        defaultItems.put(borderItem(Material.PINK_TULIP), new int[]{3, 5, 48, 50});
-        defaultItems.put(borderItem(Material.LILY_PAD), new int[]{4, 49});
-    }
+
+    public record BorderEntry(ItemStack item, int[] slots) {}
+
+    public static final List<BorderEntry> DEFAULT_BORDER = List.of(
+            new BorderEntry(borderItem(Material.GREEN_STAINED_GLASS_PANE, false), new int[]{0, 8, 45, 53}),
+            new BorderEntry(borderItem(Material.SHORT_GRASS, false), new int[]{1, 7, 46, 52}),
+            new BorderEntry(borderItem(Material.FERN, false), new int[]{2, 6, 47, 51}),
+            new BorderEntry(borderItem(Material.PINK_TULIP, false), new int[]{3, 5, 48, 50}),
+            new BorderEntry(borderItem(Material.LILY_PAD, false), new int[]{4, 49})
+    );
+
+    public static final List<BorderEntry> PALE_SIDE_BORDER = List.of(
+            new BorderEntry(borderItem(Material.GRAY_STAINED_GLASS_PANE, true), new int[]{0, 8, 45, 53}),
+            new BorderEntry(borderItem(Material.DEAD_FIRE_CORAL_FAN, true), new int[]{1, 7, 46, 52}),
+            new BorderEntry(borderItem(Material.OPEN_EYEBLOSSOM, true), new int[]{2, 6, 47, 51}),
+            new BorderEntry(borderItem(Material.DEAD_FIRE_CORAL_FAN, true), new int[]{3, 5, 48, 50}),
+            new BorderEntry(borderItem(Material.PALE_OAK_SAPLING, true), new int[]{4, 49})
+    );
 
     public static Inventory getBaseInv(InventoryHolder holder, int size, String title) {
-        return getBaseInv(holder, size, Util.color(title));
+        return getBaseInv(holder, size, Util.color(title), DEFAULT_BORDER);
     }
 
     public static Inventory getBaseInv(InventoryHolder holder, int size, Component title) {
-        // When inv size is 54, do not modify any slot values.
-        // When inv size is 45, modify the second half of the values by -9.
-        // So, {0, 8, 45, 53} becomes {0, 8, 36, 44}
-        // and: {4, 49} becomes {4, 40}
+        return getBaseInv(holder, size, title, DEFAULT_BORDER);
+    }
 
+    public static Inventory getBaseInv(InventoryHolder holder, int size, String title, List<BorderEntry> border) {
+        return getBaseInv(holder, size, Util.color(title), border);
+    }
+
+    public static Inventory getBaseInv(InventoryHolder holder, int size, Component title, List<BorderEntry> border) {
         Inventory inv = Bukkit.createInventory(holder, size, title);
-        if (size < 18) { // Inventory size is too small for us to put our borders.
+        if (size < 18) { // Too small for borders
             return inv;
         }
 
-        for (Map.Entry<ItemStack, int[]> entry : defaultItems.entrySet()) {
-            ItemStack item = entry.getKey();
-            int[] slots = entry.getValue();
-            for (int i = 0; i < slots.length; i++) {
-                if (size == 54) {
-                    inv.setItem(slots[i], item);
-                } else {
-                    int factor = 54 - size;
-                    // split list in half
-                    // and subtract 9 from the second half
-                    if (i < slots.length / 2) {
-                        inv.setItem(slots[i], item);
-                    } else {
-                        inv.setItem(slots[i] - factor, item);
-                    }
-                }
-            }
-        }
+        applyBorder(inv, size, border);
         return inv;
     }
 
+    public static Inventory getPaleSideInv(InventoryHolder holder, String title) {
+        return getBaseInv(holder, 54, Util.color(title), PALE_SIDE_BORDER);
+    }
+
+    public static Inventory getPaleSideInv(InventoryHolder holder, Component title) {
+        return getBaseInv(holder, 54, title, PALE_SIDE_BORDER);
+    }
+
+
+    /**
+     * Applies a border config to an inventory. Slot arrays are authored for size 54;
+     * for smaller inventories, the second half of each slot array (assumed bottom row)
+     * is shifted up by (54 - size).
+     */
+    private static void applyBorder(Inventory inv, int size, List<BorderEntry> border) {
+        int factor = 54 - size;
+        for (BorderEntry entry : border) {
+            int[] slots = entry.slots();
+            ItemStack item = entry.item();
+            int half = slots.length / 2;
+            for (int i = 0; i < slots.length; i++) {
+                int slot = (size == 54 || i < half) ? slots[i] : slots[i] - factor;
+                if (slot >= 0 && slot < size) {
+                    inv.setItem(slot, item);
+                }
+            }
+        }
+    }
+
     public static ItemStack borderItem(Material m) {
-        return item(m, false, "<black>");
+        return borderItem(m, false);
+    }
+
+    public static ItemStack borderItem(Material m, boolean hideTooltip) {
+        ItemStack stack = item(m, false, "<black>");
+        if (hideTooltip) {
+            ItemMeta meta = stack.getItemMeta();
+            if (meta != null) {
+                meta.setHideTooltip(true);
+                stack.setItemMeta(meta);
+            }
+        }
+        return stack;
     }
 
     public static ItemStack playerHead(String base64, String name, String... lore) {
@@ -109,9 +144,8 @@ public class GuiUtil {
         return item;
     }
 
-
     public static List<String> formatLore(String input) {
-        String[] words = input.trim().split("\\s+"); // Split by one or more spaces
+        String[] words = input.trim().split("\\s+");
         List<String> chunks = new ArrayList<>();
 
         StringBuilder chunk = new StringBuilder();
@@ -127,7 +161,6 @@ public class GuiUtil {
             count++;
         }
 
-        // Add remaining words if any
         if (!chunk.isEmpty()) {
             chunks.add(chunk.toString().trim());
         }
@@ -141,10 +174,6 @@ public class GuiUtil {
             chunks.addAll(formatLore(input));
         }
         return chunks;
-    }
-
-    private static int getWordCount(String str) {
-        return str.split(" ").length;
     }
 
     public static ItemStack guiArrow(GuiArrow type) {

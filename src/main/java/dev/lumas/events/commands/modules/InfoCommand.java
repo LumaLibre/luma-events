@@ -11,6 +11,7 @@ import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.EventTeamManager;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.team.EventTeam;
+import dev.lumas.events.model.team.EventTeamPlayerHandle;
 import dev.lumas.events.utility.Util;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -46,11 +47,13 @@ public class InfoCommand implements CommandModule {
 
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
         EventTeam eventTeam = EventTeamManager.getByMember(eventPlayer);
+        EventTeamPlayerHandle handle = eventTeam == null ? null : eventTeam.getMember(eventPlayer);
 
         eventPlayer.sendNoPrefixedMessage(BORDER);
         eventPlayer.sendNoPrefixedMessage("Stats for: <gold>" + player.getName() + " " + Util.getRandom(FACES));
         eventPlayer.sendNoPrefixedMessage(Text.mm("Team: " + (eventTeam == null ? "<gray>None" : eventTeam.getDisplayName() + " <gold>(" + eventTeam.getOnlineMembers() + "/" + eventTeam.getTotalMembers() + ")")));
         eventPlayer.sendNoPrefixedMessage("Souls: <gold>" + eventPlayer.getSouls());
+        eventPlayer.sendNoPrefixedMessage("Points: <gold>" + (handle != null ? handle.getPoints() : "0") + ")");
         eventPlayer.sendNoPrefixedMessage("Suspended: <gold>" + (eventPlayer.isSuspended() ? "Yes" : "No"));
         for (var entry : eventPlayer.getPermanentScores().entrySet()) {
             eventPlayer.sendNoPrefixedMessage(Util.formatSnakeCase(entry.getKey().name()) + ": <gold>" + entry.getValue());
