@@ -39,7 +39,7 @@ public class TeamPlayerPointsPlaceholder implements PlaceholderModule {
 
         List<EventTeamPlayerHandle> members = eventTeam.getMembers()
                 .stream()
-                .sorted(Comparator.comparingInt(EventTeamPlayerHandle::getPoints))
+                .sorted(Comparator.comparingInt(EventTeamPlayerHandle::getPoints).reversed())
                 .toList();
 
         if (position <= members.size()) {

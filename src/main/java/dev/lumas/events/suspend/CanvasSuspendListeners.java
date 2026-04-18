@@ -21,7 +21,7 @@ public class CanvasSuspendListeners implements Listener {
     public void onEntityTeleportAsync(EntityTeleportAsyncEvent event) {
         if (!(event.getEntity() instanceof Player player) || player.hasPermission("lumaevents.bypass")) return;
 
-        if (isSuspendedOnlyWorld(event.getFrom().getWorld()) && isPlayerSuspended(player)) {
+        if (isSuspendedOnlyWorld(event.getFrom().getWorld()) && !isSuspendedOnlyWorld(event.getTo().getWorld()) && isPlayerSuspended(player)) {
             event.setCancelled(true);
             Util.sendMsg(player, "You cannot leave this world while suspended.");
         } else if (isSuspendedOnlyWorld(event.getTo().getWorld()) && !isPlayerSuspended(player)) {
