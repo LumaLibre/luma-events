@@ -40,7 +40,7 @@ public enum Ranks {
     }
 
     public double getPaleSideLifeCost() {
-        return cost * 0.01;
+        return Math.min(cost * 0.01, 500_000);
     }
 
     public static Ranks getRank(Player player) {

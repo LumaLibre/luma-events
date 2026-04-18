@@ -55,7 +55,7 @@ public class EventPlayer implements Serializable, Scorer {
     private static final ContextLogger LOGGER = ContextLogger.getLogger();
     private static final Config CONFIG = EventMain.getOkaeriConfig();
 
-    public static final long SUSPEND_COOLDOWN_MS = 300000;
+    public static final long SUSPEND_COOLDOWN_MS = 60000;
     public static final long INVINCIBLE_TIME_MS = 30000;
 
 
@@ -66,6 +66,8 @@ public class EventPlayer implements Serializable, Scorer {
     private transient boolean sortedExplorerOrders;
     private transient long suspendCooldown;
     private transient long invincible;
+    @Nullable
+    private transient Location lastPaleSideLocation;
 
     private final UUID uuid;
     private final Map<MinigameConstant, Integer> scores;
@@ -192,7 +194,11 @@ public class EventPlayer implements Serializable, Scorer {
     public void operatePlayer(Consumer<Player> consumer) {
         Player player = this.getPlayer();
         if (player != null) {
-            Executors.runSync(player, () -> consumer.accept(player));
+            if (Bukkit.isOwnedByCurrentRegion(player)) {
+                Executors.runSync(player, () -> consumer.accept(player));
+            } else {
+                consumer.accept(player);
+            }
         }
     }
 
@@ -431,25 +437,38 @@ public class EventPlayer implements Serializable, Scorer {
 
             this.switchInventory();
             player.clearActivePotionEffects();
-            this.invincible = System.currentTimeMillis() + INVINCIBLE_TIME_MS;
+            //this.invincible = System.currentTimeMillis() + INVINCIBLE_TIME_MS; // TODO
 
-            BetterRTPService.getInstance().ifPresentOrElse(service -> {
-                service.rtp(player, world);
-            }, () -> {
-                LOGGER.warning("BetterRTP is not enabled, can't RTP player.");
-                player.teleportAsync(worldSpawn).thenAccept(success -> {
+
+
+            if (this.lastPaleSideLocation == null) {
+                BetterRTPService.getInstance().ifPresentOrElse(service -> {
+                    service.rtp(player, world);
+                }, () -> {
+                    LOGGER.warning("BetterRTP is not enabled, can't RTP player.");
+                    player.teleportAsync(worldSpawn).thenAccept(success -> {
+                        if (!success) {
+                            this.suspended = false;
+                            LOGGER.warning("Failed to teleport player to suspended world spawn");
+                            future.complete(false);
+                        } else {
+                            future.complete(true);
+                        }
+                    }).exceptionally(throwable -> {
+                        future.completeExceptionally(throwable);
+                        return null;
+                    });
+                });
+            } else {
+                player.teleportAsync(this.lastPaleSideLocation).thenAccept(success -> {
                     if (!success) {
                         this.suspended = false;
-                        LOGGER.warning("Failed to teleport player to suspended world spawn");
+                        LOGGER.warning("Failed to teleport player to last Pale Side location");
                         future.complete(false);
-                    } else {
-                        future.complete(true);
                     }
-                }).exceptionally(throwable -> {
-                    future.completeExceptionally(throwable);
-                    return null;
                 });
-            });
+                sendMessage("You have been teleported to your last Pale Side location (transient).");
+            }
         });
         return future;
     }
@@ -459,9 +478,13 @@ public class EventPlayer implements Serializable, Scorer {
         unsuspend(true);
     }
 
-    public void unsuspend(boolean teleport) {
+    public void unsuspend(boolean saveLoc) {
         this.operatePlayer(player -> {
             Preconditions.checkState(this.suspended, "Player is not suspended");
+
+            if (saveLoc) {
+                this.lastPaleSideLocation = player.getLocation();
+            }
 
             if (this.storedInventoryState == PersistentInventoryState.MAIN_INVENTORY) {
                 this.switchInventory();
@@ -475,14 +498,14 @@ public class EventPlayer implements Serializable, Scorer {
 
             player.clearActivePotionEffects();
 
-            if (dropOffLocation != null && teleport) {
+            if (dropOffLocation != null) {
                 player.teleportAsync(dropOffLocation).thenAccept(success -> {
                     if (!success) {
                         LOGGER.warning("Failed to teleport player to unsuspend world spawn after unsuspending.");
                     }
                 });
 
-            } else if (unsuspendedWorld != null && teleport) {
+            } else if (unsuspendedWorld != null) {
                 player.teleportAsync(unsuspendedWorld.getSpawnLocation()).thenAccept(success -> {
                     if (!success) {
                         LOGGER.warning("Failed to teleport player to unsuspend world spawn after unsuspending.");

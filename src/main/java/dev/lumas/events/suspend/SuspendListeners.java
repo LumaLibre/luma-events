@@ -36,6 +36,11 @@ public class SuspendListeners implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPreProcessCommand(PlayerCommandPreprocessEvent event) {
+        lowOnPreProcessCommand(event);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void lowOnPreProcessCommand(PlayerCommandPreprocessEvent event) {
         Player player = event.getPlayer();
         if (!isSuspendedOnlyWorld(player.getWorld()) || player.hasPermission("lumaevents.bypass")) return;
         List<String> allowedCommands = EventMain.getOkaeriConfig().getCommandWhitelist();

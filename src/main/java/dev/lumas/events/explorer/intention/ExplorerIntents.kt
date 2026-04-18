@@ -132,7 +132,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
         val eventPlayer = EventPlayerManager.getByUUIDOrNull(player.uniqueId)
         Executors.delayedSync(eventPlayer, 1) {
             if (eventPlayer != null && eventPlayer.isSuspended) {
-                eventPlayer.unsuspend()
+                eventPlayer.unsuspend(false)
                 eventPlayer.lives -= 1
                 eventPlayer.deaths++
                 EventPlayerManager.save(eventPlayer)
