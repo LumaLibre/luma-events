@@ -273,14 +273,6 @@ public final class Towers extends InventoryUnifiedMinigame {
                     .seconds(15)
                     .callback(() -> {
                         this.participants.forEach(eventPlayer -> {
-                            EventTeam team = eventPlayer.getLazyTeam();
-                            EventTeamManager.Provider provider = EventTeamManager.Provider.fromTeam(team);
-
-                            Location loc = this.getGameDropOffLocationForTeam(provider);
-
-                            if (loc != null) {
-                                eventPlayer.teleportAsync(loc);
-                            }
                             eventPlayer.sendMessage("This minigame has concluded.");
                         });
                     })

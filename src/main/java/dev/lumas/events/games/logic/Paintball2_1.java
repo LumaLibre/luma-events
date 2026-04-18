@@ -165,14 +165,6 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                     .title("<red><b>Game Over")
                     .seconds(15)
                     .callback(() -> this.participants.forEach(eventPlayer -> {
-                        EventTeam team = eventPlayer.getLazyTeam();
-                        EventTeamManager.Provider provider = EventTeamManager.Provider.fromTeam(team);
-
-                        Location loc = this.getGameDropOffLocationForTeam(provider);
-
-                        if (loc != null) {
-                            eventPlayer.teleportAsync(loc);
-                        }
                         eventPlayer.sendMessage("This minigame has concluded.");
                     }))
                     .build()

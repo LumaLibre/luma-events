@@ -159,12 +159,6 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
                 .title("<aqua><b>Game Over")
                 .seconds(10)
                 .callback(() -> this.participants.forEach(ep -> {
-                    EventTeam team = ep.getLazyTeam();
-                    EventTeamManager.Provider provider = EventTeamManager.Provider.fromTeam(team);
-
-                    Location dropOff = this.getGameDropOffLocationForTeam(provider);
-
-                    if (dropOff != null) ep.teleportAsync(dropOff);
                     ep.sendMessage("This minigame has concluded.");
                 }))
                 .build()
