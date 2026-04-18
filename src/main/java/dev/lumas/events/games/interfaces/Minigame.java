@@ -185,7 +185,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         }
 
         if (this.requiresTeams() && EventTeamManager.getByMember(player) == null) {
-            player.sendMessage("You must be in a team to join this minigame. <gold><click_run:command:'/event jointeam>/event jointeam");
+            player.sendMessage("You must be in a team to join this minigame. <gold><click:run_command:/event jointeam>/event jointeam");
             return false;
         }
 

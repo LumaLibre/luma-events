@@ -78,6 +78,8 @@ public class EventPlayer implements Serializable, Scorer {
     private int lives;
     @Setter
     private boolean initialSpawn;
+    @Setter
+    private int deaths;
 
 
     // Initial creation
@@ -443,18 +445,28 @@ public class EventPlayer implements Serializable, Scorer {
             this.switchInventory();
             this.suspended = false;
 
+            Location dropOffLocation = EventMain.getOkaeriConfig().getExplorer().getUnsuspendDropOffLocation();
             World unsuspendedWorld = EventMain.getOkaeriConfig().getUnsuspendWorld();
 
-            if (unsuspendedWorld != null && teleport) {
-                player.teleportAsync(unsuspendedWorld.getSpawnLocation()).thenAccept(success -> {
+            player.clearActivePotionEffects();
+
+            if (dropOffLocation != null && teleport) {
+                player.teleportAsync(dropOffLocation).thenAccept(success -> {
                     if (!success) {
                         LOGGER.warning("Failed to teleport player to unsuspend world spawn after unsuspending.");
                     }
                 });
 
-                player.clearActivePotionEffects();
+            } else if (unsuspendedWorld != null && teleport) {
+                player.teleportAsync(unsuspendedWorld.getSpawnLocation()).thenAccept(success -> {
+                    if (!success) {
+                        LOGGER.warning("Failed to teleport player to unsuspend world spawn after unsuspending.");
+                    }
+                });
             } else {
-                LOGGER.warning("No unsuspend world available.");
+                {
+                    LOGGER.warning("No unsuspend world available.");
+                }
             }
         });
     }

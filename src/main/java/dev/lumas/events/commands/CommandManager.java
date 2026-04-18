@@ -42,10 +42,13 @@ public class CommandManager extends AbstractCommandManager<EventMain, CommandMod
 
         Location locInitial = EventMain.getOkaeriConfig().getInitialEventSpawnLocation();
         Location loc = EventMain.getOkaeriConfig().getEventSpawnLocation();
+        Location paleSide = EventMain.getOkaeriConfig().getExplorer().getUnsuspendDropOffLocation();
 
         if (!eventPlayer.isInitialSpawn() && locInitial != null) {
             eventPlayer.setInitialSpawn(true);
             player.teleportAsync(locInitial.toCenterLocation());
+        } else if (label.equalsIgnoreCase("explorer") && paleSide != null) {
+            player.teleportAsync(paleSide.toCenterLocation());
         } else if (loc != null) {
             player.teleportAsync(loc.toCenterLocation());
         }

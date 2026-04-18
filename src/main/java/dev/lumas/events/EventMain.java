@@ -23,6 +23,7 @@ import lombok.Getter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
+import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.concurrent.TimeUnit;
@@ -80,6 +81,7 @@ public final class EventMain extends JavaPlugin {
         EventPlayerManager.saveAllAndClear();
         EventTeamManager.saveAll();
         CountdownBossBar.stopAll(false);
+        HandlerList.unregisterAll(this);
         for (BossBar bossBar : CountdownBossBar.activeCountdowns.stream().map(CountdownBossBar::getBossBar).toList()) {
             bossBar.removeViewer(Audience.audience(Bukkit.getOnlinePlayers()));
         }

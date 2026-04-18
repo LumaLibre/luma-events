@@ -20,7 +20,7 @@ class WaxcapShroomItem : CustomItemFunctions() {
                 "room that has almost",
                 "no texture to it.",
                 "",
-                "Craft <#ead3c1>4</#ead3c1> of these into",
+                "Craft <#ead3c1>5</#ead3c1> of these into",
                 "a different item."
             )
             .material(Material.BROWN_MUSHROOM)

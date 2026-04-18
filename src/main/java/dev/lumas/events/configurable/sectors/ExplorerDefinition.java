@@ -3,6 +3,7 @@ package dev.lumas.events.configurable.sectors;
 import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.annotation.Comment;
 import lombok.Getter;
+import org.bukkit.Location;
 
 import java.util.List;
 
@@ -18,6 +19,9 @@ public class ExplorerDefinition extends OkaeriConfig {
             "pale_side", "pale_nether", "pale_end"
     );
 
-    @Comment("The world to spawn the player back into after being unsuspended. If this world does not exist, a random world will be chosen.")
+    @Comment("The world to spawn the player back into after being unsuspended (if drop off location is not available). If this world does not exist, a random world will be chosen.")
     private String suspendRemovalWorld = "spawn";
+
+    @Comment("The location to drop the player off to after being unsuspended. If this location is not available, the player will be teleported to the world specified in 'suspendRemovalWorld'.")
+    private Location unsuspendDropOffLocation;
 }

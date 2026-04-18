@@ -25,8 +25,8 @@ public class FreezeTagDefinition extends OkaeriConfig {
     private boolean allowFreezingWhileFrozen = false;
     private boolean allowUnfreezingWhileFrozen = false;
     private boolean allowHealingWhileFrozen = true;
-    private int freezePoints = 3;
-    private int unfreezePoints = 2;
+    private int freezePoints = 6;
+    private int unfreezePoints = 4;
     private int minimumTokens = 5;
     private int tokensPerPoint = 1;
 

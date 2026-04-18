@@ -14,9 +14,9 @@ public class Paintball2_1TokenFormula extends TokenFormula<Couple<Integer, Boole
 
         int total = isWinner ? 18 : 17;
         if (position <= PRIORITY_POSITIONS) {
-            total += Math.max(PRIORITY_POSITIONS - position, 4);
+            total += Math.max(PRIORITY_POSITIONS - (position * 2), 4);
         }
 
-        return Math.min(total, 30);
+        return Math.min(total, 65);
     }
 }

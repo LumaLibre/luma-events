@@ -53,7 +53,7 @@ public class BunnyArenaListener implements Listener {
         });
     }
 
-    @EventHandler
+    //@EventHandler
     public void onEntitySpawnEvent(EntitySpawnEvent event) {
         BunnyArenaRegionHandler regionHandler = BunnyArenaSchedulerService.getInstance().getBunnyArenaRegionHandler();
         if (regionHandler == null) {
@@ -67,7 +67,7 @@ public class BunnyArenaListener implements Listener {
         }
 
         if (entity instanceof LivingEntity && !Util.hasPersistentKey(entity, "bunny")) {
-            event.setCancelled(true);
+            //event.setCancelled(true);
         }
     }
 

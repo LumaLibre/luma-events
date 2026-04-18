@@ -321,10 +321,6 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         if (!this.blacklistedMaterials.contains(blockBelowPlayer.getType())) {
             this.paint(locationBelowPlayer, paintballTeam, eventPlayer, 1);
         }
-
-        Executors.delayedSync(shooter, 1, () -> {
-            shooter.launchProjectile(Snowball.class); // launch another one to cover more ground
-        });
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -352,7 +348,9 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             });
             unsafe(() -> {
                 Logging.log("Respawning player: " + player.getName() + " at team spawn point: " + victimTeam.getSpawnPoint() + " for " + eventPlayer.getName());
-                player.teleportAsync(victimTeam.getSpawnPoint().toCenterLocation());
+                Executors.delayedSync(player, 1, () -> {
+                    player.teleportAsync(victimTeam.getSpawnPoint().toCenterLocation());
+                });
             });
             return;
         }
@@ -385,7 +383,9 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         });
         unsafe(() -> {
             Logging.log("Respawning player: " + player.getName() + " at team spawn point: " + victimTeam.getSpawnPoint() + " for " + eventPlayer.getName());
-            player.teleportAsync(victimTeam.getSpawnPoint().toCenterLocation());
+            Executors.delayedSync(player, 1, () -> {
+                player.teleportAsync(victimTeam.getSpawnPoint().toCenterLocation());
+            });
         });
     }
 

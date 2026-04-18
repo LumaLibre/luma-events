@@ -10,6 +10,7 @@ import dev.lumas.events.explorer.gui.ExplorerGui
 import dev.lumas.events.manager.EventPlayerManager
 import dev.lumas.events.utility.Executors
 import dev.lumas.events.utility.Util
+import org.bukkit.GameMode
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
@@ -73,11 +74,11 @@ object ExplorerIntents : ExplorerIntentContainer() {
         }
     }
     private val NAMESPACED_KEY = NamespacedKey(EventMain.getInstance(), "explorer_intents")
-    private val MINING_FATIGUE = PotionEffect(PotionEffectType.MINING_FATIGUE, 250, 0)
-    private val BLINDNESS = PotionEffect(PotionEffectType.BLINDNESS, 250, 0)
-    private val DARKNESS = PotionEffect(PotionEffectType.DARKNESS, 250, 0)
-    private val SLOWNESS_1 = PotionEffect(PotionEffectType.SLOWNESS, 250, 0)
-    private val SLOWNESS_2 = PotionEffect(PotionEffectType.SLOWNESS, 250, 1)
+    private val MINING_FATIGUE = PotionEffect(PotionEffectType.MINING_FATIGUE, 400, 0)
+    private val BLINDNESS = PotionEffect(PotionEffectType.BLINDNESS, 400, 0)
+    private val DARKNESS = PotionEffect(PotionEffectType.DARKNESS, 400, 0)
+    private val SLOWNESS_1 = PotionEffect(PotionEffectType.SLOWNESS, 400, 0)
+    private val SLOWNESS_2 = PotionEffect(PotionEffectType.SLOWNESS, 400, 1)
     private val VALID_CONTAINERS = listOf(
         InventoryType.BLAST_FURNACE,
         InventoryType.BEACON,
@@ -128,6 +129,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
             if (eventPlayer != null && eventPlayer.isSuspended) {
                 eventPlayer.unsuspend()
                 eventPlayer.lives -= 1
+                eventPlayer.deaths++
                 EventPlayerManager.save(eventPlayer)
             }
         }
@@ -315,6 +317,10 @@ object ExplorerIntents : ExplorerIntentContainer() {
         icon = Material.ENDER_EYE
     ) { event ->
         val player = event.player
+        if (player.gameMode != GameMode.SURVIVAL) {
+            return@ExplorerIntent
+        }
+
         val nearbyEnemies = player.location.getNearbyLivingEntities(65.0)
             .filter { ((it is Enemy || it is Golem || it is Bee) && it !is Enderman) }
             .map { it as Mob }

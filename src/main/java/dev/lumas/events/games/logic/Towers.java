@@ -96,7 +96,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     private final List<Location> gridLocations;
 
     public Towers(TowersDefinition def) {
-        super(def.isEscalation() ? "Escalation Towers" : "Towers", "Don't fall.", 480000, TICK_INTERVAL, true, false, false, false);
+        super(def.isEscalation() ? "Team Escalation Towers" : "Team Towers", "Don't fall.", 480000, TICK_INTERVAL, true, false, false, false);
 
         this.boundingBox = WorldTiedBoundingBox.of(def.getRegion().getLoc1(), def.getRegion().getLoc2());
         this.spawnLocation = def.getSpawnLocation().toCenterLocation();
@@ -107,7 +107,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         this.scarletCenterPoint = def.getScarletCenterPoint().toCenterLocation();
         this.towersPlayers = new MinigameRoleMap<>(TowersPlayer::cleanup);
         this.scoreboard = new Scoreboard<>();
-        this.tokenFormula = new FlatIntTokenFormula(34);
+        this.tokenFormula = new FlatIntTokenFormula(65);
         this.isEscalation = def.isEscalation();
         this.forceGameArenaYLevel = this.centerPoint.getY() - 10;
         this.gridLocations = new ArrayList<>();
@@ -228,7 +228,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     @Override
     protected void handleStop() {
         this.towersPlayers.getMatching(ActivePlayer.class).forEach(activePlayer -> {
-            this.scoreboard.addScore(activePlayer.getEventPlayer(), 10);
+            this.scoreboard.addScore(activePlayer.getEventPlayer(), 15);
         });
 
         this.towersPlayers.values().forEach(towersPlayer -> {
@@ -247,8 +247,10 @@ public final class Towers extends InventoryUnifiedMinigame {
             }
         });
         unsafe(() -> {
-            this.boundingBox.getEntities(Entity.class).stream().filter(it -> !(it instanceof Player)).forEach(it -> {
-                Executors.runSync(it, it::remove);
+            Executors.runSync(this.boundingBox.getCenterLocation(), () -> {
+                this.boundingBox.getEntities(Entity.class).stream().filter(it -> !(it instanceof Player)).forEach(it -> {
+                    Executors.runSync(it, it::remove);
+                });
             });
         });
         if (this.newItemTimer != null) {
@@ -539,7 +541,7 @@ public final class Towers extends InventoryUnifiedMinigame {
                             .filter(Material::isItem)
                             .filter(Material::isSolid)
                             .toList());
-                    itemStack = ItemStack.of(material, RANDOM.nextInt(3, 5));
+                    itemStack = ItemStack.of(material, RANDOM.nextInt(3, 10));
                 }
                 final ItemStack finalItemStack = itemStack;
                 activePlayer.getEventPlayer().sendMessage("You got: " + Util.formatMaterialName(itemStack.getType().toString()) + " x" + itemStack.getAmount());
@@ -657,7 +659,7 @@ public final class Towers extends InventoryUnifiedMinigame {
 
             if (!dirty) {
                 this.dirty = true;
-                this.context.scoreboard.addScore(this.eventPlayer, 4);
+                this.context.scoreboard.addScore(this.eventPlayer, 5);
             }
 
             event.setCancelled(true);
@@ -675,7 +677,7 @@ public final class Towers extends InventoryUnifiedMinigame {
             }
 
             TowersPlayer attackerPlayer = this.context.towersPlayers.get(this.lastAttacker);
-            this.context.scoreboard.addScore(attackerPlayer.getEventPlayer(), 6);
+            this.context.scoreboard.addScore(attackerPlayer.getEventPlayer(), 9);
             if (attackerPlayer instanceof ActivePlayer activePlayer) {
                 activePlayer.kills++;
                 Player bukkitAttacker = activePlayer.getEventPlayer().getPlayer();

@@ -95,11 +95,13 @@ public class SuspendCommand implements CommandModule {
 
     private boolean isLivesNeeded(EventPlayer eventPlayer, Ranks rank) {
         if (eventPlayer.getLives() <= 0) {
+            String click = " <gold>Click <click:run_command:/event suspend --confirm><red><u>here</u></red></click> to confirm.</gold>";
+
             eventPlayer.sendMessage("You have no Pale Side lives. Purchase lives by running this command again with <gold>--confirm</gold> at the end.");
             if (eventPlayer.getActiveExplorerOrders().isEmpty()) {
-                eventPlayer.sendMessage("This will cost you <gold>$" + String.format("%,d", (long) rank.getPaleSideEntryCost()) + "</gold> to purchase. (3 lives)");
+                eventPlayer.sendMessage("This will cost you <gold>$" + String.format("%,d", (long) rank.getPaleSideEntryCost()) + "</gold> to purchase. (3 lives)" + click);
             } else {
-                eventPlayer.sendMessage("This will cost you <gold>$" + String.format("%,d", (long) rank.getPaleSideLifeCost()) + "</gold> to purchase. (1 life)");
+                eventPlayer.sendMessage("This will cost you <gold>$" + String.format("%,d", (long) rank.getPaleSideLifeCost()) + "</gold> to purchase. (1 life)" + click);
             }
             return true;
         }
