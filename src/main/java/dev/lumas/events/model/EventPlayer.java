@@ -391,10 +391,12 @@ public class EventPlayer implements Serializable, Scorer {
         });
     }
 
-    public void suspend() {
+    public CompletableFuture<Boolean> suspend() {
         if (!CONFIG.getExplorer().isExplorerOrders()) {
-            return;
+            return CompletableFuture.completedFuture(false);
         }
+
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
 
         this.operatePlayer(player ->  {
             List<String> worldNames = EventMain.getOkaeriConfig().getExplorer().getSuspendedWorlds();
@@ -411,11 +413,13 @@ public class EventPlayer implements Serializable, Scorer {
                 if (!success) {
                     this.suspended = false;
                     LOGGER.warning("Failed to teleport player to suspended world spawn");
-                    return; // Quietly fail here.
+                    future.complete(false);
+                    return;
                 }
                 if (this.storedInventoryState != PersistentInventoryState.TRANSIENT_INVENTORY) {
                     this.suspended = false;
-                    throw new IllegalStateException("Player inventory is not in transient state");
+                    future.completeExceptionally(new IllegalStateException("Player inventory is not in transient state"));
+                    return;
                 }
                 this.switchInventory();
 
@@ -425,11 +429,15 @@ public class EventPlayer implements Serializable, Scorer {
                 BetterRTPService.getInstance().ifPresentOrElse(service -> {
                     service.rtp(player, world);
                 }, () -> LOGGER.warning("BetterRTP is not enabled, can't RTP player."));
+
+                future.complete(true);
             }).exceptionally(throwable -> {
-                throwable.printStackTrace();
+                future.completeExceptionally(throwable);
                 return null;
             });
         });
+
+        return future;
     }
 
 
@@ -440,9 +448,12 @@ public class EventPlayer implements Serializable, Scorer {
     public void unsuspend(boolean teleport) {
         this.operatePlayer(player -> {
             Preconditions.checkState(this.suspended, "Player is not suspended");
-            Preconditions.checkState(this.storedInventoryState == PersistentInventoryState.MAIN_INVENTORY, "Player inventory is not in main state");
 
-            this.switchInventory();
+            if (this.storedInventoryState == PersistentInventoryState.MAIN_INVENTORY) {
+                this.switchInventory();
+            } else {
+                LOGGER.warning("Unsuspending " + player.getName() + " with TRANSIENT inventory state, save likely occurred before suspend completed.");
+            }
             this.suspended = false;
 
             Location dropOffLocation = EventMain.getOkaeriConfig().getExplorer().getUnsuspendDropOffLocation();
