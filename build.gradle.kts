@@ -63,6 +63,8 @@ dependencies {
     compileOnly("com.gmail.nossr50.mcMMO:mcMMO:2.2.047-CUSTOM") {
         isTransitive = false
     }
+
+    compileOnly("com.github.LumaLibre:HiddenArmor-Folia:96bcba105e")
 }
 
 java {

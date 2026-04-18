@@ -25,6 +25,7 @@ import org.bukkit.Location;
 import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
+import me.kteq.hiddenarmor.HiddenArmorAPI;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.jspecify.annotations.Nullable;
@@ -37,6 +38,16 @@ import java.util.Random;
 @Getter
 @Setter
 public abstract class Minigame extends AsynchronousRunnable implements Listener {
+
+    private static final boolean HIDDEN_ARMOR_AVAILABLE;
+    static {
+        boolean available = false;
+        try {
+            Class.forName("me.kteq.hiddenarmor.HiddenArmorAPI");
+            available = true;
+        } catch (ClassNotFoundException ignored) {}
+        HIDDEN_ARMOR_AVAILABLE = available;
+    }
 
     protected static final Random RANDOM = Util.RANDOM;
 
@@ -125,6 +136,12 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         }
         this.onPreStart();
 
+        if (HIDDEN_ARMOR_AVAILABLE) {
+            for (EventPlayer participant : this.participants) {
+                participant.operatePlayer(HiddenArmorAPI::forceShow);
+            }
+        }
+
         registerEvents(this);
         this.audience = Audience.audience(participants.stream()
                 .map(EventPlayer::getPlayer).filter(Objects::nonNull).toList());
@@ -166,6 +183,12 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             this.onPostStop();
         } catch (Throwable throwable) {
             throwable.printStackTrace();
+        }
+
+        if (HIDDEN_ARMOR_AVAILABLE) {
+            for (EventPlayer participant : this.participants) {
+                participant.operatePlayer(HiddenArmorAPI::clearForceShow);
+            }
         }
 
         unregisterEvents(this);
@@ -213,6 +236,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
     public boolean removeParticipant(EventPlayer player, boolean doTeleport) {
         this.participants.remove(player);
+        if (HIDDEN_ARMOR_AVAILABLE) player.operatePlayer(HiddenArmorAPI::clearForceShow);
         Location loc = this.getGameDropOffLocation();
         if (loc != null && doTeleport) {
             player.operatePlayer(bukkitPlayer -> {
