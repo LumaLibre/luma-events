@@ -44,7 +44,7 @@ class AmanitaShroomItem : CustomItemFunctionsWithRecipe() {
         val lesserToken = WaxcapShroomItem().createItem().second.asOne()
         val recipe = ShapelessRecipe(key, this.createItem().second.asOne())
 
-        recipe.addIngredient(5, lesserToken)
+        recipe.addIngredient(7, lesserToken)
 
         return Pair(key, recipe)
     }
