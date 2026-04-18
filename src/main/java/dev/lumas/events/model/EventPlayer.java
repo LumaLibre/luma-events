@@ -194,6 +194,13 @@ public class EventPlayer implements Serializable, Scorer {
     public void operatePlayer(Consumer<Player> consumer) {
         Player player = this.getPlayer();
         if (player != null) {
+            Executors.runSync(player, () -> consumer.accept(player));
+        }
+    }
+
+    public void operatePlayerSafely(Consumer<Player> consumer) {
+        Player player = this.getPlayer();
+        if (player != null) {
             if (Bukkit.isOwnedByCurrentRegion(player)) {
                 Executors.runSync(player, () -> consumer.accept(player));
             } else {
@@ -377,7 +384,7 @@ public class EventPlayer implements Serializable, Scorer {
     }
 
     private synchronized void switchInventory() {
-        this.operatePlayer(player -> {
+        this.operatePlayerSafely(player -> {
             PlayerInventory inv = player.getInventory();
             int level = player.getLevel();
             float experience = player.getExp();
@@ -418,7 +425,7 @@ public class EventPlayer implements Serializable, Scorer {
 
         CompletableFuture<Boolean> future = new CompletableFuture<>();
 
-        this.operatePlayer(player ->  {
+        this.operatePlayerSafely(player ->  {
             List<String> worldNames = EventMain.getOkaeriConfig().getExplorer().getSuspendedWorlds();
             Preconditions.checkState(!worldNames.isEmpty(), "No suspended worlds are configured");
             World world = Preconditions.checkNotNull(Bukkit.getWorld(worldNames.getFirst()));
@@ -479,7 +486,7 @@ public class EventPlayer implements Serializable, Scorer {
     }
 
     public void unsuspend(boolean saveLoc) {
-        this.operatePlayer(player -> {
+        this.operatePlayerSafely(player -> {
             Preconditions.checkState(this.suspended, "Player is not suspended");
 
             if (saveLoc) {
