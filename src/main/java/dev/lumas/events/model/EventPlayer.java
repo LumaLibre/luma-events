@@ -56,7 +56,7 @@ public class EventPlayer implements Serializable, Scorer {
     private static final Config CONFIG = EventMain.getOkaeriConfig();
 
     public static final long SUSPEND_COOLDOWN_MS = 300000;
-    public static final long INVINCIBLE_TIME_MS = 60000;
+    public static final long INVINCIBLE_TIME_MS = 30000;
 
 
     @Nullable
@@ -423,32 +423,32 @@ public class EventPlayer implements Serializable, Scorer {
             Preconditions.checkState(!this.suspended, "Player is already suspended");
             this.suspended = true;
 
-            player.teleportAsync(worldSpawn).thenAccept(success -> {
-                if (!success) {
-                    this.suspended = false;
-                    LOGGER.warning("Failed to teleport player to suspended world spawn");
-                    future.complete(false);
-                    return;
-                }
-                if (this.storedInventoryState != PersistentInventoryState.TRANSIENT_INVENTORY) {
-                    this.suspended = false;
-                    future.completeExceptionally(new IllegalStateException("Player inventory is not in transient state"));
-                    return;
-                }
-                this.switchInventory();
+            if (this.storedInventoryState != PersistentInventoryState.TRANSIENT_INVENTORY) {
+                this.suspended = false;
+                future.completeExceptionally(new IllegalStateException("Player inventory is not in transient state"));
+                return;
+            }
 
-                player.clearActivePotionEffects();
-                this.invincible = System.currentTimeMillis() + INVINCIBLE_TIME_MS;
+            this.switchInventory();
+            player.clearActivePotionEffects();
+            this.invincible = System.currentTimeMillis() + INVINCIBLE_TIME_MS;
 
-                // Finished preparing and putting the player into this world with their new inventory.
-                BetterRTPService.getInstance().ifPresentOrElse(service -> {
-                    service.rtp(player, world);
-                }, () -> LOGGER.warning("BetterRTP is not enabled, can't RTP player."));
-
-                future.complete(true);
-            }).exceptionally(throwable -> {
-                future.completeExceptionally(throwable);
-                return null;
+            BetterRTPService.getInstance().ifPresentOrElse(service -> {
+                service.rtp(player, world);
+            }, () -> {
+                LOGGER.warning("BetterRTP is not enabled, can't RTP player.");
+                player.teleportAsync(worldSpawn).thenAccept(success -> {
+                    if (!success) {
+                        this.suspended = false;
+                        LOGGER.warning("Failed to teleport player to suspended world spawn");
+                        future.complete(false);
+                    } else {
+                        future.complete(true);
+                    }
+                }).exceptionally(throwable -> {
+                    future.completeExceptionally(throwable);
+                    return null;
+                });
             });
         });
         return future;
