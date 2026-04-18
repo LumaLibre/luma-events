@@ -54,11 +54,18 @@ public class EventPlayer implements Serializable, Scorer {
 
     private static final ContextLogger LOGGER = ContextLogger.getLogger();
     private static final Config CONFIG = EventMain.getOkaeriConfig();
+
+    public static final long SUSPEND_COOLDOWN_MS = 300000;
+    public static final long INVINCIBLE_TIME_MS = 60000;
+
+
     @Nullable
     private transient volatile Object LOCK;
     @Nullable
     private transient Optional<EventTeam> lazyTeam;
     private transient boolean sortedExplorerOrders;
+    private transient long suspendCooldown;
+    private transient long invincible;
 
     private final UUID uuid;
     private final Map<MinigameConstant, Integer> scores;
@@ -391,10 +398,17 @@ public class EventPlayer implements Serializable, Scorer {
         });
     }
 
-    public void suspend() {
+    public boolean suspend() {
         if (!CONFIG.getExplorer().isExplorerOrders()) {
-            return;
+            return false;
         }
+
+        if (System.currentTimeMillis() < this.suspendCooldown) {
+            sendMessage("You cannot suspend again so soon. Please wait a bit before trying again.");
+            return false;
+        }
+
+        this.suspendCooldown = System.currentTimeMillis() + SUSPEND_COOLDOWN_MS;
 
         this.operatePlayer(player ->  {
             List<String> worldNames = EventMain.getOkaeriConfig().getExplorer().getSuspendedWorlds();
@@ -420,6 +434,7 @@ public class EventPlayer implements Serializable, Scorer {
                 this.switchInventory();
 
                 player.clearActivePotionEffects();
+                this.invincible = System.currentTimeMillis() + INVINCIBLE_TIME_MS;
 
                 // Finished preparing and putting the player into this world with their new inventory.
                 BetterRTPService.getInstance().ifPresentOrElse(service -> {
@@ -430,6 +445,7 @@ public class EventPlayer implements Serializable, Scorer {
                 return null;
             });
         });
+        return true;
     }
 
 
@@ -492,5 +508,9 @@ public class EventPlayer implements Serializable, Scorer {
 
     public void updateLazyTeam(@Nullable EventTeam team) {
         this.lazyTeam = Optional.ofNullable(team);
+    }
+
+    public boolean isInvincible() {
+        return System.currentTimeMillis() < this.invincible;
     }
 }

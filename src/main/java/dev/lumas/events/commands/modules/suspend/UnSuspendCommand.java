@@ -35,6 +35,7 @@ public class UnSuspendCommand implements CommandModule {
             Util.sendMsg(commandSender, "You are not suspended.");
         } else {
             eventPlayer.unsuspend();
+            EventPlayerManager.save(eventPlayer);
             eventPlayer.sendMessage("You have been unsuspended.");
         }
 

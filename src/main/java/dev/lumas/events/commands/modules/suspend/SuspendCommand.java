@@ -80,9 +80,10 @@ public class SuspendCommand implements CommandModule {
             }
         }
 
-        eventPlayer.suspend();
-        eventPlayer.sendMessage("You have been suspended. You have <gold>" + eventPlayer.getLives() + "</gold> Pale Side lives left.");
-        EventPlayerManager.save(eventPlayer);
+        if (eventPlayer.suspend()) {
+            eventPlayer.sendMessage("You have been suspended. You have <gold>" + eventPlayer.getLives() + "</gold> Pale Side lives left.");
+            EventPlayerManager.save(eventPlayer);
+        }
         return true;
     }
 

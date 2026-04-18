@@ -58,6 +58,11 @@ object ExplorerIntents : ExplorerIntentContainer() {
     private val TIMED_EXPLOSION = fun (loc: Location, delay: Long, player: Player) {
         loc.world.playSound(loc, Sound.ENTITY_CREEPER_PRIMED, 1f, 1f)
         Executors.delayedSync(loc, delay) {
+            if (!WORLD.invoke().contains(loc.world.name) || !player.isOnline) {
+                EventMain.getInstance().logger.warning("Timed explosion cancelled due to world no longer being suspended or player going offline or bad world.")
+                return@delayedSync
+            }
+
             loc.world.createExplosion(loc, 20.0f)
 
             Executors.delayedSync(loc, 1) {
@@ -303,7 +308,8 @@ object ExplorerIntents : ExplorerIntentContainer() {
         icon = Material.BLAZE_POWDER
     ) { event ->
         val player = event.entity as? Player ?: return@ExplorerIntent
-        if (event.cause == EntityDamageEvent.DamageCause.FIRE || event.cause == EntityDamageEvent.DamageCause.LAVA) {
+        val eventPlayer = EventPlayerManager.getByUUID(player.uniqueId)
+        if (event.cause == EntityDamageEvent.DamageCause.FIRE || event.cause == EntityDamageEvent.DamageCause.LAVA && !eventPlayer.isInvincible) {
             player.health = 0.0
         }
     }
@@ -392,4 +398,20 @@ object ExplorerIntents : ExplorerIntentContainer() {
         event.damage *= 1.5
     }
 
+
+    val INVINCIBLE_AFTER_TP = ExplorerIntent(
+        title = "Invincibility after Suspend",
+        desc = "Players are invincible for 1m after suspending.",
+        world = WORLD,
+        eventClass = EntityDamageEvent::class,
+        icon = Material.POTION
+    ) { event ->
+        val damaged = event.entity as? Player ?: return@ExplorerIntent
+        val eventPlayer = EventPlayerManager.getByUUID(damaged.uniqueId)
+
+        if (eventPlayer.isInvincible) {
+            event.isCancelled = true
+            eventPlayer.sendActionBar("**Invincible for 1m**")
+        }
+    }
 }

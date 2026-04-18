@@ -141,7 +141,7 @@ public final class Towers extends InventoryUnifiedMinigame {
             ActivePlayer towersPlayer = new ActivePlayer(eventPlayer, this);
             this.towersPlayers.put(eventPlayer.getUuid(), towersPlayer);
             eventPlayer.operatePlayer(player -> {
-                player.setHealth(20);
+                //player.setHealth(20);
                 player.setFoodLevel(20);
                 player.setSaturation(5);
                 player.setAllowFlight(false);

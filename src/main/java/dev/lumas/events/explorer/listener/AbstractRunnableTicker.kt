@@ -1,8 +1,8 @@
 package dev.lumas.events.explorer.listener
 
+import dev.lumas.core.model.Service
 import dev.lumas.events.utility.Executors
 import dev.lumas.events.utility.scheduler.GlobalRunnable
-import dev.lumas.lumacore.manager.models.Service
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player

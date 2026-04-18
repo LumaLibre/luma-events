@@ -18,9 +18,20 @@ interface AbstractExplorerListener : Listener {
             }
         }
 
-        ExplorerIntentRegistry.unifiedValues().forEach { intent ->
-            intent.tryApply(entity.world, event)
+        if (entity is Player) {
+            val eventPlayer: EventPlayer = EventPlayerManager.getByUUID(entity.uniqueId)
+            if (eventPlayer.isSuspended) {
+                ExplorerIntentRegistry.unifiedValues().forEach { intent ->
+                    intent.tryApply(entity.world, event)
+                }
+            }
+        } else {
+            ExplorerIntentRegistry.unifiedValues().forEach { intent ->
+                intent.tryApply(entity.world, event)
+            }
         }
+
+
 
         if (entity is Player && !ignoreMiles) {
             Executors.runAsync { _ ->
