@@ -32,6 +32,7 @@ public class Paintball2_1Definition extends OkaeriConfig {
     );
     private List<TeamBedPart> team1BedParts = List.of(new TeamBedPart(null, Bed.Part.HEAD), new TeamBedPart(null, Bed.Part.FOOT));
     private List<TeamBedPart> team2BedParts = List.of(new TeamBedPart(null, Bed.Part.HEAD), new TeamBedPart(null, Bed.Part.FOOT));
+    private int throwCooldownTicks = 4;
 
 
     public List<Material> regexBlacklistedBlocksAsMaterials() {

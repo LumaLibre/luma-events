@@ -62,6 +62,7 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -73,6 +74,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     private static final PotionEffect GLOW = new PotionEffect(PotionEffectType.GLOWING, 100, 0, false, false, false);
 
     private final Paintball2_1Definition def;
+    private final ConcurrentHashMap<UUID, Long> lastThrowMillis = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Location, PaintballTeam> paintedLocations; // TODO: Don't use locations
     private final Scoreboard<PaintballTeam> scoreboard;
     private final List<Material> blacklistedMaterials;
@@ -276,6 +278,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                     .findFirst().ifPresent(team -> team.removeMember(participant));
         }
 
+        lastThrowMillis.remove(participant.getUuid());
         Player player = participant.getPlayer();
         if (player != null) {
             GlowColorManager.getInstance().update(player);
@@ -300,6 +303,15 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             //eventPlayer.sendMessage("You are not participating in this minigame.");
             return;
         }
+
+        long cooldownMillis = def.getThrowCooldownTicks() * 50L;
+        long now = System.currentTimeMillis();
+        Long last = lastThrowMillis.get(shooter.getUniqueId());
+        if (last != null && now - last < cooldownMillis) {
+            event.setCancelled(true);
+            return;
+        }
+        lastThrowMillis.put(shooter.getUniqueId(), now);
 
         PaintballTeam paintballTeam = this.paintballTeams.stream()
                 .filter(team -> team.isMember(shooter))
