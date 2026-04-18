@@ -65,13 +65,14 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
     private CountdownBossBar countdownBossBar;
     private List<FreezeTagTeam> teams;
 
+    private volatile boolean gameEnded = false;
     private final ConcurrentHashMap<UUID, FrozenState> frozenPlayers = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, Integer> pendingFreezeHits = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, Integer> pendingUnfreezeHits = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, Long> actionBarPauseUntil = new ConcurrentHashMap<>();
 
     public FreezeTag(FreezeTagDefinition settings) {
-        super("Freeze Tag", "Freeze all enemy players to win!", Util.secsToMillis(settings.getTimeLimitSeconds()), 10, true, true, false);
+        super("Freeze Tag", "Freeze all enemy players to win!", Util.secsToMillis(settings.getTimeLimitSeconds()), 10, true, true, true, false);
         this.settings = settings;
         this.boundingBox = WorldTiedBoundingBox.of(settings.getRegion().getLoc1(), settings.getRegion().getLoc2());
         this.tokenFormula = new Paintball2_1TokenFormula();
@@ -137,6 +138,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStop() {
+        gameEnded = true;
         if (countdownBossBar != null) {
             countdownBossBar.stop(false);
         }
@@ -278,8 +280,6 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onEntityDamage(EntityDamageByEntityEvent event) {
-        ensureNotIllegal();
-
         if (!(event.getDamager() instanceof Player attacker) || !(event.getEntity() instanceof Player victim)) {
             return;
         }
@@ -288,6 +288,8 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         }
 
         event.setCancelled(true);
+        if (gameEnded) return;
+        ensureNotIllegal();
 
         FreezeTagTeam attackerTeam = getTeam(attacker);
         FreezeTagTeam victimTeam = getTeam(victim);
