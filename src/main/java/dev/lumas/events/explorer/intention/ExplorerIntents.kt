@@ -190,6 +190,9 @@ object ExplorerIntents : ExplorerIntentContainer() {
         icon = Material.PUFFERFISH_BUCKET
     ) { event ->
         val player = event.player
+        if (player.gameMode != GameMode.SURVIVAL) {
+            return@ExplorerIntent
+        }
         if (player.isInRain || player.isInWater) {
             player.damage(0.5)
             player.world.playSound(player.location, Sound.ENCHANT_THORNS_HIT, 1f, 1f)

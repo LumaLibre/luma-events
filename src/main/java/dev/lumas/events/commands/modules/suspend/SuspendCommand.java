@@ -49,7 +49,7 @@ public class SuspendCommand implements CommandModule {
         boolean rtp = args.contains("rtp");
 
         Minigame current = MinigameManager.getInstance().getCurrent();
-        if (current.getParticipants().contains(eventPlayer)) {
+        if (current.getParticipants().contains(eventPlayer) && (current.isOpen() || current.isActive())) {
             eventPlayer.sendMessage("You can't suspend while participating in a minigame.");
             return true;
         }
