@@ -20,6 +20,8 @@ import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.constant.PersistentInventoryState;
 import lombok.Getter;
 import lombok.Setter;
+import me.danjono.inventoryrollback.data.LogType;
+import me.danjono.inventoryrollback.inventory.SaveInventory;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
@@ -388,6 +390,10 @@ public class EventPlayer implements Serializable, Scorer {
     private synchronized void switchInventory() {
         this.operatePlayerSafely(player -> {
             PlayerInventory inv = player.getInventory();
+
+            SaveInventory saveInventory = new SaveInventory(player, LogType.FORCE, null, null);
+            saveInventory.snapshotAndSave(inv, player.getEnderChest(), true);
+
             int level = player.getLevel();
             float experience = player.getExp();
             @Nullable ItemStack[] contentsClone = inv.getContents().clone();

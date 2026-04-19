@@ -80,7 +80,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
     }
     private val NAMESPACED_KEY = NamespacedKey(EventMain.getInstance(), "explorer_intents")
     private val MINING_FATIGUE = PotionEffect(PotionEffectType.MINING_FATIGUE, 400, 0)
-    private val BLINDNESS = PotionEffect(PotionEffectType.BLINDNESS, 400, 0)
+    //private val BLINDNESS = PotionEffect(PotionEffectType.BLINDNESS, 400, 0)
     private val DARKNESS = PotionEffect(PotionEffectType.DARKNESS, 400, 0)
     private val SLOWNESS_1 = PotionEffect(PotionEffectType.SLOWNESS, 400, 0)
     private val SLOWNESS_2 = PotionEffect(PotionEffectType.SLOWNESS, 400, 1)
@@ -293,8 +293,8 @@ object ExplorerIntents : ExplorerIntentContainer() {
         if (env == World.Environment.NORMAL) {
             if (y <= 11) {
                 player.addPotionEffect(MINING_FATIGUE)
-                player.addPotionEffect(BLINDNESS)
-                //player.addPotionEffect(DARKNESS)
+                //player.addPotionEffect(BLINDNESS)
+                player.addPotionEffect(DARKNESS)
             }
         } else {
             player.addPotionEffect(MINING_FATIGUE)

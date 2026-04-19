@@ -16,6 +16,7 @@ import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import lombok.Setter;
+import me.kteq.hiddenarmor.HiddenArmorAPI;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
@@ -25,7 +26,6 @@ import org.bukkit.Location;
 import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
-import me.kteq.hiddenarmor.HiddenArmorAPI;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.jspecify.annotations.Nullable;
@@ -199,6 +199,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
         this.active = false;
         this.open = false; // Should be false by now anyway :P
+        this.participants.clear();
         return true;
     }
 
