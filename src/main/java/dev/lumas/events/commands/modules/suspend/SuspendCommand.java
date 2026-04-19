@@ -44,7 +44,9 @@ public class SuspendCommand implements CommandModule {
         Player target = (Player) commandSender;
 
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(target.getUniqueId());
-        boolean confirmed = Arrays.asList(strings).contains("--confirm");
+        List<String> args = Arrays.asList(strings);
+        boolean confirmed = args.contains("--confirm");
+        boolean rtp = args.contains("rtp");
 
         Minigame current = MinigameManager.getInstance().getCurrent();
         if (current.getParticipants().contains(eventPlayer)) {
@@ -80,7 +82,7 @@ public class SuspendCommand implements CommandModule {
             }
         }
 
-        eventPlayer.suspend().thenAccept(success -> {
+        eventPlayer.suspend(rtp).thenAccept(success -> {
             if (!success) return;
             eventPlayer.sendMessage("You have been suspended. You have <gold>" + eventPlayer.getLives() + "</gold> Pale Side lives left.");
             EventPlayerManager.save(eventPlayer);
@@ -94,7 +96,7 @@ public class SuspendCommand implements CommandModule {
     @Nullable
     @Override
     public List<String> tabComplete(@NotNull EventMain eventMain, @NotNull CommandSender commandSender, @NotNull String[] strings) {
-        return List.of("--confirm");
+        return List.of("rtp", "--confirm");
     }
 
 

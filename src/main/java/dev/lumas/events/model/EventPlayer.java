@@ -56,8 +56,6 @@ public class EventPlayer implements Serializable, Scorer {
     private static final Config CONFIG = EventMain.getOkaeriConfig();
 
     public static final long SUSPEND_COOLDOWN_MS = 60000;
-    public static final long INVINCIBLE_TIME_MS = 30000;
-
 
     @Nullable
     private transient volatile Object LOCK;
@@ -65,9 +63,6 @@ public class EventPlayer implements Serializable, Scorer {
     private transient Optional<EventTeam> lazyTeam;
     private transient boolean sortedExplorerOrders;
     private transient long suspendCooldown;
-    private transient long invincible;
-    @Nullable
-    private transient Location lastPaleSideLocation;
 
     private final UUID uuid;
     private final Map<MinigameConstant, Integer> scores;
@@ -87,8 +82,13 @@ public class EventPlayer implements Serializable, Scorer {
     private int lives;
     @Setter
     private boolean initialSpawn;
+    private int deaths; // legacy key
     @Setter
-    private int deaths;
+    private int paleSide$deaths;
+    @Nullable
+    private Location paleSide$lastLocation;
+    @Setter
+    private boolean paleSide$reclaimed;
 
 
     // Initial creation
@@ -106,11 +106,12 @@ public class EventPlayer implements Serializable, Scorer {
                 new ArrayList<>(),
                 0,
                 0,
-                false
+                false,
+                null
         );
     }
 
-    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores, List<ActiveExplorerMile> activeExplorerMiles, boolean claimedCharm, long secondsPlayed, boolean suspended, PersistentInventoryState storedInventoryState, float suspendedExperience, @Nullable ItemStack @Nullable[] suspendedInventory, List<ActiveExplorerOrder> activeExplorerOrders, int souls, int lives, boolean initialSpawn) {
+    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores, List<ActiveExplorerMile> activeExplorerMiles, boolean claimedCharm, long secondsPlayed, boolean suspended, PersistentInventoryState storedInventoryState, float suspendedExperience, @Nullable ItemStack @Nullable[] suspendedInventory, List<ActiveExplorerOrder> activeExplorerOrders, int souls, int lives, boolean initialSpawn, @Nullable Location paleSide$lastLocation) {
         this.uuid = uuid;
         this.scores = scores;
         this.activeExplorerMiles = activeExplorerMiles;
@@ -124,6 +125,7 @@ public class EventPlayer implements Serializable, Scorer {
         this.souls = souls;
         this.lives = lives;
         this.initialSpawn = initialSpawn;
+        this.paleSide$lastLocation = paleSide$lastLocation;
     }
 
     private Object getLock() {
@@ -411,7 +413,7 @@ public class EventPlayer implements Serializable, Scorer {
         });
     }
 
-    public CompletableFuture<Boolean> suspend() {
+    public CompletableFuture<Boolean> suspend(boolean rtp) {
         if (!CONFIG.getExplorer().isExplorerOrders()) {
             return CompletableFuture.completedFuture(false);
         }
@@ -448,7 +450,7 @@ public class EventPlayer implements Serializable, Scorer {
 
 
 
-            if (this.lastPaleSideLocation == null) {
+            if (rtp || this.paleSide$lastLocation == null) {
                 BetterRTPService.getInstance().ifPresentOrElse(service -> {
                     service.rtp(player, world);
                 }, () -> {
@@ -467,14 +469,14 @@ public class EventPlayer implements Serializable, Scorer {
                     });
                 });
             } else {
-                player.teleportAsync(this.lastPaleSideLocation).thenAccept(success -> {
+                player.teleportAsync(this.paleSide$lastLocation).thenAccept(success -> {
                     if (!success) {
                         this.suspended = false;
                         LOGGER.warning("Failed to teleport player to last Pale Side location");
                         future.complete(false);
                     }
                 });
-                sendMessage("You have been teleported to your last Pale Side location (transient).");
+                this.sendMessage("You have been teleported to your last Pale Side location.");
             }
         });
         return future;
@@ -482,16 +484,14 @@ public class EventPlayer implements Serializable, Scorer {
 
 
     public void unsuspend() {
-        unsuspend(true);
+        unsuspend(false);
     }
 
-    public void unsuspend(boolean saveLoc) {
+    public void unsuspend(boolean removeLastLocation) {
         this.operatePlayerSafely(player -> {
             Preconditions.checkState(this.suspended, "Player is not suspended");
 
-            if (saveLoc) {
-                this.lastPaleSideLocation = player.getLocation();
-            }
+            this.paleSide$lastLocation = removeLastLocation ? null : player.getLocation();
 
             if (this.storedInventoryState == PersistentInventoryState.MAIN_INVENTORY) {
                 this.switchInventory();
@@ -547,9 +547,5 @@ public class EventPlayer implements Serializable, Scorer {
 
     public void updateLazyTeam(@Nullable EventTeam team) {
         this.lazyTeam = Optional.ofNullable(team);
-    }
-
-    public boolean isInvincible() {
-        return System.currentTimeMillis() < this.invincible;
     }
 }

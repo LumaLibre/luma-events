@@ -6,6 +6,7 @@ import com.google.gson.InstanceCreator;
 import dev.lumas.events.explorer.mile.ActiveExplorerMile;
 import dev.lumas.events.explorer.order.ActiveExplorerOrder;
 import dev.lumas.events.manager.EventTeamManager;
+import org.bukkit.Location;
 import org.bukkit.inventory.ItemStack;
 
 import java.lang.reflect.Modifier;
@@ -19,6 +20,7 @@ public class GsonHolder {
                 .registerTypeAdapter(ActiveExplorerMile.class, new ActiveExplorerMile.GsonTypeAdapter())
                 .registerTypeAdapter(ItemStack[].class, new ItemStackArrayAdapter())
                 .registerTypeAdapter(ActiveExplorerOrder.class, new ActiveExplorerOrder.GsonTypeAdapter())
+                .registerTypeAdapter(Location.class, new LocationTypeAdapter())
                 .excludeFieldsWithModifiers(Modifier.TRANSIENT, Modifier.STATIC)
                 .setPrettyPrinting();
 

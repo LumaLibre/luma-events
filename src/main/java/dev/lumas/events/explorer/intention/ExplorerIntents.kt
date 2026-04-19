@@ -132,9 +132,9 @@ object ExplorerIntents : ExplorerIntentContainer() {
         val eventPlayer = EventPlayerManager.getByUUIDOrNull(player.uniqueId)
         Executors.delayedSync(eventPlayer, 1) {
             if (eventPlayer != null && eventPlayer.isSuspended) {
-                eventPlayer.unsuspend(false)
+                eventPlayer.unsuspend(true)
                 eventPlayer.lives -= 1
-                eventPlayer.deaths++
+                eventPlayer.`paleSide$deaths`++
                 EventPlayerManager.save(eventPlayer)
             }
         }
@@ -309,7 +309,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
     ) { event ->
         val player = event.entity as? Player ?: return@ExplorerIntent
         val eventPlayer = EventPlayerManager.getByUUID(player.uniqueId)
-        if (event.cause == EntityDamageEvent.DamageCause.FIRE || event.cause == EntityDamageEvent.DamageCause.LAVA && !eventPlayer.isInvincible) {
+        if (event.cause == EntityDamageEvent.DamageCause.FIRE || event.cause == EntityDamageEvent.DamageCause.LAVA) {
             player.health = 0.0
         }
     }
@@ -396,22 +396,5 @@ object ExplorerIntents : ExplorerIntentContainer() {
 
         // 50% extra damage
         event.damage *= 1.5
-    }
-
-
-    val INVINCIBLE_AFTER_TP = ExplorerIntent(
-        title = "Invincibility after Suspend",
-        desc = "Players are invincible for 1m after suspending.",
-        world = WORLD,
-        eventClass = EntityDamageEvent::class,
-        icon = Material.POTION
-    ) { event ->
-        val damaged = event.entity as? Player ?: return@ExplorerIntent
-        val eventPlayer = EventPlayerManager.getByUUID(damaged.uniqueId)
-
-        if (eventPlayer.isInvincible) {
-            event.isCancelled = true
-            eventPlayer.sendActionBar("**Invincible for 1m**")
-        }
     }
 }

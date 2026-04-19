@@ -49,16 +49,16 @@ public class InfoCommand implements CommandModule {
         EventTeam eventTeam = EventTeamManager.getByMember(eventPlayer);
         EventTeamPlayerHandle handle = eventTeam == null ? null : eventTeam.getMember(eventPlayer);
 
-        eventPlayer.sendNoPrefixedMessage(BORDER);
-        eventPlayer.sendNoPrefixedMessage("Stats for: <gold>" + player.getName() + " " + Util.getRandom(FACES));
-        eventPlayer.sendNoPrefixedMessage(Text.mm("Team: " + (eventTeam == null ? "<gray>None" : eventTeam.getDisplayName() + " <gold>(" + eventTeam.getOnlineMembers() + "/" + eventTeam.getTotalMembers() + ")")));
-        eventPlayer.sendNoPrefixedMessage("Souls: <gold>" + eventPlayer.getSouls());
-        eventPlayer.sendNoPrefixedMessage("Points: <gold>" + (handle != null ? handle.getPoints() : "0") + ")");
-        eventPlayer.sendNoPrefixedMessage("Suspended: <gold>" + (eventPlayer.isSuspended() ? "Yes" : "No"));
+        sender.sendMessage(Text.mm(BORDER));
+        sender.sendMessage(Text.mm("Stats for: <gold>" + player.getName() + " " + Util.getRandom(FACES)));
+        sender.sendMessage(Text.mm("Team: " + (eventTeam == null ? "<gray>None" : eventTeam.getDisplayName() + " <gold>(" + eventTeam.getOnlineMembers() + "/" + eventTeam.getTotalMembers() + ")")));
+        sender.sendMessage(Text.mm("Souls: <gold>" + eventPlayer.getSouls()));
+        sender.sendMessage(Text.mm("Points: <gold>" + (handle != null ? handle.getPoints() : "0") + ")"));
+        sender.sendMessage(Text.mm("Suspended: <gold>" + (eventPlayer.isSuspended() ? "Yes" : "No")));
         for (var entry : eventPlayer.getPermanentScores().entrySet()) {
-            eventPlayer.sendNoPrefixedMessage(Util.formatSnakeCase(entry.getKey().name()) + ": <gold>" + entry.getValue());
+            sender.sendMessage(Text.mm(Util.formatSnakeCase(entry.getKey().name()) + ": <gold>" + entry.getValue()));
         }
-        eventPlayer.sendNoPrefixedMessage(BORDER);
+        sender.sendMessage(Text.mm(BORDER));
         return true;
     }
 
