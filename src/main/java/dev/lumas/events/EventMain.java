@@ -76,7 +76,6 @@ public final class EventMain extends JavaPlugin {
     @Override
     public void onDisable() {
         STOPPING = true;
-        moduleManager.unregister();
 
         EventPlayerManager.saveAllAndClear();
         EventTeamManager.saveAll();
@@ -88,6 +87,12 @@ public final class EventMain extends JavaPlugin {
         Minigame current = MinigameManager.getInstance().getCurrent();
         if (current.isActive()) {
             current.stop();
+        }
+
+        try {
+            moduleManager.unregister();
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
         }
     }
 
