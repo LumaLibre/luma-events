@@ -57,12 +57,14 @@ public class EventPlayer implements Serializable, Scorer {
     private static final ContextLogger LOGGER = ContextLogger.getLogger();
     private static final Config CONFIG = EventMain.getOkaeriConfig();
 
+    public static final long SUSPEND_COOLDOWN_MS = 60000;
 
     @Nullable
     private transient volatile Object LOCK;
     @Nullable
     private transient Optional<EventTeam> lazyTeam;
     private transient boolean sortedExplorerOrders;
+    private transient long suspendCooldown;
 
     private final UUID uuid;
     private final Map<MinigameConstant, Integer> scores;
@@ -420,6 +422,15 @@ public class EventPlayer implements Serializable, Scorer {
     public CompletableFuture<Boolean> suspend(boolean rtp) {
         if (!CONFIG.getExplorer().isExplorerOrders()) {
             return CompletableFuture.completedFuture(false);
+        }
+
+        if (System.currentTimeMillis() < this.suspendCooldown) {
+            sendMessage("You cannot suspend (RTP) again so soon. Please wait a bit before trying again.");
+            return CompletableFuture.completedFuture(false);
+        }
+
+        if (rtp) {
+            this.suspendCooldown = System.currentTimeMillis() + SUSPEND_COOLDOWN_MS;
         }
 
         CompletableFuture<Boolean> future = new CompletableFuture<>();
