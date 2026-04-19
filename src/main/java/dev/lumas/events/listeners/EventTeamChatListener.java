@@ -8,13 +8,14 @@ import dev.lumas.events.model.team.EventTeam;
 import dev.lumas.events.model.team.EventTeamPlayerHandle;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 @Register(Autowire.LISTENER)
 public class EventTeamChatListener implements Listener {
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onAsyncChat(AsyncChatEvent event) {
         EventPlayer eventPlayer = EventPlayerManager.getByUUIDOrNull(event.getPlayer().getUniqueId());
         if (eventPlayer == null) {
