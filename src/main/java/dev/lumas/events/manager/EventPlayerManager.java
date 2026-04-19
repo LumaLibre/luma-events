@@ -83,6 +83,12 @@ public final class EventPlayerManager {
         return new EventPlayer(uuid);
     }
 
+    public static EventPlayer reloadFromDisk(UUID uuid) {
+        cache.remove(uuid);
+        EventMain.getInstance().getLogger().warning("Reloading player " + uuid + " from disk");
+        return getByUUID(uuid);
+    }
+
     public static void save(EventPlayer eventPlayer) {
         try (FileWriter writer = new FileWriter(FOLDER.resolve(eventPlayer.getUuid() + ".json").toFile())) {
             gson.toJson(eventPlayer, writer);
