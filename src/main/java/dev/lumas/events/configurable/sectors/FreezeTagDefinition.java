@@ -21,7 +21,8 @@ public class FreezeTagDefinition extends OkaeriConfig {
     private TeamConfig team2 = new TeamConfig(EventTeamManager.Provider.IVORY, "Ivory", "white");
     private int timeLimitSeconds = 360;
     private int freezeHitsRequired = 3;
-    private int unfreezeHitsRequired = 2;
+    private int unfreezeHitsRequired = 4;
+    private int roundWinsRequired = 2;
     private boolean allowFreezingWhileFrozen = false;
     private boolean allowUnfreezingWhileFrozen = false;
     private boolean allowHealingWhileFrozen = true;
