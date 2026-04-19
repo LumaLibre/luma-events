@@ -54,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public final class FreezeTag extends InventoryUnifiedMinigame {
 
@@ -66,6 +67,9 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
     private List<FreezeTagTeam> teams;
 
     private volatile boolean gameEnded = false;
+    private volatile boolean roundInProgress = false;
+    private final Map<FreezeTagTeam, Integer> roundWins = new HashMap<>();
+    private int currentRound = 0;
     private final ConcurrentHashMap<UUID, FrozenState> frozenPlayers = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, Integer> pendingFreezeHits = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, Integer> pendingUnfreezeHits = new ConcurrentHashMap<>();
@@ -127,6 +131,13 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
             }
         }
 
+        this.roundWins.clear();
+        for (FreezeTagTeam team : this.teams) {
+            roundWins.put(team, 0);
+        }
+        this.currentRound = 1;
+        this.roundInProgress = true;
+
         this.countdownBossBar = CountdownBossBar.builder()
                 .title("<white><b>Time Remaining: %ss")
                 .color(BossBar.Color.WHITE)
@@ -139,6 +150,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
     @Override
     protected void handleStop() {
         gameEnded = true;
+        roundInProgress = false;
         if (countdownBossBar != null) {
             countdownBossBar.stop(false);
         }
@@ -185,7 +197,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
             if (members.isEmpty()) continue;
             boolean allFrozen = members.stream().allMatch(ep -> frozenPlayers.containsKey(ep.getUuid()));
             if (allFrozen) {
-                this.stop();
+                endRound();
                 return;
             }
         }
@@ -277,12 +289,20 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         if (!(event.getDamager() instanceof Player attacker) || !(event.getEntity() instanceof Player victim)) {
             return;
         }
+
+        if (gameEnded && boundingBox instanceof WorldTiedBoundingBox wtbb) {
+            if (wtbb.contains(attacker.getLocation()) || wtbb.contains(victim.getLocation())) {
+                event.setCancelled(true);
+            }
+            return;
+        }
+
         if (!isParticipant(attacker) || !isParticipant(victim)) {
             return;
         }
 
         event.setCancelled(true);
-        if (gameEnded) return;
+        if (!roundInProgress) return;
         ensureNotIllegal();
 
         FreezeTagTeam attackerTeam = getTeam(attacker);
@@ -580,8 +600,95 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         }
     }
 
+    private synchronized void endRound() {
+        if (!roundInProgress || gameEnded) return;
+        roundInProgress = false;
+
+        FreezeTagTeam roundWinner = determineCurrentRoundWinner();
+        if (roundWinner != null) {
+            roundWins.merge(roundWinner, 1, Integer::sum);
+        }
+
+        int winsRequired = settings.getRoundWinsRequired();
+        FreezeTagTeam matchWinner = roundWins.entrySet().stream()
+                .filter(e -> e.getValue() >= winsRequired)
+                .map(Map.Entry::getKey)
+                .findFirst().orElse(null);
+
+        String roundWinnerName = roundWinner != null ? roundWinner.getName() : "Nobody (Tie)";
+        this.audience.showTitle(Util.title(
+                "<yellow>Round " + currentRound + " Over!",
+                "<gold>" + roundWinnerName + " wins!"
+        ));
+
+        if (matchWinner != null) {
+            this.stop();
+        } else {
+            Executors.runDelayedAsync(TimeUnit.SECONDS, 5, t -> startNewRound());
+        }
+    }
+
+    private void startNewRound() {
+        if (gameEnded) return;
+        currentRound++;
+
+        new ArrayList<>(frozenPlayers.keySet()).forEach(uuid -> {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null) unfreezePlayerCleanup(player);
+        });
+        frozenPlayers.clear();
+        pendingFreezeHits.clear();
+        pendingUnfreezeHits.clear();
+        actionBarPauseUntil.clear();
+
+        for (FreezeTagTeam team : teams) {
+            for (EventPlayer member : team.getMembers()) {
+                member.operatePlayer(player -> {
+                    player.teleportAsync(team.getSpawnLocation().toCenterLocation());
+                    player.setFoodLevel(20);
+                    player.setSaturation(20f);
+                });
+            }
+        }
+
+        roundInProgress = true;
+
+        this.audience.showTitle(Util.title(
+                "<green><b>Round " + currentRound + "!",
+                "<gray>" + buildRoundWinsDisplay()
+        ));
+    }
+
+    private String buildRoundWinsDisplay() {
+        if (teams == null || roundWins.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < teams.size(); i++) {
+            FreezeTagTeam t = teams.get(i);
+            if (i > 0) sb.append(" | ");
+            sb.append(t.getName()).append(": ").append(roundWins.getOrDefault(t, 0))
+              .append("/").append(settings.getRoundWinsRequired());
+        }
+        return sb.toString();
+    }
+
     @Nullable
     private FreezeTagTeam determineWinner() {
+        if (teams == null) return null;
+        if (!roundWins.isEmpty()) {
+            int maxWins = roundWins.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+            if (maxWins > 0) {
+                List<FreezeTagTeam> leaders = roundWins.entrySet().stream()
+                        .filter(e -> e.getValue() == maxWins)
+                        .map(Map.Entry::getKey)
+                        .toList();
+                if (leaders.size() == 1) return leaders.get(0);
+            }
+        }
+        return determineCurrentRoundWinner();
+    }
+
+    @Nullable
+    private FreezeTagTeam determineCurrentRoundWinner() {
         if (teams == null) return null;
         FreezeTagTeam team1 = teams.get(0);
         FreezeTagTeam team2 = teams.get(1);
