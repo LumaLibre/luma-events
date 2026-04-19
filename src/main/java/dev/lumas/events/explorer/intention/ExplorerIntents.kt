@@ -129,6 +129,9 @@ object ExplorerIntents : ExplorerIntentContainer() {
         event.drops.clear()
         event.droppedExp = 0
         event.itemsToKeep.clear()
+        if (player.isInsideVehicle) {
+            player.leaveVehicle()
+        }
         val eventPlayer = EventPlayerManager.getByUUIDOrNull(player.uniqueId)
         Executors.delayedSync(eventPlayer, 1) {
             if (eventPlayer != null && eventPlayer.isSuspended) {

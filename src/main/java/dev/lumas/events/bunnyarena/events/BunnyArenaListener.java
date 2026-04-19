@@ -9,6 +9,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
@@ -17,7 +18,7 @@ import org.bukkit.event.entity.EntityTargetEvent;
 @Register(Autowire.LISTENER)
 public class BunnyArenaListener implements Listener {
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityDeath(EntityDeathEvent event) {
         BunnyArenaRegionHandler regionHandler = BunnyArenaSchedulerService.getInstance().getBunnyArenaRegionHandler();
         if (regionHandler == null) {

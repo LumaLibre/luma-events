@@ -53,7 +53,7 @@ public class InfoCommand implements CommandModule {
         sender.sendMessage(Text.mm("Stats for: <gold>" + player.getName() + " " + Util.getRandom(FACES)));
         sender.sendMessage(Text.mm("Team: " + (eventTeam == null ? "<gray>None" : eventTeam.getDisplayName() + " <gold>(" + eventTeam.getOnlineMembers() + "/" + eventTeam.getTotalMembers() + ")")));
         sender.sendMessage(Text.mm("Souls: <gold>" + eventPlayer.getSouls()));
-        sender.sendMessage(Text.mm("Points: <gold>" + (handle != null ? handle.getPoints() : "0") + ")"));
+        sender.sendMessage(Text.mm("Points: <gold>" + (handle != null ? handle.getPoints() : "0")));
         sender.sendMessage(Text.mm("Suspended: <gold>" + (eventPlayer.isSuspended() ? "Yes" : "No")));
         for (var entry : eventPlayer.getPermanentScores().entrySet()) {
             sender.sendMessage(Text.mm(Util.formatSnakeCase(entry.getKey().name()) + ": <gold>" + entry.getValue()));

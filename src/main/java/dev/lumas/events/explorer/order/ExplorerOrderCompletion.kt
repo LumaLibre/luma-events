@@ -2,6 +2,7 @@ package dev.lumas.events.explorer.order
 
 import dev.lumas.events.model.EventPlayer
 import dev.lumas.events.utility.Executors
+import dev.lumas.events.utility.Util
 import org.bukkit.Sound
 
 class ExplorerOrderCompletion(
@@ -46,6 +47,7 @@ class ExplorerOrderCompletion(
                         eventPlayer.operatePlayer {
                             it.playSound(it.location, Sound.ENTITY_FIREWORK_ROCKET_BLAST_FAR, 0.5f, 1f)
                         }
+                        Util.broadcast(eventPlayer.name + " has completed '" + name + "'")
                     }
                 }
             }
