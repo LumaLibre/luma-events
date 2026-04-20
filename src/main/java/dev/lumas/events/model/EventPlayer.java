@@ -436,6 +436,10 @@ public class EventPlayer implements Serializable, Scorer {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
 
         this.operatePlayerSafely(player ->  {
+            if (player.isInsideVehicle()) {
+                player.leaveVehicle();
+            }
+
             List<String> worldNames = EventMain.getOkaeriConfig().getExplorer().getSuspendedWorlds();
             Preconditions.checkState(!worldNames.isEmpty(), "No suspended worlds are configured");
             World world = Preconditions.checkNotNull(Bukkit.getWorld(worldNames.getFirst()));
@@ -498,6 +502,10 @@ public class EventPlayer implements Serializable, Scorer {
     public void unsuspend(boolean removeLastLocation) {
         this.operatePlayerSafely(player -> {
             Preconditions.checkState(this.suspended, "Player is not suspended");
+
+            if (player.isInsideVehicle()) {
+                player.leaveVehicle();
+            }
 
             this.paleSide$lastLocation = removeLastLocation ? null : player.getLocation();
 
