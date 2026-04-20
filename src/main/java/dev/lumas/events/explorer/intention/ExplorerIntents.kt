@@ -227,6 +227,12 @@ object ExplorerIntents : ExplorerIntentContainer() {
             }
         }
 
+        Executors.delayedSync(entity, 1) {
+            if (!entity.hasAI()) {
+                entity.setAI(true)
+            }
+        }
+
         if (entity is Creeper) {
             entity.isPowered = true
         }

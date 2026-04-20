@@ -452,7 +452,9 @@ public class EventPlayer implements Serializable, Scorer {
 
             if (this.storedInventoryState != PersistentInventoryState.TRANSIENT_INVENTORY) {
                 this.suspended = false;
-                future.completeExceptionally(new IllegalStateException("Player inventory is not in transient state"));
+                IllegalStateException exc = new IllegalStateException("Player inventory is not in transient state");
+                future.completeExceptionally(exc);
+                sendMessage(exc.getMessage());
                 return;
             }
 
@@ -462,34 +464,36 @@ public class EventPlayer implements Serializable, Scorer {
 
 
 
-            if (rtp || this.paleSide$lastLocation == null) {
-                BetterRTPService.getInstance().ifPresentOrElse(service -> {
-                    service.rtp(player, world);
-                }, () -> {
-                    LOGGER.warning("BetterRTP is not enabled, can't RTP player.");
-                    player.teleportAsync(worldSpawn).thenAccept(success -> {
+            Executors.delayedSync(player, 1, () -> {
+                if (rtp || this.paleSide$lastLocation == null) {
+                    BetterRTPService.getInstance().ifPresentOrElse(service -> {
+                        service.rtp(player, world);
+                    }, () -> {
+                        LOGGER.warning("BetterRTP is not enabled, can't RTP player.");
+                        player.teleportAsync(worldSpawn).thenAccept(success -> {
+                            if (!success) {
+                                this.suspended = false;
+                                LOGGER.warning("Failed to teleport player to suspended world spawn");
+                                future.complete(false);
+                            } else {
+                                future.complete(true);
+                            }
+                        }).exceptionally(throwable -> {
+                            future.completeExceptionally(throwable);
+                            return null;
+                        });
+                    });
+                } else {
+                    player.teleportAsync(this.paleSide$lastLocation).thenAccept(success -> {
                         if (!success) {
                             this.suspended = false;
-                            LOGGER.warning("Failed to teleport player to suspended world spawn");
+                            LOGGER.warning("Failed to teleport player to last Pale Side location");
                             future.complete(false);
-                        } else {
-                            future.complete(true);
                         }
-                    }).exceptionally(throwable -> {
-                        future.completeExceptionally(throwable);
-                        return null;
                     });
-                });
-            } else {
-                player.teleportAsync(this.paleSide$lastLocation).thenAccept(success -> {
-                    if (!success) {
-                        this.suspended = false;
-                        LOGGER.warning("Failed to teleport player to last Pale Side location");
-                        future.complete(false);
-                    }
-                });
-                this.sendMessage("You have been teleported to your last Pale Side location.");
-            }
+                    this.sendMessage("You have been teleported to your last Pale Side location.");
+                }
+            });
         });
         return future;
     }
@@ -521,24 +525,24 @@ public class EventPlayer implements Serializable, Scorer {
 
             player.clearActivePotionEffects();
 
-            if (dropOffLocation != null) {
-                player.teleportAsync(dropOffLocation).thenAccept(success -> {
-                    if (!success) {
-                        LOGGER.warning("Failed to teleport player to unsuspend world spawn after unsuspending.");
-                    }
-                });
+            Executors.delayedSync(player, 1, () -> {
+                if (dropOffLocation != null) {
+                    player.teleportAsync(dropOffLocation).thenAccept(success -> {
+                        if (!success) {
+                            LOGGER.warning("Failed to teleport player to unsuspend world spawn after unsuspending.");
+                        }
+                    });
 
-            } else if (unsuspendedWorld != null) {
-                player.teleportAsync(unsuspendedWorld.getSpawnLocation()).thenAccept(success -> {
-                    if (!success) {
-                        LOGGER.warning("Failed to teleport player to unsuspend world spawn after unsuspending.");
-                    }
-                });
-            } else {
-                {
+                } else if (unsuspendedWorld != null) {
+                    player.teleportAsync(unsuspendedWorld.getSpawnLocation()).thenAccept(success -> {
+                        if (!success) {
+                            LOGGER.warning("Failed to teleport player to unsuspend world spawn after unsuspending.");
+                        }
+                    });
+                } else {
                     LOGGER.warning("No unsuspend world available.");
                 }
-            }
+            });
         });
     }
 
