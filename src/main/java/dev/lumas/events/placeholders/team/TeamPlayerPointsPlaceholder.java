@@ -45,7 +45,7 @@ public class TeamPlayerPointsPlaceholder implements PlaceholderModule {
         if (position <= members.size()) {
             EventTeamPlayerHandle handle = members.get(position - 1);
 
-            return "#" + position +  handle.getLastKnownName() + " - " + String.format("%,d", handle.getPoints());
+            return "#" + position + " " + handle.getLastKnownName() + " - " + String.format("%,d", handle.getPoints());
         }
 
         return "#" + position + " Empty - 0";

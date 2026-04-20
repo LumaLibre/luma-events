@@ -39,6 +39,6 @@ public class TeamPointsPlaceholder implements PlaceholderModule {
         }
 
         EventTeam eventTeam = eventTeams.get(position - 1);
-        return "# " + position + " " + eventTeam.getPlainTextDisplayName() + " - " + String.format("%,d", eventTeam.getPoints());
+        return "#" + position + " " + eventTeam.getPlainTextDisplayName() + " - " + String.format("%,d", eventTeam.getPoints());
     }
 }
