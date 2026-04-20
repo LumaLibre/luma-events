@@ -524,17 +524,29 @@ public class EventPlayer implements Serializable, Scorer {
             player.clearActivePotionEffects();
 
             if (dropOffLocation != null) {
+                player.setCanPickupItems(false);
+
                 player.teleportAsync(dropOffLocation).thenAccept(success -> {
                     if (!success) {
                         LOGGER.warning("Failed to teleport player to unsuspend world spawn after unsuspending.");
                     }
+
+                    Executors.delayedSync(player, 1, () -> {
+                        player.setCanPickupItems(true);
+                    });
                 });
 
             } else if (unsuspendedWorld != null) {
+                player.setCanPickupItems(false);
+
                 player.teleportAsync(unsuspendedWorld.getSpawnLocation()).thenAccept(success -> {
                     if (!success) {
                         LOGGER.warning("Failed to teleport player to unsuspend world spawn after unsuspending.");
                     }
+
+                    Executors.delayedSync(player, 1, () -> {
+                        player.setCanPickupItems(true);
+                    });
                 });
             } else {
                 LOGGER.warning("No unsuspend world available.");
