@@ -578,11 +578,12 @@ public final class Towers extends InventoryUnifiedMinigame {
         private UUID lastAttacker = null;
         private int kills = 0;
         private boolean dirty = false;
+        private NamedTextColor color;
 
         public ActivePlayer(EventPlayer eventPlayer, Towers context) {
             super(eventPlayer, context);
+            color = this.getTeam() instanceof ScarletTeam ? NamedTextColor.RED : NamedTextColor.WHITE;
             this.eventPlayer.operatePlayer(player -> {
-                NamedTextColor color = this.getTeam() instanceof ScarletTeam ? NamedTextColor.RED : NamedTextColor.WHITE;
                 GlowColorManager.getInstance().setTransientColor(player, color);
             });
         }
@@ -598,8 +599,10 @@ public final class Towers extends InventoryUnifiedMinigame {
             this.eventPlayer.operatePlayer(player -> {
                 player.setVelocity(new Vector());
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 100, false, false, true));
+                GlowColorManager.getInstance().setTransientColor(player, color);
+
                 Executors.runDelayedAsync(TimeUnit.MILLISECONDS, 300, (taks) -> {
-                    player.teleportAsync(spawnLocation.add(0, 1, 0).toCenterLocation());
+                    player.teleportAsync(spawnLocation.add(0.5, 1, 0.5));
                     player.setFlying(false);
                     player.setAllowFlight(false);
                 });
