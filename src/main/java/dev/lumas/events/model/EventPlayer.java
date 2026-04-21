@@ -387,36 +387,34 @@ public class EventPlayer implements Serializable, Scorer {
         }
     }
 
-    private synchronized void switchInventory() {
-        this.operatePlayerSafely(player -> {
-            PlayerInventory inv = player.getInventory();
+    private synchronized void switchInventory(Player player) {
+        PlayerInventory inv = player.getInventory();
 
-            SaveInventory saveInventory = new SaveInventory(player, LogType.FORCE, null, null);
-            saveInventory.snapshotAndSave(inv, player.getEnderChest(), true);
+        SaveInventory saveInventory = new SaveInventory(player, LogType.FORCE, null, null);
+        saveInventory.snapshotAndSave(inv, player.getEnderChest(), true);
 
-            int level = player.getLevel();
-            float experience = player.getExp();
-            @Nullable ItemStack[] contentsClone = inv.getContents().clone();
+        int level = player.getLevel();
+        float experience = player.getExp();
+        @Nullable ItemStack[] contentsClone = inv.getContents().clone();
 
-            if (this.suspendedInventory != null) {
-                inv.setContents(this.suspendedInventory);
-            } else {
-                inv.clear();
-            }
+        if (this.suspendedInventory != null) {
+            inv.setContents(this.suspendedInventory);
+        } else {
+            inv.clear();
+        }
 
-            if (this.suspendedExperience > 0) {
-                player.setLevel(this.suspendedLevels);
-                player.setExp(this.suspendedExperience);
-            } else {
-                player.setLevel(0);
-                player.setExp(0);
-            }
+        if (this.suspendedExperience > 0) {
+            player.setLevel(this.suspendedLevels);
+            player.setExp(this.suspendedExperience);
+        } else {
+            player.setLevel(0);
+            player.setExp(0);
+        }
 
-            this.suspendedLevels = level;
-            this.suspendedExperience = experience;
-            this.suspendedInventory = contentsClone;
-            this.storedInventoryState = this.storedInventoryState.opposite();
-        });
+        this.suspendedLevels = level;
+        this.suspendedExperience = experience;
+        this.suspendedInventory = contentsClone;
+        this.storedInventoryState = this.storedInventoryState.opposite();
     }
 
     public CompletableFuture<Boolean> suspend(boolean rtp) {
@@ -458,7 +456,7 @@ public class EventPlayer implements Serializable, Scorer {
                 return;
             }
 
-            this.switchInventory();
+            this.switchInventory(player);
             player.clearActivePotionEffects();
             //this.invincible = System.currentTimeMillis() + INVINCIBLE_TIME_MS; // TODO
 
@@ -512,7 +510,7 @@ public class EventPlayer implements Serializable, Scorer {
             this.paleSide$lastLocation = removeLastLocation ? null : player.getLocation();
 
             if (this.storedInventoryState == PersistentInventoryState.MAIN_INVENTORY) {
-                this.switchInventory();
+                this.switchInventory(player);
             } else {
                 LOGGER.warning("Unsuspending " + player.getName() + " with TRANSIENT inventory state, save likely occurred before suspend completed.");
             }

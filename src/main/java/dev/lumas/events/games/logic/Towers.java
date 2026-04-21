@@ -656,11 +656,13 @@ public final class Towers extends InventoryUnifiedMinigame {
 
             event.setCancelled(true);
             this.context.sendAudienceMessage(event.deathMessage());
-            if (this.respawnLocation != null) {
-                this.eventPlayer.teleportAsync(this.respawnLocation);
-            } else {
-                this.eventPlayer.teleportAsync(this.context.centerPoint);
-            }
+            Executors.delayedSync(event.getPlayer(), 1,  () -> {
+                if (this.respawnLocation != null) {
+                    this.eventPlayer.teleportAsync(this.respawnLocation);
+                } else {
+                    this.eventPlayer.teleportAsync(this.context.centerPoint);
+                }
+            });
 
             Player victimBukkit = event.getEntity();
             ItemStack[] victimItems = victimBukkit.getInventory().getContents();
@@ -761,7 +763,9 @@ public final class Towers extends InventoryUnifiedMinigame {
                 }
                 player.setFlying(true);
             });
-            this.eventPlayer.teleportAsync(this.context.centerPoint);
+            Executors.delayedSync(event.getPlayer(), 1, () ->{
+                this.eventPlayer.teleportAsync(this.context.centerPoint);
+            });
         }
 
 
