@@ -760,14 +760,14 @@ public final class Towers extends InventoryUnifiedMinigame {
         public void onDeath(PlayerDeathEvent event) {
             event.setCancelled(true);
             this.eventPlayer.operatePlayer(player -> {
+                player.teleportAsync(this.context.centerPoint);
                 if (!player.getAllowFlight()) {
                     player.setAllowFlight(true);
                 }
                 player.setFlying(true);
-
-                Executors.delayedSync(player, 1, () ->{
-                    player.teleportAsync(this.context.centerPoint);
-                });
+            });
+            Executors.delayedSync(event.getPlayer(), 1, () ->{
+                this.eventPlayer.teleportAsync(this.context.centerPoint);
             });
         }
 
