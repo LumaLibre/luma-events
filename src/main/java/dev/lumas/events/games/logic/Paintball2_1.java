@@ -258,6 +258,10 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                     player.addPotionEffect(REGEN);
                     player.addPotionEffect(GLOW);
                     GlowColorManager.getInstance().setTransientColor(player, paintballTeam.getGlowColor());
+
+                    if (player.getInventory().getItemInMainHand().getType().isAir()) {
+                        player.getInventory().setItemInMainHand(paintballTeam.getPaintball());
+                    }
                 });
             }
         }
