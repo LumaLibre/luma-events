@@ -15,7 +15,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 @Register(Autowire.LISTENER)
 public class EventTeamChatListener implements Listener {
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onAsyncChat(AsyncChatEvent event) {
         EventPlayer eventPlayer = EventPlayerManager.getByUUIDOrNull(event.getPlayer().getUniqueId());
         if (eventPlayer == null) {

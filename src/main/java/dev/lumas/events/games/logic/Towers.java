@@ -602,7 +602,7 @@ public final class Towers extends InventoryUnifiedMinigame {
                 GlowColorManager.getInstance().setTransientColor(player, color);
 
                 Executors.runDelayedAsync(TimeUnit.MILLISECONDS, 300, (taks) -> {
-                    player.teleportAsync(spawnLocation.add(0.5, 1, 0.5));
+                    player.teleportAsync(spawnLocation.add(0, 1, 0).toCenterLocation());
                     player.setFlying(false);
                     player.setAllowFlight(false);
                 });
