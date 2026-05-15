@@ -3,7 +3,7 @@ import java.nio.charset.Charset
 
 plugins {
     id("java")
-    id("com.gradleup.shadow") version "8.3.5"
+    id("com.gradleup.shadow") version "9.4.1"
     id("io.freefair.lombok") version "9.1.0"
     id("xyz.jpenilla.run-paper") version "2.3.1"
     kotlin("jvm")
@@ -44,7 +44,10 @@ dependencies {
 
     //compileOnly("io.papermc.paper:paper-api:1.21.10-R0.1-SNAPSHOT")
     compileOnly("io.canvasmc.canvas:canvas-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly("me.libraryaddict.disguises:libsdisguises:11.0.13")
+    compileOnly("me.libraryaddict.disguises:libsdisguises:11.0.13") {
+        isTransitive = false
+    }
+    compileOnly("com.github.retrooper:packetevents-api:2.7.0")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
         exclude(group = "org.bukkit")
     }
@@ -67,10 +70,6 @@ dependencies {
     compileOnly("com.github.LumaLibre:HiddenArmor-Folia:96bcba105e")
 }
 
-java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
-}
-
 tasks {
 
     withType<JavaCompile> {
@@ -88,7 +87,7 @@ tasks {
         relocate("dev.thorinwasher.schem", "$pack.schem")
         relocate("me.outspending.biomesapi", "$pack.biomesapi")
         exclude("kotlin/**", "net/kyori/**", "org/joml/**")
-        minimize()
+        //minimize()
         archiveClassifier.set("")
         archiveVersion.set("")
 
@@ -118,11 +117,11 @@ tasks {
 
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(25)
 }
 
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+    toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 }
 
 fun commitHash(): String {

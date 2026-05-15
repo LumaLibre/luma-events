@@ -50,6 +50,7 @@ import org.bukkit.potion.PotionEffectType
 import java.util.Queue
 import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedQueue
+import kotlin.math.max
 import kotlin.random.Random
 
 @Register(Autowire.SERVICE)
@@ -413,22 +414,42 @@ object ExplorerIntents : ExplorerIntentContainer() {
         icon = Material.MAGMA_BLOCK
     ) { event ->
         val player = event.player
+        val world: World = player.world
 
-        if (player.gameMode == GameMode.SURVIVAL && player.location.block.lightFromSky > 2) {
+        if (player.gameMode != GameMode.SURVIVAL || world.environment != World.Environment.NORMAL) {
+            return@ExplorerIntent
+        }
+
+        val block = player.eyeLocation.block
+
+        val time = world.time
+        val isNight = time in 13000..23000
+        val isStorm = world.hasStorm()
+
+        val rawSky: Int = block.lightFromSky.toInt()
+        var effectiveSky = rawSky
+        if (isNight) effectiveSky = max(0, effectiveSky - 11)
+        if (isStorm) effectiveSky = max(0, effectiveSky - 5)
+
+        if (effectiveSky >= 15) {
             player.damage(0.5)
             player.world.playSound(player.location, Sound.ENTITY_GENERIC_BURN, 0.5f, 1f)
         }
     }
 
-    val WITHERS_CANNOT_SUFFOCATE = ExplorerIntent(
-        title = "Withers Cannot Suffocate",
-        desc = "Withers cannot suffocate.",
+    val WITHER_BUNDLES = ExplorerIntent(
+        title = "Wither Bundles",
+        desc = "Withers cannot suffocate & only receive 30% of incoming damage.",
         world = WORLD,
         eventClass = EntityDamageEvent::class,
         icon = Material.WITHER_SPAWN_EGG
     ) { event ->
-        if (event.entity is Wither && event.cause == EntityDamageEvent.DamageCause.SUFFOCATION) {
+        if (event.entity !is Wither) return@ExplorerIntent
+
+        if (event.cause == EntityDamageEvent.DamageCause.SUFFOCATION) {
             event.isCancelled = true
+        } else {
+            event.damage *= 0.30
         }
     }
 }

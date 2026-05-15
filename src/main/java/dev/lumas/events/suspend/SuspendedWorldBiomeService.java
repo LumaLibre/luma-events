@@ -12,6 +12,8 @@ import me.outspending.biomesapi.renderer.packet.data.BlockReplacement;
 import me.outspending.biomesapi.renderer.packet.data.PhonyCustomBiome;
 import me.outspending.biomesapi.renderer.updater.BiomeUpdater;
 import me.outspending.biomesapi.wrapper.BiomeSettings;
+import me.outspending.biomesapi.wrapper.environment.attribute.WrappedEnvironmentAttributes;
+import me.outspending.biomesapi.wrapper.environment.particle.WrappedParticleTypes;
 import org.bukkit.Material;
 import org.jspecify.annotations.Nullable;
 
@@ -28,13 +30,12 @@ public class SuspendedWorldBiomeService implements Service {
     public void register() {
         instance = this;
         try {
-            packetHandler = PacketHandler.of(EventMain.getInstance(), PacketHandler.Manipulator.PROTOCOLLIB);
+            packetHandler = PacketHandler.of(EventMain.getInstance(), PacketHandler.Injector.PROTOCOLLIB);
         } catch (MissingPacketManipulatorLibraryException e) {
             e.printStackTrace();
             return;
         }
         biomeUpdater = BiomeUpdater.of(EventMain.getInstance());
-
         CustomBiome baseWhiteBiome = CustomBiome.builder()
                 .resourceKey(BiomeResourceKey.of("explorer", "pale"))
                 .settings(BiomeSettings.defaultSettings())
@@ -53,6 +54,8 @@ public class SuspendedWorldBiomeService implements Service {
                         BlockReplacement.of(Material.SPRUCE_LEAVES, Material.WHITE_STAINED_GLASS),
                         BlockReplacement.of(Material.SPRUCE_LOG, Material.STRIPPED_PALE_OAK_LOG)
                 )
+                .setAttribute(WrappedEnvironmentAttributes.SKY_LIGHT_COLOR, "#FFE4E4")
+                .ambientParticle(WrappedParticleTypes.SMOKE, 0.001f)
                 .build();
 
         baseWhiteBiome.register();

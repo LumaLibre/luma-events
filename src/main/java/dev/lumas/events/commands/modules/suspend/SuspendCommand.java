@@ -121,11 +121,13 @@ public class SuspendCommand implements CommandModule {
             return 0;
         }
 
-        Economy econ = VaultService.getInstance().getEconomy();
-        if (econ == null) {
+        VaultService service = VaultService.getInstance();
+        if (service == null) {
             eventPlayer.sendMessage("No economy provider found, purchased 1 Pale Side life.");
             return 1;
         }
+
+        Economy econ = service.getEconomy();
 
         EconomyResponse response;
         int expectedAmount;

@@ -45,10 +45,10 @@ class PaleSideBiome(
         Material.SPRUCE_LOG to Material.STRIPPED_PALE_OAK_LOG
     )
     var attributes: WrappedEnvironmentAttributeMap = WrappedEnvironmentAttributeMap.builder()
-        .setAttribute(WrappedEnvironmentAttributes.SKY_LIGHT_COLOR, "#FFBEBE")
+        .setAttribute(WrappedEnvironmentAttributes.SKY_LIGHT_COLOR, "#FFE4E4")
         .build()
     var particles: ParticleCatalog = ParticleCatalog.builder()
-        .addSimple(WrappedParticleTypes.SMOKE, 0.008f)
+        .addSimple(WrappedParticleTypes.SMOKE, 0.001f)
         .build()
 
     var biome: CustomBiome? = null

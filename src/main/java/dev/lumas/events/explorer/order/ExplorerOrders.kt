@@ -235,8 +235,8 @@ object ExplorerOrders : ExplorerOrderContainer() {
 
     val ENTRANCE = ExplorerOrder(
         name = "#11 entrance",
-        objective = "Kill 3 Withers.",
-        quantity = 3,
+        objective = "Kill 2 Withers.",
+        quantity = 2,
         souls = 60,
         world = WORLDS,
         eventClass = EntityDeathEvent::class,
@@ -287,7 +287,6 @@ object ExplorerOrders : ExplorerOrderContainer() {
             completion.progress()
         }
     }
-
 
     val PALLID = ExplorerOrder(
         name = "#14 pallid",
