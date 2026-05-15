@@ -6,6 +6,8 @@ import dev.lumas.events.EventMain
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.Tag
+import org.bukkit.block.data.type.CreakingHeart
+import org.bukkit.entity.Ageable
 import org.bukkit.entity.EntityType
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.EntityDeathEvent
@@ -231,4 +233,91 @@ object ExplorerOrders : ExplorerOrderContainer() {
         }
     }
 
+    val ENTRANCE = ExplorerOrder(
+        name = "#11 entrance",
+        objective = "Kill 3 Withers.",
+        quantity = 3,
+        souls = 60,
+        world = WORLDS,
+        eventClass = EntityDeathEvent::class,
+        icon = Material.WITHER_SKELETON_SKULL,
+        biome = PaleSideBiome.of("entr4nce")
+            .foliageColor("#E7FFEE")
+            .grassColor("#CEFACF")
+    ) { event, completion ->
+        if (event.entityType == EntityType.WITHER) {
+            completion.progress()
+        }
+    }
+
+    val FLY = ExplorerOrder(
+        name = "#12 fly, fly",
+        objective = "Pick up 40 shulker shells.",
+        quantity = 40,
+        souls = 20,
+        world = WORLDS,
+        eventClass = PlayerAttemptPickupItemEvent::class,
+        icon = Material.SHULKER_SHELL,
+        biome = PaleSideBiome.of("f1y")
+            .foliageColor("#E7EDFF")
+            .grassColor("#CED8FA")
+    ) { event, completion ->
+        val item = event.item.itemStack
+        if (item.type == Material.SHULKER_SHELL && !item.isFlagged()) {
+            item.flag()
+            completion.progress()
+        }
+    }
+
+    val MASCOT = ExplorerOrder(
+        name = "#13 mascot",
+        objective = "Pick up 10 Totem of Undying.",
+        quantity = 10,
+        souls = 15,
+        world = WORLDS,
+        eventClass = PlayerAttemptPickupItemEvent::class,
+        icon = Material.TOTEM_OF_UNDYING,
+        biome = PaleSideBiome.of("masc0t")
+            .foliageColor("#FFFFE7")
+            .grassColor("#FAF5CE")
+    ) { event, completion ->
+        val item = event.item.itemStack
+        if (item.type == Material.TOTEM_OF_UNDYING && !item.isFlagged()) {
+            item.flag()
+            completion.progress()
+        }
+    }
+
+
+    val PALLID = ExplorerOrder(
+        name = "#14 pallid",
+        objective = "Break 4 *ACTIVE* Creaking Hearts",
+        quantity = 10,
+        souls = 25,
+        world = WORLDS,
+        eventClass = BlockBreakEvent::class,
+        icon = Material.CREAKING_SPAWN_EGG
+    ) { event, completion ->
+        val block = event.block
+        val data = block.blockData as? CreakingHeart ?: return@ExplorerOrder
+        if (data.isNatural && data.creakingHeartState == CreakingHeart.State.AWAKE) {
+            event.isDropItems = false
+            completion.progress()
+        }
+    }
+
+    val SNIFFLETS = ExplorerOrder(
+        name = "#15 snifflets",
+        objective = "Kill 4 Snifflets.",
+        quantity = 1,
+        souls = 3,
+        world = WORLDS,
+        eventClass = EntityDeathEvent::class,
+        icon = Material.SNIFFER_EGG
+    ) { event, completion ->
+        val entity = event.entity as? Ageable ?: return@ExplorerOrder
+        if (event.entityType == EntityType.SNIFFER && !entity.isAdult) {
+            completion.progress()
+        }
+    }
 }

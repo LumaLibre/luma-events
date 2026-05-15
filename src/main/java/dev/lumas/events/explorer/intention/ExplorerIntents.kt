@@ -32,6 +32,7 @@ import org.bukkit.entity.Golem
 import org.bukkit.entity.Mob
 import org.bukkit.entity.Player
 import org.bukkit.entity.Squid
+import org.bukkit.entity.Wither
 import org.bukkit.entity.WitherSkeleton
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.EntityDamageEvent
@@ -221,7 +222,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
 
         entity.getAttribute(Attribute.MAX_HEALTH)?.let {
             if (it.getModifier(NAMESPACED_KEY) == null) {
-                val value = it.value * 1.4
+                val value = if (entity.type != EntityType.WITHER) it.value * 1.4 else it.value * 3.0
                 it.addModifier(AttributeModifier(NAMESPACED_KEY, value, AttributeModifier.Operation.ADD_NUMBER))
                 entity.health = it.value
             }
@@ -402,5 +403,32 @@ object ExplorerIntents : ExplorerIntentContainer() {
 
         // 50% extra damage
         event.damage *= 1.5
+    }
+
+    val RED_SKY = ExplorerIntent(
+        title = "Red Skylight",
+        desc = "Skylight deals damage.",
+        world = WORLD,
+        eventClass = HalfSecondRunnableEvent::class,
+        icon = Material.MAGMA_BLOCK
+    ) { event ->
+        val player = event.player
+
+        if (player.gameMode == GameMode.SURVIVAL && player.location.block.lightFromSky > 2) {
+            player.damage(0.5)
+            player.world.playSound(player.location, Sound.ENTITY_GENERIC_BURN, 0.5f, 1f)
+        }
+    }
+
+    val WITHERS_CANNOT_SUFFOCATE = ExplorerIntent(
+        title = "Withers Cannot Suffocate",
+        desc = "Withers cannot suffocate.",
+        world = WORLD,
+        eventClass = EntityDamageEvent::class,
+        icon = Material.WITHER_SPAWN_EGG
+    ) { event ->
+        if (event.entity is Wither && event.cause == EntityDamageEvent.DamageCause.SUFFOCATION) {
+            event.isCancelled = true
+        }
     }
 }

@@ -49,7 +49,7 @@ dependencies {
         exclude(group = "org.bukkit")
     }
 
-    implementation("me.outspending.biomesapi:BiomesAPI:1.2.0-a9e66a9")
+    implementation("me.outspending.biomesapi:BiomesAPI:2.2.0-cefd821")
 
     implementation("dev.thorinwasher.schem:schem-reader:1.0.0")
 

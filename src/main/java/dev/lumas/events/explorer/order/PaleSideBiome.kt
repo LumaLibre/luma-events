@@ -9,6 +9,10 @@ import me.outspending.biomesapi.renderer.packet.PacketHandler
 import me.outspending.biomesapi.renderer.packet.data.BlockReplacement
 import me.outspending.biomesapi.renderer.packet.data.PhonyCustomBiome
 import me.outspending.biomesapi.wrapper.BiomeSettings
+import me.outspending.biomesapi.wrapper.environment.attribute.WrappedEnvironmentAttributeMap
+import me.outspending.biomesapi.wrapper.environment.attribute.WrappedEnvironmentAttributes
+import me.outspending.biomesapi.wrapper.environment.particle.ParticleCatalog
+import me.outspending.biomesapi.wrapper.environment.particle.WrappedParticleTypes
 import org.bukkit.Material
 
 class PaleSideBiome(
@@ -40,6 +44,12 @@ class PaleSideBiome(
         Material.SPRUCE_LEAVES to Material.WHITE_STAINED_GLASS,
         Material.SPRUCE_LOG to Material.STRIPPED_PALE_OAK_LOG
     )
+    var attributes: WrappedEnvironmentAttributeMap = WrappedEnvironmentAttributeMap.builder()
+        .setAttribute(WrappedEnvironmentAttributes.SKY_LIGHT_COLOR, "#FFBEBE")
+        .build()
+    var particles: ParticleCatalog = ParticleCatalog.builder()
+        .addSimple(WrappedParticleTypes.SMOKE, 0.008f)
+        .build()
 
     var biome: CustomBiome? = null
     var phonyBiome: PhonyCustomBiome? = null
@@ -54,6 +64,8 @@ class PaleSideBiome(
     fun grassColor(color: String) = apply { this.grassColor = color }
     fun dryFoliageColor(color: String) = apply { this.dryFoliageColor = color }
     fun blockReplacements(vararg blockReplacements: Pair<Material, Material>) = apply { this.blockReplacements = blockReplacements.toMap() }
+    fun attributes(attributes: WrappedEnvironmentAttributeMap) = apply { this.attributes = attributes }
+    fun particles(particles: ParticleCatalog) = apply { this.particles = particles }
 
     fun simplify(explorerOrder: ExplorerOrder<*>): PaleSideBiome {
         biome = CustomBiome.builder()
@@ -67,6 +79,8 @@ class PaleSideBiome(
             .grassColor(grassColor)
             .dryFoliageColor(dryFoliageColor)
             .blockReplacements(*blockReplacements.map { BlockReplacement.of(it.component1(), it.component2()) }.toTypedArray())
+            .setAttributes(attributes)
+            .particleCatalog(particles)
             .build()
 
         phonyBiome = PhonyCustomBiome.builder()
@@ -90,7 +104,6 @@ class PaleSideBiome(
 
         val handler = SuspendedWorldBiomeService.getInstance()?.packetHandler ?: return this
         handler.appendBiome(phonyBiome ?: throw IllegalStateException("PhonyBiome is not initialized"))
-        println("registered biome: ${biome?.resourceKey}")
         return this
     }
 
