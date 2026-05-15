@@ -9,8 +9,8 @@ import dev.lumas.events.commands.CommandModule;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.utility.Util;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -31,7 +31,7 @@ public class ReloadPlayerFromDiskCommand implements CommandModule {
             return false;
         }
 
-        Player target = Bukkit.getPlayerExact(args[0]);
+        OfflinePlayer target = Bukkit.getOfflinePlayerIfCached(args[0]);
 
         if (target == null) {
             Util.sendMsg(sender, "Player not found");

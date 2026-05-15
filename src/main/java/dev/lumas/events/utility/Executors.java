@@ -11,12 +11,17 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public final class Executors {
 
     private static final EventMain instance = EventMain.getInstance();
+    private static final int TELEPORTS_PER_TICK = 3;
 
     public static ScheduledTask runRepeatingAsync(TimeUnit timeUnit, long delay, long period, Consumer<ScheduledTask> consumer) {
         return Bukkit.getAsyncScheduler().runAtFixedRate(instance, consumer, delay, period, timeUnit);
@@ -133,5 +138,55 @@ public final class Executors {
         } else {
             global(runnable);
         }
+    }
+
+
+    public static Collection<CompletableFuture<Boolean>> teleportGroupAsync(List<EventPlayer> eventPlayers, Location location) {
+        List<Entity> players = new ArrayList<>(eventPlayers.size());
+        for (EventPlayer eventPlayer : eventPlayers) {
+            Player player = eventPlayer.getPlayer();
+            if (player != null) {
+                players.add(player);
+            }
+        }
+        return teleportGroupAsync(players, location);
+    }
+
+    public static Collection<CompletableFuture<Boolean>> teleportGroupAsync(Collection<Entity> entities, Location location) {
+        List<Entity> entityList = new ArrayList<>(entities);
+        List<CompletableFuture<Boolean>> futures = new ArrayList<>(entityList.size());
+        for (int i = 0; i < entityList.size(); i++) {
+            futures.add(new CompletableFuture<>());
+        }
+
+        int totalBatches = (entityList.size() + TELEPORTS_PER_TICK - 1) / TELEPORTS_PER_TICK;
+
+        for (int batch = 0; batch < totalBatches; batch++) {
+            final int batchIndex = batch;
+            Runnable task = () -> {
+                int start = batchIndex * TELEPORTS_PER_TICK;
+                int end = Math.min(start + TELEPORTS_PER_TICK, entityList.size());
+                for (int i = start; i < end; i++) {
+                    Entity entity = entityList.get(i);
+                    CompletableFuture<Boolean> downstream = futures.get(i);
+                    if (!entity.isValid()) {
+                        downstream.complete(false);
+                        continue;
+                    }
+                    entity.teleportAsync(location).whenComplete((success, ex) -> {
+                        if (ex != null) downstream.completeExceptionally(ex);
+                        else downstream.complete(success);
+                    });
+                }
+            };
+
+            if (batchIndex == 0) {
+                Bukkit.getGlobalRegionScheduler().run(EventMain.getInstance(), scheduledTask -> task.run());
+            } else {
+                Bukkit.getGlobalRegionScheduler().runDelayed(EventMain.getInstance(), scheduledTask -> task.run(), batchIndex);
+            }
+        }
+
+        return futures;
     }
 }

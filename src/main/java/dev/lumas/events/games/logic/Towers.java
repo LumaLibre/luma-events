@@ -236,10 +236,10 @@ public final class Towers extends InventoryUnifiedMinigame {
                 towersPlayer.cleanup();
                 towersPlayer.getEventPlayer().operatePlayer(player -> {
                     player.setFallDistance(0f);
-                    player.teleportAsync(this.spawnLocation);
                 });
             });
         });
+        Executors.teleportGroupAsync(this.participants, this.spawnLocation);
 
         this.boundingBox.operate(block -> {
             if (!block.isEmpty()) {

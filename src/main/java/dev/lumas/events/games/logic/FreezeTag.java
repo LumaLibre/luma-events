@@ -170,9 +170,10 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
                 .color(BossBar.Color.BLUE)
                 .title("<aqua><b>Game Over")
                 .seconds(10)
-                .callback(() -> this.participants.forEach(ep -> {
-                    ep.sendMessage("This minigame has concluded.");
-                }))
+                .callback(() -> {
+                    this.sendAudienceMessage("This minigame has concluded.");
+                    Executors.teleportGroupAsync(this.participants, settings.getLobbyLocation());
+                })
                 .build()
                 .start();
     }

@@ -157,9 +157,10 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                     p -> p.getPlayer() != null
             ).forEach(p -> {
                 Player player = p.getPlayer();
-                player.teleportAsync(def.getSpawnLocation());
                 GlowColorManager.getInstance().update(player);
             });
+
+            Executors.teleportGroupAsync(this.participants, def.getSpawnLocation());
 
             CountdownBossBar.builder()
                     .audience(this.audience)
