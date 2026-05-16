@@ -2,6 +2,7 @@ package dev.lumas.events.explorer.intention
 
 import dev.lumas.core.annotation.Autowire
 import dev.lumas.core.annotation.Register
+import dev.lumas.core.util.Logging
 import dev.lumas.events.EventMain
 import dev.lumas.events.explorer.custom.FullSecondRunnableEvent
 import dev.lumas.events.explorer.custom.HalfSecondRunnableEvent
@@ -44,6 +45,7 @@ import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.entity.VillagerReplenishTradeEvent
 import org.bukkit.event.inventory.InventoryOpenEvent
 import org.bukkit.event.inventory.InventoryType
+import org.bukkit.event.player.PlayerItemDamageEvent
 import org.bukkit.inventory.BlockInventoryHolder
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
@@ -410,7 +412,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
         title = "Red Skylight",
         desc = "Skylight deals damage.",
         world = WORLD,
-        eventClass = HalfSecondRunnableEvent::class,
+        eventClass = FullSecondRunnableEvent::class,
         icon = Material.MAGMA_BLOCK
     ) { event ->
         val player = event.player
@@ -432,8 +434,14 @@ object ExplorerIntents : ExplorerIntentContainer() {
         if (isStorm) effectiveSky = max(0, effectiveSky - 5)
 
         if (effectiveSky >= 15) {
-            player.damage(0.5)
-            player.world.playSound(player.location, Sound.ENTITY_GENERIC_BURN, 0.5f, 1f)
+            val helmet = player.inventory.helmet
+
+            if (helmet != null) {
+                helmet.damage(1, player)
+            } else {
+                player.damage(1.0)
+                player.world.playSound(player.location, Sound.ENTITY_GENERIC_BURN, 0.5f, 1f)
+            }
         }
     }
 
@@ -450,6 +458,19 @@ object ExplorerIntents : ExplorerIntentContainer() {
             event.isCancelled = true
         } else {
             event.damage *= 0.30
+        }
+    }
+
+    val FORCE_ITEM_DAMAGE = ExplorerIntent(
+        title = "Force Item Damage",
+        desc = "Internal intention.",
+        world = WORLD,
+        eventClass = PlayerItemDamageEvent::class,
+        icon = Material.NETHERITE_HELMET
+    ) { event ->
+        if (event.isCancelled) {
+            event.isCancelled = false
+            Logging.warningLog("Forcing item damage for ${event.player.name} in pale side.")
         }
     }
 }

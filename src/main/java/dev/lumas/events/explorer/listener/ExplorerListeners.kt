@@ -19,6 +19,7 @@ import io.papermc.paper.event.player.PlayerShieldDisableEvent
 import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
+import org.bukkit.event.EventPriority
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.command.UnknownCommandEvent
@@ -44,6 +45,7 @@ import org.bukkit.event.player.PlayerEggThrowEvent
 import org.bukkit.event.player.PlayerInteractEntityEvent
 import org.bukkit.event.player.PlayerItemBreakEvent
 import org.bukkit.event.player.PlayerItemConsumeEvent
+import org.bukkit.event.player.PlayerItemDamageEvent
 import org.bukkit.event.player.PlayerItemMendEvent
 import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerMoveEvent
@@ -275,5 +277,10 @@ class ExplorerListeners : AbstractExplorerListener {
     @EventHandler
     fun onEntityTame(event: EntityTameEvent) {
         fire(event, event.owner as? Entity ?: return)
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    fun onPlayerBreakItem(event: PlayerItemDamageEvent) {
+        fire(event, event.getPlayer())
     }
 }
