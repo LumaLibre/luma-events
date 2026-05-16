@@ -107,7 +107,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         this.scarletCenterPoint = def.getScarletCenterPoint().toCenterLocation();
         this.towersPlayers = new MinigameRoleMap<>(TowersPlayer::cleanup);
         this.scoreboard = new Scoreboard<>();
-        this.tokenFormula = new FlatIntTokenFormula(65);
+        this.tokenFormula = new FlatIntTokenFormula(40);
         this.isEscalation = def.isEscalation();
         this.forceGameArenaYLevel = this.centerPoint.getY() - 10;
         this.gridLocations = new ArrayList<>();
@@ -228,7 +228,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     @Override
     protected void handleStop() {
         this.towersPlayers.getMatching(ActivePlayer.class).forEach(activePlayer -> {
-            this.scoreboard.addScore(activePlayer.getEventPlayer(), 15);
+            this.scoreboard.addScore(activePlayer.getEventPlayer(), 9);
         });
 
         this.towersPlayers.values().forEach(towersPlayer -> {
@@ -654,7 +654,7 @@ public final class Towers extends InventoryUnifiedMinigame {
 
             if (!dirty) {
                 this.dirty = true;
-                this.context.scoreboard.addScore(this.eventPlayer, 5);
+                this.context.scoreboard.addScore(this.eventPlayer, 3);
             }
 
             event.setCancelled(true);
@@ -676,7 +676,7 @@ public final class Towers extends InventoryUnifiedMinigame {
             }
 
             TowersPlayer attackerPlayer = this.context.towersPlayers.get(this.lastAttacker);
-            this.context.scoreboard.addScore(attackerPlayer.getEventPlayer(), 9);
+            this.context.scoreboard.addScore(attackerPlayer.getEventPlayer(), 5);
             if (attackerPlayer instanceof ActivePlayer activePlayer) {
                 activePlayer.kills++;
                 Player bukkitAttacker = activePlayer.getEventPlayer().getPlayer();
