@@ -49,7 +49,9 @@ public final class EventMain extends JavaPlugin {
 
         ExplorerOrderRegistry.jvmUnifiedValues().forEach(ExplorerOrder::getBiome);
 
-        EventPlayerManager.loadOnlinePlayers();
+        Executors.globalDelayed(1L, t -> {
+            EventPlayerManager.loadOnlinePlayers();
+        });
         EventTeamManager.loadAll();
         LeaderboardCacheManager.start();
 

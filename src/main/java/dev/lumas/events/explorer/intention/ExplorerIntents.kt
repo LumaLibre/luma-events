@@ -436,7 +436,7 @@ object ExplorerIntents : ExplorerIntentContainer() {
         if (effectiveSky >= 15) {
             val helmet = player.inventory.helmet
 
-            if (helmet != null) {
+            if (helmet != null && helmet.type != Material.AIR) {
                 helmet.damage(1, player)
             } else {
                 player.damage(1.0)

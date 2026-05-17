@@ -89,7 +89,11 @@ public final class ShopManagerService implements Service {
 
     @Override
     public void unregister() {
-        shutdown();
+        try {
+            shutdown();
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "[Shop] Failed to shutdown shop inventory", e);
+        }
     }
 
     public ShopLang lang() {
