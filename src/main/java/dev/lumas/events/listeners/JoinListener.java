@@ -23,8 +23,7 @@ public class JoinListener implements Listener {
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(event.getPlayer().getUniqueId());
         boolean claimableCharm = !eventPlayer.isClaimedCharm();
 
-        // TODO: charms
-        if (false && claimableCharm && !eventPlayer.getScores().isEmpty()) {
+        if (claimableCharm && !eventPlayer.getScores().isEmpty()) {
             Executors.runDelayedAsync(TimeUnit.SECONDS, 3, (t) -> {
                 eventPlayer.sendMessage("You have an event charm available to claim!");
             });

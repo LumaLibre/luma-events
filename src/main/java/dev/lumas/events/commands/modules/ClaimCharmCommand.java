@@ -1,6 +1,8 @@
 package dev.lumas.events.commands.modules;
 
+import dev.lumas.core.annotation.Autowire;
 import dev.lumas.core.annotation.CommandMeta;
+import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
@@ -17,7 +19,7 @@ import org.jspecify.annotations.NullMarked;
 import java.util.List;
 
 @NullMarked
-//@Register(Autowire.SUBCOMMAND)
+@Register(Autowire.SUBCOMMAND)
 @CommandMeta(
         name = "claim",
         permission = "lumaevents.default",
@@ -46,7 +48,7 @@ public class ClaimCharmCommand implements CommandModule {
             return true;
         }
 
-        CustomItem customItem = LumaItemsAPI.getInstance().getCustomItem("valentide-2026-charm");
+        CustomItem customItem = LumaItemsAPI.getInstance().getCustomItem("wonderland-charm");
         if (customItem == null) {
             Util.sendMsg(player, "Something went wrong trying to execute this command.");
             return true;
