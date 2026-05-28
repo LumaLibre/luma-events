@@ -502,25 +502,25 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         }
 
         private void hide() {
-            this.eventPlayer.operatePlayer(self -> {
-                for (PanelParticipant other : this.context.roleMap.getMatching(PanelParticipant.class)) {
-                    Player bukkitOther = other.getEventPlayer().getPlayer();
-                    if (bukkitOther != null) {
-                        bukkitOther.hidePlayer(EventMain.getInstance(), self);
+            for (PanelParticipant other : this.context.roleMap.getMatching(PanelParticipant.class)) {
+                other.getEventPlayer().operatePlayer(viewer -> {
+                    Player self = this.eventPlayer.getPlayer();
+                    if (self != null) {
+                        viewer.hidePlayer(EventMain.getInstance(), self);
                     }
-                }
-            });
+                });
+            }
         }
 
         private void show() {
-            this.eventPlayer.operatePlayer(self -> {
-                for (EventPlayer other : this.context.getParticipants()) {
-                    Player bukkitOther = other.getPlayer();
-                    if (bukkitOther != null) {
-                        bukkitOther.showPlayer(EventMain.getInstance(), self);
+            for (EventPlayer other : this.context.getParticipants()) {
+                other.operatePlayer(viewer -> {
+                    Player self = this.eventPlayer.getPlayer();
+                    if (self != null) {
+                        viewer.showPlayer(EventMain.getInstance(), self);
                     }
-                }
-            });
+                });
+            }
         }
 
     }
