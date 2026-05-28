@@ -68,6 +68,7 @@ dependencies {
     }
 
     compileOnly("com.github.LumaLibre:HiddenArmor-Folia:96bcba105e")
+    compileOnly("com.github.LeonMangler:SuperVanish:6.2.18-3")
 }
 
 tasks {
