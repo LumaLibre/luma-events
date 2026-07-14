@@ -7,10 +7,8 @@ import dev.lumas.events.games.events.MinigamePreventDamageListener;
 import dev.lumas.events.games.events.MinigamePreventInventoryTampering;
 import dev.lumas.events.games.exceptions.GameComponentIllegallyActive;
 import dev.lumas.events.games.models.CountdownBossBar;
-import dev.lumas.events.manager.EventTeamManager;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.MinigameBoundingBox;
-import dev.lumas.events.model.team.EventTeam;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
@@ -208,10 +206,6 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             return false;
         }
 
-        if (this.requiresTeams() && EventTeamManager.getByMember(player) == null) {
-            player.sendMessage("You must be in a team to join this minigame. <gold><click:run_command:/event jointeam>/event jointeam");
-            return false;
-        }
 
         try {
             if (!this.handleParticipantJoin(player)) {
@@ -305,12 +299,6 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         return EventMain.getOkaeriConfig().getGameDropOffLocation();
     }
 
-    @Nullable
-    public Location getGameDropOffLocationForTeam(EventTeamManager.@Nullable Provider provider) {
-        if (provider == null) return null;
-        return EventMain.getOkaeriConfig().getTeamSpawnLocations().get(provider);
-    }
-
     public void sendAudienceMessage(String m) {
         if (this.audience == null) {
             return;
@@ -398,15 +386,6 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
     protected int minimumParticipants() {
         // This method can be overridden to specify the minimum number of participants required to start the minigame
         return 2; // Default is 2 participants
-    }
-
-    /**
-     * Returns true if the minigame requires {@link EventTeam}s to play.
-     * @return true if the minigame requires teams, false otherwise.
-     */
-    protected boolean requiresTeams() {
-        // This method can be overridden to specify whether the minigame requires teams
-        return false;
     }
 
     // Minigame starts, returns true if successful

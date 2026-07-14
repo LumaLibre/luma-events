@@ -34,11 +34,6 @@ public class MinigameQuitCommand implements CommandModule {
         Minigame current = MinigameManager.getInstance().getCurrent();
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
 
-        if (eventPlayer.isSuspended()) {
-            Util.sendMsg(sender, "You are suspended!");
-            return true;
-        }
-
         if (!current.removeParticipant(eventPlayer, true)) {
             Util.sendMsg(player, "No active minigame found.");
         }

@@ -1,8 +1,6 @@
 package dev.lumas.events.configurable;
 
 import dev.lumas.events.configurable.sectors.BoatRace2Definition;
-import dev.lumas.events.configurable.sectors.BunnyArenaDefinition;
-import dev.lumas.events.configurable.sectors.ExplorerDefinition;
 import dev.lumas.events.configurable.sectors.FreezeTagDefinition;
 import dev.lumas.events.configurable.sectors.ManorMinigameDefinition;
 import dev.lumas.events.configurable.sectors.MineBattleDefinition;
@@ -13,17 +11,12 @@ import dev.lumas.events.configurable.sectors.TNTRunDefinition;
 import dev.lumas.events.configurable.sectors.TheNabbitsMinigameDefinition;
 import dev.lumas.events.configurable.sectors.TowersDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
-import dev.lumas.events.manager.EventTeamManager;
 import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.annotation.Comment;
 import lombok.Getter;
 import lombok.Setter;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.World;
-import org.jspecify.annotations.Nullable;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -46,18 +39,8 @@ public class Config extends OkaeriConfig {
     @Comment("Location for /event")
     private Location eventSpawnLocation = null;
 
-    @Comment("Initial location for /event")
-    private Location initialEventSpawnLocation = null;
-
     @Comment("Game drop-off location for minigames")
     private Location gameDropOffLocation = null;
-
-    @Comment("Game drop-off locations for teams")
-    private Map<EventTeamManager.Provider, Location> teamSpawnLocations = new HashMap<>();
-    {
-        teamSpawnLocations.put(EventTeamManager.Provider.IVORY, null);
-        teamSpawnLocations.put(EventTeamManager.Provider.SCARLET, null);
-    }
 
     @Comment("Enabled minigames for automatic selection")
     private List<MinigameConstant> enabledAutomaticMinigames = List.of(
@@ -66,19 +49,11 @@ public class Config extends OkaeriConfig {
             MinigameConstant.PAINTBALL2_1
     );
 
-    @Comment("Commands allowed while participating in a game or while a player is suspended")
+    @Comment("Commands allowed while participating in a game")
     private List<String> commandWhitelist = List.of(
             "g", "l", "lc", "pc", "p", "sc", "msg", "r", "w", "whisper", "tell", "partychat", "staffchat",
-            "event", "wonderland", "wland", "wonder", "explorer"
+            "event"
     );
-
-
-    @Comment("Explorer miles and orders")
-    private ExplorerDefinition explorer = new ExplorerDefinition();
-
-
-    @Comment("Bunny Arena where bunnies with different values spawn")
-    private BunnyArenaDefinition bunnyArena = new BunnyArenaDefinition();
 
     // easter 2026
 
@@ -135,15 +110,5 @@ public class Config extends OkaeriConfig {
     @Comment("Minigame definition for 'The Nabbits'")
     private Map<String, TheNabbitsMinigameDefinition> theNabbitsMaps = Map.of();
 
-
-
-    @Nullable
-    public World getUnsuspendWorld() {
-        World world = Bukkit.getWorld(this.explorer.getSuspendRemovalWorld());
-        if (world == null) {
-            world = Bukkit.getWorlds().stream().filter(w -> !this.explorer.getSuspendedWorlds().contains(w.getName())).findFirst().orElse(null);
-        }
-        return world;
-    }
 }
 

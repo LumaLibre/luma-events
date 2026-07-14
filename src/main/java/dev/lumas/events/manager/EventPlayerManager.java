@@ -74,11 +74,7 @@ public final class EventPlayerManager {
         File file = FOLDER.resolve(uuid + ".json").toFile();
         if (file.exists()) {
             try (FileReader reader = new FileReader(file)) {
-                EventPlayer player = gson.fromJson(reader, EventPlayer.class);
-                if (player != null) {
-                    player.getLazyTeam(); // update lazy
-                    return player;
-                }
+                return gson.fromJson(reader, EventPlayer.class);
             } catch (IOException e) {
                 e.printStackTrace();
             }

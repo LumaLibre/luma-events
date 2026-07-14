@@ -32,15 +32,10 @@ dependencies {
     compileOnly("dev.lumas.core:LumaCore:f25f237")
     compileOnly("dev.lumas.lumaitems:LumaItems:f760f14")
     compileOnly("dev.lumas.glowapi:LumaGlowAPI:325d91d")
-    compileOnly("dev.jsinco.chatheads:ChatHeads:1.8")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("com.nuclyon.technicallycoded.inventoryrollback:InventoryRollbackPlus:1.7.3")
     compileOnly("com.github.Zrips:jobs:v4.17.2")
     compileOnly("net.dmulloy2:ProtocolLib:5.4.0")
-    compileOnly("com.ronanplugins:BetterRTP:3.6.13") // repo.jsinco.dev
-    compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
-        isTransitive = false
-    }
 
     //compileOnly("io.papermc.paper:paper-api:1.21.10-R0.1-SNAPSHOT")
     compileOnly("io.canvasmc.canvas:canvas-api:1.21.11-R0.1-SNAPSHOT")

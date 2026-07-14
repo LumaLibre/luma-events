@@ -4,8 +4,6 @@ import dev.lumas.core.manager.Modules;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.ConfigManager;
 import dev.lumas.events.configurable.PersistentStates;
-import dev.lumas.events.explorer.order.ExplorerOrder;
-import dev.lumas.events.explorer.order.ExplorerOrderRegistry;
 import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.models.CountdownBossBar;
@@ -14,7 +12,6 @@ import dev.lumas.events.items.LocalCustomItemManager;
 import dev.lumas.events.items.StartMinigameItem;
 import dev.lumas.events.items.WaxcapShroomItem;
 import dev.lumas.events.manager.EventPlayerManager;
-import dev.lumas.events.manager.EventTeamManager;
 import dev.lumas.events.manager.LeaderboardCacheManager;
 import dev.lumas.events.tasks.PlaytimeCounterTask;
 import dev.lumas.events.utility.Externals;
@@ -46,19 +43,12 @@ public final class EventMain extends JavaPlugin {
         moduleManager = new Modules(this);
 
         moduleManager.register();
-
-        ExplorerOrderRegistry.jvmUnifiedValues().forEach(ExplorerOrder::getBiome);
-
         Executors.globalDelayed(1L, t -> {
             EventPlayerManager.loadOnlinePlayers();
         });
-        EventTeamManager.loadAll();
         LeaderboardCacheManager.start();
 
-        Executors.asyncTimer(20 * 60L, 20 * 60L, t -> {
-            EventPlayerManager.evictStale();
-            EventTeamManager.saveAll();
-        });
+        Executors.asyncTimer(20 * 60L, 20 * 60L, _ -> EventPlayerManager.evictStale());
         MinigameManager.getInstance().repeatingAsync(0, 600);
 
         LocalCustomItemManager.addCustomItem(new WaxcapShroomItem());
@@ -80,7 +70,6 @@ public final class EventMain extends JavaPlugin {
         STOPPING = true;
 
         EventPlayerManager.saveAllAndClear();
-        EventTeamManager.saveAll();
         CountdownBossBar.stopAll(false);
         HandlerList.unregisterAll(this);
         for (BossBar bossBar : CountdownBossBar.activeCountdowns.stream().map(CountdownBossBar::getBossBar).toList()) {

@@ -1,8 +1,6 @@
 package dev.lumas.events.games.models;
 
 import dev.lumas.events.games.interfaces.Scorer;
-import dev.lumas.events.model.EventPlayer;
-import dev.lumas.events.model.team.EventTeam;
 import dev.lumas.events.utility.Util;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
@@ -17,7 +15,7 @@ import java.util.Map;
 public class Scoreboard<T extends Scorer> {
 
     private static final String BORDER = "<#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     ";
-    private static final String MESSAGE_FORMAT = "<green><gold>#%s</gold> is <red>%s</red> with <gold>%s points</gold>!%s";
+    private static final String MESSAGE_FORMAT = "<green><gold>#%s</gold> is <red>%s</red> with <gold>%s points</gold>!";
 
     private final Map<T, Integer> scores = new HashMap<>();
 
@@ -47,15 +45,15 @@ public class Scoreboard<T extends Scorer> {
     @Nullable
     public T getTopScorer() {
         return scores.entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse(null);
+            .max(Map.Entry.comparingByValue())
+            .map(Map.Entry::getKey)
+            .orElse(null);
     }
 
     public LinkedHashMap<T, Integer> sortedScores() {
         return scores.entrySet().stream()
-                .sorted(Map.Entry.<T, Integer>comparingByValue().reversed())
-                .collect(LinkedHashMap::new, (map, entry) -> map.put(entry.getKey(), entry.getValue()), LinkedHashMap::putAll);
+            .sorted(Map.Entry.<T, Integer>comparingByValue().reversed())
+            .collect(LinkedHashMap::new, (map, entry) -> map.put(entry.getKey(), entry.getValue()), LinkedHashMap::putAll);
     }
 
     public List<Component> scoreboardMessage() {
@@ -71,8 +69,7 @@ public class Scoreboard<T extends Scorer> {
             if (count >= 5) break; // Limit to top 5
             T scorer = entry.getKey();
             int score = entry.getValue();
-            EventTeam team = scorer instanceof EventPlayer ep ? ep.getLazyTeam() : null;
-            messages.add(Util.prefixed(String.format(MESSAGE_FORMAT, count + 1, scorer.getName(), score, team != null ? " (" + team.getDisplayName() + ")" : "")));
+            messages.add(Util.prefixed(String.format(MESSAGE_FORMAT, count + 1, scorer.getName(), score)));
             count++;
         }
 
@@ -89,8 +86,8 @@ public class Scoreboard<T extends Scorer> {
         List<Component> messages = this.scoreboardMessage();
 
         audience.showTitle(Util.title(
-                "<yellow>Game Over",
-                "<gold>" + (topScorer != null ? topScorer.getName() : "Unknown") + " has won!"
+            "<yellow>Game Over",
+            "<gold>" + (topScorer != null ? topScorer.getName() : "Unknown") + " has won!"
         ));
 
         audience.sendMessage(Util.color(BORDER));

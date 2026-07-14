@@ -8,10 +8,8 @@ import dev.lumas.events.games.interfaces.Scorer;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.tokenformula.Paintball2_1TokenFormula;
 import dev.lumas.events.manager.EventPlayerManager;
-import dev.lumas.events.manager.EventTeamManager;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.WorldTiedBoundingBox;
-import dev.lumas.events.model.team.EventTeam;
 import dev.lumas.events.utility.Couple;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
@@ -83,38 +81,14 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
     }
 
     @Override
-    protected boolean requiresTeams() {
-        return true;
-    }
-
-    @Override
     protected void handleStart() {
         List<EventPlayer> shuffled = new ArrayList<>(this.participants);
         Collections.shuffle(shuffled);
 
-        /*
         int middle = shuffled.size() / 2;
         this.teams = List.of(
                 new FreezeTagTeam(shuffled.subList(0, middle), settings.getTeam1(), settings.getTeam1SpawnLocation()),
                 new FreezeTagTeam(shuffled.subList(middle, shuffled.size()), settings.getTeam2(), settings.getTeam2SpawnLocation())
-        );
-        */
-
-        FreezeTagDefinition.TeamConfig scarletConfig = settings.getTeam1();
-        FreezeTagDefinition.TeamConfig ivoryConfig = settings.getTeam2();
-
-        List<EventPlayer> scarletPlayers = shuffled.stream().filter(it -> {
-            EventTeam team = EventTeamManager.getByMemberOrThrow(it);
-            return scarletConfig.getProvider().getTeamClass().equals(team.getClass());
-        }).toList();
-        List<EventPlayer> ivoryPlayers = shuffled.stream().filter(it -> {
-            EventTeam team = EventTeamManager.getByMemberOrThrow(it);
-            return ivoryConfig.getProvider().getTeamClass().equals(team.getClass());
-        }).toList();
-
-        this.teams = List.of(
-                new FreezeTagTeam(scarletPlayers, scarletConfig, settings.getTeam1SpawnLocation()),
-                new FreezeTagTeam(ivoryPlayers, ivoryConfig, settings.getTeam2SpawnLocation())
         );
 
         for (FreezeTagTeam team : teams) {
@@ -592,11 +566,6 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
                 boolean isWinner = team == winner;
                 int finalScore = tokenFormula.giveTokens(member, Couple.of(score, isWinner));
                 member.addPermanentScore(MinigameConstant.FREEZE_TAG, score);
-
-                EventTeam eventTeam = member.getLazyTeam();
-                if (eventTeam != null) {
-                    eventTeam.addPoints(member, finalScore);
-                }
             }
         }
     }
@@ -713,7 +682,6 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         private final Color armorColor;
         private final Location spawnLocation;
         private final String teamName;
-        private final EventTeam eventTeam;
         private final Map<EventPlayer, Integer> scoreMap;
 
         public FreezeTagTeam(List<EventPlayer> members, FreezeTagDefinition.TeamConfig config, Location spawnLocation) {
@@ -722,7 +690,6 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
             this.spawnLocation = spawnLocation;
             this.teamName = config.getName();
             this.scoreMap = new HashMap<>();
-            this.eventTeam = EventTeamManager.getByProvider(config.getProvider());
             for (EventPlayer member : members) {
                 scoreMap.put(member, 0);
             }

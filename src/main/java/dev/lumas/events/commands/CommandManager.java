@@ -5,8 +5,6 @@ import dev.lumas.core.annotation.CommandMeta;
 import dev.lumas.core.annotation.Register;
 import dev.lumas.core.model.command.AbstractCommandManager;
 import dev.lumas.events.EventMain;
-import dev.lumas.events.manager.EventPlayerManager;
-import dev.lumas.events.model.EventPlayer;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -33,23 +31,9 @@ public class CommandManager extends AbstractCommandManager<EventMain, CommandMod
             return false;
         }
 
-        EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
-
-        if (eventPlayer.isSuspended()) {
-            eventPlayer.sendMessage("You are suspended!");
-            return true;
-        }
-
-        Location locInitial = EventMain.getOkaeriConfig().getInitialEventSpawnLocation();
         Location loc = EventMain.getOkaeriConfig().getEventSpawnLocation();
-        Location paleSide = EventMain.getOkaeriConfig().getExplorer().getUnsuspendDropOffLocation();
 
-        if (!eventPlayer.isInitialSpawn() && locInitial != null) {
-            eventPlayer.setInitialSpawn(true);
-            player.teleportAsync(locInitial.toCenterLocation());
-        } else if (label.equalsIgnoreCase("explorer") && paleSide != null) {
-            player.teleportAsync(paleSide.toCenterLocation());
-        } else if (loc != null) {
+        if (loc != null) {
             player.teleportAsync(loc.toCenterLocation());
         }
         return true;
