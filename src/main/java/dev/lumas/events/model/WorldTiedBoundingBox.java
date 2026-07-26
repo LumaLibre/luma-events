@@ -36,6 +36,13 @@ public class WorldTiedBoundingBox extends BoundingBox implements MinigameBoundin
         return this.world.equals(location.getWorld()) && super.contains(location.toVector());
     }
 
+    public boolean contains(World world, BoundingBox boundingBox) {
+        return this.world.equals(world) &&
+            this.getMinX() <= boundingBox.getMinX() && this.getMaxX() >= boundingBox.getMaxX()
+                && this.getMinY() <= boundingBox.getMinY() && this.getMaxY() >= boundingBox.getMaxY()
+                && this.getMinZ() <= boundingBox.getMinZ() && this.getMaxZ() >= boundingBox.getMaxZ();
+    }
+
     public List<Block> getBlocks() {
         List<Block> bL = new LinkedList<>();
         for (int x = (int) this.getMinX(); x <= (int) this.getMaxX(); ++x) {

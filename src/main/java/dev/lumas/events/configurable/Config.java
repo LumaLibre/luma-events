@@ -7,6 +7,7 @@ import dev.lumas.events.configurable.sectors.MineBattleDefinition;
 import dev.lumas.events.configurable.sectors.MinigameDefinition;
 import dev.lumas.events.configurable.sectors.Paintball2_1Definition;
 import dev.lumas.events.configurable.sectors.PanelPartyMinigameDefinition;
+import dev.lumas.events.configurable.sectors.SulfurSoccerDefinition;
 import dev.lumas.events.configurable.sectors.TNTRunDefinition;
 import dev.lumas.events.configurable.sectors.TheNabbitsMinigameDefinition;
 import dev.lumas.events.configurable.sectors.TowersDefinition;
@@ -53,6 +54,13 @@ public class Config extends OkaeriConfig {
     private List<String> commandWhitelist = List.of(
             "g", "l", "lc", "pc", "p", "sc", "msg", "r", "w", "whisper", "tell", "partychat", "staffchat",
             "event"
+    );
+
+    // summer 2026
+
+    @Comment("Minigame definition for 'Sulfur Soccer'")
+    private Map<String, SulfurSoccerDefinition> sulfurSoccerMaps = Map.of(
+            "default", new SulfurSoccerDefinition()
     );
 
     // easter 2026

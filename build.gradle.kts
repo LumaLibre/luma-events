@@ -5,7 +5,7 @@ plugins {
     id("java")
     id("com.gradleup.shadow") version "9.4.1"
     id("io.freefair.lombok") version "9.1.0"
-    id("xyz.jpenilla.run-paper") version "2.3.1"
+    id("xyz.jpenilla.run-paper") version "3.0.1"
     kotlin("jvm")
     kotlin("plugin.lombok") version "2.3.10"
 }
@@ -15,6 +15,7 @@ version = commitHash()
 
 repositories {
     mavenCentral()
+    maven("https://maven.canvasmc.io/releases/")
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://storehouse.okaeri.eu/repository/maven-public/")
     maven("https://repo.jsinco.dev/releases")
@@ -24,7 +25,6 @@ repositories {
     maven("https://repo.md-5.net/content/groups/public/")
     maven("https://maven.enginehub.org/repo/")
     maven("https://mvn.lib.co.nz/public/")
-    maven("https://maven.canvasmc.io/snapshots")
 }
 
 
@@ -38,7 +38,7 @@ dependencies {
     compileOnly("net.dmulloy2:ProtocolLib:5.4.0")
 
     //compileOnly("io.papermc.paper:paper-api:1.21.10-R0.1-SNAPSHOT")
-    compileOnly("io.canvasmc.canvas:canvas-api:1.21.11-R0.1-SNAPSHOT")
+    compileOnly("io.canvasmc.canvas:canvas-api:26.2.build.+")
     compileOnly("me.libraryaddict.disguises:libsdisguises:11.0.13") {
         isTransitive = false
     }
@@ -46,8 +46,6 @@ dependencies {
     compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
         exclude(group = "org.bukkit")
     }
-
-    implementation("me.outspending.biomesapi:BiomesAPI:2.2.0-cefd821")
 
     implementation("dev.thorinwasher.schem:schem-reader:1.0.0")
 
@@ -62,7 +60,7 @@ dependencies {
         isTransitive = false
     }
 
-    compileOnly("com.github.LumaLibre:HiddenArmor-Folia:96bcba105e")
+    compileOnly("com.github.LumaLibre:HiddenArmor-Folia:96bcba105e") // TODO: needs to be on repo.jsinco.dev
 }
 
 tasks {
@@ -80,16 +78,10 @@ tasks {
 
         relocate("eu.okaeri", "$pack.okaeri")
         relocate("dev.thorinwasher.schem", "$pack.schem")
-        relocate("me.outspending.biomesapi", "$pack.biomesapi")
         exclude("kotlin/**", "net/kyori/**", "org/joml/**")
         //minimize()
         archiveClassifier.set("")
         archiveVersion.set("")
-
-
-        manifest {
-            attributes["paperweight-mappings-namespace"] = "mojang"
-        }
     }
 
     build {
@@ -97,7 +89,7 @@ tasks {
     }
 
     runServer {
-        minecraftVersion("1.21.11")
+        minecraftVersion("26.2")
     }
 
     processResources {
