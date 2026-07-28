@@ -246,9 +246,9 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
     private void openQueue(int seconds) {
         this.queueBossbar = CountdownBossBar.builder()
-                .title("<gradient:#5d85dc:#E56A91:#F3AA4C:#CA51CB><b>" + name + " Starting in</b><gray>:</gray> <b>%ss</b></gradient>")
+                .title("<gradient:#f7abdd:#ffefcd:#ec7464:#CB364C><b>" + name + " Starting in</b><gray>:</gray> <b>%ss</b></gradient>")
                 .seconds(seconds)
-                .color(BossBar.Color.PINK)
+                .color(BossBar.Color.WHITE)
                 .callback(this::start)
                 .audience(Audience.audience(Bukkit.getOnlinePlayers()))
                 .build()

@@ -21,7 +21,7 @@ import java.util.function.Consumer;
 public final class Executors {
 
     private static final EventMain instance = EventMain.getInstance();
-    private static final int TELEPORTS_PER_TICK = 3;
+    private static final int TELEPORTS_PER_TICK = 5;
 
     public static ScheduledTask runRepeatingAsync(TimeUnit timeUnit, long delay, long period, Consumer<ScheduledTask> consumer) {
         return Bukkit.getAsyncScheduler().runAtFixedRate(instance, consumer, delay, period, timeUnit);

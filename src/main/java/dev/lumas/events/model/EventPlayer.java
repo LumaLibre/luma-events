@@ -99,7 +99,10 @@ public class EventPlayer implements Serializable, Scorer {
         player.showTitle(Title.title(Util.color(title), Util.color(subtitle)));
     }
 
-    public CompletableFuture<Boolean> teleportAsync(Location location) {
+    public CompletableFuture<Boolean> teleportAsync(@Nullable Location location) {
+        if (location == null) {
+            return CompletableFuture.completedFuture(false);
+        }
         Player player = this.getPlayer();
         if (player == null) {
             return CompletableFuture.completedFuture(false);
