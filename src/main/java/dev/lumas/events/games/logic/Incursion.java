@@ -2,6 +2,8 @@ package dev.lumas.events.games.logic;
 
 import com.destroystokyo.paper.event.player.PlayerArmorChangeEvent;
 import dev.lumas.events.EventMain;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import dev.lumas.events.configurable.sectors.IncursionDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
@@ -15,6 +17,7 @@ import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.lumaitems.particles.ParticleDisplay;
 import dev.lumas.lumaitems.particles.Particles;
+import io.papermc.paper.event.player.PlayerStopUsingItemEvent;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,6 +26,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.title.Title;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.FireworkEffect;
 import org.bukkit.GameMode;
@@ -31,29 +35,36 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 
@@ -68,12 +79,26 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.DoubleConsumer;
 
 public final class Incursion extends InventoryUnifiedMinigame {
 
     private static final NamespacedKey FREEZE_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_freeze");
     private static final NamespacedKey KIT_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_kit");
+    private static final NamespacedKey WEAPON_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_weapon");
     private static final String FIREWORK_KEY = "incursion_firework";
+
+    private static final int CHARGE_BAR_SEGMENTS = 10;
+    private static final int SHOTGUN_PELLETS = 10;
+    private static final double BEAM_STEP = 0.5;
+
+    // Heights of the spheres a player's hitbox is approximated by for the scattergun's cone test
+    private static final double[] BODY_SAMPLE_FRACTIONS = {0.2, 0.5, 0.8};
+    private static final Title.Times CHARGE_TITLE_TIMES =
+            Title.Times.times(Duration.ZERO, Duration.ofMillis(400), Duration.ZERO);
+
+    // How long after a true damage hit its shooter still gets credited with the kill
+    private static final long DAMAGE_CREDIT_MILLIS = 10_000L;
 
     private static final long INVINCIBILITY_AURA_PERIOD_MILLIS = 100L;
     private static final Duration INVINCIBILITY_TITLE_STAY = Duration.ofMillis(400);
@@ -100,6 +125,9 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private final ConcurrentHashMap<UUID, Location> frozenAt = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, Long> invincibleUntil = new ConcurrentHashMap<>();
     private final Set<UUID> respawning = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> charging = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> chargeReady = ConcurrentHashMap.newKeySet();
+    private final ConcurrentHashMap<UUID, DamageCredit> lastTrueDamage = new ConcurrentHashMap<>();
     private final Set<Integer> announcedSwapWarnings = ConcurrentHashMap.newKeySet();
     private final Set<Integer> announcedEndWarnings = ConcurrentHashMap.newKeySet();
 
@@ -167,7 +195,10 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 .build();
         this.countdownBossBar.start();
 
-        this.auraTask = Executors.runRepeatingAsync(TimeUnit.MILLISECONDS, 0, INVINCIBILITY_AURA_PERIOD_MILLIS, _ -> tickInvincibilityAura());
+        this.auraTask = Executors.runRepeatingAsync(TimeUnit.MILLISECONDS, 0, INVINCIBILITY_AURA_PERIOD_MILLIS, _ -> {
+            tickInvincibilityAura();
+            tickSniperCharge();
+        });
 
         this.kickoff("<gold><b>First Half");
     }
@@ -510,12 +541,19 @@ public final class Incursion extends InventoryUnifiedMinigame {
         invincibleUntil.remove(uuid);
         respawning.remove(uuid);
         frozenAt.remove(uuid);
+        charging.remove(uuid);
+        chargeReady.remove(uuid);
+        lastTrueDamage.remove(uuid);
         participant.operatePlayer(this::unfreeze);
     }
 
     private void equipKit(Player player, IncursionTeam team) {
-        player.getInventory().setChestplate(teamChestplate(team));
-        // TODO: Weapon(s)
+        PlayerInventory inventory = player.getInventory();
+        inventory.setChestplate(teamChestplate(team));
+        inventory.setItem(Weapon.BAYONET.slot, Weapon.BAYONET.item());
+        inventory.setItem(Weapon.LONGSHOT.slot, Weapon.LONGSHOT.item());
+        inventory.setItem(Weapon.SCATTERGUN.slot, Weapon.SCATTERGUN.item());
+        inventory.setHeldItemSlot(Weapon.BAYONET.slot);
     }
 
     private ItemStack teamChestplate(IncursionTeam team) {
@@ -532,6 +570,303 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     private static boolean isTeamArmor(@Nullable ItemStack item) {
         return item != null && Util.hasPersistentKey(item, KIT_KEY);
+    }
+
+    @Nullable
+    private static Weapon weaponOf(@Nullable ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return null;
+        String raw = item.getItemMeta().getPersistentDataContainer().get(WEAPON_KEY, PersistentDataType.STRING);
+        return raw == null ? null : Util.getEnumFromString(Weapon.class, raw);
+    }
+
+    private static boolean readyToFire(Player player, Material material) {
+        if (!player.hasCooldown(material)) return true;
+        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 0.7f, 0.5f);
+        return false;
+    }
+
+    private void tickSniperCharge() {
+        for (UUID uuid : charging) {
+            EventPlayer participant = participantOf(uuid);
+            if (participant == null) {
+                charging.remove(uuid);
+                chargeReady.remove(uuid);
+                continue;
+            }
+
+            participant.operatePlayer(player -> {
+                if (!player.hasActiveItem() || weaponOf(player.getActiveItem()) != Weapon.LONGSHOT) {
+                    boolean ours = charging.remove(uuid);
+                    boolean wasCharged = chargeReady.remove(uuid);
+                    if (ours && wasCharged && !isOutOfPlay(uuid)) {
+                        IncursionTeam team = teamOf(uuid);
+                        player.clearTitle();
+                        if (team != null) fireLongshot(player, team);
+                    }
+                    return;
+                }
+
+                int chargeTicks = Math.max(1, definition.getSniper().getChargeTicks());
+                int held = player.getActiveItemUsedTime();
+                if (held >= chargeTicks) {
+                    if (chargeReady.add(uuid)) {
+                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 1f, 1f);
+                    }
+                    player.showTitle(Title.title(
+                            Util.color("<green><b>◎"),
+                            Util.color("<green><b>READY"),
+                            CHARGE_TITLE_TIMES));
+                    return;
+                }
+
+                int filled = (int) Math.round(((double) held / chargeTicks) * CHARGE_BAR_SEGMENTS);
+                player.showTitle(Title.title(
+                        Util.color("<yellow><b>◎"),
+                        Util.color("<yellow>" + "|".repeat(filled) + "<dark_gray>" + "|".repeat(CHARGE_BAR_SEGMENTS - filled)),
+                        CHARGE_TITLE_TIMES));
+            });
+        }
+    }
+
+    private void fireLongshot(Player shooter, IncursionTeam team) {
+        IncursionDefinition.SniperSettings settings = definition.getSniper();
+        if (settings.getCooldownTicks() > 0) {
+            shooter.setCooldown(Material.SPYGLASS, settings.getCooldownTicks());
+        }
+
+        Location eye = shooter.getEyeLocation();
+        Vector direction = eye.getDirection().normalize();
+
+        eye.getWorld().playSound(eye, Sound.ENTITY_GENERIC_EXPLODE, 1f, 0.6f);
+        eye.getWorld().playSound(eye, Sound.ITEM_TRIDENT_THROW, 1.1f, 0.5f);
+        eye.getWorld().playSound(eye, Sound.ENTITY_WARDEN_SONIC_BOOM, 0.35f, 1.4f);
+
+        advanceBeam(team, eye, direction, 0.0, Math.max(1.0, settings.getRange()),
+                stoppedAt -> applyBeamDamage(shooter, team, eye, direction, stoppedAt));
+    }
+
+    private void advanceBeam(IncursionTeam team, Location eye, Vector direction,
+                             double startDistance, double maxRange, DoubleConsumer onStopped) {
+        World world = eye.getWorld();
+        int step = 0;
+
+        for (double distance = startDistance; distance <= maxRange; distance += BEAM_STEP, step++) {
+            double x = eye.getX() + (direction.getX() * distance);
+            double y = eye.getY() + (direction.getY() * distance);
+            double z = eye.getZ() + (direction.getZ() * distance);
+
+            int blockX = (int) Math.floor(x);
+            int blockY = (int) Math.floor(y);
+            int blockZ = (int) Math.floor(z);
+
+            if (!Bukkit.isOwnedByCurrentRegion(world, blockX >> 4, blockZ >> 4)) {
+                double resumeAt = distance;
+                Executors.sync(world, blockX >> 4, blockZ >> 4,
+                        () -> advanceBeam(team, eye, direction, resumeAt, maxRange, onStopped));
+                return;
+            }
+
+            if (!world.getBlockAt(blockX, blockY, blockZ).isPassable()) {
+                Location impact = new Location(world, x, y, z);
+                world.spawnParticle(Particle.EXPLOSION, impact, 1, 0, 0, 0, 0);
+                world.spawnParticle(Particle.CRIT, impact, 8, 0.1, 0.1, 0.1, 0.25);
+                world.playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 0.4f, 1.9f);
+                onStopped.accept(distance);
+                return;
+            }
+
+            world.spawnParticle(Particle.DUST, x, y, z, 1, 0, 0, 0, 0, team.getBeamDust());
+            if (step % 4 == 0) {
+                world.spawnParticle(Particle.END_ROD, x, y, z, 1, 0, 0, 0, 0);
+            }
+        }
+
+        onStopped.accept(maxRange);
+    }
+
+    // Projects every enemy onto the beam and hits everyone within the configured radius of it
+    private void applyBeamDamage(Player shooter, IncursionTeam shooterTeam, Location eye, Vector direction, double maxDistance) {
+        IncursionDefinition.SniperSettings settings = definition.getSniper();
+        int hits = 0;
+
+        for (EventPlayer participant : enemiesOf(shooterTeam, shooter)) {
+            Player target = participant.getPlayer();
+            if (target == null) continue;
+
+            BoundingBox hitbox = target.getBoundingBox().expand(settings.getHitRadius());
+            double maxReach = maxDistance + hitbox.getHeight();
+            if (eye.toVector().distanceSquared(hitbox.getCenter()) > maxReach * maxReach) continue;
+
+            if (!hitbox.contains(eye.toVector()) && hitbox.rayTrace(eye.toVector(), direction, maxDistance) == null) continue;
+            dealTrueDamage(target, shooter, settings.getDamage());
+            hits++;
+        }
+
+        if (hits > 0) {
+            int finalHits = hits;
+            Executors.runSync(shooter, () -> {
+                shooter.playSound(shooter.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1f, 1.4f);
+                shooter.sendActionBar(Util.color("<green>Hit " + finalHits + (finalHits == 1 ? " enemy!" : " enemies!")));
+            });
+        }
+    }
+
+    private void fireScattergun(Player shooter, IncursionTeam team) {
+        IncursionDefinition.ShotgunSettings settings = definition.getShotgun();
+        if (settings.getCooldownTicks() > 0) shooter.setCooldown(Material.GOAT_HORN, settings.getCooldownTicks());
+
+        Location muzzle = shooter.getEyeLocation();
+        Vector direction = muzzle.getDirection().normalize();
+        double range = Math.max(0.5, settings.getRange());
+        double falloff = Math.clamp(settings.getDamageFalloff(), 0.0, 1.0);
+
+        muzzle.getWorld().playSound(muzzle, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.8f);
+        muzzle.getWorld().playSound(muzzle, Sound.ITEM_FIRECHARGE_USE, 0.9f, 0.7f);
+        sprayCone(muzzle, direction, range, settings.getConeDegrees(), team);
+
+        int hits = 0;
+        double halfAngle = Math.toRadians(Math.max(1.0, settings.getConeDegrees()) / 2.0);
+        double tanHalfAngle = Math.tan(halfAngle);
+        double cosHalfAngle = Math.cos(halfAngle);
+        Vector apex = muzzle.toVector();
+
+        for (EventPlayer participant : enemiesOf(team, shooter)) {
+            Player target = participant.getPlayer();
+            if (target == null) continue;
+
+            BoundingBox hitbox = target.getBoundingBox();
+            double distance = coneHitDistance(apex, direction, range, tanHalfAngle, cosHalfAngle, hitbox);
+            if (distance < 0) continue;
+
+            // Occlusion has to be checked towards the target, not down the middle of the cone
+            Vector toTarget = hitbox.getCenter().subtract(apex);
+            double length = toTarget.length();
+            if (length > 1.0E-4 && !hasClearShot(muzzle, toTarget.multiply(1.0 / length), length)) continue;
+
+            dealTrueDamage(target, shooter, settings.getDamage() * (1.0 - (falloff * (distance / range))));
+            hits++;
+        }
+
+        if (hits > 0) {
+            shooter.playSound(shooter.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1f, 1.4f);
+            shooter.sendActionBar(Util.color("<green>Hit " + hits + (hits == 1 ? " enemy!" : " enemies!")));
+        }
+    }
+
+    // Distance from the muzzle to the nearest part of a hitbox if it falls inside the cone, or -1 if it doesn't (inexpensive approximation)
+    private static double coneHitDistance(Vector apex, Vector axis, double range, double tanHalfAngle, double cosHalfAngle, BoundingBox hitbox) {
+        double height = hitbox.getHeight();
+        double radius = Math.max(Math.max(hitbox.getWidthX(), hitbox.getWidthZ()) / 2.0, height / 6.0);
+
+        // Nothing beyond this can reach the cone
+        double maxReach = range + (height / 2.0) + radius;
+        if (apex.distanceSquared(hitbox.getCenter()) > maxReach * maxReach) return -1;
+
+        double best = -1;
+        for (double fraction : BODY_SAMPLE_FRACTIONS) {
+            double dx = hitbox.getCenterX() - apex.getX();
+            double dy = (hitbox.getMinY() + (height * fraction)) - apex.getY();
+            double dz = hitbox.getCenterZ() - apex.getZ();
+
+            double distance = Math.sqrt((dx * dx) + (dy * dy) + (dz * dz));
+            if (distance <= radius) return 0; // muzzle is inside target
+
+            double along = (dx * axis.getX()) + (dy * axis.getY()) + (dz * axis.getZ());
+            if (along < 0 || along - radius > range) continue;
+
+            double offX = dx - (axis.getX() * along);
+            double offY = dy - (axis.getY() * along);
+            double offZ = dz - (axis.getZ() * along);
+            double fromAxis = Math.sqrt((offX * offX) + (offY * offY) + (offZ * offZ));
+
+            // The cone widens with distance, and a sphere of <radius> widens what counts as touching it
+            if (fromAxis > (along * tanHalfAngle) + (radius / cosHalfAngle)) continue;
+
+            double toSurface = Math.max(0, distance - radius);
+            if (toSurface <= range && (best < 0 || toSurface < best)) best = toSurface;
+        }
+        return best;
+    }
+
+    private void sprayCone(Location muzzle, Vector direction, double range, double coneDegrees, IncursionTeam team) {
+        World world = muzzle.getWorld();
+        spawnParticleIfOwned(world, muzzle, Particle.SMOKE, 16, 0.1, 0.6);
+
+        Vector reference = Math.abs(direction.getY()) > 0.99 ? new Vector(1, 0, 0) : new Vector(0, 1, 0);
+        Vector right = direction.clone().crossProduct(reference).normalize();
+        Vector up = right.clone().crossProduct(direction).normalize();
+        double spread = Math.tan(Math.toRadians(coneDegrees / 2.0));
+
+        for (int pellet = 0; pellet < SHOTGUN_PELLETS; pellet++) {
+            double angle = RANDOM.nextDouble() * Math.PI * 2;
+            double offset = spread * Math.sqrt(RANDOM.nextDouble());
+            Vector pelletDirection = direction.clone()
+                    .add(right.clone().multiply(Math.cos(angle) * offset))
+                    .add(up.clone().multiply(Math.sin(angle) * offset))
+                    .normalize();
+
+            for (double distance = 0.6; distance <= range; distance += 0.7) {
+                Location point = muzzle.clone().add(pelletDirection.clone().multiply(distance));
+                spawnParticleIfOwned(world, point, Particle.DUST, 1, 0, 0, team.getBeamDust());
+            }
+        }
+    }
+
+    private void dealTrueDamage(Player target, Player attacker, double damage) {
+        if (damage <= 0) return;
+        lastTrueDamage.put(target.getUniqueId(), new DamageCredit(attacker.getUniqueId(), System.currentTimeMillis()));
+
+        Executors.runSync(target, () -> {
+            target.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, target.getLocation().add(0, 1, 0), 6, 0.2, 0.3, 0.2, 0.1);
+            target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_HURT, 1f, 1f);
+            target.setHealth(Math.max(0.0, target.getHealth() - damage));
+        });
+    }
+
+    @Nullable
+    private Player recentTrueDamageAttacker(Player victim) {
+        DamageCredit credit = lastTrueDamage.remove(victim.getUniqueId());
+        if (credit == null || System.currentTimeMillis() - credit.at() > DAMAGE_CREDIT_MILLIS) return null;
+
+        Player attacker = Bukkit.getPlayer(credit.attacker());
+        return attacker != null && !attacker.getUniqueId().equals(victim.getUniqueId()) ? attacker : null;
+    }
+
+    // Every enemy of a team that is currently able to be shot
+    private List<EventPlayer> enemiesOf(IncursionTeam team, Player shooter) {
+        List<EventPlayer> enemies = new ArrayList<>();
+        for (EventPlayer participant : new ArrayList<>(this.participants)) {
+            UUID uuid = participant.getUuid();
+            if (uuid.equals(shooter.getUniqueId())) continue;
+            if (teamOf(uuid) != enemyOf(team)) continue;
+            if (isOutOfPlay(uuid)) continue;
+            enemies.add(participant);
+        }
+        return enemies;
+    }
+
+    // Cheap-ish line of sight check to make sure shots don't travel through walls
+    private static boolean hasClearShot(Location from, Vector direction, double distance) {
+        World world = from.getWorld();
+        for (double travelled = BEAM_STEP; travelled < distance; travelled += BEAM_STEP) {
+            int blockX = (int) Math.floor(from.getX() + (direction.getX() * travelled));
+            int blockY = (int) Math.floor(from.getY() + (direction.getY() * travelled));
+            int blockZ = (int) Math.floor(from.getZ() + (direction.getZ() * travelled));
+
+            if (!Bukkit.isOwnedByCurrentRegion(world, blockX >> 4, blockZ >> 4)) return true;
+            if (!world.getBlockAt(blockX, blockY, blockZ).isPassable()) return false;
+        }
+        return true;
+    }
+
+    // Drop particles rather than rescheduling them when they'd land in another region (shouldn't happen anyway)
+    private static void spawnParticleIfOwned(World world, Location at, Particle particle, int count, double offset, double extra) {
+        if (!Bukkit.isOwnedByCurrentRegion(at)) return;
+        world.spawnParticle(particle, at, count, offset, offset, offset, extra);
+    }
+    private static <T> void spawnParticleIfOwned(World world, Location at, Particle particle, int count, double offset, double extra, T data) {
+        if (!Bukkit.isOwnedByCurrentRegion(at)) return;
+        world.spawnParticle(particle, at, count, offset, offset, offset, extra, data);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -597,6 +932,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
         event.setReviveHealth(maxHealth != null ? maxHealth.getValue() : 20.0);
 
         Player killer = resolveKiller(event.getDamageSource().getCausingEntity(), victim);
+        // True damage bypasses the damage source, so fall back to who last shot them
+        if (killer == null) killer = recentTrueDamageAttacker(victim);
         if (killer != null) {
             IncursionTeam killerTeam = teamOf(killer.getUniqueId());
             EventPlayer killerParticipant = participantOf(killer.getUniqueId());
@@ -607,7 +944,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
 
         EventPlayer participant = participantOf(victim.getUniqueId());
-        if (participant != null) respawnFlow(participant, victimTeam);
+        if (participant != null) Executors.delayedSync(victim, 1, () -> respawnFlow(participant, victimTeam));
     }
 
     // Might not be needed, but better safe than sorry
@@ -689,6 +1026,59 @@ public final class Incursion extends InventoryUnifiedMinigame {
         event.setCancelled(true);
     }
 
+    @EventHandler(priority = EventPriority.LOW)
+    public void onWeaponUse(PlayerInteractEvent event) {
+        if (!this.active || this.stopping) return;
+        if (event.getHand() != EquipmentSlot.HAND) return;
+        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+
+        Player player = event.getPlayer();
+        Weapon weapon = weaponOf(event.getItem());
+        IncursionTeam team = teamOf(player.getUniqueId());
+        if (weapon == null || team == null) return;
+
+        switch (weapon) {
+            case LONGSHOT -> {
+                if (isOutOfPlay(player.getUniqueId()) || !readyToFire(player, weapon.getMaterial())) {
+                    event.setCancelled(true);
+                    return;
+                }
+                charging.add(player.getUniqueId());
+            }
+            case SCATTERGUN -> {
+                event.setUseItemInHand(Event.Result.DENY);
+                event.setCancelled(true);
+                if (isOutOfPlay(player.getUniqueId()) || !readyToFire(player, weapon.getMaterial())) return;
+                fireScattergun(player, team);
+            }
+            case BAYONET -> {}
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onStopUsingItem(PlayerStopUsingItemEvent event) {
+        if (!this.active || this.stopping) return;
+        if (weaponOf(event.getItem()) != Weapon.LONGSHOT) return;
+
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+        boolean wasCharging = charging.remove(uuid);
+        chargeReady.remove(uuid);
+
+        IncursionTeam team = teamOf(uuid);
+        if (!wasCharging || team == null) return;
+
+        player.clearTitle();
+        if (event.getTicksHeldFor() < definition.getSniper().getChargeTicks()) {
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 0.8f, 0.6f);
+            player.sendActionBar(Util.color("<red>The shot wasn't fully charged!"));
+            return;
+        }
+        if (isOutOfPlay(uuid)) return;
+
+        fireLongshot(player, team);
+    }
+
     @EventHandler(priority = EventPriority.MONITOR)
     public void onArmorChange(PlayerArmorChangeEvent event) {
         if (!this.active || this.stopping) return;
@@ -749,6 +1139,48 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     public record MapSide(IncursionDefinition.SpawnArea spawnArea, WorldTiedBoundingBox hole) {}
 
+    // Who last hit someone with true damage (and when)
+    private record DamageCredit(UUID attacker, long at) {}
+
+    @Getter
+    private enum Weapon {
+
+        BAYONET(0, Material.WOODEN_SWORD, "<white><b>Bayonet",
+                List.of("<gray>Close quarters. No frills.")),
+        LONGSHOT(1, Material.SPYGLASS, "<aqua><b>Longshot",
+                List.of("<gray>Hold to charge, release to fire.", "<gray>Punches straight through everyone in line.")),
+        SCATTERGUN(2, Material.GOAT_HORN, "<gold><b>Scattergun",
+                List.of("<gray>Right click for a short range blast.", "<gray>Hurts far less at range."));
+
+        private final int slot;
+        private final Material material;
+        private final String displayName;
+        private final List<String> lore;
+
+        Weapon(int slot, Material material, String displayName, List<String> lore) {
+            this.slot = slot;
+            this.material = material;
+            this.displayName = displayName;
+            this.lore = lore;
+        }
+
+        private ItemStack item() {
+            ItemStack item = new ItemStack(material);
+            item.editMeta(meta -> {
+                meta.displayName(Util.color(displayName));
+                meta.lore(Util.color(lore, NamedTextColor.GRAY));
+                meta.setUnbreakable(true);
+                meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_UNBREAKABLE);
+                meta.getPersistentDataContainer().set(WEAPON_KEY, PersistentDataType.STRING, name());
+            });
+            item.unsetData(DataComponentTypes.INSTRUMENT); // Strip goat horn mechanic
+            item.setData(DataComponentTypes.TOOLTIP_DISPLAY, TooltipDisplay.tooltipDisplay()
+                    .addHiddenComponents(DataComponentTypes.INSTRUMENT)
+                    .build());
+            return item;
+        }
+    }
+
     @Getter
     public static final class IncursionTeam implements Scorer {
 
@@ -756,6 +1188,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         private final NamedTextColor color;
         private final Color armorColor;
         private final Particle.DustOptions dustOptions;
+        private final Particle.DustOptions beamDust;
         private final Set<UUID> members = ConcurrentHashMap.newKeySet();
         private final AtomicInteger score = new AtomicInteger();
 
@@ -767,6 +1200,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
             this.color = definition.getNamedTextColor();
             this.armorColor = definition.getArmorColor();
             this.dustOptions = new Particle.DustOptions(this.armorColor, 1.0f);
+            this.beamDust = new Particle.DustOptions(this.armorColor, 0.6f);
             this.side = side;
         }
 

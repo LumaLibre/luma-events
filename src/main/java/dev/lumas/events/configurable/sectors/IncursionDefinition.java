@@ -50,6 +50,57 @@ public class IncursionDefinition extends OkaeriConfig {
     @Comment("Tokens every participant gets, regardless of their score")
     private int minimumTokens = 5;
 
+    @Comment("Our equivalent of a sniper (spyglass)")
+    private SniperSettings sniper = new SniperSettings();
+
+    @Comment("Our equivalent of a shotgun (goat horn)")
+    private ShotgunSettings shotgun = new ShotgunSettings();
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class SniperSettings extends OkaeriConfig {
+
+        @Comment("How long the shot has to be charged before releasing fires it")
+        private int chargeTicks = 25;
+
+        @Comment("Cooldown after a shot was fired (0 to disable)")
+        private int cooldownTicks = 60;
+
+        @Comment("How far the shot travels (it always stops at the first solid block)")
+        private double range = 75.0;
+
+        @Comment("Max distance between the beam and the player's hitbox")
+        private double hitRadius = 0.1;
+
+        @Comment("True damage dealt to every player the beam passes through")
+        private double damage = 15.0;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class ShotgunSettings extends OkaeriConfig {
+
+        @Comment("Cooldown between shots")
+        private int cooldownTicks = 30;
+
+        @Comment("How far the cone reaches")
+        private double range = 6.0;
+
+        @Comment("Total width of the cone in degrees (45 means 22.5 degrees to either side)")
+        private double coneDegrees = 45.0;
+
+        @Comment("True damage dealt at point blank range")
+        private double damage = 22.0;
+
+        @Comment({
+                "How much of the damage is lost at maximum range",
+                "0 = full damage everywhere, 1 = nothing at the edge"
+        })
+        private double damageFalloff = 0.85;
+    }
+
     @Getter
     @Setter
     @NoArgsConstructor
