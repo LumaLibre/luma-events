@@ -56,6 +56,9 @@ public class IncursionDefinition extends OkaeriConfig {
     @Comment("Our equivalent of a shotgun (goat horn)")
     private ShotgunSettings shotgun = new ShotgunSettings();
 
+    @Comment("Our equivalent of a sidearm (pufferfish)")
+    private SpitterSettings spitter = new SpitterSettings();
+
     @Getter
     @Setter
     @NoArgsConstructor
@@ -75,6 +78,9 @@ public class IncursionDefinition extends OkaeriConfig {
 
         @Comment("True damage dealt to every player the beam passes through")
         private double damage = 15.0;
+
+        @Comment("How hard hits shove players away from the shooter")
+        private double knockback = 0.8;
     }
 
     @Getter
@@ -99,6 +105,48 @@ public class IncursionDefinition extends OkaeriConfig {
                 "0 = full damage everywhere, 1 = nothing at the edge"
         })
         private double damageFalloff = 0.85;
+
+        @Comment("How hard hits shove players away from the shooter")
+        private double knockback = 0.6;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class SpitterSettings extends OkaeriConfig {
+
+        @Comment("Cooldown between shots")
+        private int cooldownTicks = 15;
+
+        @Comment("How fast the stream leaves the hand (in blocks per tick)")
+        private double speed = 1.2;
+
+        @Comment("How much the stream drops per tick (in blocks)")
+        private double gravity = 0.06;
+
+        @Comment("How many degrees above the player's aim the stream is launched at")
+        private double launchAngleDegrees = 10.0;
+
+        @Comment("How far the stream may travel (it always stops at the first solid block)")
+        private double range = 20.0;
+
+        @Comment("How close the stream has to pass a player's hitbox to soak them")
+        private double hitRadius = 0.15;
+
+        @Comment("True damage dealt to the first player the stream hits")
+        private double damage = 6.5;
+
+        @Comment({
+                "How much of the damage is lost at maximum range",
+                "0 = full damage everywhere, 1 = nothing at the edge"
+        })
+        private double damageFalloff = 0.0;
+
+        @Comment("How hard hits shove players along the stream's path")
+        private double knockback = 0.2;
+
+        @Comment("How many points the stream is drawn at per tick (purely cosmetic)")
+        private int trailSteps = 4;
     }
 
     @Getter

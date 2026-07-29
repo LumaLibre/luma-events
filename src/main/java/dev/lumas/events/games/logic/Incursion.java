@@ -60,6 +60,7 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.MainHand;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
@@ -87,6 +88,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private static final NamespacedKey KIT_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_kit");
     private static final NamespacedKey WEAPON_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_weapon");
     private static final String FIREWORK_KEY = "incursion_firework";
+
+    private static final Particle.DustOptions SPIT_DUST = new Particle.DustOptions(Color.fromRGB(70, 145, 230), 0.75f);
 
     private static final int CHARGE_BAR_SEGMENTS = 10;
     private static final int SHOTGUN_PELLETS = 10;
@@ -553,6 +556,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         inventory.setItem(Weapon.BAYONET.slot, Weapon.BAYONET.item());
         inventory.setItem(Weapon.LONGSHOT.slot, Weapon.LONGSHOT.item());
         inventory.setItem(Weapon.SCATTERGUN.slot, Weapon.SCATTERGUN.item());
+        inventory.setItem(Weapon.SPITTER.slot, Weapon.SPITTER.item());
         inventory.setHeldItemSlot(Weapon.BAYONET.slot);
     }
 
@@ -698,16 +702,12 @@ public final class Incursion extends InventoryUnifiedMinigame {
             if (eye.toVector().distanceSquared(hitbox.getCenter()) > maxReach * maxReach) continue;
 
             if (!hitbox.contains(eye.toVector()) && hitbox.rayTrace(eye.toVector(), direction, maxDistance) == null) continue;
-            dealTrueDamage(target, shooter, settings.getDamage());
+            dealTrueDamage(target, shooter, eye, settings.getDamage(), settings.getKnockback());
             hits++;
         }
 
         if (hits > 0) {
-            int finalHits = hits;
-            Executors.runSync(shooter, () -> {
-                shooter.playSound(shooter.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1f, 1.4f);
-                shooter.sendActionBar(Util.color("<green>Hit " + finalHits + (finalHits == 1 ? " enemy!" : " enemies!")));
-            });
+            Executors.runSync(shooter, () -> hitFeedback(shooter));
         }
     }
 
@@ -743,14 +743,12 @@ public final class Incursion extends InventoryUnifiedMinigame {
             double length = toTarget.length();
             if (length > 1.0E-4 && !hasClearShot(muzzle, toTarget.multiply(1.0 / length), length)) continue;
 
-            dealTrueDamage(target, shooter, settings.getDamage() * (1.0 - (falloff * (distance / range))));
+            dealTrueDamage(target, shooter, muzzle,
+                    settings.getDamage() * (1.0 - (falloff * (distance / range))), settings.getKnockback());
             hits++;
         }
 
-        if (hits > 0) {
-            shooter.playSound(shooter.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1f, 1.4f);
-            shooter.sendActionBar(Util.color("<green>Hit " + hits + (hits == 1 ? " enemy!" : " enemies!")));
-        }
+        if (hits > 0) hitFeedback(shooter);
     }
 
     // Distance from the muzzle to the nearest part of a hitbox if it falls inside the cone, or -1 if it doesn't (inexpensive approximation)
@@ -812,15 +810,146 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
     }
 
-    private void dealTrueDamage(Player target, Player attacker, double damage) {
+    private void fireSpitter(Player shooter, IncursionTeam team) {
+        IncursionDefinition.SpitterSettings settings = definition.getSpitter();
+        if (settings.getCooldownTicks() > 0) shooter.setCooldown(Material.PUFFERFISH, settings.getCooldownTicks());
+
+        Location muzzle = mainHandLocation(shooter);
+        Location aim = shooter.getEyeLocation();
+        aim.setPitch((float) Math.max(-90.0, aim.getPitch() - settings.getLaunchAngleDegrees()));
+        Vector velocity = aim.getDirection().normalize().multiply(Math.max(0.05, settings.getSpeed()));
+
+        muzzle.getWorld().playSound(muzzle, Sound.ENCHANT_THORNS_HIT, 0.9f, 1.5f);
+        muzzle.getWorld().playSound(muzzle, Sound.ENTITY_PUFFER_FISH_BLOW_OUT, 0.5f, 1.3f);
+        muzzle.getWorld().spawnParticle(Particle.SPLASH, muzzle, 6, 0.05, 0.05, 0.05, 0.02);
+        muzzle.getWorld().spawnParticle(Particle.DUST, muzzle, 6, 0.06, 0.06, 0.06, 0, SPIT_DUST);
+
+        advanceSpit(shooter, team, muzzle, velocity, 0.0);
+    }
+
+    // Advances the stream by one tick, then reschedules itself onto whichever region owns the position it ended up in
+    private void advanceSpit(Player shooter, IncursionTeam team, Location position, Vector velocity, double travelled) {
+        IncursionDefinition.SpitterSettings settings = definition.getSpitter();
+        double range = Math.max(0.01, settings.getRange());
+        if (!this.active || this.stopping || travelled >= range) return;
+
+        World world = position.getWorld();
+        int steps = Math.max(1, settings.getTrailSteps());
+        Vector stepVector = velocity.clone().multiply(1.0 / steps);
+        double stepLength = stepVector.length();
+
+        List<Player> targets = new ArrayList<>();
+        List<BoundingBox> hitboxes = new ArrayList<>();
+        for (EventPlayer participant : enemiesOf(team, shooter)) {
+            Player target = participant.getPlayer();
+            if (target == null) continue;
+            targets.add(target);
+            hitboxes.add(target.getBoundingBox().expand(settings.getHitRadius()));
+        }
+
+        Location point = position.clone();
+        for (int step = 0; step < steps; step++) {
+            point.add(stepVector);
+            travelled += stepLength;
+
+            if (!Bukkit.isOwnedByCurrentRegion(point)) {
+                Location resumeAt = point.clone();
+                double resumeTravelled = travelled;
+                Executors.sync(resumeAt, () -> advanceSpit(shooter, team, resumeAt, velocity, resumeTravelled));
+                return;
+            }
+
+            if (!world.getBlockAt(point).isPassable()) {
+                splash(world, point);
+                return;
+            }
+
+            for (int i = 0; i < hitboxes.size(); i++) {
+                if (!hitboxes.get(i).contains(point.getX(), point.getY(), point.getZ())) continue;
+
+                double falloff = Math.clamp(settings.getDamageFalloff(), 0.0, 1.0);
+                dealTrueDamage(targets.get(i), shooter, position,
+                        settings.getDamage() * (1.0 - (falloff * Math.min(1.0, travelled / range))),
+                        settings.getKnockback());
+
+                splash(world, point);
+                Executors.runSync(shooter, () -> hitFeedback(shooter));
+                return;
+            }
+
+            world.spawnParticle(Particle.SPLASH, point, 1, 0, 0, 0, 0);
+            world.spawnParticle(Particle.DUST, point, 2, 0.05, 0.05, 0.05, 0, SPIT_DUST);
+            if (step % 2 == 0) {
+                world.spawnParticle(Particle.FALLING_WATER, point, 1, 0.06, 0.06, 0.06, 0);
+            }
+
+            if (travelled >= range) {
+                splash(world, point);
+                return;
+            }
+        }
+
+        Vector nextVelocity = velocity.clone().subtract(new Vector(0, settings.getGravity(), 0));
+        Location next = point.clone();
+        double nextTravelled = travelled;
+        Executors.delayedSync(next, 1, () -> advanceSpit(shooter, team, next, nextVelocity, nextTravelled));
+    }
+
+    private static void splash(World world, Location at) {
+        world.spawnParticle(Particle.SPLASH, at, 14, 0.15, 0.15, 0.15, 0.08);
+        world.spawnParticle(Particle.DUST, at, 10, 0.18, 0.18, 0.18, 0, SPIT_DUST);
+        world.spawnParticle(Particle.FALLING_WATER, at, 6, 0.15, 0.15, 0.15, 0);
+        world.playSound(at, Sound.ENTITY_GENERIC_SPLASH, 0.35f, 1.6f);
+    }
+
+    // Roughly where the held item sits
+    private static Location mainHandLocation(Player player) {
+        Location eye = player.getEyeLocation();
+        double yaw = Math.toRadians(eye.getYaw());
+        Vector right = new Vector(-Math.cos(yaw), 0, -Math.sin(yaw));
+        if (player.getMainHand() == MainHand.LEFT) right.multiply(-1);
+
+        return eye.clone()
+                .add(right.multiply(0.4))
+                .add(eye.getDirection().multiply(0.4))
+                .subtract(0, 1.0, 0);
+    }
+
+    private static void hitFeedback(Player shooter) {
+        shooter.playSound(shooter.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1f, 1.4f);
+    }
+
+    private void dealTrueDamage(Player target, Player attacker, Location source, double damage, double knockback) {
         if (damage <= 0) return;
         lastTrueDamage.put(target.getUniqueId(), new DamageCredit(attacker.getUniqueId(), System.currentTimeMillis()));
 
         Executors.runSync(target, () -> {
-            target.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, target.getLocation().add(0, 1, 0), 6, 0.2, 0.3, 0.2, 0.1);
-            target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_HURT, 1f, 1f);
+            Location targetLocation = target.getLocation();
+            double dx = source.getX() - targetLocation.getX();
+            double dz = source.getZ() - targetLocation.getZ();
+
+            target.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, targetLocation.clone().add(0, 1, 0), 6, 0.2, 0.3, 0.2, 0.1);
+            target.playSound(targetLocation, Sound.ENTITY_PLAYER_HURT, 1f, 1f);
+            target.playHurtAnimation(hurtDirection(targetLocation.getYaw(), dx, dz));
+
+            if (knockback > 0) {
+                if (dx == 0 && dz == 0) {
+                    // Hit from directly above or below, so there is no direction to be pushed in
+                    target.setVelocity(target.getVelocity().add(new Vector(0, knockback * 0.5, 0)));
+                } else {
+                    target.knockback(knockback, dx, dz);
+                }
+            }
+
             target.setHealth(Math.max(0.0, target.getHealth() - damage));
         });
+    }
+
+    // target -> damage source (0 = front, 90 = right, 180 = behind)
+    private static float hurtDirection(float targetYaw, double dx, double dz) {
+        if (dx == 0 && dz == 0) return 0f;
+        double towardsSource = Math.toDegrees(Math.atan2(-dx, dz));
+        return (float) (((towardsSource - targetYaw) % 360.0 + 360.0) % 360.0);
     }
 
     @Nullable
@@ -1051,6 +1180,12 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 if (isOutOfPlay(player.getUniqueId()) || !readyToFire(player, weapon.getMaterial())) return;
                 fireScattergun(player, team);
             }
+            case SPITTER -> {
+                event.setUseItemInHand(Event.Result.DENY);
+                event.setCancelled(true);
+                if (isOutOfPlay(player.getUniqueId()) || !readyToFire(player, weapon.getMaterial())) return;
+                fireSpitter(player, team);
+            }
             case BAYONET -> {}
         }
     }
@@ -1145,12 +1280,14 @@ public final class Incursion extends InventoryUnifiedMinigame {
     @Getter
     private enum Weapon {
 
-        BAYONET(0, Material.WOODEN_SWORD, "<white><b>Bayonet",
+        BAYONET(0, Material.STONE_SWORD, "<white><b>Bayonet",
                 List.of("<gray>Close quarters. No frills.")),
         LONGSHOT(1, Material.SPYGLASS, "<aqua><b>Longshot",
                 List.of("<gray>Hold to charge, release to fire.", "<gray>Punches straight through everyone in line.")),
         SCATTERGUN(2, Material.GOAT_HORN, "<gold><b>Scattergun",
-                List.of("<gray>Right click for a short range blast.", "<gray>Hurts far less at range."));
+                List.of("<gray>Right click for a short range blast.", "<gray>Hurts far less at range.")),
+        SPITTER(3, Material.PUFFERFISH, "<blue><b>Spitter",
+                List.of("<gray>Right click to spit a jet of water.", "<gray>Stings a little. Travels less than it used to."));
 
         private final int slot;
         private final Material material;
@@ -1173,9 +1310,11 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_UNBREAKABLE);
                 meta.getPersistentDataContainer().set(WEAPON_KEY, PersistentDataType.STRING, name());
             });
-            item.unsetData(DataComponentTypes.INSTRUMENT); // Strip goat horn mechanic
+            item.unsetData(DataComponentTypes.INSTRUMENT);
+            item.unsetData(DataComponentTypes.CONSUMABLE);
+            item.unsetData(DataComponentTypes.FOOD);
             item.setData(DataComponentTypes.TOOLTIP_DISPLAY, TooltipDisplay.tooltipDisplay()
-                    .addHiddenComponents(DataComponentTypes.INSTRUMENT)
+                    .addHiddenComponents(DataComponentTypes.INSTRUMENT, DataComponentTypes.CONSUMABLE, DataComponentTypes.FOOD)
                     .build());
             return item;
         }
