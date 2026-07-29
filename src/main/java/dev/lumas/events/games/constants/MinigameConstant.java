@@ -6,6 +6,7 @@ import dev.lumas.events.configurable.sectors.MineBattleDefinition;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.logic.BoatRace2;
 import dev.lumas.events.games.logic.FreezeTag;
+import dev.lumas.events.games.logic.Incursion;
 import dev.lumas.events.games.logic.Manor;
 import dev.lumas.events.games.logic.MineBattle;
 import dev.lumas.events.games.logic.Paintball2_1;
@@ -36,7 +37,8 @@ public enum MinigameConstant {
     THE_NABBITS(TheNabbits::new, "thenabbits", "the_nabbits"),
     PANEL_PARTY(PanelParty::new, "panelparty", "panel_party"),
     MINEBATTLE((config) -> new MineBattle((MineBattleDefinition) config), "minebattle", "mine_battle"),
-    TNTRUN(TNTRun::new, "tntrun", "tnt_run")
+    TNTRUN(TNTRun::new, "tntrun", "tnt_run"),
+    INCURSION(Incursion::new, "incursion")
     ;
 
     private final MinigameSupplier<?> supplier;
@@ -63,6 +65,7 @@ public enum MinigameConstant {
             case PANEL_PARTY -> (Map<String, T>) cfg.getPanelPartyMaps();
             case MINEBATTLE -> (Map<String, T>) cfg.getMineBattleMaps();
             case TNTRUN -> (Map<String, T>) cfg.getTntRunMaps();
+            case INCURSION -> (Map<String, T>) cfg.getIncursionMaps();
         };
     }
 

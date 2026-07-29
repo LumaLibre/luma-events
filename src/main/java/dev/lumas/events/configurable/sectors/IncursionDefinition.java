@@ -1,0 +1,122 @@
+package dev.lumas.events.configurable.sectors;
+
+import dev.lumas.events.utility.BlockFaces;
+import dev.lumas.events.utility.Util;
+import eu.okaeri.configs.OkaeriConfig;
+import eu.okaeri.configs.annotation.Comment;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Color;
+import org.bukkit.Location;
+import org.bukkit.block.BlockFace;
+
+@Getter
+@Setter
+public class IncursionDefinition extends OkaeriConfig {
+
+    @Comment("Where participants wait before the game starts and are sent once it has concluded")
+    private Location lobbyLocation;
+
+    @Comment("Bounding box of the entire map, used to tell whether something happens inside this game")
+    private Region bounds = new Region();
+
+    private TeamDefinition team1 = new TeamDefinition("Scarlet", "red");
+    private TeamDefinition team2 = new TeamDefinition("Ivory", "white");
+
+    @Comment("Total game length, sides are swapped at half time")
+    private int gameLengthSeconds = 480;
+
+    @Comment("How long players are frozen at the start of each half while the start countdown is shown")
+    private int startCooldownTicks = 100;
+
+    @Comment("How long a player is frozen at their spawn after scoring, dying or leaving the map")
+    private int respawnFreezeTicks = 40;
+
+    @Comment("How long a player cannot deal or take damage after being sent back to their spawn")
+    private int respawnInvincibilityTicks = 60;
+
+    @Comment("Points awarded for jumping into the enemy team's hole")
+    private int holePoints = 10;
+
+    @Comment("Points awarded for killing an enemy")
+    private int killPoints = 5;
+
+    @Comment("How many points a participant has to earn for one token")
+    private int pointsPerToken = 5;
+
+    @Comment("Tokens every participant gets, regardless of their score")
+    private int minimumTokens = 5;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class TeamDefinition extends OkaeriConfig {
+
+        private String name = "Team";
+
+        @Comment("A NamedTextColor (e.g. red, green, blue, ...)")
+        private String color = "white";
+
+        @Comment("Flat rectangle the team spawns across, so players don't stack inside each other")
+        private SpawnArea spawnArea = new SpawnArea();
+
+        @Comment("The hole enemies score in by jumping into it")
+        private Region hole = new Region();
+
+        public TeamDefinition(String name, String color) {
+            this.name = name;
+            this.color = color;
+        }
+
+        public NamedTextColor getNamedTextColor() {
+            NamedTextColor namedTextColor = NamedTextColor.NAMES.value(color.toLowerCase());
+            return namedTextColor != null ? namedTextColor : NamedTextColor.WHITE;
+        }
+
+        public Color getArmorColor() {
+            int rgb = getNamedTextColor().value();
+            return Color.fromRGB((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
+        }
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SpawnArea extends OkaeriConfig {
+
+        private Location corner1;
+        private Location corner2;
+
+        @Comment("Direction players look in when they spawn: NORTH/EAST/SOUTH/WEST or a diagonal such as NORTH_EAST")
+        private BlockFace facing = BlockFace.NORTH;
+
+        public Location randomSpawn() {
+            if (corner1 == null) {
+                throw new IllegalStateException("Spawn area is missing its first corner");
+            }
+            Location other = corner2 != null ? corner2 : corner1;
+
+            int minX = Math.min(corner1.getBlockX(), other.getBlockX());
+            int maxX = Math.max(corner1.getBlockX(), other.getBlockX());
+            int minZ = Math.min(corner1.getBlockZ(), other.getBlockZ());
+            int maxZ = Math.max(corner1.getBlockZ(), other.getBlockZ());
+
+            return new Location(
+                    corner1.getWorld(),
+                    minX + Util.RANDOM.nextInt(maxX - minX + 1) + 0.5,
+                    corner1.getBlockY(),
+                    minZ + Util.RANDOM.nextInt(maxZ - minZ + 1) + 0.5,
+                    getYaw(),
+                    0f
+            );
+        }
+
+        public float getYaw() {
+            return BlockFaces.isHorizontal(facing) ? BlockFaces.faceToYaw(facing) : 0f;
+        }
+    }
+}

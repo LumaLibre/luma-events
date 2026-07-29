@@ -13,4 +13,8 @@ public class Region extends OkaeriConfig {
     public WorldTiedBoundingBox toWorldTiedBoundingBox() {
         return WorldTiedBoundingBox.of(loc1, loc2);
     }
+
+    public WorldTiedBoundingBox toBlockBoundingBox() {
+        return WorldTiedBoundingBox.ofBlocks(loc1, loc2);
+    }
 }

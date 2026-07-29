@@ -2,6 +2,7 @@ package dev.lumas.events.configurable;
 
 import dev.lumas.events.configurable.sectors.BoatRace2Definition;
 import dev.lumas.events.configurable.sectors.FreezeTagDefinition;
+import dev.lumas.events.configurable.sectors.IncursionDefinition;
 import dev.lumas.events.configurable.sectors.ManorMinigameDefinition;
 import dev.lumas.events.configurable.sectors.MineBattleDefinition;
 import dev.lumas.events.configurable.sectors.MinigameDefinition;
@@ -57,6 +58,11 @@ public class Config extends OkaeriConfig {
     );
 
     // summer 2026
+
+    @Comment("Minigame definition for 'Incursion'")
+    private Map<String, IncursionDefinition> incursionMaps = Map.of(
+            "default", new IncursionDefinition()
+    );
 
     @Comment("Minigame definition for 'Sulfur Soccer'")
     private Map<String, SulfurSoccerDefinition> sulfurSoccerMaps = Map.of(

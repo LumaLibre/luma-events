@@ -130,6 +130,23 @@ public class WorldTiedBoundingBox extends BoundingBox implements MinigameBoundin
     }
 
     /**
+     * Builds a box out of two block positions, with both corner blocks fully included.
+     * @param location one corner block
+     * @param location2 the opposing corner block
+     * @return a box covering every block between (and including) both corners
+     */
+    @NotNull
+    public static WorldTiedBoundingBox ofBlocks(Location location, Location location2) {
+        return new WorldTiedBoundingBox(location.getWorld(),
+                Math.min(location.getBlockX(), location2.getBlockX()),
+                Math.min(location.getBlockY(), location2.getBlockY()),
+                Math.min(location.getBlockZ(), location2.getBlockZ()),
+                Math.max(location.getBlockX(), location2.getBlockX()) + 1,
+                Math.max(location.getBlockY(), location2.getBlockY()) + 1,
+                Math.max(location.getBlockZ(), location2.getBlockZ()) + 1);
+    }
+
+    /**
      * Compares each location to find the min and max coordinates to create a bounding box.
      * @param locations the list of locations to encompass
      * @return a WorldTiedBoundingBox that contains all the provided locations
