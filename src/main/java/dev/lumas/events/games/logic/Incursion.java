@@ -92,10 +92,10 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private static final Particle.DustOptions SPIT_DUST = new Particle.DustOptions(Color.fromRGB(70, 145, 230), 0.75f);
 
     private static final int CHARGE_BAR_SEGMENTS = 10;
-    private static final int SHOTGUN_PELLETS = 10;
+    private static final int SHOTGUN_PELLETS = 13;
     private static final double BEAM_STEP = 0.5;
 
-    // Heights of the spheres a player's hitbox is approximated by for the scattergun's cone test
+    // Heights of the spheres a player's hitbox is approximated by for the blunderhorn's cone test
     private static final double[] BODY_SAMPLE_FRACTIONS = {0.2, 0.5, 0.8};
     private static final Title.Times CHARGE_TITLE_TIMES =
             Title.Times.times(Duration.ZERO, Duration.ofMillis(400), Duration.ZERO);
@@ -554,8 +554,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
         PlayerInventory inventory = player.getInventory();
         inventory.setChestplate(teamChestplate(team));
         inventory.setItem(Weapon.BAYONET.slot, Weapon.BAYONET.item());
-        inventory.setItem(Weapon.LONGSHOT.slot, Weapon.LONGSHOT.item());
-        inventory.setItem(Weapon.SCATTERGUN.slot, Weapon.SCATTERGUN.item());
+        inventory.setItem(Weapon.OVERWATCH.slot, Weapon.OVERWATCH.item());
+        inventory.setItem(Weapon.BLUNDERHORN.slot, Weapon.BLUNDERHORN.item());
         inventory.setItem(Weapon.SPITTER.slot, Weapon.SPITTER.item());
         inventory.setHeldItemSlot(Weapon.BAYONET.slot);
     }
@@ -599,13 +599,13 @@ public final class Incursion extends InventoryUnifiedMinigame {
             }
 
             participant.operatePlayer(player -> {
-                if (!player.hasActiveItem() || weaponOf(player.getActiveItem()) != Weapon.LONGSHOT) {
+                if (!player.hasActiveItem() || weaponOf(player.getActiveItem()) != Weapon.OVERWATCH) {
                     boolean ours = charging.remove(uuid);
                     boolean wasCharged = chargeReady.remove(uuid);
                     if (ours && wasCharged && !isOutOfPlay(uuid)) {
                         IncursionTeam team = teamOf(uuid);
                         player.clearTitle();
-                        if (team != null) fireLongshot(player, team);
+                        if (team != null) fireOverwatch(player, team);
                     }
                     return;
                 }
@@ -632,7 +632,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
     }
 
-    private void fireLongshot(Player shooter, IncursionTeam team) {
+    private void fireOverwatch(Player shooter, IncursionTeam team) {
         IncursionDefinition.SniperSettings settings = definition.getSniper();
         if (settings.getCooldownTicks() > 0) {
             shooter.setCooldown(Material.SPYGLASS, settings.getCooldownTicks());
@@ -711,7 +711,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
     }
 
-    private void fireScattergun(Player shooter, IncursionTeam team) {
+    private void fireBlunderhorn(Player shooter, IncursionTeam team) {
         IncursionDefinition.ShotgunSettings settings = definition.getShotgun();
         if (settings.getCooldownTicks() > 0) shooter.setCooldown(Material.GOAT_HORN, settings.getCooldownTicks());
 
@@ -1068,7 +1068,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
             EventPlayer killerParticipant = participantOf(killer.getUniqueId());
             if (killerTeam != null && killerParticipant != null && killerTeam != victimTeam) {
                 addPoints(killerParticipant, killerTeam, definition.getKillPoints());
-                killerParticipant.sendActionBar("<green>+" + definition.getKillPoints() + " <gray>for eliminating " + victim.getName());
+                killerParticipant.sendMessage("<green>+" + definition.getKillPoints() + " <gray>for eliminating " + victim.getName());
             }
         }
 
@@ -1127,7 +1127,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         if (!(event.getWhoClicked() instanceof Player player) || !isParticipant(player)) return;
 
         event.setCancelled(true);
-        player.sendActionBar(Util.color("<red>You can't rearrange your inventory in this minigame."));
+        Util.sendMsg(player, "<red>You can't rearrange your inventory in this minigame.");
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
@@ -1144,7 +1144,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         if (!isParticipant(event.getPlayer())) return;
 
         event.setCancelled(true);
-        event.getPlayer().sendActionBar(Util.color("<red>You can't drop your gear in this minigame."));
+        Util.sendMsg(event.getPlayer(), "<red>You can't drop your gear in this minigame.");
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
@@ -1167,18 +1167,18 @@ public final class Incursion extends InventoryUnifiedMinigame {
         if (weapon == null || team == null) return;
 
         switch (weapon) {
-            case LONGSHOT -> {
+            case OVERWATCH -> {
                 if (isOutOfPlay(player.getUniqueId()) || !readyToFire(player, weapon.getMaterial())) {
                     event.setCancelled(true);
                     return;
                 }
                 charging.add(player.getUniqueId());
             }
-            case SCATTERGUN -> {
+            case BLUNDERHORN -> {
                 event.setUseItemInHand(Event.Result.DENY);
                 event.setCancelled(true);
                 if (isOutOfPlay(player.getUniqueId()) || !readyToFire(player, weapon.getMaterial())) return;
-                fireScattergun(player, team);
+                fireBlunderhorn(player, team);
             }
             case SPITTER -> {
                 event.setUseItemInHand(Event.Result.DENY);
@@ -1193,7 +1193,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onStopUsingItem(PlayerStopUsingItemEvent event) {
         if (!this.active || this.stopping) return;
-        if (weaponOf(event.getItem()) != Weapon.LONGSHOT) return;
+        if (weaponOf(event.getItem()) != Weapon.OVERWATCH) return;
 
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
@@ -1206,12 +1206,12 @@ public final class Incursion extends InventoryUnifiedMinigame {
         player.clearTitle();
         if (event.getTicksHeldFor() < definition.getSniper().getChargeTicks()) {
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 0.8f, 0.6f);
-            player.sendActionBar(Util.color("<red>The shot wasn't fully charged!"));
+            Util.sendMsg(player, "<red>The shot wasn't fully charged!");
             return;
         }
         if (isOutOfPlay(uuid)) return;
 
-        fireLongshot(player, team);
+        fireOverwatch(player, team);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -1280,14 +1280,14 @@ public final class Incursion extends InventoryUnifiedMinigame {
     @Getter
     private enum Weapon {
 
-        BAYONET(0, Material.STONE_SWORD, "<white><b>Bayonet",
-                List.of("<gray>Close quarters. No frills.")),
-        LONGSHOT(1, Material.SPYGLASS, "<aqua><b>Longshot",
-                List.of("<gray>Hold to charge, release to fire.", "<gray>Punches straight through everyone in line.")),
-        SCATTERGUN(2, Material.GOAT_HORN, "<gold><b>Scattergun",
-                List.of("<gray>Right click for a short range blast.", "<gray>Hurts far less at range.")),
-        SPITTER(3, Material.PUFFERFISH, "<blue><b>Spitter",
-                List.of("<gray>Right click to spit a jet of water.", "<gray>Stings a little. Travels less than it used to."));
+        BAYONET(0, Material.STONE_SWORD, "<white><b>Last Resort",
+                List.of("<gray>Use when everything's on cooldown")),
+        OVERWATCH(1, Material.SPYGLASS, "<light_purple><b>Overwatch",
+                List.of("<gray>Hold to charge, release to fire", "<gray>Pierces through enemies")),
+        BLUNDERHORN(2, Material.GOAT_HORN, "<gold><b>Blunderhorn",
+                List.of("<gray>Right click for a blast", "<gray>Hurts less at range")),
+        SPITTER(3, Material.PUFFERFISH, "<aqua><b>Spitter",
+                List.of("<gray>Right click to spit water", "<gray>Weak but quick"));
 
         private final int slot;
         private final Material material;
@@ -1314,7 +1314,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
             item.unsetData(DataComponentTypes.CONSUMABLE);
             item.unsetData(DataComponentTypes.FOOD);
             item.setData(DataComponentTypes.TOOLTIP_DISPLAY, TooltipDisplay.tooltipDisplay()
-                    .addHiddenComponents(DataComponentTypes.INSTRUMENT, DataComponentTypes.CONSUMABLE, DataComponentTypes.FOOD)
+                    .addHiddenComponents(DataComponentTypes.INSTRUMENT, DataComponentTypes.CONSUMABLE,
+                            DataComponentTypes.FOOD, DataComponentTypes.ATTRIBUTE_MODIFIERS)
                     .build());
             return item;
         }

@@ -65,10 +65,10 @@ public class IncursionDefinition extends OkaeriConfig {
     public static class SniperSettings extends OkaeriConfig {
 
         @Comment("How long the shot has to be charged before releasing fires it")
-        private int chargeTicks = 25;
+        private int chargeTicks = 20;
 
         @Comment("Cooldown after a shot was fired (0 to disable)")
-        private int cooldownTicks = 60;
+        private int cooldownTicks = 55;
 
         @Comment("How far the shot travels (it always stops at the first solid block)")
         private double range = 75.0;
@@ -92,13 +92,13 @@ public class IncursionDefinition extends OkaeriConfig {
         private int cooldownTicks = 30;
 
         @Comment("How far the cone reaches")
-        private double range = 6.0;
+        private double range = 6.5;
 
         @Comment("Total width of the cone in degrees (45 means 22.5 degrees to either side)")
         private double coneDegrees = 45.0;
 
         @Comment("True damage dealt at point blank range")
-        private double damage = 22.0;
+        private double damage = 25.0;
 
         @Comment({
                 "How much of the damage is lost at maximum range",
@@ -128,7 +128,7 @@ public class IncursionDefinition extends OkaeriConfig {
         private double launchAngleDegrees = 10.0;
 
         @Comment("How far the stream may travel (it always stops at the first solid block)")
-        private double range = 20.0;
+        private double range = 22.0;
 
         @Comment("How close the stream has to pass a player's hitbox to soak them")
         private double hitRadius = 0.15;
@@ -140,7 +140,7 @@ public class IncursionDefinition extends OkaeriConfig {
                 "How much of the damage is lost at maximum range",
                 "0 = full damage everywhere, 1 = nothing at the edge"
         })
-        private double damageFalloff = 0.0;
+        private double damageFalloff = 0.25;
 
         @Comment("How hard hits shove players along the stream's path")
         private double knockback = 0.2;
