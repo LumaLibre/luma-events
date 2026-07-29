@@ -13,6 +13,9 @@ import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
+import dev.lumas.lumaitems.particles.ParticleDisplay;
+import dev.lumas.lumaitems.particles.Particles;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
@@ -21,26 +24,34 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Color;
+import org.bukkit.FireworkEffect;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
@@ -48,8 +59,10 @@ import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,12 +73,22 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     private static final NamespacedKey FREEZE_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_freeze");
     private static final NamespacedKey KIT_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_kit");
+    private static final String FIREWORK_KEY = "incursion_firework";
+
+    private static final long INVINCIBILITY_AURA_PERIOD_MILLIS = 100L;
+    private static final Duration INVINCIBILITY_TITLE_STAY = Duration.ofMillis(400);
+    private static final double INVINCIBILITY_AURA_RADIUS = 0.75;
+    private static final int INVINCIBILITY_AURA_POINTS = 8;
 
     private static final AttributeModifier FREEZE_MODIFIER =
             new AttributeModifier(FREEZE_KEY, -1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
     private static final List<Attribute> FREEZE_ATTRIBUTES = List.of(Attribute.MOVEMENT_SPEED, Attribute.JUMP_STRENGTH);
 
     private static final Set<Integer> WARNING_SECONDS = Set.of(60, 30, 10, 3, 2, 1);
+
+    private static final List<FireworkEffect.Type> FIREWORK_TYPES = Arrays.stream(FireworkEffect.Type.values())
+            .filter(type -> type != FireworkEffect.Type.BALL_LARGE) // BALL_LARGE is a bit much
+            .toList();
 
     private final IncursionDefinition definition;
     private final IncursionTokenFormula tokenFormula;
@@ -85,6 +108,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private volatile boolean secondHalf = false;
     private volatile boolean kickoffInProgress = false;
     private CountdownBossBar countdownBossBar;
+    private ScheduledTask auraTask;
 
     public Incursion(IncursionDefinition definition) {
         super(
@@ -94,7 +118,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 10,
                 true,
                 true,
-                true,
+                false,
                 true
         );
         this.definition = definition;
@@ -143,6 +167,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 .build();
         this.countdownBossBar.start();
 
+        this.auraTask = Executors.runRepeatingAsync(TimeUnit.MILLISECONDS, 0, INVINCIBILITY_AURA_PERIOD_MILLIS, _ -> tickInvincibilityAura());
+
         this.kickoff("<gold><b>First Half");
     }
 
@@ -164,13 +190,10 @@ public final class Incursion extends InventoryUnifiedMinigame {
     @Override
     protected void handleStop() {
         this.kickoffInProgress = false;
-        if (this.countdownBossBar != null) {
-            this.countdownBossBar.stop(false);
-        }
+        if (this.countdownBossBar != null) this.countdownBossBar.stop(false);
+        if (this.auraTask != null) this.auraTask.cancel();
 
-        for (EventPlayer participant : new ArrayList<>(this.participants)) {
-            clearPlayerState(participant);
-        }
+        for (EventPlayer participant : new ArrayList<>(this.participants)) clearPlayerState(participant);
 
         if (team1 != null && team2 != null) {
             scoreboard.addScore(team1, team1.getScore().get());
@@ -310,11 +333,88 @@ public final class Incursion extends InventoryUnifiedMinigame {
                     .append(separator)
                     .append(Component.text(enemy.getName() + " " + enemy.getScore().get(), enemy.getColor()))
                     .append(separator)
-                    .append(Component.text("You: " + points.getOrDefault(participant.getUuid(), 0), NamedTextColor.GRAY))
-                    .decorate(TextDecoration.BOLD);
+                    .append(Component.text("You: " + points.getOrDefault(participant.getUuid(), 0), NamedTextColor.GRAY));
 
-            participant.sendActionBar(actionBar);
+            participant.sendActionBar(actionBar.decorate(TextDecoration.BOLD));
         }
+    }
+
+    private void tickInvincibilityAura() {
+        if (!this.active || this.stopping || invincibleUntil.isEmpty()) return;
+        if (kickoffInProgress) return;
+
+        long now = System.currentTimeMillis();
+        for (Map.Entry<UUID, Long> entry : invincibleUntil.entrySet()) {
+            UUID uuid = entry.getKey();
+            EventPlayer participant = participantOf(uuid);
+            IncursionTeam team = teamOf(uuid);
+            if (participant == null || team == null) {
+                invincibleUntil.remove(uuid);
+                continue;
+            }
+
+            if (entry.getValue() <= now) {
+                invincibleUntil.remove(uuid);
+                participant.operatePlayer(player -> {
+                    player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK, 0.6f, 1.6f);
+                    player.clearTitle();
+                });
+                continue;
+            }
+
+            long remaining = entry.getValue() - now;
+            participant.operatePlayer(player -> {
+                drawInvincibilityAura(player, team);
+                player.showTitle(invincibilityTitle(remaining));
+            });
+        }
+    }
+
+    private static Title invincibilityTitle(long remainingMillis) {
+        return Title.title(
+                Util.color("<gray>⛨"),
+                Util.color("<gray>" + String.format("%.1f", remainingMillis / 1000.0) + "s"),
+                Title.Times.times(Duration.ZERO, INVINCIBILITY_TITLE_STAY, Duration.ZERO)
+        );
+    }
+
+    private void drawInvincibilityAura(Player player, IncursionTeam team) {
+        Location center = player.getLocation();
+        double phase = (System.currentTimeMillis() % 2000L) / 2000.0 * Math.PI * 2;
+
+        for (int i = 0; i < INVINCIBILITY_AURA_POINTS; i++) {
+            double angle = phase + (Math.PI * 2 * i / INVINCIBILITY_AURA_POINTS);
+            double x = center.getX() + (Math.cos(angle) * INVINCIBILITY_AURA_RADIUS);
+            double z = center.getZ() + (Math.sin(angle) * INVINCIBILITY_AURA_RADIUS);
+            center.getWorld().spawnParticle(Particle.DUST, x, center.getY() + 0.1, z, 1, 0, 0, 0, 0, team.getDustOptions());
+            center.getWorld().spawnParticle(Particle.DUST, x, center.getY() + 1.1, z, 1, 0, 0, 0, 0, team.getDustOptions());
+        }
+    }
+
+    private void playScoreEffects(Location where, IncursionTeam team) {
+        Executors.runSync(where, () -> {
+            Location burst = where.clone().add(0, 1, 0);
+
+            Particles.spikeSphere(2.5, 18.0, 3, 0.2, 0.8, ParticleDisplay.of(Particle.DUST)
+                    .withColor(Util.bukkitToAwtColor(team.getArmorColor()))
+                    .withLocation(burst));
+            burst.getWorld().spawnParticle(Particle.FIREWORK, burst, 40, 0.4, 0.6, 0.4, 0.15);
+            burst.getWorld().playSound(burst, Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1.5f, 1.2f);
+
+            burst.getWorld().spawn(burst, Firework.class, firework -> {
+                Util.setPersistentKey(firework, FIREWORK_KEY, PersistentDataType.BYTE, (byte) 1);
+                FireworkMeta meta = firework.getFireworkMeta();
+                meta.addEffect(FireworkEffect.builder()
+                        .withColor(team.getArmorColor())
+                        .withFade(team.getArmorColor())
+                        .with(Util.getRandom(FIREWORK_TYPES))
+                        .trail(true)
+                        .flicker(true)
+                        .build());
+                meta.setPower(1);
+                firework.setFireworkMeta(meta);
+            });
+        });
     }
 
     // Teleports a participant into their team's spawn area AND FREEZES THEM THERE
@@ -363,7 +463,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         });
     }
 
-    private void scoreHole(EventPlayer participant, IncursionTeam team) {
+    private void scoreHole(EventPlayer participant, IncursionTeam team, Location where) {
         int awarded = definition.getHolePoints();
         addPoints(participant, team, awarded);
 
@@ -373,6 +473,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 .append(Component.text("(+" + awarded + ")", NamedTextColor.GRAY)));
         this.playAudienceSound(Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.2f);
 
+        playScoreEffects(where, team);
         respawnFlow(participant, team);
     }
 
@@ -467,7 +568,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         if (participant == null) return;
 
         if (enemyOf(team).getSide().hole().contains(to)) {
-            scoreHole(participant, team);
+            scoreHole(participant, team, to);
         } else if (team.getSide().hole().contains(to)) {
             participant.sendMessage("<red>That's your own hole! No points for you.");
             respawnFlow(participant, team);
@@ -527,6 +628,12 @@ public final class Incursion extends InventoryUnifiedMinigame {
     public void onEntityDamage(EntityDamageEvent event) {
         if (!this.active || this.stopping) return;
 
+        Entity damager = damagerOf(event);
+        if (damager instanceof Firework firework && Util.hasPersistentKey(firework, FIREWORK_KEY)) {
+            event.setCancelled(true);
+            return;
+        }
+
         if (!(event.getEntity() instanceof Player victim)) return;
         IncursionTeam victimTeam = teamOf(victim.getUniqueId());
         if (victimTeam == null) return;
@@ -536,7 +643,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
             return;
         }
 
-        Player attacker = resolveKiller(damagerOf(event), victim);
+        Player attacker = resolveKiller(damager, victim);
         if (attacker == null) return;
 
         IncursionTeam attackerTeam = teamOf(attacker.getUniqueId());
@@ -545,6 +652,41 @@ public final class Incursion extends InventoryUnifiedMinigame {
         if (attackerTeam == victimTeam || isOutOfPlay(attacker.getUniqueId())) {
             event.setCancelled(true);
         }
+    }
+
+    // TODO: Is this a good idea?
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!this.active || this.stopping) return;
+        if (!(event.getWhoClicked() instanceof Player player) || !isParticipant(player)) return;
+
+        event.setCancelled(true);
+        player.sendActionBar(Util.color("<red>You can't rearrange your inventory in this minigame."));
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!this.active || this.stopping) return;
+        if (!(event.getWhoClicked() instanceof Player player) || !isParticipant(player)) return;
+
+        event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onDropItem(PlayerDropItemEvent event) {
+        if (!this.active || this.stopping) return;
+        if (!isParticipant(event.getPlayer())) return;
+
+        event.setCancelled(true);
+        event.getPlayer().sendActionBar(Util.color("<red>You can't drop your gear in this minigame."));
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onSwapHandItems(PlayerSwapHandItemsEvent event) {
+        if (!this.active || this.stopping) return;
+        if (!isParticipant(event.getPlayer())) return;
+
+        event.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -562,15 +704,15 @@ public final class Incursion extends InventoryUnifiedMinigame {
     }
 
     private boolean isOutOfPlay(UUID uuid) {
-        if (kickoffInProgress || frozenAt.containsKey(uuid) || respawning.contains(uuid)) return true;
-        Long until = invincibleUntil.get(uuid);
-        if (until == null) return false;
+        return kickoffInProgress
+                || frozenAt.containsKey(uuid)
+                || respawning.contains(uuid)
+                || invincibilityMillisLeft(uuid) > 0;
+    }
 
-        if (System.currentTimeMillis() >= until) {
-            invincibleUntil.remove(uuid);
-            return false;
-        }
-        return true;
+    private long invincibilityMillisLeft(UUID uuid) {
+        Long until = invincibleUntil.get(uuid);
+        return until == null ? 0L : Math.max(0L, until - System.currentTimeMillis());
     }
 
     @Nullable
@@ -613,6 +755,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         private final String teamName;
         private final NamedTextColor color;
         private final Color armorColor;
+        private final Particle.DustOptions dustOptions;
         private final Set<UUID> members = ConcurrentHashMap.newKeySet();
         private final AtomicInteger score = new AtomicInteger();
 
@@ -623,6 +766,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
             this.teamName = definition.getName();
             this.color = definition.getNamedTextColor();
             this.armorColor = definition.getArmorColor();
+            this.dustOptions = new Particle.DustOptions(this.armorColor, 1.0f);
             this.side = side;
         }
 
