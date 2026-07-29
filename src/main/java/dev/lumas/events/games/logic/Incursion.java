@@ -112,10 +112,10 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private static final double ORB_CORE_SPREAD = 0.08;
     private static final String FIREWORK_KEY = "incursion_firework";
 
-    private static final Particle.DustOptions SPIT_DUST = new Particle.DustOptions(Color.fromRGB(70, 145, 230), 0.75f);
+    private static final Particle.DustOptions SPIT_DUST = new Particle.DustOptions(Color.fromRGB(70, 145, 230), 0.5f);
 
     private static final int CHARGE_BAR_SEGMENTS = 10;
-    private static final int SHOTGUN_PELLETS = 13;
+    private static final int SHOTGUN_PELLETS = 16;
     private static final double BEAM_STEP = 0.5;
 
     // Heights of the spheres a player's hitbox is approximated by for the blunderhorn's cone test
@@ -922,6 +922,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
             world.spawnParticle(Particle.SPLASH, point, 1, 0, 0, 0, 0);
             world.spawnParticle(Particle.DUST, point, 2, 0.05, 0.05, 0.05, 0, SPIT_DUST);
+            world.spawnParticle(Particle.DUST, point, 3, 0.07, 0.07, 0.07, 0, new Particle.DustOptions(team.armorColor, 0.35f));
             if (step % 2 == 0) {
                 world.spawnParticle(Particle.FALLING_WATER, point, 1, 0.06, 0.06, 0.06, 0);
             }
