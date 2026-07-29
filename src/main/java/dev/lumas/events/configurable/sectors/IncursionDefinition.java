@@ -13,6 +13,8 @@ import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.block.BlockFace;
 
+import java.util.List;
+
 @Getter
 @Setter
 public class IncursionDefinition extends OkaeriConfig {
@@ -58,6 +60,15 @@ public class IncursionDefinition extends OkaeriConfig {
 
     @Comment("Our equivalent of a sidearm (pufferfish)")
     private SpitterSettings spitter = new SpitterSettings();
+
+    @Comment("Floor positions orbs float above (in world,x,y,z form)")
+    private List<Location> orbSpawns = List.of();
+
+    @Comment("How long after being collected an orb comes back")
+    private int orbRespawnTicks = 600;
+
+    @Comment("The grenades orbs hand out (eggs)")
+    private GrenadeSettings grenade = new GrenadeSettings();
 
     @Getter
     @Setter
@@ -147,6 +158,42 @@ public class IncursionDefinition extends OkaeriConfig {
 
         @Comment("How many points the stream is drawn at per tick (purely cosmetic)")
         private int trailSteps = 4;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class GrenadeSettings extends OkaeriConfig {
+
+        @Comment("True damage dealt at the centre of the blast")
+        private double damage = 22.0;
+
+        @Comment("How far the blast reaches")
+        private double radius = 4.5;
+
+        @Comment({
+                "How much of the damage is lost at the edge of the blast",
+                "0 = full damage everywhere, 1 = nothing at the edge"
+        })
+        private double damageFalloff = 0.7;
+
+        @Comment("How hard the blast shoves players away from it")
+        private double knockback = 0.7;
+
+        @Comment("Whether a wall between the blast and a player protects them")
+        private boolean requireLineOfSight = true;
+
+        @Comment("Blue egg: how long targets stay frosted over")
+        private int freezeTicks = 150;
+
+        @Comment("Blue egg: how long targets are slowed for")
+        private int slownessTicks = 100;
+
+        @Comment("Blue egg: strength of that slowness, 0 being Slowness I")
+        private int slownessAmplifier = 2;
+
+        @Comment("Brown egg: how long targets burn for")
+        private int fireTicks = 100;
     }
 
     @Getter

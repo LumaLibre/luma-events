@@ -39,6 +39,7 @@ import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.entity.Egg;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
@@ -49,9 +50,12 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerEggThrowEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -65,6 +69,8 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
@@ -78,7 +84,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.DoubleConsumer;
 
@@ -87,6 +95,21 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private static final NamespacedKey FREEZE_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_freeze");
     private static final NamespacedKey KIT_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_kit");
     private static final NamespacedKey WEAPON_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_weapon");
+    private static final NamespacedKey GRENADE_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_grenade");
+
+    private static final double PLAYER_HALF_WIDTH = 0.35;
+    private static final double PLAYER_HALF_HEIGHT = 0.95;
+
+    private static final int ORB_RENDER_PERIOD_TICKS = 2;
+    private static final int ORB_SHELL_POINTS = 32;
+    private static final double ORB_RADIUS = 0.4;
+    private static final double GOLDEN_ANGLE = Math.PI * (3.0 - Math.sqrt(5.0));
+    private static final Particle.DustOptions ORB_SHELL_DUST = new Particle.DustOptions(Color.fromRGB(12, 10, 18), 0.7f);
+    private static final Particle.DustOptions ORB_CORE_DUST = new Particle.DustOptions(Color.WHITE, 1.1f);
+    private static final double ORB_FLOAT_HEIGHT = 0.7;
+    private static final double ORB_PICKUP_RADIUS = 0.55;
+    private static final int ORB_CORE_POINTS = 5;
+    private static final double ORB_CORE_SPREAD = 0.08;
     private static final String FIREWORK_KEY = "incursion_firework";
 
     private static final Particle.DustOptions SPIT_DUST = new Particle.DustOptions(Color.fromRGB(70, 145, 230), 0.75f);
@@ -114,6 +137,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     private static final Set<Integer> WARNING_SECONDS = Set.of(60, 30, 10, 3, 2, 1);
 
+    private static final List<Grenade> GRENADES = List.of(Grenade.values());
+
     private static final List<FireworkEffect.Type> FIREWORK_TYPES = Arrays.stream(FireworkEffect.Type.values())
             .filter(type -> type != FireworkEffect.Type.BALL_LARGE) // BALL_LARGE is a bit much
             .toList();
@@ -138,6 +163,9 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private volatile IncursionTeam team2;
     private volatile boolean secondHalf = false;
     private volatile boolean kickoffInProgress = false;
+    private final List<Orb> orbs = new CopyOnWriteArrayList<>();
+    private final List<ScheduledTask> orbTasks = new ArrayList<>();
+
     private CountdownBossBar countdownBossBar;
     private ScheduledTask auraTask;
 
@@ -203,6 +231,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
             tickSniperCharge();
         });
 
+        this.startOrbs();
         this.kickoff("<gold><b>First Half");
     }
 
@@ -226,8 +255,14 @@ public final class Incursion extends InventoryUnifiedMinigame {
         this.kickoffInProgress = false;
         if (this.countdownBossBar != null) this.countdownBossBar.stop(false);
         if (this.auraTask != null) this.auraTask.cancel();
+        this.orbTasks.forEach(ScheduledTask::cancel);
+        this.orbTasks.clear();
+        this.orbs.clear();
 
-        for (EventPlayer participant : new ArrayList<>(this.participants)) clearPlayerState(participant);
+        for (EventPlayer participant : new ArrayList<>(this.participants)) {
+            clearPlayerState(participant);
+            participant.operatePlayer(Incursion::restoreVitals);
+        }
 
         if (team1 != null && team2 != null) {
             scoreboard.addScore(team1, team1.getScore().get());
@@ -276,6 +311,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
         MapSide previous = team1.getSide();
         team1.setSide(team2.getSide());
         team2.setSide(previous);
+
+        this.orbs.forEach(Orb::refill);
 
         this.sendAudienceMessage("<gold><b>Half time!</b> <reset>Both teams have swapped sides.");
         this.playAudienceSound(Sound.ENTITY_ENDER_DRAGON_GROWL, 1f, 1.4f);
@@ -466,12 +503,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         player.teleportAsync(spawn).whenComplete((_, _) -> Executors.runSync(player, () -> {
             player.setVelocity(new Vector(0, 0, 0));
             player.setFallDistance(0f);
-            player.setFireTicks(0);
-            player.setFoodLevel(20);
-            player.setSaturation(20f);
-
-            AttributeInstance maxHealth = player.getAttribute(Attribute.MAX_HEALTH);
-            player.setHealth(maxHealth != null ? maxHealth.getValue() : 20.0);
+            restoreVitals(player);
 
             equipKit(player, team);
             freeze(player, spawn);
@@ -539,6 +571,17 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
     }
 
+    private static void restoreVitals(Player player) {
+        player.setFireTicks(0);
+        player.setFreezeTicks(0);
+        player.removePotionEffect(PotionEffectType.SLOWNESS);
+        player.setFoodLevel(20);
+        player.setSaturation(20f);
+
+        AttributeInstance maxHealth = player.getAttribute(Attribute.MAX_HEALTH);
+        player.setHealth(maxHealth != null ? maxHealth.getValue() : 20.0);
+    }
+
     private void clearPlayerState(EventPlayer participant) {
         UUID uuid = participant.getUuid();
         invincibleUntil.remove(uuid);
@@ -553,11 +596,11 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private void equipKit(Player player, IncursionTeam team) {
         PlayerInventory inventory = player.getInventory();
         inventory.setChestplate(teamChestplate(team));
-        inventory.setItem(Weapon.BAYONET.slot, Weapon.BAYONET.item());
-        inventory.setItem(Weapon.OVERWATCH.slot, Weapon.OVERWATCH.item());
-        inventory.setItem(Weapon.BLUNDERHORN.slot, Weapon.BLUNDERHORN.item());
-        inventory.setItem(Weapon.SPITTER.slot, Weapon.SPITTER.item());
-        inventory.setHeldItemSlot(Weapon.BAYONET.slot);
+        inventory.setItem(Weapon.MELEE.slot, Weapon.MELEE.item());
+        inventory.setItem(Weapon.SNIPER.slot, Weapon.SNIPER.item());
+        inventory.setItem(Weapon.SHOTGUN.slot, Weapon.SHOTGUN.item());
+        inventory.setItem(Weapon.SIDEARM.slot, Weapon.SIDEARM.item());
+        inventory.setHeldItemSlot(Weapon.MELEE.slot);
     }
 
     private ItemStack teamChestplate(IncursionTeam team) {
@@ -599,7 +642,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
             }
 
             participant.operatePlayer(player -> {
-                if (!player.hasActiveItem() || weaponOf(player.getActiveItem()) != Weapon.OVERWATCH) {
+                if (!player.hasActiveItem() || weaponOf(player.getActiveItem()) != Weapon.SNIPER) {
                     boolean ours = charging.remove(uuid);
                     boolean wasCharged = chargeReady.remove(uuid);
                     if (ours && wasCharged && !isOutOfPlay(uuid)) {
@@ -919,6 +962,107 @@ public final class Incursion extends InventoryUnifiedMinigame {
         shooter.playSound(shooter.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1f, 1.4f);
     }
 
+    private void startOrbs() {
+        for (Location spawn : definition.getOrbSpawns()) {
+            if (spawn == null || spawn.getWorld() == null) continue;
+
+            Orb orb = new Orb(spawn.clone().add(0.5, 0, 0.5));
+            orbs.add(orb);
+            orbTasks.add(Executors.repeatingSync(orb.marker, ORB_RENDER_PERIOD_TICKS, task -> {
+                if (!this.active || this.stopping) {
+                    task.cancel();
+                    return;
+                }
+                orb.render();
+            }));
+        }
+    }
+
+    private void tryCollectOrb(EventPlayer participant, Player player, Location at) {
+        if (orbs.isEmpty()) return;
+
+        // Middle of the player (where this move is taking them)
+        double centreY = at.getY() + PLAYER_HALF_HEIGHT;
+
+        for (Orb orb : orbs) {
+            if (!orb.marker.getWorld().equals(at.getWorld())) continue;
+            if (!orb.available.get() || !orb.pickupBox.contains(at.getX(), centreY, at.getZ())) continue;
+            if (!orb.collect(definition.getOrbRespawnTicks())) continue; // someone else got there first
+
+            Grenade grenade = Util.getRandom(GRENADES);
+            player.getInventory().addItem(grenade.item());
+
+            player.playSound(at, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1.2f);
+            player.playSound(at, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.8f, 1.6f);
+            spawnParticleIfOwned(player.getWorld(), orb.centre, Particle.END_ROD, 18, 0.2, 0.08);
+
+            participant.sendNoPrefixedMessage(Util.prefixed("You picked up ")
+                    .append(Util.color(grenade.getDisplayName()))
+                    .append(Util.color("<gray>!")));
+            return;
+        }
+    }
+
+    @Nullable
+    private static Grenade grenadeOf(@Nullable ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return null;
+        String raw = item.getItemMeta().getPersistentDataContainer().get(GRENADE_KEY, PersistentDataType.STRING);
+        return raw == null ? null : Util.getEnumFromString(Grenade.class, raw);
+    }
+
+    private void detonate(Grenade grenade, Player thrower, Location at) {
+        IncursionDefinition.GrenadeSettings settings = definition.getGrenade();
+        World world = at.getWorld();
+
+        world.spawnParticle(Particle.EXPLOSION_EMITTER, at, 1);
+        world.spawnParticle(Particle.DUST, at, 45, 0.7, 0.7, 0.7, 0.1, grenade.getBurstDust());
+        world.playSound(at, Sound.ENTITY_GENERIC_EXPLODE, 1.2f, 1.1f);
+        world.playSound(at, Sound.ENTITY_CHICKEN_HURT, 1.4f, 0.9f);
+
+        IncursionTeam throwerTeam = teamOf(thrower.getUniqueId());
+        if (throwerTeam == null) return;
+
+        double radius = Math.max(0.5, settings.getRadius());
+        double falloff = Math.clamp(settings.getDamageFalloff(), 0.0, 1.0);
+        boolean connected = false;
+
+        for (EventPlayer participant : enemiesOf(throwerTeam, thrower)) {
+            Player target = participant.getPlayer();
+            if (target == null) continue;
+
+            Vector toTarget = target.getBoundingBox().getCenter().subtract(at.toVector());
+            double distance = toTarget.length();
+            if (distance > radius) continue;
+
+            if (settings.isRequireLineOfSight() && distance > 1.0E-4
+                    && !hasClearShot(at, toTarget.clone().multiply(1.0 / distance), distance)) {
+                continue;
+            }
+
+            dealTrueDamage(target, thrower, at,
+                    settings.getDamage() * (1.0 - (falloff * (distance / radius))), settings.getKnockback());
+            applyGrenadeEffect(grenade, target, settings);
+            connected = true;
+        }
+
+        if (connected) Executors.runSync(thrower, () -> hitFeedback(thrower));
+    }
+
+    private static void applyGrenadeEffect(Grenade grenade, Player target, IncursionDefinition.GrenadeSettings settings) {
+        switch (grenade) {
+            case CRYO -> Executors.runSync(target, () -> {
+                target.setFreezeTicks(Math.max(target.getFreezeTicks(), settings.getFreezeTicks()));
+                target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS,
+                        settings.getSlownessTicks(), Math.max(0, settings.getSlownessAmplifier()), false, true, true));
+            });
+            case INCENDIARY -> Executors.runSync(target,
+                    () -> target.setFireTicks(Math.max(target.getFireTicks(), settings.getFireTicks())));
+            case NORMAL -> {
+                // Blast only
+            }
+        }
+    }
+
     private void dealTrueDamage(Player target, Player attacker, Location source, double damage, double knockback) {
         if (damage <= 0) return;
         lastTrueDamage.put(target.getUniqueId(), new DamageCredit(attacker.getUniqueId(), System.currentTimeMillis()));
@@ -1030,6 +1174,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
         EventPlayer participant = participantOf(uuid);
         if (participant == null) return;
+
+        tryCollectOrb(participant, player, to);
 
         if (enemyOf(team).getSide().hole().contains(to)) {
             scoreHole(participant, team, to);
@@ -1167,33 +1313,68 @@ public final class Incursion extends InventoryUnifiedMinigame {
         if (weapon == null || team == null) return;
 
         switch (weapon) {
-            case OVERWATCH -> {
+            case SNIPER -> {
                 if (isOutOfPlay(player.getUniqueId()) || !readyToFire(player, weapon.getMaterial())) {
                     event.setCancelled(true);
                     return;
                 }
                 charging.add(player.getUniqueId());
             }
-            case BLUNDERHORN -> {
+            case SHOTGUN -> {
                 event.setUseItemInHand(Event.Result.DENY);
                 event.setCancelled(true);
                 if (isOutOfPlay(player.getUniqueId()) || !readyToFire(player, weapon.getMaterial())) return;
                 fireBlunderhorn(player, team);
             }
-            case SPITTER -> {
+            case SIDEARM -> {
                 event.setUseItemInHand(Event.Result.DENY);
                 event.setCancelled(true);
                 if (isOutOfPlay(player.getUniqueId()) || !readyToFire(player, weapon.getMaterial())) return;
                 fireSpitter(player, team);
             }
-            case BAYONET -> {}
+            case MELEE -> {}
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onEggThrow(PlayerEggThrowEvent event) {
+        if (!this.active || this.stopping) return;
+        if (grenadeOf(event.getEgg().getItem()) == null) return;
+        event.setHatching(false);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onProjectileLaunch(ProjectileLaunchEvent event) {
+        if (!this.active || this.stopping) return;
+        if (!(event.getEntity() instanceof Egg egg)) return;
+
+        Grenade grenade = grenadeOf(egg.getItem());
+        if (grenade == null) return;
+        Util.setPersistentKey(egg, GRENADE_KEY.getKey(), PersistentDataType.STRING, grenade.name());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onProjectileHit(ProjectileHitEvent event) {
+        if (!this.active || this.stopping) return;
+        if (!(event.getEntity() instanceof Egg egg)) return;
+
+        String raw = Util.getPersistentKey(egg, GRENADE_KEY.getKey(), PersistentDataType.STRING);
+        Grenade grenade = raw != null ? Util.getEnumFromString(Grenade.class, raw) : grenadeOf(egg.getItem());
+        if (grenade == null) return;
+
+        if (!(egg.getShooter() instanceof Player thrower) || teamOf(thrower.getUniqueId()) == null) return;
+
+        Location at = event.getHitBlock() != null
+                ? egg.getLocation()
+                : (event.getHitEntity() != null ? event.getHitEntity().getLocation() : egg.getLocation());
+
+        detonate(grenade, thrower, at.clone());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onStopUsingItem(PlayerStopUsingItemEvent event) {
         if (!this.active || this.stopping) return;
-        if (weaponOf(event.getItem()) != Weapon.OVERWATCH) return;
+        if (weaponOf(event.getItem()) != Weapon.SNIPER) return;
 
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
@@ -1274,19 +1455,111 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     public record MapSide(IncursionDefinition.SpawnArea spawnArea, WorldTiedBoundingBox hole) {}
 
+    private static final class Orb {
+
+        private final Location marker;
+        private final Location centre;
+        private final BoundingBox pickupBox;
+        private final AtomicBoolean available = new AtomicBoolean(true);
+        private volatile long respawnAt;
+
+        private Orb(Location marker) {
+            this.marker = marker.clone();
+            this.centre = marker.clone().add(0, ORB_FLOAT_HEIGHT, 0);
+            this.pickupBox = BoundingBox.of(centre.toVector(),
+                    ORB_PICKUP_RADIUS + PLAYER_HALF_WIDTH,
+                    ORB_PICKUP_RADIUS + PLAYER_HALF_HEIGHT,
+                    ORB_PICKUP_RADIUS + PLAYER_HALF_WIDTH);
+        }
+
+        private boolean collect(int respawnTicks) {
+            if (!available.compareAndSet(true, false)) return false;
+            respawnAt = System.currentTimeMillis() + (respawnTicks * 50L);
+            return true;
+        }
+
+        private void refill() {
+            respawnAt = 0;
+            available.set(true);
+        }
+
+        private void render() {
+            World world = marker.getWorld();
+            world.spawnParticle(Particle.END_ROD, marker, 1, 0, 0, 0, 0);
+
+            if (!available.get()) {
+                if (System.currentTimeMillis() < respawnAt) return;
+                available.set(true);
+                world.playSound(centre, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.7f, 1.2f);
+            }
+
+            double spin = (System.currentTimeMillis() % 4000L) / 4000.0 * Math.PI * 2;
+            double bounce = Math.sin(spin * 2) * 0.07;
+
+            for (int i = 0; i < ORB_SHELL_POINTS; i++) {
+                double height = 1.0 - (2.0 * ((i + 0.5) / ORB_SHELL_POINTS));
+                double ring = Math.sqrt(Math.max(0.0, 1.0 - (height * height)));
+                double angle = spin + (i * GOLDEN_ANGLE);
+
+                world.spawnParticle(Particle.DUST,
+                        centre.getX() + (Math.cos(angle) * ring * ORB_RADIUS),
+                        centre.getY() + bounce + (height * ORB_RADIUS),
+                        centre.getZ() + (Math.sin(angle) * ring * ORB_RADIUS),
+                        1, 0, 0, 0, 0, ORB_SHELL_DUST);
+            }
+
+            world.spawnParticle(Particle.DUST, centre.getX(), centre.getY() + bounce, centre.getZ(),
+                    ORB_CORE_POINTS, ORB_CORE_SPREAD, ORB_CORE_SPREAD, ORB_CORE_SPREAD, 0, ORB_CORE_DUST);
+            world.spawnParticle(Particle.END_ROD, centre.getX(), centre.getY() + bounce, centre.getZ(), 1, 0, 0, 0, 0);
+        }
+    }
+
     // Who last hit someone with true damage (and when)
     private record DamageCredit(UUID attacker, long at) {}
 
     @Getter
+    private enum Grenade {
+
+        NORMAL(Material.EGG, "<white><b>Unstable Egg",
+                List.of("<gray>Throw it. It goes off where it lands."), Color.WHITE),
+        CRYO(Material.BLUE_EGG, "<aqua><b>Cryo Egg",
+                List.of("<gray>Throw it. It goes off where it lands.", "<gray>Frosts & slows whoever it catches."), Color.AQUA),
+        INCENDIARY(Material.BROWN_EGG, "<gold><b>Incendiary Egg",
+                List.of("<gray>Throw it. It goes off where it lands.", "<gray>Sets whoever it catches alight."), Color.ORANGE);
+
+        private final Material material;
+        private final String displayName;
+        private final List<String> lore;
+        private final Particle.DustOptions burstDust;
+
+        Grenade(Material material, String displayName, List<String> lore, Color burstColor) {
+            this.material = material;
+            this.displayName = displayName;
+            this.lore = lore;
+            this.burstDust = new Particle.DustOptions(burstColor, 1.4f);
+        }
+
+        private ItemStack item() {
+            ItemStack item = new ItemStack(material);
+            item.editMeta(meta -> {
+                meta.displayName(Util.color(displayName));
+                meta.lore(Util.color(lore, NamedTextColor.GRAY));
+                meta.getPersistentDataContainer().set(GRENADE_KEY, PersistentDataType.STRING, name());
+            });
+            return item;
+        }
+    }
+
+    @Getter
     private enum Weapon {
 
-        BAYONET(0, Material.STONE_SWORD, "<white><b>Last Resort",
+        MELEE(0, Material.STONE_SWORD, "<white><b>Last Resort",
                 List.of("<gray>Use when everything's on cooldown")),
-        OVERWATCH(1, Material.SPYGLASS, "<light_purple><b>Overwatch",
+        SNIPER(1, Material.SPYGLASS, "<light_purple><b>Overwatch",
                 List.of("<gray>Hold to charge, release to fire", "<gray>Pierces through enemies")),
-        BLUNDERHORN(2, Material.GOAT_HORN, "<gold><b>Blunderhorn",
+        SHOTGUN(2, Material.GOAT_HORN, "<gold><b>Blunderhorn",
                 List.of("<gray>Right click for a blast", "<gray>Hurts less at range")),
-        SPITTER(3, Material.PUFFERFISH, "<aqua><b>Spitter",
+        SIDEARM(3, Material.PUFFERFISH, "<aqua><b>Spitter",
                 List.of("<gray>Right click to spit water", "<gray>Weak but quick"));
 
         private final int slot;
