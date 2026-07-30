@@ -101,6 +101,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.DoubleConsumer;
 
 public final class Incursion extends InventoryUnifiedMinigame {
@@ -127,7 +128,6 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private static final String FIREWORK_KEY = "incursion_firework";
 
     private static final int MINIBOSS_TICK_PERIOD_TICKS = 2;
-    private static final int MINIBOSS_FIRE_IMMUNITY_TICKS = MINIBOSS_TICK_PERIOD_TICKS * 10;
     private static final int MINIBOSS_SPAWN_ATTEMPTS = 12;
     private static final int MINIBOSS_HEIGHT_BLOCKS = 2;
     private static final double MINIBOSS_ROOM_INSET = 0.4;
@@ -158,6 +158,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     // How long after a true damage hit its shooter still gets credited with the kill
     private static final long DAMAGE_CREDIT_MILLIS = 10_000L;
+    private static final long TARGET_SNAPSHOT_MILLIS = 50L;
 
     private static final long INVINCIBILITY_AURA_PERIOD_MILLIS = 100L;
     private static final Duration INVINCIBILITY_TITLE_STAY = Duration.ofMillis(400);
@@ -169,6 +170,9 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private static final List<Attribute> FREEZE_ATTRIBUTES = List.of(Attribute.MOVEMENT_SPEED, Attribute.JUMP_STRENGTH);
 
     private static final Set<Integer> WARNING_SECONDS = Set.of(60, 30, 10, 3, 2, 1);
+
+    private static final Set<EntityDamageEvent.DamageCause> FIRE_DAMAGE_CAUSES =
+            Set.of(EntityDamageEvent.DamageCause.FIRE, EntityDamageEvent.DamageCause.FIRE_TICK);
 
     private static final List<Grenade> GRENADES = List.of(Grenade.values());
 
@@ -189,6 +193,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private final Set<UUID> charging = ConcurrentHashMap.newKeySet();
     private final Set<UUID> chargeReady = ConcurrentHashMap.newKeySet();
     private final ConcurrentHashMap<UUID, DamageCredit> lastTrueDamage = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, EventPlayer> participantsByUuid = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, IncursionTeam> teamsByUuid = new ConcurrentHashMap<>();
     private final Set<Integer> announcedSwapWarnings = ConcurrentHashMap.newKeySet();
     private final Set<Integer> announcedEndWarnings = ConcurrentHashMap.newKeySet();
 
@@ -198,6 +204,10 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private volatile boolean kickoffInProgress = false;
     private final List<Orb> orbs = new CopyOnWriteArrayList<>();
     private final List<ScheduledTask> orbTasks = new ArrayList<>();
+
+    private final AtomicLong targetsBuiltAt = new AtomicLong(); // Rebuilt at most once a tick by whatever thread asks for it first
+    private volatile List<Target> team1Targets = List.of();
+    private volatile List<Target> team2Targets = List.of();
 
     private final List<Miniboss> minibosses;
     private final ConcurrentHashMap<UUID, Miniboss> minibossesByEntity = new ConcurrentHashMap<>();
@@ -248,6 +258,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
         super.handleParticipantJoin(player);
+        participantsByUuid.put(player.getUuid(), player);
         player.teleportAsync(definition.getLobbyLocation());
         return true;
     }
@@ -260,7 +271,9 @@ public final class Incursion extends InventoryUnifiedMinigame {
         List<EventPlayer> shuffled = new ArrayList<>(this.participants);
         Collections.shuffle(shuffled, RANDOM);
         for (int i = 0; i < shuffled.size(); i++) {
-            (i % 2 == 0 ? team1 : team2).getMembers().add(shuffled.get(i).getUuid());
+            EventPlayer participant = shuffled.get(i);
+            participantsByUuid.put(participant.getUuid(), participant);
+            teamsByUuid.put(participant.getUuid(), i % 2 == 0 ? team1 : team2);
         }
 
         for (EventPlayer participant : shuffled) {
@@ -321,10 +334,15 @@ public final class Incursion extends InventoryUnifiedMinigame {
         this.minibosses.forEach(Miniboss::despawn);
         this.minibossesByEntity.clear();
 
-        for (EventPlayer participant : new ArrayList<>(this.participants)) {
+        for (EventPlayer participant : this.participants) {
             clearPlayerState(participant);
             participant.operatePlayer(Incursion::restoreVitals);
         }
+
+        this.participantsByUuid.clear();
+        this.teamsByUuid.clear();
+        this.team1Targets = List.of();
+        this.team2Targets = List.of();
 
         if (team1 != null && team2 != null) {
             scoreboard.addScore(team1, team1.getScore().get());
@@ -354,8 +372,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
     @Override
     public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
         UUID uuid = participant.getUuid();
-        if (team1 != null) team1.getMembers().remove(uuid);
-        if (team2 != null) team2.getMembers().remove(uuid);
+        participantsByUuid.remove(uuid);
+        teamsByUuid.remove(uuid);
         clearPlayerState(participant);
 
         Player player = participant.getPlayer();
@@ -809,7 +827,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         IncursionDefinition.SniperSettings settings = definition.getSniper();
         int hits = 0;
 
-        for (Target target : targetsOf(shooterTeam, shooter)) {
+        for (Target target : targetsOf(shooterTeam)) {
             BoundingBox hitbox = target.expandedHitbox(settings.getHitRadius());
             double maxReach = maxDistance + hitbox.getHeight();
             if (eye.toVector().distanceSquared(hitbox.getCenter()) > maxReach * maxReach) continue;
@@ -843,7 +861,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         double cosHalfAngle = Math.cos(halfAngle);
         Vector apex = muzzle.toVector();
 
-        for (Target target : targetsOf(team, shooter)) {
+        for (Target target : targetsOf(team)) {
             BoundingBox hitbox = target.hitbox();
             double distance = coneHitDistance(apex, direction, range, tanHalfAngle, cosHalfAngle, hitbox);
             if (distance < 0) continue;
@@ -948,11 +966,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
         Vector stepVector = velocity.clone().multiply(1.0 / steps);
         double stepLength = stepVector.length();
 
-        List<Target> targets = targetsOf(team, shooter);
-        List<BoundingBox> hitboxes = new ArrayList<>(targets.size());
-        for (Target target : targets) {
-            hitboxes.add(target.expandedHitbox(settings.getHitRadius()));
-        }
+        List<Target> targets = targetsOf(team);
+        double hitRadius = settings.getHitRadius();
 
         Location point = position.clone();
         for (int step = 0; step < steps; step++) {
@@ -971,11 +986,11 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 return;
             }
 
-            for (int i = 0; i < hitboxes.size(); i++) {
-                if (!hitboxes.get(i).contains(point.getX(), point.getY(), point.getZ())) continue;
+            for (Target target : targets) {
+                if (!target.containsWithin(hitRadius, point.getX(), point.getY(), point.getZ())) continue;
 
                 double falloff = Math.clamp(settings.getDamageFalloff(), 0.0, 1.0);
-                dealTrueDamage(targets.get(i).entity(), shooter, position,
+                dealTrueDamage(target.entity(), shooter, position,
                         settings.getDamage() * (1.0 - (falloff * Math.min(1.0, travelled / range))),
                         settings.getKnockback());
 
@@ -1091,7 +1106,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         double falloff = Math.clamp(settings.getDamageFalloff(), 0.0, 1.0);
         boolean connected = false;
 
-        for (Target target : targetsOf(throwerTeam, thrower)) {
+        for (Target target : targetsOf(throwerTeam)) {
             Vector toTarget = target.hitbox().getCenter().subtract(at.toVector());
             double distance = toTarget.length();
             if (distance > radius) continue;
@@ -1185,30 +1200,53 @@ public final class Incursion extends InventoryUnifiedMinigame {
         return attacker != null && !attacker.getUniqueId().equals(victim.getUniqueId()) ? attacker : null;
     }
 
-    private List<Target> targetsOf(IncursionTeam team, Player shooter) {
-        List<Target> targets = new ArrayList<>();
+    private List<Target> targetsOf(IncursionTeam team) {
+        refreshTargets();
+        return team == team1 ? team1Targets : team2Targets;
+    }
 
-        IncursionTeam enemyTeam = enemyOf(team);
-        for (EventPlayer participant : new ArrayList<>(this.participants)) {
+    private void refreshTargets() {
+        long now = System.currentTimeMillis();
+        long builtAt = targetsBuiltAt.get();
+        if (now - builtAt < TARGET_SNAPSHOT_MILLIS) return;
+        if (!targetsBuiltAt.compareAndSet(builtAt, now)) return;
+
+        List<Target> forTeam1 = new ArrayList<>();
+        List<Target> forTeam2 = new ArrayList<>();
+
+        for (EventPlayer participant : this.participants) {
             UUID uuid = participant.getUuid();
-            if (uuid.equals(shooter.getUniqueId())) continue;
-            if (teamOf(uuid) != enemyTeam || isOutOfPlay(uuid)) continue;
+            IncursionTeam team = teamOf(uuid);
+            if (team == null || isOutOfPlay(uuid)) continue;
 
-            Player target = participant.getPlayer();
-            if (target != null) targets.add(new Target(target, target.getBoundingBox()));
+            Player player = participant.getPlayer();
+            if (player == null) continue;
+
+            Target target = new Target(player, player.getBoundingBox());
+            (team == team1 ? forTeam2 : forTeam1).add(target);
         }
 
         for (Miniboss miniboss : this.minibosses) {
             Target target = miniboss.target();
-            if (target != null) targets.add(target);
+            if (target == null) continue;
+            forTeam1.add(target);
+            forTeam2.add(target);
         }
-        return targets;
+
+        this.team1Targets = List.copyOf(forTeam1);
+        this.team2Targets = List.copyOf(forTeam2);
     }
 
     // A shootable thing and its last known hitbox
     private record Target(LivingEntity entity, BoundingBox hitbox) {
         private BoundingBox expandedHitbox(double radius) {
             return hitbox.clone().expand(radius);
+        }
+
+        private boolean containsWithin(double radius, double x, double y, double z) {
+            return x >= hitbox.getMinX() - radius && x < hitbox.getMaxX() + radius
+                    && y >= hitbox.getMinY() - radius && y < hitbox.getMaxY() + radius
+                    && z >= hitbox.getMinZ() - radius && z < hitbox.getMaxZ() + radius;
         }
     }
 
@@ -1350,6 +1388,14 @@ public final class Incursion extends InventoryUnifiedMinigame {
         if (damager instanceof Firework firework && Util.hasPersistentKey(firework, FIREWORK_KEY)) {
             event.setCancelled(true);
             return;
+        }
+
+        if (FIRE_DAMAGE_CAUSES.contains(event.getCause())) {
+            Miniboss miniboss = minibossesByEntity.get(event.getEntity().getUniqueId());
+            if (miniboss != null && !miniboss.isBurning()) {
+                event.setCancelled(true);
+                return;
+            }
         }
 
         if (!(event.getEntity() instanceof Player victim)) return;
@@ -1551,9 +1597,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     @Nullable
     private IncursionTeam teamOf(UUID uuid) {
-        if (team1 != null && team1.getMembers().contains(uuid)) return team1;
-        if (team2 != null && team2.getMembers().contains(uuid)) return team2;
-        return null;
+        return teamsByUuid.get(uuid);
     }
 
     private IncursionTeam enemyOf(IncursionTeam team) {
@@ -1562,10 +1606,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     @Nullable
     private EventPlayer participantOf(UUID uuid) {
-        for (EventPlayer participant : this.participants) {
-            if (participant.getUuid().equals(uuid)) return participant;
-        }
-        return null;
+        return participantsByUuid.get(uuid);
     }
 
     public record MapSide(IncursionDefinition.SpawnArea spawnArea, WorldTiedBoundingBox hole) {}
@@ -1666,6 +1707,10 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
         private void burnFor(int ticks) {
             this.burnUntil = System.currentTimeMillis() + (ticks * 50L);
+        }
+
+        private boolean isBurning() {
+            return System.currentTimeMillis() < burnUntil;
         }
 
         private synchronized boolean dueForRespawn(long now) {
@@ -1784,13 +1829,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
             if (burning != fireShown) {
                 this.fireShown = burning;
                 mob.setVisualFire(burning ? TriState.NOT_SET : TriState.FALSE);
-                if (burning) mob.removePotionEffect(PotionEffectType.FIRE_RESISTANCE);
             }
-            if (!burning) {
-                mob.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE,
-                        MINIBOSS_FIRE_IMMUNITY_TICKS, 0, false, false, false));
-                if (mob.getFireTicks() > 0) mob.setFireTicks(0);
-            }
+            if (!burning && mob.getFireTicks() > 0) mob.setFireTicks(0);
 
             int health = (int) Math.ceil(mob.getHealth());
             if (health != shownHealth) {
@@ -1817,7 +1857,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
             Player closest = null;
             double closestDistance = Double.MAX_VALUE;
-            for (EventPlayer participant : new ArrayList<>(participants)) {
+            for (EventPlayer participant : participants) {
                 if (isOutOfPlay(participant.getUuid())) continue;
 
                 Player player = participant.getPlayer();
@@ -2113,7 +2153,6 @@ public final class Incursion extends InventoryUnifiedMinigame {
         private final Color armorColor;
         private final Particle.DustOptions dustOptions;
         private final Particle.DustOptions beamDust;
-        private final Set<UUID> members = ConcurrentHashMap.newKeySet();
         private final AtomicInteger score = new AtomicInteger();
 
         @Setter

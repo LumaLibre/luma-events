@@ -163,8 +163,8 @@ public class IncursionDefinition extends OkaeriConfig {
         @Comment("How hard hits shove players along the stream's path")
         private double knockback = 0.2;
 
-        @Comment("How many points the stream is drawn at per tick (purely cosmetic)")
-        private int trailSteps = 4;
+        @Comment("How many points the stream is drawn at per tick")
+        private int trailSteps = 2;
     }
 
     @Getter

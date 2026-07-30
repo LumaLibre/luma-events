@@ -125,7 +125,7 @@ public class EventPlayer implements Serializable, Scorer {
     public void operatePlayerSafely(Consumer<Player> consumer) {
         Player player = this.getPlayer();
         if (player != null) {
-            if (Bukkit.isOwnedByCurrentRegion(player)) {
+            if (!Bukkit.isOwnedByCurrentRegion(player)) {
                 Executors.runSync(player, () -> consumer.accept(player));
             } else {
                 consumer.accept(player);

@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @Getter
 @Setter
@@ -50,7 +51,8 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
     protected static final Random RANDOM = Util.RANDOM;
 
 
-    protected final List<EventPlayer> participants = new ArrayList<>();
+    // Iterated from async and region threads while joins/leaves mutate it:
+    protected final List<EventPlayer> participants = new CopyOnWriteArrayList<>();
     protected final List<Listener> extraListeners = new ArrayList<>();
     private final MinigamePreventInventoryTampering inventoryTampering;
     private final MinigamePreventDamageListener preventDamage;
