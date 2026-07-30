@@ -1,5 +1,6 @@
 package dev.lumas.events.configurable.sectors;
 
+import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.BlockFaces;
 import dev.lumas.events.utility.Util;
 import eu.okaeri.configs.OkaeriConfig;
@@ -69,6 +70,12 @@ public class IncursionDefinition extends OkaeriConfig {
 
     @Comment("The grenades orbs hand out (eggs)")
     private GrenadeSettings grenade = new GrenadeSettings();
+
+    @Comment("Rooms a miniboss is spawned in and locked inside of (world,x,y,z/world,x,y,z)")
+    private List<WorldTiedBoundingBox> bossRooms = List.of();
+
+    @Comment("The minibosses guarding boss rooms")
+    private MinibossSettings miniboss = new MinibossSettings();
 
     @Getter
     @Setter
@@ -194,6 +201,33 @@ public class IncursionDefinition extends OkaeriConfig {
 
         @Comment("Brown egg: how long targets burn for")
         private int fireTicks = 100;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class MinibossSettings extends OkaeriConfig {
+
+        @Comment("Which mob guards every boss room: DROWNED (trident), PARCHED (bow) or WITCH (potions)")
+        private MinibossType type = MinibossType.DROWNED;
+
+        @Comment("How much health a miniboss spawns with")
+        private double health = 100.0;
+
+        @Comment("How long after being slain a miniboss comes back (0 = only at half time)")
+        private int respawnTicks = 1200;
+
+        @Comment("How many random grenades a miniboss drops when it is slain (single number or range like '2-4')")
+        private String grenadeDrops = "2-4";
+
+        @Comment("Points awarded for killing a miniboss")
+        private int points = 20;
+    }
+
+    public enum MinibossType {
+        DROWNED,
+        PARCHED,
+        WITCH
     }
 
     @Getter

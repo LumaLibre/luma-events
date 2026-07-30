@@ -1,9 +1,10 @@
 package dev.lumas.events.games.logic;
 
+import com.destroystokyo.paper.entity.Pathfinder;
+import com.destroystokyo.paper.entity.ai.GoalKey;
+import com.destroystokyo.paper.entity.ai.VanillaGoal;
 import com.destroystokyo.paper.event.player.PlayerArmorChangeEvent;
 import dev.lumas.events.EventMain;
-import io.papermc.paper.datacomponent.DataComponentTypes;
-import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import dev.lumas.events.configurable.sectors.IncursionDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
@@ -17,6 +18,8 @@ import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.lumaitems.particles.ParticleDisplay;
 import dev.lumas.lumaitems.particles.Particles;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import io.papermc.paper.event.player.PlayerStopUsingItemEvent;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
@@ -26,6 +29,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.title.Title;
+import net.kyori.adventure.util.TriState;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.FireworkEffect;
@@ -39,16 +43,24 @@ import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.entity.Creature;
+import org.bukkit.entity.Drowned;
 import org.bukkit.entity.Egg;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Firework;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Mob;
+import org.bukkit.entity.Parched;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Raider;
+import org.bukkit.entity.Witch;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
@@ -61,6 +73,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
@@ -93,6 +106,7 @@ import java.util.function.DoubleConsumer;
 public final class Incursion extends InventoryUnifiedMinigame {
 
     private static final NamespacedKey FREEZE_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_freeze");
+    private static final NamespacedKey MINIBOSS_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_miniboss");
     private static final NamespacedKey KIT_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_kit");
     private static final NamespacedKey WEAPON_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_weapon");
     private static final NamespacedKey GRENADE_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_grenade");
@@ -111,6 +125,25 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private static final int ORB_CORE_POINTS = 5;
     private static final double ORB_CORE_SPREAD = 0.08;
     private static final String FIREWORK_KEY = "incursion_firework";
+
+    private static final int MINIBOSS_TICK_PERIOD_TICKS = 2;
+    private static final int MINIBOSS_FIRE_IMMUNITY_TICKS = MINIBOSS_TICK_PERIOD_TICKS * 10;
+    private static final int MINIBOSS_SPAWN_ATTEMPTS = 12;
+    private static final int MINIBOSS_HEIGHT_BLOCKS = 2;
+    private static final double MINIBOSS_ROOM_INSET = 0.4;
+    private static final long MINIBOSS_STALL_MILLIS = 3_000L;
+    private static final long MINIBOSS_TARGET_SCAN_MILLIS = 500L;
+    private static final double MINIBOSS_ROOM_TARGET_MARGIN = 15.0;
+    private static final double MINIBOSS_TARGET_RANGE_SQUARED = 20.0 * 20.0;
+    private static final List<GoalKey<Creature>> MINIBOSS_DISABLED_GOALS = List.of(
+            VanillaGoal.RANDOM_STROLL,
+            VanillaGoal.WATER_AVOIDING_RANDOM_STROLL,
+            VanillaGoal.MOVE_THROUGH_VILLAGE,
+            VanillaGoal.FLEE_SUN,
+            VanillaGoal.RESTRICT_SUN,
+            VanillaGoal.TRY_FIND_WATER,
+            VanillaGoal.DROWNED_GO_TO_WATER
+    );
 
     private static final Particle.DustOptions SPIT_DUST = new Particle.DustOptions(Color.fromRGB(70, 145, 230), 0.5f);
 
@@ -166,6 +199,11 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private final List<Orb> orbs = new CopyOnWriteArrayList<>();
     private final List<ScheduledTask> orbTasks = new ArrayList<>();
 
+    private final List<Miniboss> minibosses;
+    private final ConcurrentHashMap<UUID, Miniboss> minibossesByEntity = new ConcurrentHashMap<>();
+    private final int minibossDropsMin;
+    private final int minibossDropsMax;
+
     private CountdownBossBar countdownBossBar;
     private ScheduledTask auraTask;
 
@@ -185,6 +223,26 @@ public final class Incursion extends InventoryUnifiedMinigame {
         this.side1 = new MapSide(definition.getTeam1().getSpawnArea(), definition.getTeam1().getHole().toBlockBoundingBox());
         this.side2 = new MapSide(definition.getTeam2().getSpawnArea(), definition.getTeam2().getHole().toBlockBoundingBox());
         this.tokenFormula = new IncursionTokenFormula(definition.getMinimumTokens(), definition.getPointsPerToken());
+
+        List<Miniboss> rooms = new ArrayList<>();
+        for (WorldTiedBoundingBox room : definition.getBossRooms()) {
+            if (room == null || room.getWorld() == null) continue;
+            rooms.add(new Miniboss(room));
+        }
+        this.minibosses = List.copyOf(rooms);
+
+        int[] drops = parseRange(definition.getMiniboss().getGrenadeDrops());
+        this.minibossDropsMin = drops[0];
+        this.minibossDropsMax = drops[1];
+    }
+
+    // "2-4" -> {2, 4}, "3" -> {3, 3}, invalid -> {0, 0}
+    private static int[] parseRange(@Nullable String raw) {
+        if (raw == null || raw.isBlank()) return new int[]{0, 0};
+        int dash = raw.indexOf('-', 1);
+        int low = Math.max(0, Util.getInt((dash < 0 ? raw : raw.substring(0, dash)).trim(), 0));
+        int high = dash < 0 ? low : Math.max(0, Util.getInt(raw.substring(dash + 1).trim(), low));
+        return new int[]{Math.min(low, high), Math.max(low, high)};
     }
 
     @Override
@@ -229,9 +287,11 @@ public final class Incursion extends InventoryUnifiedMinigame {
         this.auraTask = Executors.runRepeatingAsync(TimeUnit.MILLISECONDS, 0, INVINCIBILITY_AURA_PERIOD_MILLIS, _ -> {
             tickInvincibilityAura();
             tickSniperCharge();
+            handleMinibossRespawn();
         });
 
         this.startOrbs();
+        this.minibosses.forEach(Miniboss::spawn);
         this.kickoff("<gold><b>First Half");
     }
 
@@ -258,6 +318,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
         this.orbTasks.forEach(ScheduledTask::cancel);
         this.orbTasks.clear();
         this.orbs.clear();
+        this.minibosses.forEach(Miniboss::despawn);
+        this.minibossesByEntity.clear();
 
         for (EventPlayer participant : new ArrayList<>(this.participants)) {
             clearPlayerState(participant);
@@ -313,6 +375,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         team2.setSide(previous);
 
         this.orbs.forEach(Orb::refill);
+        this.minibosses.forEach(Miniboss::respawn);
 
         this.sendAudienceMessage("<gold><b>Half time!</b> <reset>Both teams have swapped sides.");
         this.playAudienceSound(Sound.ENTITY_ENDER_DRAGON_GROWL, 1f, 1.4f);
@@ -438,6 +501,16 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 drawInvincibilityAura(player, team);
                 player.showTitle(invincibilityTitle(remaining));
             });
+        }
+    }
+
+    private void handleMinibossRespawn() {
+        if (!this.active || this.stopping || this.minibosses.isEmpty()) return;
+
+        long now = System.currentTimeMillis();
+        for (Miniboss miniboss : this.minibosses) {
+            if (miniboss.hasStalled(now)) miniboss.respawn();
+            else if (miniboss.dueForRespawn(now)) miniboss.spawn();
         }
     }
 
@@ -574,7 +647,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private static void restoreVitals(Player player) {
         player.setFireTicks(0);
         player.setFreezeTicks(0);
-        player.removePotionEffect(PotionEffectType.SLOWNESS);
+        player.clearActivePotionEffects();
         player.setFoodLevel(20);
         player.setSaturation(20f);
 
@@ -736,16 +809,13 @@ public final class Incursion extends InventoryUnifiedMinigame {
         IncursionDefinition.SniperSettings settings = definition.getSniper();
         int hits = 0;
 
-        for (EventPlayer participant : enemiesOf(shooterTeam, shooter)) {
-            Player target = participant.getPlayer();
-            if (target == null) continue;
-
-            BoundingBox hitbox = target.getBoundingBox().expand(settings.getHitRadius());
+        for (Target target : targetsOf(shooterTeam, shooter)) {
+            BoundingBox hitbox = target.expandedHitbox(settings.getHitRadius());
             double maxReach = maxDistance + hitbox.getHeight();
             if (eye.toVector().distanceSquared(hitbox.getCenter()) > maxReach * maxReach) continue;
 
             if (!hitbox.contains(eye.toVector()) && hitbox.rayTrace(eye.toVector(), direction, maxDistance) == null) continue;
-            dealTrueDamage(target, shooter, eye, settings.getDamage(), settings.getKnockback());
+            dealTrueDamage(target.entity(), shooter, eye, settings.getDamage(), settings.getKnockback());
             hits++;
         }
 
@@ -773,11 +843,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
         double cosHalfAngle = Math.cos(halfAngle);
         Vector apex = muzzle.toVector();
 
-        for (EventPlayer participant : enemiesOf(team, shooter)) {
-            Player target = participant.getPlayer();
-            if (target == null) continue;
-
-            BoundingBox hitbox = target.getBoundingBox();
+        for (Target target : targetsOf(team, shooter)) {
+            BoundingBox hitbox = target.hitbox();
             double distance = coneHitDistance(apex, direction, range, tanHalfAngle, cosHalfAngle, hitbox);
             if (distance < 0) continue;
 
@@ -786,7 +853,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
             double length = toTarget.length();
             if (length > 1.0E-4 && !hasClearShot(muzzle, toTarget.multiply(1.0 / length), length)) continue;
 
-            dealTrueDamage(target, shooter, muzzle,
+            dealTrueDamage(target.entity(), shooter, muzzle,
                     settings.getDamage() * (1.0 - (falloff * (distance / range))), settings.getKnockback());
             hits++;
         }
@@ -881,13 +948,10 @@ public final class Incursion extends InventoryUnifiedMinigame {
         Vector stepVector = velocity.clone().multiply(1.0 / steps);
         double stepLength = stepVector.length();
 
-        List<Player> targets = new ArrayList<>();
-        List<BoundingBox> hitboxes = new ArrayList<>();
-        for (EventPlayer participant : enemiesOf(team, shooter)) {
-            Player target = participant.getPlayer();
-            if (target == null) continue;
-            targets.add(target);
-            hitboxes.add(target.getBoundingBox().expand(settings.getHitRadius()));
+        List<Target> targets = targetsOf(team, shooter);
+        List<BoundingBox> hitboxes = new ArrayList<>(targets.size());
+        for (Target target : targets) {
+            hitboxes.add(target.expandedHitbox(settings.getHitRadius()));
         }
 
         Location point = position.clone();
@@ -911,7 +975,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 if (!hitboxes.get(i).contains(point.getX(), point.getY(), point.getZ())) continue;
 
                 double falloff = Math.clamp(settings.getDamageFalloff(), 0.0, 1.0);
-                dealTrueDamage(targets.get(i), shooter, position,
+                dealTrueDamage(targets.get(i).entity(), shooter, position,
                         settings.getDamage() * (1.0 - (falloff * Math.min(1.0, travelled / range))),
                         settings.getKnockback());
 
@@ -1027,11 +1091,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
         double falloff = Math.clamp(settings.getDamageFalloff(), 0.0, 1.0);
         boolean connected = false;
 
-        for (EventPlayer participant : enemiesOf(throwerTeam, thrower)) {
-            Player target = participant.getPlayer();
-            if (target == null) continue;
-
-            Vector toTarget = target.getBoundingBox().getCenter().subtract(at.toVector());
+        for (Target target : targetsOf(throwerTeam, thrower)) {
+            Vector toTarget = target.hitbox().getCenter().subtract(at.toVector());
             double distance = toTarget.length();
             if (distance > radius) continue;
 
@@ -1040,16 +1101,21 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 continue;
             }
 
-            dealTrueDamage(target, thrower, at,
+            dealTrueDamage(target.entity(), thrower, at,
                     settings.getDamage() * (1.0 - (falloff * (distance / radius))), settings.getKnockback());
-            applyGrenadeEffect(grenade, target, settings);
+            applyGrenadeEffect(grenade, target.entity(), settings);
             connected = true;
         }
 
         if (connected) Executors.runSync(thrower, () -> hitFeedback(thrower));
     }
 
-    private static void applyGrenadeEffect(Grenade grenade, Player target, IncursionDefinition.GrenadeSettings settings) {
+    private void applyGrenadeEffect(Grenade grenade, LivingEntity target, IncursionDefinition.GrenadeSettings settings) {
+        if (grenade == Grenade.INCENDIARY) {
+            Miniboss miniboss = minibossesByEntity.get(target.getUniqueId());
+            if (miniboss != null) miniboss.burnFor(settings.getFireTicks());
+        }
+
         switch (grenade) {
             case CRYO -> Executors.runSync(target, () -> {
                 target.setFreezeTicks(Math.max(target.getFreezeTicks(), settings.getFreezeTicks()));
@@ -1064,9 +1130,13 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
     }
 
-    private void dealTrueDamage(Player target, Player attacker, Location source, double damage, double knockback) {
+    private void dealTrueDamage(LivingEntity target, Player attacker, Location source, double damage, double knockback) {
         if (damage <= 0) return;
-        lastTrueDamage.put(target.getUniqueId(), new DamageCredit(attacker.getUniqueId(), System.currentTimeMillis()));
+
+        boolean isPlayer = target instanceof Player;
+        if (isPlayer) {
+            lastTrueDamage.put(target.getUniqueId(), new DamageCredit(attacker.getUniqueId(), System.currentTimeMillis()));
+        }
 
         Executors.runSync(target, () -> {
             Location targetLocation = target.getLocation();
@@ -1074,7 +1144,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
             double dz = source.getZ() - targetLocation.getZ();
 
             target.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, targetLocation.clone().add(0, 1, 0), 6, 0.2, 0.3, 0.2, 0.1);
-            target.playSound(targetLocation, Sound.ENTITY_PLAYER_HURT, 1f, 1f);
+            if (target instanceof Player player) player.playSound(targetLocation, Sound.ENTITY_PLAYER_HURT, 1f, 1f);
+            else if (target.getHurtSound() != null) target.getWorld().playSound(targetLocation, target.getHurtSound(), 1f, 1f);
             target.playHurtAnimation(hurtDirection(targetLocation.getYaw(), dx, dz));
 
             if (knockback > 0) {
@@ -1086,7 +1157,15 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 }
             }
 
-            target.setHealth(Math.max(0.0, target.getHealth() - damage));
+            double remaining = target.getHealth() - damage;
+            if (!isPlayer && remaining <= 0) {
+                Miniboss miniboss = minibossesByEntity.get(target.getUniqueId());
+                if (miniboss != null) {
+                    miniboss.slay(attacker);
+                    return;
+                }
+            }
+            target.setHealth(Math.max(0.0, remaining));
         });
     }
 
@@ -1106,17 +1185,31 @@ public final class Incursion extends InventoryUnifiedMinigame {
         return attacker != null && !attacker.getUniqueId().equals(victim.getUniqueId()) ? attacker : null;
     }
 
-    // Every enemy of a team that is currently able to be shot
-    private List<EventPlayer> enemiesOf(IncursionTeam team, Player shooter) {
-        List<EventPlayer> enemies = new ArrayList<>();
+    private List<Target> targetsOf(IncursionTeam team, Player shooter) {
+        List<Target> targets = new ArrayList<>();
+
+        IncursionTeam enemyTeam = enemyOf(team);
         for (EventPlayer participant : new ArrayList<>(this.participants)) {
             UUID uuid = participant.getUuid();
             if (uuid.equals(shooter.getUniqueId())) continue;
-            if (teamOf(uuid) != enemyOf(team)) continue;
-            if (isOutOfPlay(uuid)) continue;
-            enemies.add(participant);
+            if (teamOf(uuid) != enemyTeam || isOutOfPlay(uuid)) continue;
+
+            Player target = participant.getPlayer();
+            if (target != null) targets.add(new Target(target, target.getBoundingBox()));
         }
-        return enemies;
+
+        for (Miniboss miniboss : this.minibosses) {
+            Target target = miniboss.target();
+            if (target != null) targets.add(target);
+        }
+        return targets;
+    }
+
+    // A shootable thing and its last known hitbox
+    private record Target(LivingEntity entity, BoundingBox hitbox) {
+        private BoundingBox expandedHitbox(double radius) {
+            return hitbox.clone().expand(radius);
+        }
     }
 
     // Cheap-ish line of sight check to make sure shots don't travel through walls
@@ -1223,6 +1316,18 @@ public final class Incursion extends InventoryUnifiedMinigame {
         if (participant != null) Executors.delayedSync(victim, 1, () -> respawnFlow(participant, victimTeam));
     }
 
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onEntityDeath(EntityDeathEvent event) {
+        if (!this.active || this.stopping || minibossesByEntity.isEmpty()) return;
+
+        Miniboss miniboss = minibossesByEntity.get(event.getEntity().getUniqueId());
+        if (miniboss == null) return;
+
+        event.getDrops().clear();
+        event.setDroppedExp(0);
+        miniboss.slay(event.getEntity().getKiller());
+    }
+
     // Might not be needed, but better safe than sorry
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerRespawn(PlayerRespawnEvent event) {
@@ -1311,7 +1416,16 @@ public final class Incursion extends InventoryUnifiedMinigame {
         Player player = event.getPlayer();
         Weapon weapon = weaponOf(event.getItem());
         IncursionTeam team = teamOf(player.getUniqueId());
-        if (weapon == null || team == null) return;
+        if (team == null) return;
+
+        if (weapon == null) {
+            if (grenadeOf(event.getItem()) != null && isOutOfPlay(player.getUniqueId())) {
+                event.setUseItemInHand(Event.Result.DENY);
+                event.setCancelled(true);
+                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 0.7f, 0.5f);
+            }
+            return;
+        }
 
         switch (weapon) {
             case SNIPER -> {
@@ -1513,6 +1627,402 @@ public final class Incursion extends InventoryUnifiedMinigame {
                     ORB_CORE_POINTS, ORB_CORE_SPREAD, ORB_CORE_SPREAD, ORB_CORE_SPREAD, 0, ORB_CORE_DUST);
             world.spawnParticle(Particle.END_ROD, centre.getX(), centre.getY() + bounce, centre.getZ(), 1, 0, 0, 0, 0);
         }
+    }
+
+    private final class Miniboss {
+        private final WorldTiedBoundingBox room;
+        private final WorldTiedBoundingBox reach;
+
+        private volatile boolean alive;
+        private volatile Mob entity;
+
+        // Refreshed on the mob's thread, so weapons can test against it from anywhere
+        private volatile BoundingBox hitbox;
+        private volatile Location home;
+        private volatile ScheduledTask task;
+        private volatile int shownHealth = -1;
+        private volatile long lastTickAt;
+        private volatile long respawnAt;
+        private volatile long nextScanAt;
+        private volatile long burnUntil;
+        private volatile boolean fireShown;
+
+        private Miniboss(WorldTiedBoundingBox room) {
+            this.room = room;
+            this.reach = room.move(MINIBOSS_ROOM_TARGET_MARGIN, MINIBOSS_ROOM_TARGET_MARGIN, MINIBOSS_ROOM_TARGET_MARGIN);
+        }
+
+        // Stalled = mob is gone without anyone having slain it
+        private boolean hasStalled(long now) {
+            return alive && now - lastTickAt > MINIBOSS_STALL_MILLIS;
+        }
+
+        @Nullable
+        private Target target() {
+            Mob mob = this.entity;
+            BoundingBox box = this.hitbox;
+            return mob == null || box == null || !alive ? null : new Target(mob, box);
+        }
+
+        private void burnFor(int ticks) {
+            this.burnUntil = System.currentTimeMillis() + (ticks * 50L);
+        }
+
+        private synchronized boolean dueForRespawn(long now) {
+            if (alive || respawnAt == 0 || now < respawnAt) return false;
+            this.respawnAt = 0;
+            return true;
+        }
+
+        @Nullable
+        private synchronized Mob claim() {
+            Mob mob = this.entity;
+            this.alive = false;
+            this.entity = null;
+            this.hitbox = null;
+            this.respawnAt = 0;
+            this.burnUntil = 0;
+            this.fireShown = false;
+            if (this.task != null) {
+                this.task.cancel();
+                this.task = null;
+            }
+            if (mob != null) minibossesByEntity.remove(mob.getUniqueId());
+            return mob;
+        }
+
+        private void spawn() {
+            attemptSpawn(MINIBOSS_SPAWN_ATTEMPTS);
+        }
+
+        private void respawn() {
+            despawn();
+            spawn();
+        }
+
+        private void attemptSpawn(int attemptsLeft) {
+            if (!Incursion.this.active || Incursion.this.stopping || entity != null) return;
+
+            World world = room.getWorld();
+            int minX = (int) room.getMinX();
+            int minZ = (int) room.getMinZ();
+            int x = minX + RANDOM.nextInt(Math.max(1, (int) room.getMaxX() - minX));
+            int z = minZ + RANDOM.nextInt(Math.max(1, (int) room.getMaxZ() - minZ));
+
+            Executors.runSync(world, x >> 4, z >> 4, () -> {
+                boolean lastFewTries = attemptsLeft <= 4;
+                Location spot = standingSpotIn(world, x, z, !lastFewTries);
+                if (spot != null) spawnAt(spot);
+                else if (!lastFewTries) attemptSpawn(attemptsLeft - 1);
+                else spawnAt(room.getCenterLocation());
+            });
+        }
+
+        // The first spot in this column the mob fits in, or null if there is none
+        @Nullable
+        private Location standingSpotIn(World world, int x, int z, boolean requireGround) {
+            int lowest = (int) room.getMinY();
+            int highest = (int) room.getMaxY() - MINIBOSS_HEIGHT_BLOCKS;
+
+            for (int y = highest; y >= lowest; y--) {
+                if (requireGround && world.getBlockAt(x, y - 1, z).isPassable()) continue;
+
+                boolean fits = true;
+                for (int offset = 0; offset < MINIBOSS_HEIGHT_BLOCKS; offset++) {
+                    if (world.getBlockAt(x, y + offset, z).isPassable()) continue;
+                    fits = false;
+                    break;
+                }
+                if (fits) return new Location(world, x + 0.5, y, z + 0.5);
+            }
+            return null;
+        }
+
+        private void spawnAt(Location at) {
+            Executors.runSync(at, () -> {
+                if (!Incursion.this.active || Incursion.this.stopping || entity != null) return;
+
+                Mob mob = createMiniboss(at, definition.getMiniboss());
+                unsafe(() -> stripWanderGoals(mob));
+
+                synchronized (this) {
+                    if (Incursion.this.stopping || this.entity != null) {
+                        mob.remove();
+                        return;
+                    }
+
+                    this.home = at.clone();
+                    this.entity = mob;
+                    this.hitbox = mob.getBoundingBox();
+                    this.shownHealth = -1;
+                    this.lastTickAt = System.currentTimeMillis();
+                    this.alive = true;
+                    minibossesByEntity.put(mob.getUniqueId(), this);
+                    this.task = Executors.repeatingSync(mob, MINIBOSS_TICK_PERIOD_TICKS, this::tick);
+                }
+
+                at.getWorld().spawnParticle(Particle.SOUL, at.clone().add(0, 1, 0), 20, 0.3, 0.5, 0.3, 0.02);
+                at.getWorld().playSound(at, Sound.ENTITY_ELDER_GUARDIAN_CURSE, 0.6f, 0.7f);
+            });
+        }
+
+        // Runs on the mob's thread
+        private void tick(ScheduledTask task) {
+            Mob mob = this.entity;
+            if (mob == null || !mob.isValid()) {
+                task.cancel();
+                return;
+            }
+
+            BoundingBox box = mob.getBoundingBox();
+            long now = System.currentTimeMillis();
+            this.hitbox = box;
+            this.lastTickAt = now;
+
+            // Only burn when hit by an incendiary egg, not when exposed to sunlight
+            boolean burning = now < burnUntil;
+            if (burning != fireShown) {
+                this.fireShown = burning;
+                mob.setVisualFire(burning ? TriState.NOT_SET : TriState.FALSE);
+                if (burning) mob.removePotionEffect(PotionEffectType.FIRE_RESISTANCE);
+            }
+            if (!burning) {
+                mob.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE,
+                        MINIBOSS_FIRE_IMMUNITY_TICKS, 0, false, false, false));
+                if (mob.getFireTicks() > 0) mob.setFireTicks(0);
+            }
+
+            int health = (int) Math.ceil(mob.getHealth());
+            if (health != shownHealth) {
+                this.shownHealth = health;
+                mob.customName(minibossName(health));
+            }
+
+            if (!room.contains(box.getCenterX(), box.getMinY(), box.getCenterZ())) {
+                sendBackInside(mob);
+                return;
+            }
+
+            keepPathInsideRoom(mob);
+            retarget(mob, now);
+        }
+
+        private void retarget(Mob mob, long now) {
+            LivingEntity chasing = mob.getTarget();
+            if (chasing != null) {
+                if (!Bukkit.isOwnedByCurrentRegion(chasing)) return;
+                if (chasing.isValid() && isWithinReach(mob, chasing)) return;
+            } else if (now < nextScanAt) return;
+            this.nextScanAt = now + MINIBOSS_TARGET_SCAN_MILLIS;
+
+            Player closest = null;
+            double closestDistance = Double.MAX_VALUE;
+            for (EventPlayer participant : new ArrayList<>(participants)) {
+                if (isOutOfPlay(participant.getUuid())) continue;
+
+                Player player = participant.getPlayer();
+                if (player == null || !Bukkit.isOwnedByCurrentRegion(player)) continue;
+
+                double distance = squaredDistanceTo(mob, player);
+                if (distance >= closestDistance || !isWithinReach(mob, player, distance)) continue;
+
+                closestDistance = distance;
+                closest = player;
+            }
+
+            if (closest != null) mob.setTarget(closest);
+            else if (chasing != null) mob.setTarget(null);
+        }
+
+        private boolean isWithinReach(Mob mob, Entity candidate) {
+            return isWithinReach(mob, candidate, squaredDistanceTo(mob, candidate));
+        }
+
+        private boolean isWithinReach(Mob mob, Entity candidate, double squaredDistance) {
+            if (candidate.getWorld() != room.getWorld()) return false;
+            return squaredDistance <= MINIBOSS_TARGET_RANGE_SQUARED
+                    || reach.contains(candidate.getX(), candidate.getY(), candidate.getZ());
+        }
+
+        private static double squaredDistanceTo(Mob mob, Entity other) {
+            double dx = other.getX() - mob.getX();
+            double dy = other.getY() - mob.getY();
+            double dz = other.getZ() - mob.getZ();
+            return (dx * dx) + (dy * dy) + (dz * dz);
+        }
+
+        private void keepPathInsideRoom(Mob mob) {
+            Pathfinder pathfinder = mob.getPathfinder();
+            if (!pathfinder.hasPath()) return;
+
+            Pathfinder.PathResult path = pathfinder.getCurrentPath();
+            if (path == null) return;
+
+            if (leavesRoom(path.getNextPoint()) || leavesRoom(path.getFinalPoint())) {
+                pathfinder.stopPathfinding();
+            }
+        }
+
+        private boolean leavesRoom(@Nullable Location point) {
+            return point != null && !room.contains(point.getX(), point.getY(), point.getZ());
+        }
+
+        private void sendBackInside(Mob mob) {
+            Location back = nearestSpotInside(mob);
+            if (back == null) back = this.home; // the shortest way back is inside a wall
+            if (back == null) return;
+
+            mob.setVelocity(new Vector(0, 0, 0));
+            mob.setFallDistance(0f);
+            mob.teleportAsync(back);
+        }
+
+        // The closest spot just inside the room, or null if the mob wouldn't fit there
+        @Nullable
+        private Location nearestSpotInside(Mob mob) {
+            World world = room.getWorld();
+            Location spot = new Location(world,
+                    Math.clamp(mob.getX(), room.getMinX() + MINIBOSS_ROOM_INSET, room.getMaxX() - MINIBOSS_ROOM_INSET),
+                    Math.clamp(mob.getY(), room.getMinY(), room.getMaxY() - MINIBOSS_HEIGHT_BLOCKS),
+                    Math.clamp(mob.getZ(), room.getMinZ() + MINIBOSS_ROOM_INSET, room.getMaxZ() - MINIBOSS_ROOM_INSET),
+                    mob.getYaw(), 0f);
+            if (!Bukkit.isOwnedByCurrentRegion(spot)) return null;
+
+            for (int offset = 0; offset < MINIBOSS_HEIGHT_BLOCKS; offset++) {
+                if (!world.getBlockAt(spot.getBlockX(), spot.getBlockY() + offset, spot.getBlockZ()).isPassable()) {
+                    return null;
+                }
+            }
+            return spot;
+        }
+
+        // Called on the mob's thread
+        private void slay(@Nullable Player killer) {
+            Mob mob = claim();
+            if (mob == null) return; // half-time or end of game
+
+            int respawnTicks = definition.getMiniboss().getRespawnTicks();
+            if (respawnTicks > 0) this.respawnAt = System.currentTimeMillis() + (respawnTicks * 50L);
+
+            Location at = mob.getLocation();
+            if (!mob.isDead()) mob.remove();
+
+            World world = at.getWorld();
+            world.spawnParticle(Particle.EXPLOSION_EMITTER, at.clone().add(0, 1, 0), 1);
+            world.spawnParticle(Particle.SOUL, at.clone().add(0, 1, 0), 30, 0.4, 0.6, 0.4, 0.05);
+            world.playSound(at, Sound.ENTITY_WITHER_DEATH, 0.35f, 1.4f);
+
+            dropGrenades(world, at);
+            rewardSlayer(killer);
+        }
+
+        private void dropGrenades(World world, Location at) {
+            int amount = minibossDropsMin + (minibossDropsMax > minibossDropsMin
+                    ? RANDOM.nextInt(minibossDropsMax - minibossDropsMin + 1) : 0);
+
+            for (int i = 0; i < amount; i++) {
+                world.dropItemNaturally(at, Util.getRandom(GRENADES).item());
+            }
+        }
+
+        private void rewardSlayer(@Nullable Player killer) {
+            if (killer == null) return;
+
+            IncursionTeam team = teamOf(killer.getUniqueId());
+            EventPlayer participant = participantOf(killer.getUniqueId());
+            if (team == null || participant == null) return;
+
+            int awarded = definition.getMiniboss().getPoints();
+            addPoints(participant, team, awarded);
+
+            String name = participant.getName() != null ? participant.getName() : "Someone";
+            sendAudienceMessage(Component.text(name, team.getColor())
+                    .append(Component.text(" defeated a vanguard! ", NamedTextColor.WHITE))
+                    .append(Component.text("(+" + awarded + ")", NamedTextColor.GRAY)));
+            playAudienceSound(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.8f, 1.6f);
+        }
+
+        private void despawn() {
+            Mob mob = claim();
+            if (mob != null) Executors.runSync(mob, mob::remove);
+        }
+    }
+
+    private Component minibossName(int health) {
+        return Component.text("Vanguard ", NamedTextColor.DARK_RED, TextDecoration.BOLD)
+                .append(Component.text("[", NamedTextColor.DARK_GRAY))
+                .append(Component.text(health, NamedTextColor.RED))
+                .append(Component.text("HP", NamedTextColor.GRAY))
+                .append(Component.text("]", NamedTextColor.DARK_GRAY));
+    }
+
+    private Mob createMiniboss(Location at, IncursionDefinition.MinibossSettings settings) {
+        World world = at.getWorld();
+
+        return switch (settings.getType()) {
+            case DROWNED -> {
+                Drowned drowned = world.spawn(at, Drowned.class);
+                prepareMiniboss(drowned, settings);
+                drowned.setShouldBurnInDay(false); // Doesn't seem to work on its own...
+                drowned.getEquipment().setItemInMainHand(new ItemStack(Material.TRIDENT), true);
+                yield drowned;
+            }
+            case PARCHED -> {
+                Parched parched = world.spawn(at, Parched.class);
+                prepareMiniboss(parched, settings);
+                parched.setShouldBurnInDay(false);
+                parched.getEquipment().setItemInMainHand(new ItemStack(Material.BOW), true);
+                yield parched;
+            }
+            case WITCH -> {
+                Witch witch = world.spawn(at, Witch.class);
+                prepareMiniboss(witch, settings);
+                yield witch;
+            }
+        };
+    }
+
+    private static void stripWanderGoals(Mob mob) {
+        if (mob instanceof Creature creature) {
+            for (GoalKey<Creature> goal : MINIBOSS_DISABLED_GOALS) {
+                Bukkit.getMobGoals().removeGoal(creature, goal);
+            }
+        }
+        if (mob instanceof Drowned drowned) {
+            Bukkit.getMobGoals().removeGoal(drowned, VanillaGoal.DROWNED_GO_TO_BEACH);
+        }
+        if (mob instanceof Raider raider) {
+            Bukkit.getMobGoals().removeGoal(raider, VanillaGoal.RAIDER_MOVE_THROUGH_VILLAGE);
+        }
+    }
+
+    private void prepareMiniboss(Mob mob, IncursionDefinition.MinibossSettings settings) {
+        double health = Math.max(1.0, settings.getHealth());
+
+        Util.setPersistentKey(mob, MINIBOSS_KEY.getKey(), PersistentDataType.BYTE, (byte) 1);
+        mob.setPersistent(false);
+        mob.setRemoveWhenFarAway(false);
+        mob.setCanPickupItems(false);
+        mob.setCustomNameVisible(true);
+        mob.customName(minibossName((int) Math.ceil(health)));
+        mob.setVisualFire(TriState.FALSE);
+
+        AttributeInstance maxHealth = mob.getAttribute(Attribute.MAX_HEALTH);
+        if (maxHealth != null) {
+            maxHealth.getModifiers().stream().toList().forEach(maxHealth::removeModifier);
+            maxHealth.setBaseValue(health);
+        }
+        mob.setHealth(health);
+
+        EntityEquipment equipment = mob.getEquipment();
+        equipment.clear();
+
+        equipment.setItemInMainHandDropChance(0f);
+        equipment.setItemInOffHandDropChance(0f);
+        equipment.setHelmetDropChance(0f);
+        equipment.setChestplateDropChance(0f);
+        equipment.setLeggingsDropChance(0f);
+        equipment.setBootsDropChance(0f);
     }
 
     // Who last hit someone with true damage (and when)
