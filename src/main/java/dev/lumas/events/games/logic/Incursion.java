@@ -153,8 +153,14 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     // Heights of the spheres a player's hitbox is approximated by for the blunderhorn's cone test
     private static final double[] BODY_SAMPLE_FRACTIONS = {0.2, 0.5, 0.8};
+
+    private static final double HEAD_DROP_BELOW_EYE = 0.32;
+    private static final double MAX_HEAD_FRACTION = 0.5;
+
     private static final Title.Times CHARGE_TITLE_TIMES =
             Title.Times.times(Duration.ZERO, Duration.ofMillis(400), Duration.ZERO);
+    private static final Title.Times HEADSHOT_TITLE_TIMES =
+            Title.Times.times(Duration.ZERO, Duration.ofMillis(600), Duration.ofMillis(200));
 
     // How long after a true damage hit its shooter still gets credited with the kill
     private static final long DAMAGE_CREDIT_MILLIS = 10_000L;
@@ -826,20 +832,50 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private void applyBeamDamage(Player shooter, IncursionTeam shooterTeam, Location eye, Vector direction, double maxDistance) {
         IncursionDefinition.SniperSettings settings = definition.getSniper();
         int hits = 0;
+        int headshots = 0;
 
         for (Target target : targetsOf(shooterTeam)) {
             BoundingBox hitbox = target.expandedHitbox(settings.getHitRadius());
             double maxReach = maxDistance + hitbox.getHeight();
             if (eye.toVector().distanceSquared(hitbox.getCenter()) > maxReach * maxReach) continue;
 
-            if (!hitbox.contains(eye.toVector()) && hitbox.rayTrace(eye.toVector(), direction, maxDistance) == null) continue;
-            dealTrueDamage(target.entity(), shooter, eye, settings.getDamage(), settings.getKnockback());
+            if (!beamTouches(hitbox, eye, direction, maxDistance)) continue;
+
+            boolean headshot = beamTouches(target.headHitbox(settings.getHitRadius()), eye, direction, maxDistance);
+            double damage = headshot ? settings.getDamage() * settings.getHeadshotMultiplier() : settings.getDamage();
+
+            dealTrueDamage(target.entity(), shooter, eye, damage, settings.getKnockback());
+            if (headshot) {
+                headshotEffect(target);
+                headshots++;
+            }
             hits++;
         }
 
         if (hits > 0) {
-            Executors.runSync(shooter, () -> hitFeedback(shooter));
+            int landedHeadshots = headshots;
+            Executors.runSync(shooter, () -> {
+                if (landedHeadshots > 0) headshotFeedback(shooter);
+                else hitFeedback(shooter);
+            });
         }
+    }
+
+    private static boolean beamTouches(BoundingBox box, Location eye, Vector direction, double maxDistance) {
+        Vector origin = eye.toVector();
+        return box.contains(origin) || box.rayTrace(origin, direction, maxDistance) != null;
+    }
+
+    private static void headshotEffect(Target target) {
+        LivingEntity entity = target.entity();
+        Vector center = target.headHitbox(0.0).getCenter();
+
+        Executors.runSync(entity, () -> {
+            World world = entity.getWorld();
+            Location at = center.toLocation(world);
+            world.spawnParticle(Particle.CRIT, at, 12, 0.15, 0.15, 0.15, 0.35);
+            world.playSound(at, Sound.ENTITY_PLAYER_ATTACK_CRIT, 1f, 1.2f);
+        });
     }
 
     private void fireBlunderhorn(Player shooter, IncursionTeam team) {
@@ -1042,6 +1078,15 @@ public final class Incursion extends InventoryUnifiedMinigame {
         shooter.playSound(shooter.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1f, 1.4f);
     }
 
+    private static void headshotFeedback(Player shooter) {
+        shooter.playSound(shooter.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1f, 1.9f);
+        shooter.playSound(shooter.getLocation(), Sound.ITEM_TRIDENT_RETURN, 0.6f, 1.8f);
+        shooter.showTitle(Title.title(
+                Component.empty(),
+                Util.color("<red><b>HEADSHOT"),
+                HEADSHOT_TITLE_TIMES));
+    }
+
     private void startOrbs() {
         for (Location spawn : definition.getOrbSpawns()) {
             if (spawn == null || spawn.getWorld() == null) continue;
@@ -1222,7 +1267,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
             Player player = participant.getPlayer();
             if (player == null) continue;
 
-            Target target = new Target(player, player.getBoundingBox());
+            Target target = new Target(player, player.getBoundingBox(), player.getEyeHeight());
             (team == team1 ? forTeam2 : forTeam1).add(target);
         }
 
@@ -1237,10 +1282,21 @@ public final class Incursion extends InventoryUnifiedMinigame {
         this.team2Targets = List.copyOf(forTeam2);
     }
 
-    // A shootable thing and its last known hitbox
-    private record Target(LivingEntity entity, BoundingBox hitbox) {
+    // A shootable thing, its last known hitbox and the eye height that hitbox was taken at
+    private record Target(LivingEntity entity, BoundingBox hitbox, double eyeHeight) {
         private BoundingBox expandedHitbox(double radius) {
             return hitbox.clone().expand(radius);
+        }
+
+        private BoundingBox headHitbox(double radius) {
+            double chin = hitbox.getMinY() + eyeHeight - HEAD_DROP_BELOW_EYE;
+
+            double lowest = hitbox.getMaxY() - (hitbox.getHeight() * MAX_HEAD_FRACTION);
+
+            return hitbox.clone()
+                    .resize(hitbox.getMinX(), Math.max(chin, lowest), hitbox.getMinZ(),
+                            hitbox.getMaxX(), hitbox.getMaxY(), hitbox.getMaxZ())
+                    .expand(radius);
         }
 
         private boolean containsWithin(double radius, double x, double y, double z) {
@@ -1702,7 +1758,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         private Target target() {
             Mob mob = this.entity;
             BoundingBox box = this.hitbox;
-            return mob == null || box == null || !alive ? null : new Target(mob, box);
+            return mob == null || box == null || !alive ? null : new Target(mob, box, mob.getEyeHeight());
         }
 
         private void burnFor(int ticks) {
