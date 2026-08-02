@@ -75,15 +75,18 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
         "Run, kick, run",
         "40.0 b/s!",
         "No hands! (Sometimes)",
-        "GOAAAL!"
+        "GOAAAL!",
+        "Summer: Edition!",
+        "Zoom zoom"
     };
 
+    // indexed placeholders: every entry is formatted with (scorerName, points), so each one picks what it wants
     private static final String[] EXTRA_OWN_GOAL_NUANCE = {
         "what are you doing?",
         "seriously?",
         "nice job!",
-        "+1 for the other team!",
-        "good work, %s",
+        "+%2$d for the other team!",
+        "good work, %1$s",
         "that was probably an accident, right?",
         "oops!",
         ">:("
@@ -95,7 +98,14 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
         new NamespacedKey(EventMain.getInstance(), "sulfur_soccer_freeze"), -1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
     private static final List<Attribute> FREEZE_ATTRIBUTES = List.of(Attribute.MOVEMENT_SPEED, Attribute.JUMP_STRENGTH);
 
-    private static final int LEAD_TO_WIN = 3;
+    private static final int LEAD_TO_WIN = 30;
+    private static final int POINTS_PER_GOAL = 10;
+    private static final int OUT_OF_BOUNDS_PENALTY = -2;
+
+    private static final Particle.DustOptions OWN_GOAL_DUST = new Particle.DustOptions(Color.fromRGB(0xE23B3B), 2.0f);
+    private static final Particle.DustOptions ENEMY_GOAL_DUST = new Particle.DustOptions(Color.fromRGB(0x3BE24E), 2.0f);
+    private static final int GOAL_MARKER_PARTICLES = 12;
+    private static final int GOAL_MARKER_INTERVAL_TICKS = 10;
 
     private final Location spawnLocation;
     private final List<SoccerTeam> teams;
@@ -104,6 +114,9 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
     private final Scoreboard<SoccerTeam> scoreboard = new Scoreboard<>();
     private final int goalPunchRadius;
 
+    // one bar for the whole game: it fills in the colour of whichever side is ahead
+    private final BossBar bossBar = BossBar.bossBar(Component.empty(), 0.0f, BossBar.Color.WHITE, BossBar.Overlay.NOTCHED_6);
+
     private final Set<UUID> frozenPlayers = ConcurrentHashMap.newKeySet();
 
 
@@ -111,7 +124,7 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
         super(
             "Soccer",
             Util.getRandom(SPLASH),
-            300000L,
+            1200000L,
             1,
             true,
             true,
@@ -122,9 +135,10 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
         this.spawnLocation = def.getSpawnLocation();
         this.boundingBox = def.getBounds().toWorldTiedBoundingBox();
 
+        TeamMatchup matchup = Util.getRandom(TeamMatchup.values());
         this.teams = List.of(
-            new SoccerTeam(def.getTeam1StartLocation(), def.getTeam1Goal().toWorldTiedBoundingBox(), TeamColorTemplate.RED),
-            new SoccerTeam(def.getTeam2StartLocation(), def.getTeam2Goal().toWorldTiedBoundingBox(), TeamColorTemplate.BLUE)
+            new SoccerTeam(def.getTeam1StartLocation(), def.getTeam1Goal().toWorldTiedBoundingBox(), matchup.first()),
+            new SoccerTeam(def.getTeam2StartLocation(), def.getTeam2Goal().toWorldTiedBoundingBox(), matchup.second())
         );
 
         this.soccerBall = new SulfurCubeSoccerBall(def.getSoccerBallStartLocation());
@@ -151,9 +165,7 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
     public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
         this.frozenPlayers.remove(participant.getUuid());
         participant.operatePlayer(SulfurSoccer::unfreeze);
-        for (SoccerTeam team : this.teams) {
-            participant.removeBossBar(team.bossBar());
-        }
+        participant.removeBossBar(this.bossBar);
         this.roleMap.remove(participant.getUuid());
         return super.removeParticipant(participant, doTeleport);
     }
@@ -177,9 +189,9 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
             this.roleMap.put(soccerPlayer);
         }
 
-        this.refreshBossBars();
+        this.refreshBossBar();
         for (SoccerPlayer soccerPlayer : this.roleMap) {
-            soccerPlayer.getEventPlayer().addBossBar(soccerPlayer.team().bossBar());
+            soccerPlayer.getEventPlayer().addBossBar(this.bossBar);
         }
 
         this.countdownStart(5);
@@ -198,7 +210,7 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
         this.soccerBall.kill();
         this.unfreezeAll();
         for (SoccerPlayer soccerPlayer : this.roleMap) {
-            soccerPlayer.getEventPlayer().removeBossBar(soccerPlayer.team().bossBar());
+            soccerPlayer.getEventPlayer().removeBossBar(this.bossBar);
         }
         this.scoreboard.handleGameEnd(this.audience, () -> {
             Executors.teleportGroupAsync(this.participants, this.spawnLocation);
@@ -218,37 +230,66 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
         });
     }
 
-    private int leadOf(SoccerTeam team) {
+    private SoccerTeam opponentOf(SoccerTeam team) {
         for (SoccerTeam other : this.teams) {
             if (other != team) {
-                return this.scoreboard.getScore(team) - this.scoreboard.getScore(other);
+                return other;
             }
         }
-        return 0;
+        return team;
+    }
+
+    private int leadOf(SoccerTeam team) {
+        return this.scoreboard.getScore(team) - this.scoreboard.getScore(this.opponentOf(team));
     }
 
     private int winPercent(SoccerTeam team) {
         return Math.clamp(this.leadOf(team) * 100L / LEAD_TO_WIN, 0, 100);
     }
 
+    private @Nullable SoccerTeam leadingTeam() {
+        for (SoccerTeam team : this.teams) {
+            if (this.leadOf(team) > 0) {
+                return team;
+            }
+        }
+        return null;
+    }
+
     private String scoreLine() {
         StringBuilder line = new StringBuilder();
         for (SoccerTeam team : this.teams) {
             if (!line.isEmpty()) line.append("<dark_gray> | ");
-            line.append(team.teamColorTemplate().formatted("<b>" + team.getName() + "</b>"))
+            line.append(team.template().formatted("<b>" + team.template().bossBarName() + "</b>"))
                 .append("<gray>: <white>")
                 .append(this.winPercent(team))
                 .append('%');
         }
         return line.toString();
     }
+    
+    private void showGoalMarkers(Player player, SoccerTeam team) {
+        spawnGoalDust(player, team.goalBox(), OWN_GOAL_DUST);
+        spawnGoalDust(player, this.opponentOf(team).goalBox(), ENEMY_GOAL_DUST);
+    }
 
-    private void refreshBossBars() {
-        String scoreLine = this.scoreLine();
-        for (SoccerTeam team : this.teams) {
-            team.bossBar().name(Util.color(scoreLine));
-            team.bossBar().progress(this.winPercent(team) / 100.0f);
+    private static void spawnGoalDust(Player player, WorldTiedBoundingBox goalBox, Particle.DustOptions dust) {
+        if (!goalBox.getWorld().equals(player.getWorld())) {
+            return;
         }
+        for (int i = 0; i < GOAL_MARKER_PARTICLES; i++) {
+            double x = goalBox.getMinX() + RANDOM.nextDouble() * goalBox.getWidthX();
+            double y = goalBox.getMinY() + RANDOM.nextDouble() * goalBox.getHeight();
+            double z = goalBox.getMinZ() + RANDOM.nextDouble() * goalBox.getWidthZ();
+            player.spawnParticle(Particle.DUST, x, y, z, 1, 0.0, 0.0, 0.0, 0.0, dust, true);
+        }
+    }
+
+    private void refreshBossBar() {
+        SoccerTeam leader = this.leadingTeam();
+        this.bossBar.name(Util.color(this.scoreLine()));
+        this.bossBar.progress(leader == null ? 0.0f : this.winPercent(leader) / 100.0f);
+        this.bossBar.color(leader == null ? BossBar.Color.WHITE : leader.template().barColor());
     }
 
     @EventHandler
@@ -338,15 +379,21 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
         AtomicInteger atomicCountdown = new AtomicInteger(countdown);
         this.soccerBall.spawn();
         sendAudienceTitle("<yellow>" + atomicCountdown.get(), "");
+        playAudienceSound(Sound.BLOCK_NOTE_BLOCK_CHIME, 1f, 1.5f);
         Executors.repeatingGlobal(20, 20, task -> {
             if (atomicCountdown.decrementAndGet() <= 0) {
                 task.cancel();
                 Title.Times times = Title.Times.times(Duration.ZERO, Duration.ofMillis(500), Duration.ofMillis(200));
                 sendAudienceTitle("<dark_green>GO!", "", times);
                 this.unfreezeAll();
+                playAudienceSound(Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1.5f);
+                Executors.runSync(this.soccerBall.activeLocation(), () -> {
+                    this.soccerBall.activeLocation().getWorld().playSound(this.soccerBall.activeLocation(), Sound.ITEM_GOAT_HORN_SOUND_0, 9f, 1f);
+                });
                 return;
             }
             sendAudienceTitle("<yellow>" + atomicCountdown.get(), "");
+            playAudienceSound(Sound.BLOCK_NOTE_BLOCK_CHIME, 1f, 1.5f);
         });
     }
 
@@ -371,7 +418,7 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
         private volatile @Setter SoccerPlayer lastContact;
 
         public SulfurCubeSoccerBall(Location initialSpawnLocation) {
-            this.initialSpawnLocation = initialSpawnLocation;
+            this.initialSpawnLocation = initialSpawnLocation.toCenterLocation();
         }
 
         public void tick() {
@@ -399,8 +446,16 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
 
                     if (!boundingBox.contains(sulfurCube)) {
                         SoccerPlayer lastContact = this.lastContactRole();
+                        SoccerTeam lastContactTeam = lastContact == null ? null : lastContact.team();
                         this.kill();
                         sendAudienceMessage("<yellow>Out of bounds by " + (lastContact == null ? "Unknown" : lastContact.getName()) + "!");
+                        sendAudienceMessage("<red>Penalty: <dark_gray>" + OUT_OF_BOUNDS_PENALTY + "</dark_gray> points for " + (lastContactTeam == null ? "Unknown" : lastContactTeam.getName()) + "!");
+
+                        if (lastContactTeam != null) {
+                            scoreboard.addScore(lastContactTeam, OUT_OF_BOUNDS_PENALTY);
+                            refreshBossBar();
+                        }
+
                         countdownStart(3); // TODO: subtract points for out of bounds
                         return;
                     }
@@ -641,6 +696,7 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
         private final SpeedTracker speed = new SpeedTracker();
 
         private volatile long actionBarQuietUntil;
+        private int ticks;
 
         protected SoccerPlayer(EventPlayer eventPlayer, SoccerTeam team) {
             super(eventPlayer);
@@ -649,6 +705,10 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
 
         public void onTick() {
             this.operatePlayer(player -> {
+                if (player.getSaturation() < 18) {
+                    player.setSaturation(20f);
+                    player.setFoodLevel(20);
+                }
                 player.addPotionEffect(STRENGTH);
                 player.addPotionEffect(SPEED);
 
@@ -656,6 +716,10 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
                 if (System.currentTimeMillis() >= this.actionBarQuietUntil) {
                     player.sendActionBar(Util.color(String.format(Locale.ROOT, SPEED_READOUT,
                         soccerBall.speed().blocksPerSecond(), this.speed.blocksPerSecond())));
+                }
+
+                if (this.ticks++ % GOAL_MARKER_INTERVAL_TICKS == 0) {
+                    showGoalMarkers(player, this.team);
                 }
             });
         }
@@ -667,6 +731,7 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
         public void teleportToStart() {
             Location randomSpread = this.team.startLocation()
                 .clone()
+                .add(0.5, 0, 0.5)
                 .add(Math.random() * 5 - 2.5, 0, Math.random() * 5 - 2.5);
             this.speed.reset(); // a teleport is not a sprint
             this.teleportAsync(randomSpread);
@@ -688,16 +753,14 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
 
         private final Location startLocation;
         private final WorldTiedBoundingBox goalBox;
-        private final TeamColorTemplate teamColorTemplate;
+        private final TeamTemplate template;
         private final Particle.DustOptions dustOptions;
-        private final BossBar bossBar;
 
-        private SoccerTeam(Location startLocation, WorldTiedBoundingBox goalBox, TeamColorTemplate teamColorTemplate) {
+        private SoccerTeam(Location startLocation, WorldTiedBoundingBox goalBox, TeamTemplate template) {
             this.startLocation = startLocation;
             this.goalBox = goalBox;
-            this.teamColorTemplate = teamColorTemplate;
-            this.dustOptions = new Particle.DustOptions(Color.fromRGB(teamColorTemplate.color()), 1.2f);
-            this.bossBar = BossBar.bossBar(Component.empty(), 0.0f, teamColorTemplate.barColor(), BossBar.Overlay.NOTCHED_6);
+            this.template = template;
+            this.dustOptions = new Particle.DustOptions(Color.fromRGB(template.color()), 1.2f);
         }
 
         public boolean goalBoxOverlaps(Entity entity) {
@@ -725,13 +788,13 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
                 SoccerTeam opposingTeam = teams.stream().filter(team -> !team.equals(this)).findFirst().orElse(null);
                 Preconditions.checkNotNull(opposingTeam, "No opposing team found for scorer's team: " + scorer.team().getName());
 
-                scoreboard.addScore(opposingTeam, 1);
-                sendAudienceMessage(teamColorTemplate.formatted(scorerName + " scored on their own goal! <gray>— <dark_gray>" + Util.getRandom(EXTRA_OWN_GOAL_NUANCE).formatted(scorerName)));
+                scoreboard.addScore(opposingTeam, POINTS_PER_GOAL);
+                sendAudienceMessage(template.formatted(scorerName + " scored on their own goal! <gray>— <dark_gray>" + Util.getRandom(EXTRA_OWN_GOAL_NUANCE).formatted(scorerName, POINTS_PER_GOAL)));
             } else {
-                sendAudienceMessage(teamColorTemplate.formatted(scorerName + " scored! <dark_gray>(+1)"));
-                scoreboard.addScore(scorer.team(), 1);
+                sendAudienceMessage(scorer.team().template().formatted(scorerName + " scored! <dark_gray>(+" + POINTS_PER_GOAL + " points)"));
+                scoreboard.addScore(scorer.team(), POINTS_PER_GOAL);
             }
-            refreshBossBars();
+            refreshBossBar();
 
             // capture where the ball is before we remove it
             Location ballLoc = ball.activeLocation().clone();
@@ -740,7 +803,7 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
             ball.kill();
 
             ParticleDisplay particleDisplay = ParticleDisplay.of(Particle.DUST)
-                .withColor(new java.awt.Color(teamColorTemplate.color()))
+                .withColor(new java.awt.Color(scorer.team().template().color()))
                 .withLocation(ballLoc);
             Particles.spikeSphere(6.0, 25.0, 3, 0.4, 0.8, particleDisplay);
 
@@ -777,7 +840,7 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
             Executors.delayedSync(ballLoc, 70, () -> {
                 if (leadOf(scorer.team()) >= LEAD_TO_WIN) {
                     sendAudienceMessage("<red>Game over!");
-                    sendAudienceMessage(scorer.team().teamColorTemplate().formatted(scorer.team().getName() + " has won!"));
+                    sendAudienceMessage(scorer.team().template().formatted(scorer.team().getName() + " has won!"));
                     stop();
                 } else {
                     countdownStart(3);
@@ -787,7 +850,7 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
 
         @Override
         public String getName() {
-            return this.teamColorTemplate.teamName();
+            return this.template.teamName();
         }
 
         public void addPoints(SoccerPlayer soccerPlayer, int amount) { // TODO:
@@ -799,19 +862,53 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
 
     @Getter
     @Accessors(fluent = true)
-    @AllArgsConstructor
-    private enum TeamColorTemplate {
-        // TODO: better team templates
-        RED("Red Team", 0x8665C7, "<#8665C7>%s</#8665C7>", BossBar.Color.PURPLE),
-        BLUE("Blue Team", 0xf4d5e0, "<#f4d5e0>%s</#f4d5e0>", BossBar.Color.PINK);
+    private enum TeamTemplate {
+
+        RED("Red Team", "Good Guys", 0xE2453B, BossBar.Color.RED),
+        BLUE("Blue Team", "Bad Guys", 0x3B7DE2, BossBar.Color.BLUE),
+
+        KIT_KAT("Team KitKat", "KitKats", 0xE60012, BossBar.Color.RED),
+        OREO("Team Oreo", "Oreos", 0x4A6DB5, BossBar.Color.BLUE),
+
+        MAYO("Team Mayo", "Mayo", 0xF3E9C0, BossBar.Color.WHITE),
+        MUSTARD("Team Mustard", "Mustard", 0xE1AD01, BossBar.Color.YELLOW),
+
+        ;
 
         private final String teamName;
+        private final String bossBarName;
         private final int color;
         private final String messageFormat;
         private final BossBar.Color barColor;
 
+        TeamTemplate(String teamName, String bossBarName, int color, BossBar.Color barColor) {
+            this(teamName, bossBarName, color, barColor, "<#%06X>%%s</#%06X>".formatted(color, color));
+        }
+
+        TeamTemplate(String teamName, String bossBarName, int color, BossBar.Color barColor, String messageFormat) {
+            this.teamName = teamName;
+            this.bossBarName = bossBarName;
+            this.color = color;
+            this.barColor = barColor;
+            this.messageFormat = messageFormat;
+        }
+
         public String formatted(String message) {
             return String.format(this.messageFormat, message);
         }
+    }
+
+    @Getter
+    @Accessors(fluent = true)
+    @AllArgsConstructor
+    private enum TeamMatchup {
+
+        RED_VS_BLUE(TeamTemplate.RED, TeamTemplate.BLUE),
+        KIT_KAT_VS_OREO(TeamTemplate.KIT_KAT, TeamTemplate.OREO),
+        MAYO_VS_MUSTARD(TeamTemplate.MAYO, TeamTemplate.MUSTARD),
+        ;
+
+        private final TeamTemplate first;
+        private final TeamTemplate second;
     }
 }
