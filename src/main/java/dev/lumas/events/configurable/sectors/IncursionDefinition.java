@@ -36,19 +36,19 @@ public class IncursionDefinition extends OkaeriConfig {
     private int startCooldownTicks = 100;
 
     @Comment("How long a player is frozen at their spawn after scoring, dying or leaving the map")
-    private int respawnFreezeTicks = 40;
+    private int respawnFreezeTicks = 50;
 
     @Comment("How long a player cannot deal or take damage after being sent back to their spawn")
-    private int respawnInvincibilityTicks = 60;
+    private int respawnInvincibilityTicks = 50;
 
     @Comment("Points awarded for jumping into the enemy team's hole")
-    private int holePoints = 10;
+    private int holePoints = 100;
 
     @Comment("Points awarded for killing an enemy")
-    private int killPoints = 5;
+    private int killPoints = 25;
 
     @Comment("How many points a participant has to earn for one token")
-    private int pointsPerToken = 5;
+    private int pointsPerToken = 25;
 
     @Comment("Tokens every participant gets, regardless of their score")
     private int minimumTokens = 5;
@@ -83,10 +83,10 @@ public class IncursionDefinition extends OkaeriConfig {
     public static class SniperSettings extends OkaeriConfig {
 
         @Comment("How long the shot has to be charged before releasing fires it")
-        private int chargeTicks = 20;
+        private int chargeTicks = 16;
 
         @Comment("Cooldown after a shot was fired (0 to disable)")
-        private int cooldownTicks = 55;
+        private int cooldownTicks = 45;
 
         @Comment("How far the shot travels (it always stops at the first solid block)")
         private double range = 75.0;
@@ -95,7 +95,10 @@ public class IncursionDefinition extends OkaeriConfig {
         private double hitRadius = 0.1;
 
         @Comment("True damage dealt to every player the beam passes through")
-        private double damage = 15.0;
+        private double damage = 14.0;
+
+        @Comment("Damage multiplier for beams that pass through the top of a hitbox")
+        private double headshotMultiplier = 2.0;
 
         @Comment("How hard hits shove players away from the shooter")
         private double knockback = 0.8;
@@ -173,7 +176,7 @@ public class IncursionDefinition extends OkaeriConfig {
     public static class GrenadeSettings extends OkaeriConfig {
 
         @Comment("True damage dealt at the centre of the blast")
-        private double damage = 22.0;
+        private double damage = 25.0;
 
         @Comment("How far the blast reaches")
         private double radius = 4.5;
@@ -182,7 +185,7 @@ public class IncursionDefinition extends OkaeriConfig {
                 "How much of the damage is lost at the edge of the blast",
                 "0 = full damage everywhere, 1 = nothing at the edge"
         })
-        private double damageFalloff = 0.7;
+        private double damageFalloff = 0.85;
 
         @Comment("How hard the blast shoves players away from it")
         private double knockback = 0.7;
@@ -191,7 +194,7 @@ public class IncursionDefinition extends OkaeriConfig {
         private boolean requireLineOfSight = true;
 
         @Comment("Blue egg: how long targets stay frosted over")
-        private int freezeTicks = 150;
+        private int freezeTicks = 200;
 
         @Comment("Blue egg: how long targets are slowed for")
         private int slownessTicks = 100;
@@ -212,16 +215,16 @@ public class IncursionDefinition extends OkaeriConfig {
         private MinibossType type = MinibossType.DROWNED;
 
         @Comment("How much health a miniboss spawns with")
-        private double health = 100.0;
+        private double health = 50.0;
 
         @Comment("How long after being slain a miniboss comes back (0 = only at half time)")
         private int respawnTicks = 1200;
 
         @Comment("How many random grenades a miniboss drops when it is slain (single number or range like '2-4')")
-        private String grenadeDrops = "2-4";
+        private String grenadeDrops = "2-5";
 
         @Comment("Points awarded for killing a miniboss")
-        private int points = 20;
+        private int points = 0;
     }
 
     public enum MinibossType {
