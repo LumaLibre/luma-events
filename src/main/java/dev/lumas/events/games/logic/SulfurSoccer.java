@@ -1,7 +1,9 @@
 package dev.lumas.events.games.logic;
 
+import com.destroystokyo.paper.event.entity.EntityKnockbackByEntityEvent;
 import com.google.common.base.Preconditions;
 import dev.lumas.core.util.ContextLogger;
+import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.SulfurSoccerDefinition;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.Scorer;
@@ -12,57 +14,103 @@ import dev.lumas.events.games.models.Scoreboard;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
+import dev.lumas.events.utility.Util;
 import dev.lumas.lumaitems.particles.ParticleDisplay;
 import dev.lumas.lumaitems.particles.Particles;
+import io.papermc.paper.event.entity.EntityMoveEvent;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.Tag;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.SulfurCube;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.util.BoundingBox;
+import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 import org.jspecify.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
-// TODO: bossbars for each team showing how close they are to winning/goals
 public final class SulfurSoccer extends InventoryUnifiedMinigame {
+
+    private static final String[] SPLASH = {
+        "Also known as football",
+        "Run, kick, run",
+        "40.0 b/s!",
+        "No hands! (Sometimes)",
+        "GOAAAL!"
+    };
+
+    private static final String[] EXTRA_OWN_GOAL_NUANCE = {
+        "what are you doing?",
+        "seriously?",
+        "nice job!",
+        "+1 for the other team!",
+        "good work, %s",
+        "that was probably an accident, right?",
+        "oops!",
+        ">:("
+    };
 
     private static final ContextLogger LOGGER = ContextLogger.getLogger(NamedTextColor.YELLOW, false);
 
+    private static final AttributeModifier FREEZE_MOD = new AttributeModifier(
+        new NamespacedKey(EventMain.getInstance(), "sulfur_soccer_freeze"), -1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
+    private static final List<Attribute> FREEZE_ATTRIBUTES = List.of(Attribute.MOVEMENT_SPEED, Attribute.JUMP_STRENGTH);
+
+    private static final int LEAD_TO_WIN = 3;
+
     private final Location spawnLocation;
-    private final Set<SoccerTeam> teams;
+    private final List<SoccerTeam> teams;
     private final SulfurCubeSoccerBall soccerBall;
     private final MinigameRoleMap<SoccerPlayer> roleMap = new MinigameRoleMap<>();
     private final Scoreboard<SoccerTeam> scoreboard = new Scoreboard<>();
+    private final int goalPunchRadius;
+
+    private final Set<UUID> frozenPlayers = ConcurrentHashMap.newKeySet();
 
 
     public SulfurSoccer(SulfurSoccerDefinition def) {
         super(
-            "Sulfur Soccer",
-            "Kick the sulfur cube into opposing team's goal!",
+            "Soccer",
+            Util.getRandom(SPLASH),
             300000L,
             1,
             true,
@@ -74,12 +122,18 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
         this.spawnLocation = def.getSpawnLocation();
         this.boundingBox = def.getBounds().toWorldTiedBoundingBox();
 
-        this.teams = Set.of(
+        this.teams = List.of(
             new SoccerTeam(def.getTeam1StartLocation(), def.getTeam1Goal().toWorldTiedBoundingBox(), TeamColorTemplate.RED),
             new SoccerTeam(def.getTeam2StartLocation(), def.getTeam2Goal().toWorldTiedBoundingBox(), TeamColorTemplate.BLUE)
         );
 
         this.soccerBall = new SulfurCubeSoccerBall(def.getSoccerBallStartLocation());
+        this.goalPunchRadius = def.getPunchRadius();
+    }
+
+    @Override
+    protected int minimumParticipants() {
+        return 1;
     }
 
     @Override
@@ -94,14 +148,25 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
     }
 
     @Override
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
+        this.frozenPlayers.remove(participant.getUuid());
+        participant.operatePlayer(SulfurSoccer::unfreeze);
+        for (SoccerTeam team : this.teams) {
+            participant.removeBossBar(team.bossBar());
+        }
+        this.roleMap.remove(participant.getUuid());
+        return super.removeParticipant(participant, doTeleport);
+    }
+
+    @Override
     protected void handleStart() {
         if (this.teams.size() != 2) {
             this.stop();
             throw new IllegalStateException("Illegal number of teams, expected 2 but got: " + this.teams.size() + " - " + this.teams);
         }
 
-        SoccerTeam team1 = this.teams.stream().findFirst().orElseThrow();
-        SoccerTeam team2 = this.teams.stream().skip(1).findFirst().orElseThrow();
+        SoccerTeam team1 = this.teams.getFirst();
+        SoccerTeam team2 = this.teams.getLast();
 
 
         List<EventPlayer> shuffled = new ArrayList<>(this.getParticipants());
@@ -112,16 +177,29 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
             this.roleMap.put(soccerPlayer);
         }
 
+        this.refreshBossBars();
+        for (SoccerPlayer soccerPlayer : this.roleMap) {
+            soccerPlayer.getEventPlayer().addBossBar(soccerPlayer.team().bossBar());
+        }
+
         this.countdownStart(5);
     }
 
     @Override
     protected void onRunnable(long timeLeft) {
         this.soccerBall.tick();
+        for (SoccerPlayer player : this.roleMap) {
+            player.onTick();
+        }
     }
 
     @Override
     protected void handleStop() {
+        this.soccerBall.kill();
+        this.unfreezeAll();
+        for (SoccerPlayer soccerPlayer : this.roleMap) {
+            soccerPlayer.getEventPlayer().removeBossBar(soccerPlayer.team().bossBar());
+        }
         this.scoreboard.handleGameEnd(this.audience, () -> {
             Executors.teleportGroupAsync(this.participants, this.spawnLocation);
             CountdownBossBar.builder()
@@ -140,41 +218,135 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
         });
     }
 
-    @EventHandler
-    public void onSulfurCubeContact(EntityDamageByEntityEvent event) {
-        SulfurCubeSoccerBall ball = this.soccerBall;
-        if (!event.getEntity().equals(ball.sulfurCube())) {
-            return;
+    private int leadOf(SoccerTeam team) {
+        for (SoccerTeam other : this.teams) {
+            if (other != team) {
+                return this.scoreboard.getScore(team) - this.scoreboard.getScore(other);
+            }
         }
-
-        SoccerPlayer attacker = this.roleMap.as(event.getDamager().getUniqueId(), SoccerPlayer.class);
-
-        if (attacker == null) return;
-
-        if (event.getCause() != EntityDamageEvent.DamageCause.CONTACT) {
-            event.setCancelled(true); // only allow contact directly
-            return;
-        }
-
-        ball.lastContact(attacker);
-        attacker.onKick(ball);
+        return 0;
     }
 
-    public void countdownStart(final int countdown) {
-        for (SoccerPlayer soccerPlayer : roleMap) {
+    private int winPercent(SoccerTeam team) {
+        return Math.clamp(this.leadOf(team) * 100L / LEAD_TO_WIN, 0, 100);
+    }
+
+    private String scoreLine() {
+        StringBuilder line = new StringBuilder();
+        for (SoccerTeam team : this.teams) {
+            if (!line.isEmpty()) line.append("<dark_gray> | ");
+            line.append(team.teamColorTemplate().formatted("<b>" + team.getName() + "</b>"))
+                .append("<gray>: <white>")
+                .append(this.winPercent(team))
+                .append('%');
+        }
+        return line.toString();
+    }
+
+    private void refreshBossBars() {
+        String scoreLine = this.scoreLine();
+        for (SoccerTeam team : this.teams) {
+            team.bossBar().name(Util.color(scoreLine));
+            team.bossBar().progress(this.winPercent(team) / 100.0f);
+        }
+    }
+
+    @EventHandler
+    public void onSulfurCubePunch(EntityKnockbackByEntityEvent event) {
+        SulfurCubeSoccerBall ball = this.soccerBall;
+        if (!ball.isSpawned() || !event.getEntity().equals(ball.sulfurCube())) {
+            return;
+        }
+
+        if (!(event.getPushedBy() instanceof Player puncher)) {
+            return;
+        }
+
+        SoccerPlayer attacker = this.roleMap.as(puncher.getUniqueId(), SoccerPlayer.class);
+        if (attacker == null) return;
+
+
+        if (!attacker.team().withinPunchRadius(puncher.getLocation())) {
+            event.setCancelled(true);
+            attacker.quietActionBar(1500L); // else the speed readout wipes this on the next tick
+            puncher.sendActionBar(Util.color("<red>You can only punch the ball near your own goal!"));
+            return;
+        }
+
+        // no sound of our own here, the cube's knockback already plays its archetype hit sound
+        ball.lastContact(attacker);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onSulfurCubeMove(EntityMoveEvent event) {
+        this.soccerBall.handleMove(event);
+    }
+
+    private void freeze(Player player) {
+        this.frozenPlayers.add(player.getUniqueId());
+        for (Attribute attribute : FREEZE_ATTRIBUTES) {
+            AttributeInstance instance = player.getAttribute(attribute);
+            if (instance == null) continue;
+            instance.removeModifier(FREEZE_MOD);
+            instance.addTransientModifier(FREEZE_MOD);
+        }
+    }
+
+    private static void unfreeze(Player player) {
+        for (Attribute attribute : FREEZE_ATTRIBUTES) {
+            AttributeInstance instance = player.getAttribute(attribute);
+            if (instance != null) instance.removeModifier(FREEZE_MOD);
+        }
+    }
+
+    private void unfreezeAll() {
+        this.frozenPlayers.clear();
+        for (SoccerPlayer soccerPlayer : this.roleMap) {
+            soccerPlayer.operatePlayer(SulfurSoccer::unfreeze);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onFrozenPlayerMove(PlayerMoveEvent event) {
+        if (event instanceof PlayerTeleportEvent) {
+            return;
+        }
+        if (!this.frozenPlayers.contains(event.getPlayer().getUniqueId())) {
+            return;
+        }
+
+        Location from = event.getFrom();
+        Location to = event.getTo();
+        if (from.getX() == to.getX() && from.getZ() == to.getZ()) {
+            return;
+        }
+
+        Location held = from.clone();
+        held.setY(to.getY());
+        held.setYaw(to.getYaw());
+        held.setPitch(to.getPitch());
+        event.setTo(held);
+    }
+
+
+    private void countdownStart(final int countdown) {
+        for (SoccerPlayer soccerPlayer : this.roleMap) {
             soccerPlayer.teleportToStart();
-            soccerPlayer.slowDown(countdown);
+            soccerPlayer.operatePlayer(this::freeze);
         }
 
         AtomicInteger atomicCountdown = new AtomicInteger(countdown);
-        Executors.repeatingGlobal(20, task -> {
+        this.soccerBall.spawn();
+        sendAudienceTitle("<yellow>" + atomicCountdown.get(), "");
+        Executors.repeatingGlobal(20, 20, task -> {
             if (atomicCountdown.decrementAndGet() <= 0) {
                 task.cancel();
-                sendAudienceMessage("<dark_green>GO!");
-                this.soccerBall.spawn();
+                Title.Times times = Title.Times.times(Duration.ZERO, Duration.ofMillis(500), Duration.ofMillis(200));
+                sendAudienceTitle("<dark_green>GO!", "", times);
+                this.unfreezeAll();
                 return;
             }
-            sendAudienceMessage("<yellow>" + atomicCountdown.get());
+            sendAudienceTitle("<yellow>" + atomicCountdown.get(), "");
         });
     }
 
@@ -182,14 +354,20 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
     @Accessors(fluent = true)
     private class SulfurCubeSoccerBall {
 
-        private static final int FALLBACK_COLOR = 0x210B2F;
-        private static final Particle.DustOptions FALLBACK_DUST_OPTIONS = new Particle.DustOptions(Color.fromRGB(FALLBACK_COLOR), 1.2f);
-        private static final ItemStack ARCHETYPE_ITEM = ItemStack.of(Material.STRIPPED_PALE_OAK_WOOD); // bouncy
+        private static final Supplier<ItemStack> RANDOM_PLANKS = () -> ItemStack.of(Util.getRandom(Tag.ITEMS_PLANKS.getValues()));
+        private static final ItemStack ARCHETYPE_ITEM = ItemStack.of(Material.BAMBOO_PLANKS); // bouncy
+
+        private static final double PUSH_DISTANCE_THRESHOLD = 1.3;
+        private static final long KICK_COOLDOWN_MILLIS = 250L;
+        private static final Sound KICK_SOUND = Sound.ENTITY_SULFUR_CUBE_BOUNCY_PUSH;
 
         private final Location initialSpawnLocation;
+        private final Map<UUID, Long> lastKickAt = new ConcurrentHashMap<>();
+        private final SpeedTracker speed = new SpeedTracker();
 
         private volatile SulfurCube sulfurCube;
         private volatile boolean doSpawn;
+        private volatile boolean scored;
         private volatile @Setter SoccerPlayer lastContact;
 
         public SulfurCubeSoccerBall(Location initialSpawnLocation) {
@@ -213,26 +391,147 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
                 Preconditions.checkState(sulfurCube != null, "Sulfur cube should be spawned at this point!");
 
                 Executors.runSync(sulfurCube, () -> { // get on sulfur cube's known thread as soon as we 100% can
-                    SoccerPlayer soccerPlayer = this.lastContactRole();
+                    this.speed.sample(sulfurCube.getLocation());
 
-                    if (!sulfurCube.isOnGround()) { // particles when flying
-                        Particle.DustOptions dustOptions = soccerPlayer == null ? FALLBACK_DUST_OPTIONS : soccerPlayer.team().dustOptions();
-                        sulfurCube.getWorld().spawnParticle(Particle.DUST, sulfurCube.getLocation(), 10, 0.6, 0.6, 0.6, dustOptions);
+                    if (this.checkGoals()) {
+                        return;
                     }
 
-                    // check goal statuses
-                    for (SoccerTeam goal : teams) {
-                        if (goal.goalBoxOverlaps(sulfurCube)) {
-                            if (soccerPlayer == null) {
-                                LOGGER.info("Sulfur cube contacted a goal without a player!");
-                            } else {
-                                goal.scoreGoal(this, soccerPlayer);
-                            }
-                            break; // only score once
-                        }
+                    if (!boundingBox.contains(sulfurCube)) {
+                        SoccerPlayer lastContact = this.lastContactRole();
+                        this.kill();
+                        sendAudienceMessage("<yellow>Out of bounds by " + (lastContact == null ? "Unknown" : lastContact.getName()) + "!");
+                        countdownStart(3); // TODO: subtract points for out of bounds
+                        return;
+                    }
+
+                    this.detectContact();
+
+                    SoccerPlayer soccerPlayer = this.lastContactRole();
+
+                    if (!sulfurCube.isOnGround() && soccerPlayer != null) { // particles when flying
+                        Particle.DustOptions dustOptions = soccerPlayer.team().dustOptions();
+                        sulfurCube.getWorld().spawnParticle(Particle.DUST, sulfurCube.getEyeLocation(), 10, 0.3, 0.3, 0.3, dustOptions);
                     }
                 });
             });
+        }
+
+        // vanilla fires nothing when a player shoves the cube with their body, have to do the work ourselves
+        private void detectContact() {
+            double cubeBottom = sulfurCube.getY();
+            double cubeTop = cubeBottom + sulfurCube.getHeight();
+
+            for (Player player : sulfurCube.getLocation().getNearbyPlayers(PUSH_DISTANCE_THRESHOLD + 1.0)) {
+                Location playerLocation = player.getLocation();
+                double dx = sulfurCube.getX() - playerLocation.getX();
+                double dz = sulfurCube.getZ() - playerLocation.getZ();
+                if (dx * dx + dz * dz >= PUSH_DISTANCE_THRESHOLD * PUSH_DISTANCE_THRESHOLD) {
+                    continue;
+                }
+
+                double playerFeet = playerLocation.getY();
+                if (playerFeet > cubeTop || playerFeet + player.getHeight() <= cubeBottom) {
+                    continue; // no vertical overlap
+                }
+
+                SoccerPlayer soccerPlayer = roleMap.as(player.getUniqueId(), SoccerPlayer.class);
+                if (soccerPlayer == null) {
+                    continue;
+                }
+
+                this.registerContact(soccerPlayer, sulfurCube.getLocation());
+                return; // one contact per tick
+            }
+        }
+
+        private void handleMove(EntityMoveEvent event) {
+            if (sulfurCube == null || !event.getEntity().equals(sulfurCube) || !event.hasChangedPosition()) {
+                return;
+            }
+
+            Location to = event.getTo();
+            Vector start = event.getFrom().toVector();
+            Vector path = to.toVector().subtract(start);
+            double distance = path.length();
+            if (distance < 1.0E-4) {
+                return;
+            }
+            Vector direction = path.multiply(1.0 / distance);
+
+            // goals are deliberately not tested against this path they're only sampled once a tick by
+            // the game loop, so a shot has to actually sit in the goal (TODO) to count and a keeper gets a swing at it
+            this.sweepPlayers(event, to, start, direction, distance);
+        }
+
+        /** @return true if the cube was parked against a player it would otherwise have skipped straight past */
+        private boolean sweepPlayers(EntityMoveEvent event, Location to, Vector start, Vector direction, double distance) {
+            double height = sulfurCube.getHeight();
+            for (Player player : to.getNearbyPlayers(distance + PUSH_DISTANCE_THRESHOLD + 1.0)) {
+                SoccerPlayer soccerPlayer = roleMap.as(player.getUniqueId(), SoccerPlayer.class);
+                if (soccerPlayer == null) {
+                    continue;
+                }
+
+                BoundingBox pushRange = player.getBoundingBox().expand(PUSH_DISTANCE_THRESHOLD, height, PUSH_DISTANCE_THRESHOLD);
+                if (pushRange.contains(to.toVector()) || pushRange.contains(start)) {
+                    return false;
+                }
+
+                RayTraceResult crossing = pushRange.rayTrace(start, direction, distance);
+                if (crossing == null) {
+                    continue;
+                }
+
+                if (!this.registerContact(soccerPlayer, to)) {
+                    return false;
+                }
+
+                Vector entry = crossing.getHitPosition();
+                event.setTo(new Location(to.getWorld(), entry.getX(), entry.getY(), entry.getZ(), to.getYaw(), to.getPitch()));
+                return true;
+            }
+
+            return false;
+        }
+
+        private boolean checkGoals() {
+            if (this.scored) {
+                return true;
+            }
+
+            for (SoccerTeam goal : teams) {
+                if (!goal.goalBoxOverlaps(sulfurCube)) {
+                    continue;
+                }
+
+                SoccerPlayer scorer = this.lastContactRole();
+                if (scorer == null) {
+                    LOGGER.info("Sulfur cube reached a goal without a player!");
+                    return false;
+                }
+
+                this.scored = true;
+                goal.scoreGoal(this, scorer);
+                return true;
+            }
+
+            return false;
+        }
+
+        private boolean registerContact(SoccerPlayer soccerPlayer, Location at) {
+            this.lastContact(soccerPlayer); // whoever touched it last owns the next goal
+
+            long now = System.currentTimeMillis();
+            Long lastKick = this.lastKickAt.get(soccerPlayer.getUuid());
+            if (lastKick != null && now - lastKick < KICK_COOLDOWN_MILLIS) {
+                return false;
+            }
+            this.lastKickAt.put(soccerPlayer.getUuid(), now);
+
+            this.sulfurCube.getEquipment().setItem(EquipmentSlot.BODY, RANDOM_PLANKS.get()); // random plank for the next push
+            at.getWorld().playSound(at, KICK_SOUND, 1.2f, 0.9f + (float) Math.random() * 0.2f);
+            return true;
         }
 
         public boolean spawn() {
@@ -240,17 +539,28 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
                 return false;
             }
             this.doSpawn = true; // force this value
-            this.sulfurCube = this.activeLocation().getWorld().spawn(this.activeLocation(), SulfurCube.class, cube -> {
-                cube.getEquipment().setItem(EquipmentSlot.BODY, ARCHETYPE_ITEM);
+            this.lastContact = null; // a fresh ball isn't owned by last round's scorer
+            this.lastKickAt.clear();
+            this.scored = false;
+            this.speed.reset(); // the jump from where the old ball died to the new spawn isn't a speed
+            Executors.sync(this.activeLocation(), () -> {
+                this.sulfurCube = this.activeLocation().getWorld().spawn(this.activeLocation(), SulfurCube.class, cube -> {
+                    cube.getEquipment().setItem(EquipmentSlot.BODY, ARCHETYPE_ITEM);
+                    cube.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 3, false, false, false));
+                });
             });
             return true;
         }
 
         public boolean kill() {
-            if (this.isStale()) {
+            if (this.sulfurCube == null) {
                 return false;
             }
-            this.sulfurCube.remove();
+            this.speed.reset();
+            Executors.runSync(this.sulfurCube, () -> {
+                this.sulfurCube.remove();
+                this.sulfurCube = null;
+            });
             return true;
         }
 
@@ -271,11 +581,15 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
                 return this.lastContact.getEventPlayer().getPlayer();
             }
 
-            EntityDamageEvent lastDamageEvent = sulfurCube.getLastDamageCause();
-            if (lastDamageEvent == null) {
+            if (this.isStale()) {
                 return null;
             }
-            return lastDamageEvent.getEntity() instanceof Player ? (Player) lastDamageEvent.getEntity() : null;
+
+            EntityDamageEvent lastDamageEvent = sulfurCube.getLastDamageCause();
+            if (!(lastDamageEvent instanceof EntityDamageByEntityEvent damageByEntity)) {
+                return null;
+            }
+            return damageByEntity.getDamager() instanceof Player damager ? damager : null;
         }
 
         public @Nullable SoccerPlayer lastContactRole() {
@@ -289,48 +603,80 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
         }
     }
 
+    private static final class SpeedTracker {
+
+        private volatile Location last;
+        private volatile long lastAt;
+        private volatile double blocksPerSecond;
+
+        private void sample(Location current) {
+            long now = System.currentTimeMillis();
+            Location previous = this.last;
+            if (previous != null && previous.getWorld().equals(current.getWorld()) && now > this.lastAt) {
+                this.blocksPerSecond = previous.distance(current) / ((now - this.lastAt) / 1000.0);
+            }
+            this.last = current;
+            this.lastAt = now;
+        }
+
+        private void reset() {
+            this.last = null;
+            this.blocksPerSecond = 0.0;
+        }
+
+        private double blocksPerSecond() {
+            return this.blocksPerSecond;
+        }
+    }
+
     @Getter
     @Accessors(fluent = true)
     private class SoccerPlayer extends MinigameRole {
 
-        private static final double GROUNDED_KICK_Y_BOOST = 0.35;
+        private static final PotionEffect STRENGTH = new PotionEffect(PotionEffectType.STRENGTH, 300, 1, false, false, false);
+        private static final PotionEffect SPEED = new PotionEffect(PotionEffectType.SPEED, 300, 3, false, false, false);
+        private static final String SPEED_READOUT = "<gray>Ball <white>%.1f<gray> b/s <dark_gray>| <gray>You <white>%.1f<gray> b/s";
 
         private final SoccerTeam team;
+        private final SpeedTracker speed = new SpeedTracker();
+
+        private volatile long actionBarQuietUntil;
 
         protected SoccerPlayer(EventPlayer eventPlayer, SoccerTeam team) {
             super(eventPlayer);
             this.team = team;
         }
 
-        public void teleportToStart() {
-            // random spread of 5 block in x and z
-            Location randomSpread = this.team.startLocation()
-                .clone()
-                .add(Math.random() * 5 - 2.5, 0, Math.random() * 5 - 2.5);
-            this.teleportAsync(randomSpread);
-        }
+        public void onTick() {
+            this.operatePlayer(player -> {
+                player.addPotionEffect(STRENGTH);
+                player.addPotionEffect(SPEED);
 
-        public void slowDown(int seconds) {
-            int ticks = seconds * 20;
-            PotionEffect effect = new PotionEffect(PotionEffectType.SLOWNESS, ticks, 70, false, false, false);
-            this.getEventPlayer().operatePlayer(player -> {
-                player.addPotionEffect(effect);
+                this.speed.sample(player.getLocation());
+                if (System.currentTimeMillis() >= this.actionBarQuietUntil) {
+                    player.sendActionBar(Util.color(String.format(Locale.ROOT, SPEED_READOUT,
+                        soccerBall.speed().blocksPerSecond(), this.speed.blocksPerSecond())));
+                }
             });
         }
 
-        public void onKick(SulfurCubeSoccerBall ball) {
-            SulfurCube cube = ball.sulfurCube();
-            if (cube == null || !cube.isOnGround()) {
-                return; // mid air kicks keep whatever arc they already have
-            }
+        public void quietActionBar(long millis) {
+            this.actionBarQuietUntil = System.currentTimeMillis() + millis;
+        }
 
-            // if knockback gets applied after this event resolves, wait a tick before lifting it
-//            Executors.delayedSync(cube, 1, () -> {
-//                if (!cube.isValid()) return;
-//
-//            });
-            cube.setVelocity(cube.getVelocity().add(new Vector(0, GROUNDED_KICK_Y_BOOST, 0)));
-            this.team().addPoints(this, 1);
+        public void teleportToStart() {
+            Location randomSpread = this.team.startLocation()
+                .clone()
+                .add(Math.random() * 5 - 2.5, 0, Math.random() * 5 - 2.5);
+            this.speed.reset(); // a teleport is not a sprint
+            this.teleportAsync(randomSpread);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (!(obj instanceof SoccerPlayer other)) return false;
+            return this.getEventPlayer().getUuid().equals(other.getEventPlayer().getUuid());
         }
     }
 
@@ -344,38 +690,74 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
         private final WorldTiedBoundingBox goalBox;
         private final TeamColorTemplate teamColorTemplate;
         private final Particle.DustOptions dustOptions;
+        private final BossBar bossBar;
 
         private SoccerTeam(Location startLocation, WorldTiedBoundingBox goalBox, TeamColorTemplate teamColorTemplate) {
             this.startLocation = startLocation;
             this.goalBox = goalBox;
             this.teamColorTemplate = teamColorTemplate;
             this.dustOptions = new Particle.DustOptions(Color.fromRGB(teamColorTemplate.color()), 1.2f);
+            this.bossBar = BossBar.bossBar(Component.empty(), 0.0f, teamColorTemplate.barColor(), BossBar.Overlay.NOTCHED_6);
         }
 
         public boolean goalBoxOverlaps(Entity entity) {
-            return goalBox.contains(entity.getWorld(), entity.getBoundingBox());
+            return goalBox.getWorld().equals(entity.getWorld()) && goalBox.overlaps(entity.getBoundingBox());
+        }
+
+        public boolean withinPunchRadius(Location location) {
+            if (!goalBox.getWorld().equals(location.getWorld())) {
+                return false;
+            }
+
+            double dx = Math.max(0.0, Math.max(goalBox.getMinX() - location.getX(), location.getX() - goalBox.getMaxX()));
+            double dy = Math.max(0.0, Math.max(goalBox.getMinY() - location.getY(), location.getY() - goalBox.getMaxY()));
+            double dz = Math.max(0.0, Math.max(goalBox.getMinZ() - location.getZ(), location.getZ() - goalBox.getMaxZ()));
+
+            return dx * dx + dy * dy + dz * dz <= (double) goalPunchRadius * goalPunchRadius;
         }
 
         public void scoreGoal(SulfurCubeSoccerBall ball, SoccerPlayer scorer) {
-            sendAudienceMessage(teamColorTemplate.formatted(scorer.getEventPlayer().getName() + " scored! <dark_gray>(+1)"));
-            scoreboard.addScore(scorer.team(), 1);
+            // Check if the scorer scored on their own team first
+
+            String scorerName = scorer.getEventPlayer().getName();
+            if (scorer.team().equals(this)) {
+                // get opposing team
+                SoccerTeam opposingTeam = teams.stream().filter(team -> !team.equals(this)).findFirst().orElse(null);
+                Preconditions.checkNotNull(opposingTeam, "No opposing team found for scorer's team: " + scorer.team().getName());
+
+                scoreboard.addScore(opposingTeam, 1);
+                sendAudienceMessage(teamColorTemplate.formatted(scorerName + " scored on their own goal! <gray>— <dark_gray>" + Util.getRandom(EXTRA_OWN_GOAL_NUANCE).formatted(scorerName)));
+            } else {
+                sendAudienceMessage(teamColorTemplate.formatted(scorerName + " scored! <dark_gray>(+1)"));
+                scoreboard.addScore(scorer.team(), 1);
+            }
+            refreshBossBars();
 
             // capture where the ball is before we remove it
-            Location goalLocation = ball.activeLocation().clone();
+            Location ballLoc = ball.activeLocation().clone();
 
             // kill the sulfur cube and have it explode into a bunch of dust particles
             ball.kill();
 
             ParticleDisplay particleDisplay = ParticleDisplay.of(Particle.DUST)
                 .withColor(new java.awt.Color(teamColorTemplate.color()))
-                .withLocation(goalLocation);
+                .withLocation(ballLoc);
             Particles.spikeSphere(6.0, 25.0, 3, 0.4, 0.8, particleDisplay);
 
-            goalLocation.getWorld().playSound(goalLocation, Sound.ITEM_GOAT_HORN_SOUND_2, 2f, 1.25f);
+
+            for (SoccerTeam team : teams) {
+                Location goalLocation = team.goalBox().getCenterLocation();
+                goalLocation.getWorld().playSound(goalLocation, Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 2f, 2f);
+                goalLocation.getWorld().playSound(goalLocation, Sound.ITEM_GOAT_HORN_SOUND_2, 2f, 1.25f);
+            }
+
+            Location ballInitialSpawnLoc = ball.initialSpawnLocation();
+            ballInitialSpawnLoc.getWorld().playSound(ballInitialSpawnLoc, Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 2f, 2f);
+            ballInitialSpawnLoc.getWorld().playSound(ballInitialSpawnLoc, Sound.ITEM_GOAT_HORN_SOUND_2, 2f, 1.25f);
 
             // blast every entity within a 25 block radius away from the goal
-            for (LivingEntity entity : goalLocation.getNearbyLivingEntities(25)) {
-                Vector direction = entity.getLocation().toVector().subtract(goalLocation.toVector());
+            for (LivingEntity entity : ballLoc.getNearbyLivingEntities(35)) {
+                Vector direction = entity.getLocation().toVector().subtract(ballLoc.toVector());
                 if (direction.lengthSquared() < 1.0E-6) {
                     direction = new Vector(0, 1, 0); // entity sitting exactly on the goal, just launch it up
                 } else {
@@ -383,19 +765,19 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
                 }
 
                 // stronger blast the closer the entity is to the goal
-                double distance = entity.getLocation().distance(goalLocation);
-                double strength = Math.max(0.5, 2.5 * (1 - distance / 25.0));
+                double distance = entity.getLocation().distance(ballLoc);
+                double strength = Math.max(0.5, 2.8 * (1 - distance / 35.0));
 
                 Vector knockback = direction.multiply(strength);
-                knockback.setY(knockback.getY() + 0.6); // add a little lift
+                knockback.setY(knockback.getY() + 0.7); // add a little lift
                 entity.setVelocity(knockback);
             }
 
-            // wait 2 seconds before starting a new round
-            Executors.delayedSync(goalLocation, 20 * 2, () -> {
-                if (scoreboard.getScore(scorer.team()) >= 3) {
+            // wait 3.5 seconds before starting a new round
+            Executors.delayedSync(ballLoc, 70, () -> {
+                if (leadOf(scorer.team()) >= LEAD_TO_WIN) {
                     sendAudienceMessage("<red>Game over!");
-                    sendAudienceMessage(teamColorTemplate.name() + " has won!");
+                    sendAudienceMessage(scorer.team().teamColorTemplate().formatted(scorer.team().getName() + " has won!"));
                     stop();
                 } else {
                     countdownStart(3);
@@ -405,11 +787,10 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
 
         @Override
         public String getName() {
-            return this.teamColorTemplate.name();
+            return this.teamColorTemplate.teamName();
         }
 
-        public void addPoints(SoccerPlayer soccerPlayer, int amount) {
-            // TODO: Ensure only a max of one point can be earned per tick
+        public void addPoints(SoccerPlayer soccerPlayer, int amount) { // TODO:
             this.pointMap.putIfAbsent(soccerPlayer, 0);
             this.pointMap.put(soccerPlayer, this.pointMap.get(soccerPlayer) + amount);
         }
@@ -420,12 +801,14 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
     @Accessors(fluent = true)
     @AllArgsConstructor
     private enum TeamColorTemplate {
-        RED("Red Team", 0x8665C7, "<#8665C7>%s</#8665C7>"),
-        BLUE("Blue Team", 0xf4d5e0, "<#f4d5e0>%s</#f4d5e0>");
+        // TODO: better team templates
+        RED("Red Team", 0x8665C7, "<#8665C7>%s</#8665C7>", BossBar.Color.PURPLE),
+        BLUE("Blue Team", 0xf4d5e0, "<#f4d5e0>%s</#f4d5e0>", BossBar.Color.PINK);
 
-        private final String name;
+        private final String teamName;
         private final int color;
         private final String messageFormat;
+        private final BossBar.Color barColor;
 
         public String formatted(String message) {
             return String.format(this.messageFormat, message);

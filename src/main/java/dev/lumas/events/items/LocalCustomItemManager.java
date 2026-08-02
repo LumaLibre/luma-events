@@ -1,5 +1,6 @@
 package dev.lumas.events.items;
 
+import dev.lumas.events.EventMain;
 import dev.lumas.lumaitems.api.LumaItemsAPI;
 import dev.lumas.lumaitems.model.item.CustomItem;
 import lombok.Getter;
@@ -34,6 +35,7 @@ public class LocalCustomItemManager {
                 Bukkit.addRecipe(pair.getSecond());
                  */
                 if (Bukkit.getRecipe(pair.getFirst()) == null) {
+                    EventMain.getInstance().getLogger().info("Adding Recipe for " + withRecipe);
                     Bukkit.addRecipe(pair.getSecond());
                 }
             }

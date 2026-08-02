@@ -1,6 +1,7 @@
 package dev.lumas.events.configurable;
 
 import dev.lumas.events.configurable.sectors.BoatRace2Definition;
+import dev.lumas.events.configurable.sectors.BombermanDefinition;
 import dev.lumas.events.configurable.sectors.FreezeTagDefinition;
 import dev.lumas.events.configurable.sectors.IncursionDefinition;
 import dev.lumas.events.configurable.sectors.ManorMinigameDefinition;
@@ -62,6 +63,11 @@ public class Config extends OkaeriConfig {
     @Comment("Minigame definition for 'Incursion'")
     private Map<String, IncursionDefinition> incursionMaps = Map.of(
             "default", new IncursionDefinition()
+    );
+
+    @Comment("Minigame definition for 'Bomberman'")
+    private Map<String, BombermanDefinition> bombermanMaps = Map.of(
+            "default", new BombermanDefinition()
     );
 
     @Comment("Minigame definition for 'Sulfur Soccer'")

@@ -111,6 +111,10 @@ public final class Util {
         return Title.title(Util.color(title), Util.color(subtitle));
     }
 
+    public static Title title(String title, String subtitle, Title.Times times) {
+        return Title.title(Util.color(title), Util.color(subtitle), times);
+    }
+
     @Nullable
     public static <P, C> C getPersistentKey(ItemStack item, String strKey, PersistentDataType<P, C> dataType) {
         return item.getItemMeta().getPersistentDataContainer().get(new NamespacedKey(EventMain.getInstance(), strKey), dataType);

@@ -94,6 +94,10 @@ public final class Executors {
         return Bukkit.getGlobalRegionScheduler().runAtFixedRate(instance, consumer, 1, period);
     }
 
+    public static ScheduledTask repeatingGlobal(long delay, long period, Consumer<ScheduledTask> consumer) {
+        return Bukkit.getGlobalRegionScheduler().runAtFixedRate(instance, consumer, delay, period);
+    }
+
     public static void runSync(Entity entity, Runnable runnable) {
         if (Bukkit.isOwnedByCurrentRegion(entity)) {
             runnable.run();

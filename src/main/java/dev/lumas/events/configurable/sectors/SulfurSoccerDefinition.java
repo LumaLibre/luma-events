@@ -7,6 +7,7 @@ import org.bukkit.Location;
 @Getter
 public class SulfurSoccerDefinition extends OkaeriConfig {
 
+    private int punchRadius = 9;
     private Location spawnLocation;
     private Location team1StartLocation;
     private Location team2StartLocation;

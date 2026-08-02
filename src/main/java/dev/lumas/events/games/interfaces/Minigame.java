@@ -19,6 +19,7 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Registry;
@@ -320,6 +321,13 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             return;
         }
         this.audience.showTitle(Util.title(Util.getTextColor() + title, Util.getTextColor() + subtitle));
+    }
+
+    public void sendAudienceTitle(String title, String subtitle, Title.Times times) {
+        if (this.audience == null) {
+            return;
+        }
+        this.audience.showTitle(Util.title(Util.getTextColor() + title, Util.getTextColor() + subtitle, times));
     }
 
     public void playAudienceSound(Sound sound, float volume, float pitch) {
