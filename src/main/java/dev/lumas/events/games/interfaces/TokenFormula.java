@@ -38,7 +38,7 @@ public abstract class TokenFormula<C> {
 
         makeDirty(uuid, amount);
         Executors.runSync(bukkitPlayer, () -> {
-            TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.WAXCAP_SHROOM, amount, "Minigame");
+            TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.SUMMER_DOLLOP, amount, "Minigame");
         });
         return amount;
     }

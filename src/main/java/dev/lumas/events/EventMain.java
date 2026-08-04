@@ -7,10 +7,9 @@ import dev.lumas.events.configurable.PersistentStates;
 import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.models.CountdownBossBar;
-import dev.lumas.events.items.AmanitaShroomItem;
 import dev.lumas.events.items.LocalCustomItemManager;
 import dev.lumas.events.items.StartMinigameItem;
-import dev.lumas.events.items.WaxcapShroomItem;
+import dev.lumas.events.items.SummerDollopItem;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.LeaderboardCacheManager;
 import dev.lumas.events.tasks.PlaytimeCounterTask;
@@ -51,9 +50,8 @@ public final class EventMain extends JavaPlugin {
         Executors.asyncTimer(20 * 60L, 20 * 60L, _ -> EventPlayerManager.evictStale());
         MinigameManager.getInstance().repeatingAsync(0, 600);
 
-        LocalCustomItemManager.addCustomItem(new WaxcapShroomItem());
+        LocalCustomItemManager.addCustomItem(new SummerDollopItem());
         LocalCustomItemManager.addCustomItem(new StartMinigameItem());
-        LocalCustomItemManager.addCustomItem(new AmanitaShroomItem());
         LocalCustomItemManager.registerCustomItems();
 
         // playtime counter

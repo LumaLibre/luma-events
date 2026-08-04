@@ -1,7 +1,5 @@
 package dev.lumas.events.listeners;
 
-import dev.lumas.core.annotation.Autowire;
-import dev.lumas.core.annotation.Register;
 import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.models.CountdownBossBar;
@@ -14,7 +12,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 
 import java.util.concurrent.TimeUnit;
 
-@Register(Autowire.LISTENER)
+//@Register(Autowire.LISTENER)
 public class JoinListener implements Listener {
 
     @EventHandler

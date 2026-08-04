@@ -18,6 +18,8 @@ import java.util.Random;
 @Register(value = Autowire.LISTENER, requires = "Jobs")
 public class JobsListener implements Listener {
 
+    private static final String LUMBERJACK = "Lumberjack";
+
     private static final Random RANDOM = new Random(); // intentionally new random seed for this
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -30,7 +32,7 @@ public class JobsListener implements Listener {
 
         Config cfg = EventMain.getOkaeriConfig();
 
-        int bound = jobName.equalsIgnoreCase("Lumberjack") && isInTreeFeller(event.getPlayer().getPlayer())
+        int bound = jobName.equalsIgnoreCase(LUMBERJACK) && isInTreeFeller(event.getPlayer().getPlayer())
                 ? jobConstant.getBound() * 3
                 : jobConstant.getBound();
 
@@ -39,7 +41,7 @@ public class JobsListener implements Listener {
             if (player == null) {
                 return;
             }
-            TokenExchanging.give(player, TokenExchanging.TokenType.WAXCAP_SHROOM, RANDOM.nextInt(1, 3), jobName);
+            TokenExchanging.give(player, TokenExchanging.TokenType.SUMMER_DOLLOP, RANDOM.nextInt(1, 3), jobName);
         }
     }
 

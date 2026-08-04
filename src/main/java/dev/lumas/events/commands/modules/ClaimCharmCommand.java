@@ -1,8 +1,6 @@
 package dev.lumas.events.commands.modules;
 
-import dev.lumas.core.annotation.Autowire;
 import dev.lumas.core.annotation.CommandMeta;
-import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
@@ -19,7 +17,7 @@ import org.jspecify.annotations.NullMarked;
 import java.util.List;
 
 @NullMarked
-@Register(Autowire.SUBCOMMAND)
+//@Register(Autowire.SUBCOMMAND)
 @CommandMeta(
         name = "claim",
         permission = "lumaevents.default",

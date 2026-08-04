@@ -47,11 +47,7 @@ public class TokenExchanging {
             return;
         }
 
-        if (type == TokenType.AMINATA_SHROOM) {
-            Util.giveItem(player, itemStack, Math.min(finalAmount, 15)); // TODO hard cap - remove later
-        } else {
-            Util.giveItem(player, itemStack, finalAmount);
-        }
+        Util.giveItem(player, itemStack, Math.min(finalAmount, 20)); // TODO hard cap - remove later
 
         String msg = "You got <gold>" + finalAmount + "</gold> " + type.customName + "(s)!";
         if (source != null) {
@@ -61,7 +57,7 @@ public class TokenExchanging {
     }
 
     public static boolean take(Player player, TokenType type, int amount) {
-        return Util.takeItem(player, type.namespace, amount);
+        return Util.takeItem(player, type.key, amount);
     }
 
     public static int getAmount(Player player, TokenType type) {
@@ -71,7 +67,7 @@ public class TokenExchanging {
                 continue;
             }
 
-            if (itemStack.getPersistentDataContainer().has(type.namespace)) {
+            if (itemStack.getPersistentDataContainer().has(type.key)) {
                 total += itemStack.getAmount();
             }
         }
@@ -81,18 +77,17 @@ public class TokenExchanging {
 
     @Getter
     public enum TokenType {
-        WAXCAP_SHROOM(WaxcapShroomItem.class, "<b><gradient:#3f2615:#775d46:#f0af91:#fecdbb:#ead3c1>Waxcap Shroom</gradient></b>", "waxcap-shroom"),
-        AMINATA_SHROOM(AmanitaShroomItem.class, "<b><gradient:#da2022:#ea6867:#efa2a1:#f7f1f0:#ceda5c>Aminata Shroom</gradient></b>", "aminata-shroom"),
+        SUMMER_DOLLOP(SummerDollopItem.class, "<b><gradient:#487bd0:#6decea:#edf2dd:#f682ca:#FFFE5E>Summer Dollop</gradient></b>", "summer-dollop"),
         ;
 
         private final Class<? extends CustomItem> tokenClass;
         private final String customName;
-        private final NamespacedKey namespace;
+        private final NamespacedKey key;
 
-        TokenType(Class<? extends CustomItem> tokenClass, String customName, String namespace) {
+        TokenType(Class<? extends CustomItem> tokenClass, String customName, String key) {
             this.tokenClass = tokenClass;
             this.customName = customName;
-            this.namespace = new NamespacedKey(LumaItems.getInstance(), namespace);
+            this.key = new NamespacedKey(LumaItems.getInstance(), key);
         }
     }
 }
