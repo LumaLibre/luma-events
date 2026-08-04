@@ -51,7 +51,7 @@ public class IncursionDefinition extends OkaeriConfig {
     private int pointsPerToken = 25;
 
     @Comment("Tokens every participant gets, regardless of their score")
-    private int minimumTokens = 5;
+    private int minimumTokens = 2;
 
     @Comment("Our equivalent of a sniper (spyglass)")
     private SniperSettings sniper = new SniperSettings();

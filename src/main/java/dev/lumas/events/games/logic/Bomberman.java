@@ -74,8 +74,8 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     private static final double ALWAYS_VISIBLE_RADIUS = 5;
     private static final double[] BOX_EDGE_OFFSETS = {-0.3, 0.3};
     private static final double SELF_DAMAGE_MULTIPLIER = 0.5;
-    private static final int KILL_POINTS = 2;
-    private static final int WIN_POINTS = 5;
+    private static final int KILL_POINTS = 1;
+    private static final int WIN_POINTS = 3;
     private static final float GAME_OVER_SECONDS = 10;
     private static final int RESCUE_HEIGHT = 32;
 
@@ -733,7 +733,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             }
 
             List<Location> picked = new ArrayList<>(spawnCells.size());
-            for (int[] cell : spawnCells) picked.add(cellCentre(cell[0], cell[1]));
+            for (int[] cell : spawnCells) picked.add(facingCentre(cellCentre(cell[0], cell[1])));
             this.spawns = List.copyOf(picked);
 
             LOGGER.info("Generating arena for " + playerCount + " players: "
@@ -851,6 +851,14 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
         public Location centre(int heightAboveFloor) {
             return new Location(world, minX + size / 2.0, floorY + heightAboveFloor, minZ + size / 2.0);
+        }
+
+        private Location facingCentre(Location location) {
+            double dx = (minX + size / 2.0) - location.getX();
+            double dz = (minZ + size / 2.0) - location.getZ();
+            location.setYaw((float) Math.toDegrees(Math.atan2(-dx, dz)));
+            location.setPitch(0.0f);
+            return location;
         }
 
         public Location cellCentre(int cx, int cz) {

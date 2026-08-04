@@ -14,7 +14,7 @@ import dev.lumas.events.games.logic.MineBattle;
 import dev.lumas.events.games.logic.Paintball2_1;
 import dev.lumas.events.games.logic.PanelParty;
 import dev.lumas.events.games.logic.PropHunt;
-import dev.lumas.events.games.logic.SulfurSoccer;
+import dev.lumas.events.games.logic.Soccer;
 import dev.lumas.events.games.logic.TNTRun;
 import dev.lumas.events.games.logic.TNTTag;
 import dev.lumas.events.games.logic.TheNabbits;
@@ -41,7 +41,7 @@ public enum MinigameConstant {
     PANEL_PARTY(PanelParty::new, "panelparty", "panel_party"),
     MINEBATTLE((config) -> new MineBattle((MineBattleDefinition) config), "minebattle", "mine_battle"),
     TNTRUN(TNTRun::new, "tntrun", "tnt_run"),
-    SULFUR_SOCCER(SulfurSoccer::new, "sulfur_soccer", "soccer"),
+    SOCCER(Soccer::new, "sulfur_soccer", "soccer"),
     INCURSION(Incursion::new, "incursion"),
     BOMBERMAN((config) -> new Bomberman((BombermanDefinition) config), "bomberman", "bomber_man")
     ;
@@ -70,7 +70,7 @@ public enum MinigameConstant {
             case PANEL_PARTY -> (Map<String, T>) cfg.getPanelPartyMaps();
             case MINEBATTLE -> (Map<String, T>) cfg.getMineBattleMaps();
             case TNTRUN -> (Map<String, T>) cfg.getTntRunMaps();
-            case SULFUR_SOCCER -> (Map<String, T>) cfg.getSulfurSoccerMaps();
+            case SOCCER -> (Map<String, T>) cfg.getSulfurSoccerMaps();
             case INCURSION -> (Map<String, T>) cfg.getIncursionMaps();
             case BOMBERMAN -> (Map<String, T>) cfg.getBombermanMaps();
         };

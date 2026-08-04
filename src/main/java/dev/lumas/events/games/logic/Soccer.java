@@ -69,10 +69,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
-public final class SulfurSoccer extends InventoryUnifiedMinigame {
+public final class Soccer extends InventoryUnifiedMinigame {
 
     private static final String[] SPLASH = {
-        "Also known as football",
+        "Also known as football!",
         "Run, kick, run",
         "40.0 b/s!",
         "No hands! (Sometimes)",
@@ -121,7 +121,7 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
     private final Set<UUID> frozenPlayers = ConcurrentHashMap.newKeySet();
 
 
-    public SulfurSoccer(SulfurSoccerDefinition def) {
+    public Soccer(SulfurSoccerDefinition def) {
         super(
             "Soccer",
             Util.getRandom(SPLASH),
@@ -148,12 +148,14 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
 
     @Override
     protected int minimumParticipants() {
-        return 1; // TODO: Change to 2t
+        return 1; // TODO: Change to 2
     }
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
         // TODO: Tokens
+//        int score = this.playerScoreboard.getScore(participant);
+//        participant.addPermanentScore(MinigameConstant.SOCCER, );
     }
 
     @Override
@@ -165,7 +167,7 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
     @Override
     public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
         this.frozenPlayers.remove(participant.getUuid());
-        participant.operatePlayer(SulfurSoccer::unfreeze);
+        participant.operatePlayer(Soccer::unfreeze);
         participant.removeBossBar(this.bossBar);
         this.roleMap.remove(participant.getUuid());
         return super.removeParticipant(participant, doTeleport);
@@ -353,7 +355,7 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
     private void unfreezeAll() {
         this.frozenPlayers.clear();
         for (SoccerPlayer soccerPlayer : this.roleMap) {
-            soccerPlayer.operatePlayer(SulfurSoccer::unfreeze);
+            soccerPlayer.operatePlayer(Soccer::unfreeze);
         }
     }
 
@@ -809,7 +811,7 @@ public final class SulfurSoccer extends InventoryUnifiedMinigame {
 
                 scoreboard.addScore(opposingTeam, POINTS_PER_GOAL);
                 playerScoreboard.addScore(scorer, PLAYER_SELF_GOAL_PENALTY);
-                sendAudienceMessage(template.formatted(scorerName + " scored on their own goal! <dark_gray>(-" + POINTS_PER_GOAL + "points) <gray>—</gray> " + Util.getRandom(EXTRA_OWN_GOAL_NUANCE).formatted(scorerName, POINTS_PER_GOAL)) + "</dark_gray>");
+                sendAudienceMessage(template.formatted(scorerName + " scored on their own goal! <dark_gray>(-" + POINTS_PER_GOAL + " points) <gray>—</gray> " + Util.getRandom(EXTRA_OWN_GOAL_NUANCE).formatted(scorerName, POINTS_PER_GOAL)));
             } else {
                 sendAudienceMessage(scorer.team().template().formatted(scorerName + " scored! <dark_gray>(+" + POINTS_PER_GOAL + " points)"));
                 scoreboard.addScore(scorer.team(), POINTS_PER_GOAL);

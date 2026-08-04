@@ -370,6 +370,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
+        // TODO: revisit when token rates are decided
         int score = points.getOrDefault(participant.getUuid(), 0);
         tokenFormula.giveTokens(participant, score);
         participant.addPermanentScore(MinigameConstant.INCURSION, score);
