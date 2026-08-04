@@ -44,7 +44,7 @@ public final class Util {
 
     public static final Gson GSON = GsonHolder.GSON;
     public static final Random RANDOM = new Random();
-    public static final String PREFIX = "<b><gradient:#f7abdd:#ffefcd:#ec7464:#CB364C>Event</gradient></b> <dark_gray>»</dark_gray> ";
+    public static final String PREFIX = "<b><gradient:#1e8abf:#9be4df:#f8898a:#EDB172:#ffe494>Event</gradient></b> <dark_gray>»</dark_gray> ";
     public static final String TEXT_COLOR = "#ffefcd";
 
 

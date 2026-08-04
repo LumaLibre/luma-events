@@ -2,9 +2,11 @@ package dev.lumas.events.games.constants;
 
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.Config;
+import dev.lumas.events.configurable.sectors.BombermanDefinition;
 import dev.lumas.events.configurable.sectors.MineBattleDefinition;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.logic.BoatRace2;
+import dev.lumas.events.games.logic.Bomberman;
 import dev.lumas.events.games.logic.FreezeTag;
 import dev.lumas.events.games.logic.Incursion;
 import dev.lumas.events.games.logic.Manor;
@@ -41,7 +43,7 @@ public enum MinigameConstant {
     TNTRUN(TNTRun::new, "tntrun", "tnt_run"),
     SULFUR_SOCCER(SulfurSoccer::new, "sulfur_soccer", "soccer"),
     INCURSION(Incursion::new, "incursion"),
-    //BOMBERMAN((config) -> new Bomberman((BombermanDefinition) config), "bomberman", "bomber_man")
+    BOMBERMAN((config) -> new Bomberman((BombermanDefinition) config), "bomberman", "bomber_man")
     ;
 
     private final MinigameSupplier<?> supplier;
@@ -70,7 +72,7 @@ public enum MinigameConstant {
             case TNTRUN -> (Map<String, T>) cfg.getTntRunMaps();
             case SULFUR_SOCCER -> (Map<String, T>) cfg.getSulfurSoccerMaps();
             case INCURSION -> (Map<String, T>) cfg.getIncursionMaps();
-            //case BOMBERMAN -> (Map<String, T>) cfg.getBombermanMaps();
+            case BOMBERMAN -> (Map<String, T>) cfg.getBombermanMaps();
         };
     }
 

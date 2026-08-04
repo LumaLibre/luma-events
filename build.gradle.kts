@@ -29,7 +29,7 @@ repositories {
 
 
 dependencies {
-    compileOnly("dev.lumas.core:LumaCore:f25f237")
+    compileOnly("dev.lumas.core:LumaCore:dd53fbc")
     compileOnly("dev.lumas.lumaitems:LumaItems:f760f14")
     compileOnly("dev.lumas.glowapi:LumaGlowAPI:325d91d")
     compileOnly("me.clip:placeholderapi:2.11.6")
