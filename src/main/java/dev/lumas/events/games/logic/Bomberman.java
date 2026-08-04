@@ -14,10 +14,12 @@ import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
+import io.papermc.paper.event.entity.EntityKnockbackEvent;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.FireworkEffect;
 import org.bukkit.Location;
@@ -35,11 +37,13 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.potion.PotionEffect;
@@ -48,23 +52,37 @@ import org.bukkit.potion.PotionEffectType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class Bomberman extends InventoryUnifiedMinigame {
+
+    private static final String[] SPLASH = {
+        "Super!",
+        "Kaboom",
+        "Blow it up!",
+        "// TODO: Splash Text"
+    };
 
     private static final PluginContextLogger LOGGER = PluginContextLogger.getPluginLogger();
 
     private static final long DURATION = 240000L;
     private static final int TNT_FUSE_TICKS = 30;
     private static final int BOMB_SLOT_SAFETY_TICKS = TNT_FUSE_TICKS + 40;
+    private static final int BLAST_RADIUS = 2;
+    private static final double ALWAYS_VISIBLE_RADIUS = 5;
+    private static final double[] BOX_EDGE_OFFSETS = {-0.3, 0.3};
+    private static final double SELF_DAMAGE_MULTIPLIER = 0.5;
     private static final int KILL_POINTS = 2;
     private static final int WIN_POINTS = 5;
+    private static final float GAME_OVER_SECONDS = 10;
+    private static final int RESCUE_HEIGHT = 32;
 
-    private static final Color[] BOMB_COLORS = {
-            Color.RED, Color.AQUA, Color.LIME, Color.YELLOW, Color.FUCHSIA, Color.ORANGE,
-            Color.BLUE, Color.WHITE, Color.PURPLE, Color.TEAL
-    };
+    private static final Color[] BOMB_COLORS = pastelPalette(50);
 
     private final Arena arena;
+    private final Location spawnLocation;
     private final MinigameRoleMap<AbstractBombermanPlayer> roles = new MinigameRoleMap<>(AbstractBombermanPlayer::cleanup);
     private final Scoreboard<EventPlayer> scoreboard = new Scoreboard<>();
 
@@ -74,7 +92,8 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     private volatile boolean ending;
 
     public Bomberman(BombermanDefinition def) {
-        super("Bomberman", "TODO", DURATION, 5, true, true, false, false);
+        super("Bomberman", Util.getRandom(SPLASH), DURATION, 5, true, true, false, false);
+        this.spawnLocation = def.getSpawnLocation();
         this.arena = new Arena(def.getArenaOrigin());
         this.boundingBox = this.arena.maxBounds();
     }
@@ -85,8 +104,25 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     }
 
     @Override
-    protected ItemStack defaultItem() {
-        return ItemStack.of(Material.TNT, 64);
+    protected void onPreStart() {
+        super.onPreStart();
+        for (EventPlayer participant : this.participants) {
+            participant.operatePlayer(player -> {
+                player.clearActivePotionEffects();
+                player.getInventory().setItem(0, BombermanPlayer.TNT);
+                player.getInventory().setItem(1, ItemStack.of(Material.DIAMOND_PICKAXE));
+                player.getInventory().setItem(2, ItemStack.of(Material.DIAMOND_AXE));
+                player.getInventory().setItem(3, ItemStack.of(Material.COOKED_PORKCHOP, 64));
+                player.getInventory().setHeldItemSlot(0);
+                player.addPotionEffect(BombermanPlayer.MINING_FATIGUE);
+            });
+        }
+    }
+
+    @Override
+    protected boolean handleParticipantJoin(EventPlayer player) {
+        player.teleportAsync(this.spawnLocation);
+        return super.handleParticipantJoin(player);
     }
 
     @Override
@@ -98,29 +134,30 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
             int spawnIndex = 0;
             for (EventPlayer eventPlayer : this.participants) {
-                this.roles.put(new BombermanPlayer(eventPlayer, BOMB_COLORS[spawnIndex % BOMB_COLORS.length]));
+                this.roles.put(new BombermanPlayer(eventPlayer, this, BOMB_COLORS[spawnIndex % BOMB_COLORS.length]));
                 eventPlayer.teleportAsync(spawns.get(spawnIndex % spawns.size()));
                 spawnIndex++;
             }
 
             this.timerBar = CountdownBossBar.builder()
-                    .title("<red><b>Bomberman</b></red> <gray>|</gray> <yellow>%ss remaining")
+                    .title("<red><b>%ss remaining")
                     .color(BossBar.Color.RED)
                     .miliseconds(DURATION)
                     .audience(this.audience)
-                    .callback(this::finish)
+                    .callback(this::beginGameOver)
                     .build();
             this.timerBar.start();
 
             this.startingPlayers = this.roles.getMatching(BombermanPlayer.class).size();
             this.sendAudienceTitle("<red><b>GO!", "<gray>Last one standing wins");
-            this.playAudienceSound(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.6f, 1.4f);
+            this.playAudienceSound(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.2f, 1.4f);
             this.roundLive = true;
         });
     }
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
+        // TODO: tokens
         participant.addPermanentScore(MinigameConstant.BOMBERMAN, this.scoreboard.getScore(participant));
     }
 
@@ -129,41 +166,106 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         for (AbstractBombermanPlayer role : this.roles.values()) {
             role.tick();
         }
+        updateVisibility();
         if (!this.roundLive || this.ending) return;
         int alive = this.roles.getMatching(BombermanPlayer.class).size();
-        if (alive == 0 || (this.startingPlayers > 1 && alive <= 1)) {
-            finish();
+        if (alive == 0 || (this.startingPlayers > 1 && alive == 1)) {
+            beginGameOver();
         }
+    }
+
+    private void beginGameOver() {
+        if (!this.roundLive) return;
+        this.roundLive = false;
+
+        if (this.timerBar != null) {
+            this.timerBar.stop(false);
+        }
+
+        List<BombermanPlayer> alive = this.roles.getMatching(BombermanPlayer.class);
+        String outcome;
+        if (alive.size() == 1) {
+            BombermanPlayer winner = alive.getFirst();
+            this.scoreboard.addScore(winner.getEventPlayer(), WIN_POINTS);
+            outcome = "<yellow>" + winner.getName() + " wins!";
+        } else {
+            outcome = "<gray>Nobody survived";
+        }
+        this.playAudienceSound(Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 1.0f, 2f);
+
+        this.timerBar = CountdownBossBar.builder()
+                .title("<red><b>Game Over</b></red> <gray>|</gray> " + outcome)
+                .color(BossBar.Color.WHITE)
+                .seconds(GAME_OVER_SECONDS)
+                .audience(this.audience)
+                .callback(this::stop)
+                .build();
+        this.timerBar.start();
     }
 
     @Override
     protected void handleStop() {
+        if (this.ending) return;
+        this.ending = true;
+        this.roundLive = false;
+
         if (this.timerBar != null) {
             this.timerBar.stop(false);
             this.timerBar = null;
         }
         for (AbstractBombermanPlayer role : this.roles.values()) {
             role.cleanup();
+            role.teleportAsync(this.spawnLocation); // TODO temporary
         }
         this.roles.clear();
         this.arena.teardown();
     }
 
-    private void finish() {
-        if (this.ending) return;
-        this.ending = true;
-        this.roundLive = false;
-
+    private void updateVisibility() {
         List<BombermanPlayer> alive = this.roles.getMatching(BombermanPlayer.class);
-        if (alive.size() == 1) {
-            BombermanPlayer winner = alive.getFirst();
-            this.scoreboard.addScore(winner.getEventPlayer(), WIN_POINTS);
-            this.sendAudienceTitle("<gold><b>" + winner.getName(), "<yellow>wins!");
-        } else {
-            this.sendAudienceTitle("<gray><b>Time!", "<gray>Nobody survived");
+        int count = alive.size();
+        if (count < 2) return;
+
+        Player[] players = new Player[count];
+        Location[] positions = new Location[count];
+        for (int i = 0; i < count; i++) {
+            players[i] = alive.get(i).getEventPlayer().getPlayer();
+            positions[i] = players[i] == null ? null : players[i].getLocation();
         }
-        this.playAudienceSound(Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
-        Executors.runAsync(this::stop);
+
+        for (int i = 0; i < count; i++) {
+            if (players[i] == null) continue;
+            for (int j = i + 1; j < count; j++) {
+                if (players[j] == null) continue;
+                boolean visible = canSee(positions[i], positions[j]);
+                applyVisibility(alive.get(i), players[i], players[j], visible);
+                applyVisibility(alive.get(j), players[j], players[i], visible);
+            }
+        }
+    }
+
+    private boolean canSee(Location from, Location to) {
+        if (from.getWorld() != to.getWorld()) return false;
+        if (from.distanceSquared(to) <= ALWAYS_VISIBLE_RADIUS * ALWAYS_VISIBLE_RADIUS) return true;
+        if (this.arena.hasClearPath(from.getX(), from.getZ(), to.getX(), to.getZ())) return true;
+        for (double dx : BOX_EDGE_OFFSETS) {
+            for (double dz : BOX_EDGE_OFFSETS) {
+                if (this.arena.hasClearPath(from.getX(), from.getZ(), to.getX() + dx, to.getZ() + dz)) return true;
+            }
+        }
+        return false;
+    }
+
+    private void applyVisibility(BombermanPlayer viewerRole, Player viewer, Player target, boolean visible) {
+        boolean hidden = viewerRole.getHidden().contains(target.getUniqueId());
+        if (visible == !hidden) return;
+        if (visible) {
+            viewerRole.getHidden().remove(target.getUniqueId());
+            Executors.runSync(viewer, () -> viewer.showPlayer(EventMain.getInstance(), target));
+        } else {
+            viewerRole.getHidden().add(target.getUniqueId());
+            Executors.runSync(viewer, () -> viewer.hidePlayer(EventMain.getInstance(), target));
+        }
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
@@ -171,7 +273,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         this.ensureNotIllegal();
         Player player = event.getPlayer();
         AbstractBombermanPlayer role = this.roles.get(player.getUniqueId());
-        if (!(role instanceof BombermanPlayer)) {
+        if (!(role instanceof BombermanPlayer bomber)) {
             if (role != null) event.setCancelled(true);
             return;
         }
@@ -182,7 +284,6 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             return;
         }
 
-        BombermanPlayer bomber = (BombermanPlayer) role;
         if (bomber.isBombLive()) {
             player.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 0.7f, 0.6f);
             player.sendActionBar(Util.color("<red>Wait for your bomb to go off!"));
@@ -205,7 +306,12 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         if (!(event.getEntity() instanceof TNTPrimed tnt) || !this.arena.contains(event.getLocation())) return;
 
         event.setYield(0.0f);
+        int centerX = event.getLocation().getBlockX();
+        int centerZ = event.getLocation().getBlockZ();
         for (Block block : List.copyOf(event.blockList())) {
+            int dx = block.getX() - centerX;
+            int dz = block.getZ() - centerZ;
+            if (dx * dx + dz * dz > BLAST_RADIUS * BLAST_RADIUS) continue;
             this.arena.destroy(block.getX(), block.getZ());
         }
         event.blockList().clear();
@@ -219,14 +325,41 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         burst(event.getLocation(), color);
     }
 
+    /** Golden-angle hues so consecutive players never get near-identical colors. */
+    private static Color[] pastelPalette(int count) {
+        Color[] palette = new Color[count];
+        for (int i = 0; i < count; i++) {
+            palette[i] = pastel((float) ((i * 0.6180339887498949) % 1.0));
+        }
+        return palette;
+    }
+
+    private static Color pastel(float hue) {
+        float saturation = 0.45f;
+        float sector = hue * 6.0f;
+        int index = (int) sector;
+        float offset = sector - index;
+        float p = 1.0f - saturation;
+        float q = 1.0f - saturation * offset;
+        float t = 1.0f - saturation * (1.0f - offset);
+        float r, g, b;
+        switch (index % 6) {
+            case 0 -> { r = 1.0f; g = t; b = p; }
+            case 1 -> { r = q; g = 1.0f; b = p; }
+            case 2 -> { r = p; g = 1.0f; b = t; }
+            case 3 -> { r = p; g = q; b = 1.0f; }
+            case 4 -> { r = t; g = p; b = 1.0f; }
+            default -> { r = 1.0f; g = p; b = q; }
+        }
+        return Color.fromRGB(Math.round(r * 255), Math.round(g * 255), Math.round(b * 255));
+    }
+
     private void burst(Location location, Color color) {
         Firework firework = location.getWorld().spawn(location, Firework.class, spawned -> {
             FireworkMeta meta = spawned.getFireworkMeta();
             meta.addEffect(FireworkEffect.builder()
                     .withColor(color)
-                    .withFade(Color.WHITE)
-                    .with(FireworkEffect.Type.BALL_LARGE)
-                    .withTrail()
+                    .with(FireworkEffect.Type.BALL)
                     .build());
             meta.setPower(0);
             spawned.setFireworkMeta(meta);
@@ -251,8 +384,51 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             return;
         }
         if (!(event.getEntity() instanceof Player victim)) return;
-        if (!(event.getDamager() instanceof TNTPrimed tnt)) return;
-        if (tnt.getSource() instanceof Player source && source.getUniqueId().equals(victim.getUniqueId())) {
+        if (!this.roles.containsKey(victim.getUniqueId())) return;
+
+        if (event.getDamager() instanceof Player) {
+            event.setCancelled(true);
+            return;
+        }
+        if (event.getDamager() instanceof TNTPrimed tnt
+                && tnt.getSource() instanceof Player source
+                && source.getUniqueId().equals(victim.getUniqueId())) {
+            event.setDamage(event.getDamage() * SELF_DAMAGE_MULTIPLIER);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onDropItem(PlayerDropItemEvent event) {
+        this.ensureNotIllegal();
+        if (isParticipant(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onBlockBreak(BlockBreakEvent event) {
+        this.ensureNotIllegal();
+        Player player = event.getPlayer();
+        AbstractBombermanPlayer role = this.roles.get(player.getUniqueId());
+        if (role == null) return;
+
+        if (!(role instanceof BombermanPlayer)) return;
+
+        Block block = event.getBlock();
+        if (this.arena.typeAt(block) == Arena.Cell.DESTRUCTIBLE) {
+            //this.arena.destroy(block.getX(), block.getZ());
+            //player.playSound(player, Sound.BLOCK_STONE_BREAK, 0.8f, 1.1f);
+            // just let it pass
+        } else {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onKnockback(EntityKnockbackEvent event) {
+        this.ensureNotIllegal();
+        if (event.getCause() != EntityKnockbackEvent.Cause.EXPLOSION) return;
+        if (event.getEntity() instanceof Player player && this.roles.containsKey(player.getUniqueId())) {
             event.setCancelled(true);
         }
     }
@@ -260,52 +436,58 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
         this.ensureNotIllegal();
-        Player player = event.getEntity();
-        AbstractBombermanPlayer role = this.roles.get(player.getUniqueId());
-        if (!(role instanceof BombermanPlayer)) return;
+        AbstractBombermanPlayer role = this.roles.get(event.getEntity().getUniqueId());
+        if (role == null) return;
+        role.death(event);
+    }
 
+    private static boolean fellOffMap(Player player) {
+        EntityDamageEvent last = player.getLastDamageCause();
+        if (last == null) return false;
+        EntityDamageEvent.DamageCause cause = last.getCause();
+        return cause == EntityDamageEvent.DamageCause.FALL || cause == EntityDamageEvent.DamageCause.VOID;
+    }
+
+    private static void survive(PlayerDeathEvent event) {
+        Player player = event.getEntity();
         event.setCancelled(true);
         event.getDrops().clear();
         AttributeInstance maxHealth = player.getAttribute(Attribute.MAX_HEALTH);
         player.setHealth(maxHealth == null ? 20.0 : maxHealth.getValue());
         player.setFireTicks(0);
-
-        Player killer = player.getKiller();
-        if (killer != null && !killer.getUniqueId().equals(player.getUniqueId())
-                && this.roles.get(killer.getUniqueId()) instanceof BombermanPlayer bomber) {
-            this.scoreboard.addScore(bomber.getEventPlayer(), KILL_POINTS);
-            this.sendAudienceMessage("<red>" + role.getName() + "</red> was blown up by <green>" + bomber.getName() + "</green>!");
-        } else {
-            this.sendAudienceMessage("<red>" + role.getName() + "</red> blew themselves up!");
-        }
-
-        this.roles.swapRole(role, () -> new BombermanSpectator(role.getEventPlayer(), this));
-        this.playAudienceSound(Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 0.5f);
-        player.getWorld().strikeLightningEffect(player.getLocation());
     }
 
     public abstract static class AbstractBombermanPlayer extends MinigameRole {
 
-        public AbstractBombermanPlayer(EventPlayer eventPlayer) {
+        protected final Bomberman context;
+
+        public AbstractBombermanPlayer(EventPlayer eventPlayer, Bomberman context) {
             super(eventPlayer);
+            this.context = context;
         }
 
         public abstract void tick();
         public abstract void cleanup();
+        public abstract void death(PlayerDeathEvent event);
     }
 
+    @Getter
+    @Setter
     public static class BombermanPlayer extends AbstractBombermanPlayer {
 
+        private static final PotionEffect MINING_FATIGUE = new PotionEffect(PotionEffectType.MINING_FATIGUE, 200, 1, false, false, false);
         private static final Map<Attribute, AttributeModifier> ATTRIBUTES = Map.of(
-            Attribute.JUMP_STRENGTH, new AttributeModifier(new NamespacedKey(EventMain.getInstance(), "jump_strength"), -10.0, AttributeModifier.Operation.ADD_NUMBER)
+            Attribute.JUMP_STRENGTH, new AttributeModifier(new NamespacedKey(EventMain.getInstance(), "jump_strength"), -20.0, AttributeModifier.Operation.ADD_NUMBER)
         );
         private static final ItemStack TNT = ItemStack.of(Material.TNT, 64);
 
-        @Getter private final Color color;
-        @Getter @Setter private volatile boolean bombLive;
 
-        public BombermanPlayer(EventPlayer eventPlayer, Color color) {
-            super(eventPlayer);
+        private final Color color;
+        private final Set<UUID> hidden = ConcurrentHashMap.newKeySet();
+        private volatile boolean bombLive;
+
+        public BombermanPlayer(EventPlayer eventPlayer, Bomberman context, Color color) {
+            super(eventPlayer, context);
             this.color = color;
 
             operatePlayer(player -> {
@@ -323,7 +505,33 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
         @Override
         public void tick() {
+            operatePlayer(player -> {
+                player.addPotionEffect(MINING_FATIGUE);
+            });
+        }
 
+        @Override
+        public void death(PlayerDeathEvent event) {
+            survive(event);
+            Player player = event.getEntity();
+            boolean fellOff = fellOffMap(player);
+            Location restAt = fellOff ? this.context.arena.centre(RESCUE_HEIGHT) : player.getLocation();
+
+            Player killer = player.getKiller();
+            if (fellOff) {
+                this.context.sendAudienceMessage("<red>" + getName() + "</red> fell off the map!");
+            } else if (killer != null && !killer.getUniqueId().equals(player.getUniqueId())
+                    && this.context.roles.get(killer.getUniqueId()) instanceof BombermanPlayer bomber) {
+                this.context.scoreboard.addScore(bomber.getEventPlayer(), KILL_POINTS);
+                this.context.sendAudienceMessage("<red>" + getName() + "</red> was blown up by <green>" + bomber.getName() + "</green>!");
+            } else {
+                this.context.sendAudienceMessage("<red>" + getName() + "</red> blew themselves up!");
+            }
+
+            player.teleportAsync(restAt);
+            this.context.roles.swapRole(this, () -> new BombermanSpectator(getEventPlayer(), this.context, restAt));
+            this.context.playAudienceSound(Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 0.5f);
+            if (!fellOff) player.getWorld().strikeLightningEffect(restAt);
         }
 
         @Override
@@ -334,6 +542,12 @@ public final class Bomberman extends InventoryUnifiedMinigame {
                     Preconditions.checkNotNull(attributeInstance, "Attribute %s not found for player %s", entry.getKey(), player.getName());
                     attributeInstance.removeModifier(entry.getValue());
                 }
+                player.removePotionEffect(PotionEffectType.MINING_FATIGUE);
+                for (UUID id : this.hidden) {
+                    Player other = Bukkit.getPlayer(id);
+                    if (other != null) player.showPlayer(EventMain.getInstance(), other);
+                }
+                this.hidden.clear();
             });
         }
     }
@@ -342,16 +556,18 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
         private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 300, 0, false, false, false);
 
-        private final Bomberman context;
+        private final Location deathLocation;
 
-        public BombermanSpectator(EventPlayer eventPlayer, Bomberman context) {
-            super(eventPlayer);
-            this.context = context;
+        public BombermanSpectator(EventPlayer eventPlayer, Bomberman context, Location deathLocation) {
+            super(eventPlayer, context);
+            this.deathLocation = deathLocation;
             operatePlayer(player -> {
                 player.getInventory().clear();
                 player.setAllowFlight(true);
                 player.setFlying(true);
                 player.addPotionEffect(INVISIBILITY);
+                Location loc = player.getLocation().clone().add(0, 1, 0);
+                player.teleportAsync(loc);
             });
             setVisibleToOthers(false);
         }
@@ -381,12 +597,23 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         }
 
         @Override
+        public void death(PlayerDeathEvent event) {
+            survive(event);
+            operatePlayer(player -> {
+                player.teleportAsync(this.deathLocation);
+                player.setAllowFlight(true);
+                player.setFlying(true);
+            });
+        }
+
+        @Override
         public void cleanup() {
             setVisibleToOthers(true);
             operatePlayer(player -> {
                 player.setFlying(false);
                 player.setAllowFlight(false);
                 player.removePotionEffect(PotionEffectType.INVISIBILITY);
+                player.removePotionEffect(PotionEffectType.MINING_FATIGUE);
             });
         }
     }
@@ -432,20 +659,30 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         private static final double CELLS_PER_PLAYER = 35.0;
         private static final double MIN_SPAWN_SPACING = 10.0;
         private static final int SPAWN_CLEARANCE = 2;
-        private static final int PILLAR_HEIGHT = 4;
-        private static final int SOFT_HEIGHT = 2;
+        private static final int PILLAR_HEIGHT = 8;
+        private static final int SOFT_HEIGHT = 7;
         private static final int BLOCKS_PER_TICK = 20000;
 
         private static final BlockData FLOOR = Material.BEDROCK.createBlockData();
         private static final BlockData PILLAR = Material.OBSIDIAN.createBlockData();
-        private static final Map<Character, BlockData> SOFT = Map.of(
-                'N', Material.NETHERRACK.createBlockData(),
-                'P', Material.OAK_PLANKS.createBlockData(),
-                'D', Material.DIRT.createBlockData()
+
+        private static final List<Map<Character, BlockData>> SOFT_PALETTES = List.of(
+                softPalette(Material.NETHERRACK, Material.OAK_PLANKS, Material.DIRT),
+                softPalette(Material.CRIMSON_NYLIUM, Material.CRIMSON_PLANKS, Material.SOUL_SOIL),
+                softPalette(Material.WARPED_NYLIUM, Material.WARPED_PLANKS, Material.SOUL_SAND),
+                softPalette(Material.RED_SAND, Material.BIRCH_PLANKS, Material.SANDSTONE),
+                softPalette(Material.SNOW_BLOCK, Material.SPRUCE_PLANKS, Material.PACKED_ICE),
+                softPalette(Material.MYCELIUM, Material.JUNGLE_PLANKS, Material.PODZOL),
+                softPalette(Material.SCULK, Material.DARK_OAK_PLANKS, Material.ROOTED_DIRT)
         );
+
+        private static Map<Character, BlockData> softPalette(Material n, Material p, Material d) {
+            return Map.of('N', n.createBlockData(), 'P', p.createBlockData(), 'D', d.createBlockData());
+        }
 
         private final Location origin;
 
+        private Map<Character, BlockData> soft = SOFT_PALETTES.getFirst();
         private World world;
         private int size;
         private int minX;
@@ -479,6 +716,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
                         + " players at " + MIN_SPAWN_SPACING + " blocks apart, even at the maximum arena size; players will share spawns.");
             }
 
+            this.soft = Util.getRandom(SOFT_PALETTES);
             this.world = this.origin.getWorld();
             this.size = chosenSize;
             this.minX = this.origin.getBlockX() - chosenSize / 2;
@@ -577,6 +815,44 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             return true;
         }
 
+        public boolean hasClearPath(double fromX, double fromZ, double toX, double toZ) {
+            if (this.world == null) return true;
+            int cx = (int) Math.floor(fromX);
+            int cz = (int) Math.floor(fromZ);
+            int endX = (int) Math.floor(toX);
+            int endZ = (int) Math.floor(toZ);
+            if (cx == endX && cz == endZ) return true;
+
+            double dx = toX - fromX;
+            double dz = toZ - fromZ;
+            int stepX = dx >= 0 ? 1 : -1;
+            int stepZ = dz >= 0 ? 1 : -1;
+            double deltaX = dx == 0 ? Double.MAX_VALUE : Math.abs(1.0 / dx);
+            double deltaZ = dz == 0 ? Double.MAX_VALUE : Math.abs(1.0 / dz);
+            double nextX = dx == 0 ? Double.MAX_VALUE
+                    : (dx > 0 ? (cx + 1 - fromX) : (fromX - cx)) * Math.abs(1.0 / dx);
+            double nextZ = dz == 0 ? Double.MAX_VALUE
+                    : (dz > 0 ? (cz + 1 - fromZ) : (fromZ - cz)) * Math.abs(1.0 / dz);
+
+            int guard = size * 4;
+            while (guard-- > 0) {
+                if (nextX < nextZ) {
+                    nextX += deltaX;
+                    cx += stepX;
+                } else {
+                    nextZ += deltaZ;
+                    cz += stepZ;
+                }
+                if (cx == endX && cz == endZ) return true;
+                if (typeAt(cx, cz) != Cell.OPEN && typeAt(cx, cz) != Cell.OUTSIDE) return false;
+            }
+            return false;
+        }
+
+        public Location centre(int heightAboveFloor) {
+            return new Location(world, minX + size / 2.0, floorY + heightAboveFloor, minZ + size / 2.0);
+        }
+
         public Location cellCentre(int cx, int cz) {
             return new Location(world, minX + cx + 0.5, floorY + 1, minZ + cz + 0.5);
         }
@@ -663,7 +939,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
                 return above < PILLAR_HEIGHT ? PILLAR : null;
             }
             if (this.opened[cx][cz]) return null;
-            return above <= SOFT_HEIGHT ? SOFT.getOrDefault(symbol, PILLAR) : null;
+            return above <= SOFT_HEIGHT ? this.soft.getOrDefault(symbol, PILLAR) : null;
         }
 
         private void stream(boolean clearing, Runnable onComplete) {
