@@ -238,7 +238,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         this.boundingBox = definition.getBounds().toBlockBoundingBox();
         this.side1 = new MapSide(definition.getTeam1().getSpawnArea(), definition.getTeam1().getHole().toBlockBoundingBox());
         this.side2 = new MapSide(definition.getTeam2().getSpawnArea(), definition.getTeam2().getHole().toBlockBoundingBox());
-        this.tokenFormula = new IncursionTokenFormula(definition.getMinimumTokens(), definition.getPointsPerToken());
+        this.tokenFormula = new IncursionTokenFormula(definition.getPointsPerToken());
 
         List<Miniboss> rooms = new ArrayList<>();
         for (WorldTiedBoundingBox room : definition.getBossRooms()) {
@@ -370,7 +370,6 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
-        // TODO: revisit when token rates are decided
         int score = points.getOrDefault(participant.getUuid(), 0);
         tokenFormula.giveTokens(participant, score);
         participant.addPermanentScore(MinigameConstant.INCURSION, score);

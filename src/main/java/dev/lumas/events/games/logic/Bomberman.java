@@ -6,12 +6,15 @@ import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.BombermanDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
+import dev.lumas.events.games.interfaces.Scorer;
 import dev.lumas.events.games.interfaces.models.MinigameRole;
 import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
+import dev.lumas.events.games.tokenformula.BombermanTokenFormula;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.WorldTiedBoundingBox;
+import dev.lumas.events.utility.Couple;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import io.papermc.paper.event.entity.EntityKnockbackEvent;
@@ -19,6 +22,7 @@ import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.FireworkEffect;
@@ -74,8 +78,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     private static final double ALWAYS_VISIBLE_RADIUS = 5;
     private static final double[] BOX_EDGE_OFFSETS = {-0.3, 0.3};
     private static final double SELF_DAMAGE_MULTIPLIER = 0.5;
-    private static final int KILL_POINTS = 1;
-    private static final int WIN_POINTS = 3;
+    private static final int KILL_SCORE = 20;
     private static final float GAME_OVER_SECONDS = 10;
     private static final int RESCUE_HEIGHT = 32;
 
@@ -85,6 +88,8 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     private final Location spawnLocation;
     private final MinigameRoleMap<AbstractBombermanPlayer> roles = new MinigameRoleMap<>(AbstractBombermanPlayer::cleanup);
     private final Scoreboard<EventPlayer> scoreboard = new Scoreboard<>();
+    private BombermanTokenFormula tokenFormula;
+    private volatile UUID winner;
 
     private CountdownBossBar timerBar;
     private volatile int startingPlayers;
@@ -149,6 +154,8 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             this.timerBar.start();
 
             this.startingPlayers = this.roles.getMatching(BombermanPlayer.class).size();
+            int fairShare = Math.max(1, this.arena.totalDestructible() / Math.max(1, this.startingPlayers));
+            this.tokenFormula = new BombermanTokenFormula((fairShare * 2) + ((this.startingPlayers - 1) * KILL_SCORE));
             this.sendAudienceTitle("<red><b>GO!", "<gray>Last one standing wins");
             this.playAudienceSound(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.2f, 1.4f);
             this.roundLive = true;
@@ -157,8 +164,13 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
-        // TODO: tokens
-        participant.addPermanentScore(MinigameConstant.BOMBERMAN, this.scoreboard.getScore(participant));
+        int score = this.scoreboard.getScore(participant);
+        if (this.tokenFormula != null) {
+            this.tokenFormula.giveTokens(participant, Couple.of(score, participant.getUuid().equals(this.winner)));
+        } else {
+            LOGGER.error("Null token formula");
+        }
+        participant.addPermanentScore(MinigameConstant.BOMBERMAN, score);
     }
 
     @Override
@@ -167,6 +179,13 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             role.tick();
         }
         updateVisibility();
+        if (this.arena.isReady()) {
+            int remaining = (int) Math.round(this.arena.remainingFraction() * 100.0);
+            Component actionBar = Util.color("<gray>Map remaining: <yellow>" + remaining + "%");
+            for (EventPlayer participant : this.participants) {
+                participant.operatePlayer(player -> player.sendActionBar(actionBar));
+            }
+        }
         if (!this.roundLive || this.ending) return;
         int alive = this.roles.getMatching(BombermanPlayer.class).size();
         if (alive == 0 || (this.startingPlayers > 1 && alive == 1)) {
@@ -186,7 +205,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         String outcome;
         if (alive.size() == 1) {
             BombermanPlayer winner = alive.getFirst();
-            this.scoreboard.addScore(winner.getEventPlayer(), WIN_POINTS);
+            this.winner = winner.getUuid();
             outcome = "<yellow>" + winner.getName() + " wins!";
         } else {
             outcome = "<gray>Nobody survived";
@@ -308,13 +327,18 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         event.setYield(0.0f);
         int centerX = event.getLocation().getBlockX();
         int centerZ = event.getLocation().getBlockZ();
+        int broken = 0;
         for (Block block : List.copyOf(event.blockList())) {
             int dx = block.getX() - centerX;
             int dz = block.getZ() - centerZ;
             if (dx * dx + dz * dz > BLAST_RADIUS * BLAST_RADIUS) continue;
-            this.arena.destroy(block.getX(), block.getZ());
+            if (this.arena.destroy(block.getX(), block.getZ())) broken++;
         }
         event.blockList().clear();
+        if (broken > 0 && tnt.getSource() instanceof Player owner
+                && this.roles.get(owner.getUniqueId()) instanceof AbstractBombermanPlayer role) {
+            this.scoreboard.addScore(role.getEventPlayer(), broken);
+        }
 
         Color color = Color.WHITE;
         if (tnt.getSource() instanceof Player owner
@@ -416,9 +440,9 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
         Block block = event.getBlock();
         if (this.arena.typeAt(block) == Arena.Cell.DESTRUCTIBLE) {
-            //this.arena.destroy(block.getX(), block.getZ());
-            //player.playSound(player, Sound.BLOCK_STONE_BREAK, 0.8f, 1.1f);
-            // just let it pass
+            if (this.arena.noteMined(block.getX(), block.getZ(), block.getY())) {
+                this.scoreboard.addScore(role.getEventPlayer(), 1);
+            }
         } else {
             event.setCancelled(true);
         }
@@ -457,7 +481,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         player.setFireTicks(0);
     }
 
-    public abstract static class AbstractBombermanPlayer extends MinigameRole {
+    public abstract static class AbstractBombermanPlayer extends MinigameRole implements Scorer {
 
         protected final Bomberman context;
 
@@ -469,6 +493,16 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         public abstract void tick();
         public abstract void cleanup();
         public abstract void death(PlayerDeathEvent event);
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof AbstractBombermanPlayer role && role.getUuid().equals(getUuid());
+        }
+
+        @Override
+        public int hashCode() {
+            return getUuid().hashCode();
+        }
     }
 
     @Getter
@@ -522,7 +556,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
                 this.context.sendAudienceMessage("<red>" + getName() + "</red> fell off the map!");
             } else if (killer != null && !killer.getUniqueId().equals(player.getUniqueId())
                     && this.context.roles.get(killer.getUniqueId()) instanceof BombermanPlayer bomber) {
-                this.context.scoreboard.addScore(bomber.getEventPlayer(), KILL_POINTS);
+                this.context.scoreboard.addScore(bomber.getEventPlayer(), KILL_SCORE);
                 this.context.sendAudienceMessage("<red>" + getName() + "</red> was blown up by <green>" + bomber.getName() + "</green>!");
             } else {
                 this.context.sendAudienceMessage("<red>" + getName() + "</red> blew themselves up!");
@@ -683,6 +717,8 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         private final Location origin;
 
         private Map<Character, BlockData> soft = SOFT_PALETTES.getFirst();
+        private volatile int totalDestructible;
+        private volatile int remainingDestructible;
         private World world;
         private int size;
         private int minX;
@@ -731,6 +767,17 @@ public final class Bomberman extends InventoryUnifiedMinigame {
                     open(cell[0], cell[1] + d);
                 }
             }
+
+            this.totalDestructible = 0;
+            for (int cx = 0; cx < chosenSize; cx++) {
+                for (int cz = 0; cz < chosenSize; cz++) {
+                    char symbol = symbolAt(cx, cz);
+                    if (symbol != LATTICE_PILLAR && symbol != DECOR_PILLAR && !this.opened[cx][cz]) {
+                        this.totalDestructible++;
+                    }
+                }
+            }
+            this.remainingDestructible = this.totalDestructible;
 
             List<Location> picked = new ArrayList<>(spawnCells.size());
             for (int[] cell : spawnCells) picked.add(facingCentre(cellCentre(cell[0], cell[1])));
@@ -809,6 +856,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         public boolean destroy(int worldX, int worldZ) {
             if (typeAt(worldX, worldZ) != Cell.DESTRUCTIBLE) return false;
             this.opened[worldX - minX][worldZ - minZ] = true;
+            this.remainingDestructible--;
             for (int dy = 1; dy <= SOFT_HEIGHT; dy++) {
                 this.world.getBlockAt(worldX, floorY + dy, worldZ).setType(Material.AIR, false);
             }
@@ -847,6 +895,26 @@ public final class Bomberman extends InventoryUnifiedMinigame {
                 if (typeAt(cx, cz) != Cell.OPEN && typeAt(cx, cz) != Cell.OUTSIDE) return false;
             }
             return false;
+        }
+
+        public boolean noteMined(int worldX, int worldZ, int brokenY) {
+            if (typeAt(worldX, worldZ) != Cell.DESTRUCTIBLE) return false;
+            for (int dy = 1; dy <= SOFT_HEIGHT; dy++) {
+                int y = floorY + dy;
+                if (y == brokenY) continue;
+                if (!this.world.getBlockAt(worldX, y, worldZ).getType().isAir()) return false;
+            }
+            this.opened[worldX - minX][worldZ - minZ] = true;
+            this.remainingDestructible--;
+            return true;
+        }
+
+        public int totalDestructible() {
+            return this.totalDestructible;
+        }
+
+        public double remainingFraction() {
+            return this.totalDestructible <= 0 ? 1.0 : this.remainingDestructible / (double) this.totalDestructible;
         }
 
         public Location centre(int heightAboveFloor) {

@@ -13,11 +13,10 @@ class SummerDollopItem : CustomItemFunctions() {
         return ItemFactory.builder()
             .name("<b><gradient:#487bd0:#6decea:#edf2dd:#f682ca:#FFFE5E>Summer Dollop</gradient></b>")
             .lore(
-                "A delightful soft",
-                "lump of pineapple",
-                "cream perfect for",
-                "crafting summer",
-                "deserts.",
+                "A delightful soft lump",
+                "of pineapple cream",
+                "perfect for crafting",
+                "summer deserts.",
                 "",
                 "<#FFFE5E>Trade</#FFFE5E> enough of these",
                 "in for special rewards!"
