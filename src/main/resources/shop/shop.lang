@@ -1,9 +1,0 @@
-purchase_success=<gradient:#F6C65B:#F3AA4C:#E884C9>Purchase successful!</gradient> <#A7957B>You now have <gradient:#FFD36B:#F3AA4C>{souls} souls</gradient><#A7957B>.
-limit_reached_single=<gradient:#8E6A93:#6B496B>Already purchased</gradient>
-limit_reached_multi=<gradient:#8E6A93:#6B496B>Already purchased <gradient:#B08ACF:#CA51CB>{limit} times</gradient>
-out_of_stock=<gradient:#E56A91:#CA51CB>This item is out of stock!</gradient>
-not_enough_souls=<gradient:#E56A91:#CA51CB>Not enough souls!</gradient> <#A7957B>You need <gradient:#FFD36B:#F3AA4C>{price} souls</gradient><#A7957B> but only have <gradient:#FFD36B:#F3AA4C>{souls} souls</gradient><#A7957B>.
-purchase_status_none=<gradient:#C7B18A:#F3D08A>Click to purchase!</gradient>
-purchase_status_partial=<gradient:#8FA8D8:#B08ACF>Purchased {count} times</gradient>
-purchase_status_done_single=<gradient:#7A627A:#6B496B>Already purchased</gradient>
-purchase_status_done_multi=<gradient:#7A627A:#6B496B>Already purchased {count} times</gradient>
