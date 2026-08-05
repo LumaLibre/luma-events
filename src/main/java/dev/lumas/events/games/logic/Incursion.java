@@ -1732,6 +1732,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
         private volatile boolean alive;
         private volatile Mob entity;
+        private volatile Entity mount;
 
         // Refreshed on the mob's thread, so weapons can test against it from anywhere
         private volatile BoundingBox hitbox;
@@ -1776,10 +1777,12 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
 
         @Nullable
-        private synchronized Mob claim() {
+        private synchronized Claimed claim() {
             Mob mob = this.entity;
+            Entity mount = this.mount;
             this.alive = false;
             this.entity = null;
+            this.mount = null;
             this.hitbox = null;
             this.respawnAt = 0;
             this.burnUntil = 0;
@@ -1789,7 +1792,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 this.task = null;
             }
             if (mob != null) minibossesByEntity.remove(mob.getUniqueId());
-            return mob;
+            return mob == null ? null : new Claimed(mob, mount);
         }
 
         private void spawn() {
@@ -1848,12 +1851,13 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
                 synchronized (this) {
                     if (Incursion.this.stopping || this.entity != null) {
-                        mob.remove();
+                        removeWithMount(mob, null);
                         return;
                     }
 
                     this.home = at.clone();
                     this.entity = mob;
+                    this.mount = adoptMount(mob);
                     this.hitbox = mob.getBoundingBox();
                     this.shownHealth = -1;
                     this.lastTickAt = System.currentTimeMillis();
@@ -1968,9 +1972,12 @@ public final class Incursion extends InventoryUnifiedMinigame {
             if (back == null) back = this.home; // the shortest way back is inside a wall
             if (back == null) return;
 
-            mob.setVelocity(new Vector(0, 0, 0));
-            mob.setFallDistance(0f);
-            mob.teleportAsync(back);
+            Entity moving = mob;
+            while (moving.getVehicle() != null) moving = moving.getVehicle();
+
+            moving.setVelocity(new Vector(0, 0, 0));
+            moving.setFallDistance(0f);
+            moving.teleportAsync(back);
         }
 
         // The closest spot just inside the room, or null if the mob wouldn't fit there
@@ -1994,14 +2001,14 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
         // Called on the mob's thread
         private void slay(@Nullable Player killer) {
-            Mob mob = claim();
-            if (mob == null) return; // half-time or end of game
+            Claimed claimed = claim();
+            if (claimed == null) return; // half-time or end of game
 
             int respawnTicks = definition.getMiniboss().getRespawnTicks();
             if (respawnTicks > 0) this.respawnAt = System.currentTimeMillis() + (respawnTicks * 50L);
 
-            Location at = mob.getLocation();
-            if (!mob.isDead()) mob.remove();
+            Location at = claimed.mob().getLocation();
+            removeWithMount(claimed.mob(), claimed.mount());
 
             World world = at.getWorld();
             world.spawnParticle(Particle.EXPLOSION_EMITTER, at.clone().add(0, 1, 0), 1);
@@ -2039,9 +2046,31 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
 
         private void despawn() {
-            Mob mob = claim();
-            if (mob != null) Executors.runSync(mob, mob::remove);
+            Claimed claimed = claim();
+            if (claimed == null) return;
+            Executors.runSync(claimed.mob(), () -> removeWithMount(claimed.mob(), claimed.mount()));
         }
+
+        // Vanguards occasionally spawn as jockeys
+        @Nullable
+        private static Entity adoptMount(Mob mob) {
+            Entity mount = mob.getVehicle();
+            if (mount == null) return null;
+
+            mount.setPersistent(false);
+            if (mount instanceof Mob ridden) ridden.setRemoveWhenFarAway(false);
+            return mount;
+        }
+
+        private static void removeWithMount(Mob mob, @Nullable Entity spawnedOn) {
+            Entity riding = mob.getVehicle();
+            if (!mob.isDead()) mob.remove();
+
+            if (riding != null && !riding.isDead()) riding.remove();
+            if (spawnedOn != null && spawnedOn != riding && !spawnedOn.isDead()) spawnedOn.remove();
+        }
+
+        private record Claimed(Mob mob, @Nullable Entity mount) {}
     }
 
     private Component minibossName(int health) {
