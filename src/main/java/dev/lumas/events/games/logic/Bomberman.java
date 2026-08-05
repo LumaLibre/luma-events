@@ -73,7 +73,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
     private static final long DURATION = 240000L;
     private static final int TNT_FUSE_TICKS = 30;
-    private static final int BOMB_SLOT_SAFETY_TICKS = TNT_FUSE_TICKS + 40;
+    private static final long BOMB_LOCK_MILLIS = (TNT_FUSE_TICKS * 50L) + 1000L;
     private static final int BLAST_RADIUS = 2;
     private static final double ALWAYS_VISIBLE_RADIUS = 5;
     private static final double[] BOX_EDGE_OFFSETS = {-0.3, 0.3};
@@ -312,8 +312,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         TNTPrimed tnt = block.getWorld().spawn(block.getLocation().toCenterLocation(), TNTPrimed.class);
         tnt.setFuseTicks(TNT_FUSE_TICKS);
         tnt.setSource(player);
-        bomber.setBombLive(true);
-        Executors.delayedSync(tnt, BOMB_SLOT_SAFETY_TICKS, () -> bomber.setBombLive(false));
+        bomber.lockBomb(BOMB_LOCK_MILLIS);
 
         player.playSound(player, Sound.ENTITY_TNT_PRIMED, 1.0f, 1.2f);
         BombermanPlayer.refillTnt(player);
@@ -322,7 +321,13 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onExplode(EntityExplodeEvent event) {
         this.ensureNotIllegal();
-        if (!(event.getEntity() instanceof TNTPrimed tnt) || !this.arena.contains(event.getLocation())) return;
+        if (!(event.getEntity() instanceof TNTPrimed tnt)) return;
+
+        BombermanPlayer owner = tnt.getSource() instanceof Player source
+                && this.roles.get(source.getUniqueId()) instanceof BombermanPlayer bomber ? bomber : null;
+        if (owner != null) owner.releaseBomb();
+
+        if (!this.arena.contains(event.getLocation())) return;
 
         event.setYield(0.0f);
         int centerX = event.getLocation().getBlockX();
@@ -335,18 +340,11 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             if (this.arena.destroy(block.getX(), block.getZ())) broken++;
         }
         event.blockList().clear();
-        if (broken > 0 && tnt.getSource() instanceof Player owner
-                && this.roles.get(owner.getUniqueId()) instanceof AbstractBombermanPlayer role) {
-            this.scoreboard.addScore(role.getEventPlayer(), broken);
+        if (broken > 0 && owner != null) {
+            this.scoreboard.addScore(owner.getEventPlayer(), broken);
         }
 
-        Color color = Color.WHITE;
-        if (tnt.getSource() instanceof Player owner
-                && this.roles.get(owner.getUniqueId()) instanceof BombermanPlayer bomber) {
-            bomber.setBombLive(false);
-            color = bomber.getColor();
-        }
-        burst(event.getLocation(), color);
+        burst(event.getLocation(), owner == null ? Color.WHITE : owner.getColor());
     }
 
     /** Golden-angle hues so consecutive players never get near-identical colors. */
@@ -518,7 +516,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
         private final Color color;
         private final Set<UUID> hidden = ConcurrentHashMap.newKeySet();
-        private volatile boolean bombLive;
+        private volatile long bombLiveUntil;
 
         public BombermanPlayer(EventPlayer eventPlayer, Bomberman context, Color color) {
             super(eventPlayer, context);
@@ -531,6 +529,18 @@ public final class Bomberman extends InventoryUnifiedMinigame {
                     attributeInstance.addTransientModifier(entry.getValue());
                 }
             });
+        }
+
+        public boolean isBombLive() {
+            return System.currentTimeMillis() < this.bombLiveUntil;
+        }
+
+        public void lockBomb(long millis) {
+            this.bombLiveUntil = System.currentTimeMillis() + millis;
+        }
+
+        public void releaseBomb() {
+            this.bombLiveUntil = 0L;
         }
 
         static void refillTnt(Player player) {
@@ -688,11 +698,12 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         }
 
         // Widths must be 17, 21, 25 ...(multiple of 4) or the pillar lattice lands on the wrong parity.
-        private static final int MIN_SIZE = 17;
-        private static final int MAX_SIZE = 49;
+        private static final int MIN_SIZE = 32;
+        private static final int MAX_SIZE = 238;
         private static final double CELLS_PER_PLAYER = 35.0;
         private static final double MIN_SPAWN_SPACING = 10.0;
         private static final int SPAWN_CLEARANCE = 2;
+        private static final int PILLAR_FREE_RADIUS = 2;
         private static final int PILLAR_HEIGHT = 8;
         private static final int SOFT_HEIGHT = 7;
         private static final int BLOCKS_PER_TICK = 20000;
@@ -717,6 +728,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         private final Location origin;
 
         private Map<Character, BlockData> soft = SOFT_PALETTES.getFirst();
+        private boolean[][] pillarRemoved;
         private volatile int totalDestructible;
         private volatile int remainingDestructible;
         private World world;
@@ -759,9 +771,11 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             this.minZ = this.origin.getBlockZ() - chosenSize / 2;
             this.floorY = this.origin.getBlockY();
             this.opened = new boolean[chosenSize][chosenSize];
+            this.pillarRemoved = new boolean[chosenSize][chosenSize];
             this.ready = false;
 
             for (int[] cell : spawnCells) {
+                clearPillarsAround(cell[0], cell[1]);
                 for (int d = -SPAWN_CLEARANCE; d <= SPAWN_CLEARANCE; d++) {
                     open(cell[0] + d, cell[1]);
                     open(cell[0], cell[1] + d);
@@ -836,8 +850,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             if (!contains(worldX, worldZ)) return Cell.OUTSIDE;
             int cx = worldX - minX;
             int cz = worldZ - minZ;
-            char symbol = symbolAt(cx, cz);
-            if (symbol == LATTICE_PILLAR || symbol == DECOR_PILLAR) return Cell.PILLAR;
+            if (isPillarCell(cx, cz)) return Cell.PILLAR;
             return this.opened[cx][cz] ? Cell.OPEN : Cell.DESTRUCTIBLE;
         }
 
@@ -967,6 +980,27 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             return Math.max(MIN_SIZE, Math.min(MAX_SIZE, snapSize((int) Math.ceil(sideNeeded))));
         }
 
+        private void clearPillarsAround(int spawnX, int spawnZ) {
+            for (int dx = -PILLAR_FREE_RADIUS; dx <= PILLAR_FREE_RADIUS; dx++) {
+                for (int dz = -PILLAR_FREE_RADIUS; dz <= PILLAR_FREE_RADIUS; dz++) {
+                    if (dx * dx + dz * dz > PILLAR_FREE_RADIUS * PILLAR_FREE_RADIUS) continue;
+                    int cx = spawnX + dx;
+                    int cz = spawnZ + dz;
+                    if (cx < 0 || cz < 0 || cx >= size || cz >= size) continue;
+                    char symbol = symbolAt(cx, cz);
+                    if (symbol != LATTICE_PILLAR && symbol != DECOR_PILLAR) continue;
+                    this.pillarRemoved[cx][cz] = true;
+                    this.opened[cx][cz] = true;
+                }
+            }
+        }
+
+        private boolean isPillarCell(int cx, int cz) {
+            if (this.pillarRemoved != null && this.pillarRemoved[cx][cz]) return false;
+            char symbol = symbolAt(cx, cz);
+            return symbol == LATTICE_PILLAR || symbol == DECOR_PILLAR;
+        }
+
         private void open(int cx, int cz) {
             if (cx < 0 || cz < 0 || cx >= size || cz >= size) return;
             char symbol = symbolAt(cx, cz);
@@ -1007,11 +1041,12 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             int cz = z - minZ;
             char symbol = symbolAt(cx, cz);
             int above = y - floorY;
+            boolean pillar = isPillarCell(cx, cz);
 
             if (above == 0) {
-                return symbol == LATTICE_PILLAR ? PILLAR : FLOOR;
+                return pillar && symbol == LATTICE_PILLAR ? PILLAR : FLOOR;
             }
-            if (symbol == LATTICE_PILLAR || symbol == DECOR_PILLAR) {
+            if (pillar) {
                 return above < PILLAR_HEIGHT ? PILLAR : null;
             }
             if (this.opened[cx][cz]) return null;
