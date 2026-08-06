@@ -7,7 +7,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum EventJobValue {
 
-    ALCHEMIST(6),
+    ALCHEMIST(9),
     BLACKSMITH(15),
     BUILDER(17),
     COOK(15),
