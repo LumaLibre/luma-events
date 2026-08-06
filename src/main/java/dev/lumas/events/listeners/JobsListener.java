@@ -1,12 +1,14 @@
 package dev.lumas.events.listeners;
 
 import com.gamingmesh.jobs.api.JobsPrePaymentEvent;
+import com.gamingmesh.jobs.container.ActionType;
 import com.gmail.nossr50.api.AbilityAPI;
 import dev.lumas.core.annotation.Autowire;
 import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.items.TokenExchanging;
+import dev.lumas.events.items.TokenSource;
 import dev.lumas.events.utility.Util;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -26,7 +28,7 @@ public class JobsListener implements Listener {
     public void onJobsPrePayment(JobsPrePaymentEvent event) {
         String jobName = event.getJob().getName();
         EventJobValue jobConstant = Util.getEnumFromString(EventJobValue.class, jobName);
-        if (jobConstant == null) {
+        if (jobConstant == null || event.getActionInfo().getType() == ActionType.TNTBREAK) {
             return;
         }
 
@@ -41,7 +43,7 @@ public class JobsListener implements Listener {
             if (player == null) {
                 return;
             }
-            TokenExchanging.give(player, TokenExchanging.TokenType.SUMMER_DOLLOP, RANDOM.nextInt(1, 3), jobName);
+            TokenExchanging.give(player, TokenExchanging.TokenType.SUMMER_DOLLOP, RANDOM.nextInt(1, 3), TokenSource.job(jobName));
         }
     }
 

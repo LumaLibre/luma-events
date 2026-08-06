@@ -1,6 +1,8 @@
 package dev.lumas.events.games.interfaces;
 
+import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.items.TokenExchanging;
+import dev.lumas.events.items.TokenSource;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import org.bukkit.entity.Player;
@@ -13,6 +15,7 @@ public abstract class TokenFormula<C> {
 
     private final Map<UUID, Integer> dirty = new HashMap<>();
     private final boolean makeDirty;
+    private volatile String minigameName;
 
     public TokenFormula() {
         this(true);
@@ -37,8 +40,12 @@ public abstract class TokenFormula<C> {
         }
 
         makeDirty(uuid, amount);
+        if (this.minigameName == null) {
+            this.minigameName = MinigameManager.getInstance().getCurrent().getName();
+        }
+        TokenSource source = TokenSource.minigame(this.minigameName);
         Executors.runSync(bukkitPlayer, () -> {
-            TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.SUMMER_DOLLOP, amount, "Minigame");
+            TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.SUMMER_DOLLOP, amount, source);
         });
         return amount;
     }

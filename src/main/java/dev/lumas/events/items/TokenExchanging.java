@@ -1,6 +1,7 @@
 package dev.lumas.events.items;
 
 import dev.lumas.events.EventMain;
+import dev.lumas.events.utility.TokenLog;
 import dev.lumas.events.utility.Util;
 import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.lumaitems.LumaItems;
@@ -10,7 +11,6 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class TokenExchanging {
 
@@ -31,11 +31,7 @@ public class TokenExchanging {
 //        Util.sendMsg(player, "You got <yellow>" + amountClone + "</yellow> " + TokenType.OPAL.customName + "(s)!");
 //    }
 
-    public static void give(@NotNull Player player, @NotNull TokenType type, int amount) {
-        give(player, type, amount, null);
-    }
-
-    public static void give(@NotNull Player player, @NotNull TokenType type, int amount, @Nullable String source) {
+    public static void give(@NotNull Player player, @NotNull TokenType type, int amount, @NotNull TokenSource source) {
         if (amount < 1) {
             return;
         }
@@ -47,13 +43,14 @@ public class TokenExchanging {
             return;
         }
 
-        Util.giveItem(player, itemStack, Math.min(finalAmount, 20)); // TODO hard cap - remove later
+        final int givenAmount = Math.min(finalAmount, 20);
+        Util.giveItem(player, itemStack, givenAmount); // TODO hard cap - remove later
 
-        String msg = "You got <gold>" + finalAmount + "</gold> " + type.customName + "(s)!";
-        if (source != null) {
-            msg += "<dark_gray> (" + source + ")";
-        }
-        Util.sendMsg(player, msg);
+        TokenLog.record(source, player.getName(), player.getUniqueId(), givenAmount, type,
+                givenAmount == finalAmount ? null : "capped from " + finalAmount);
+
+        Util.sendMsg(player, "You got <gold>" + finalAmount + "</gold> " + type.customName + "(s)!"
+                + "<dark_gray> (" + source.chatLabel() + ")");
     }
 
     public static boolean take(Player player, TokenType type, int amount) {
