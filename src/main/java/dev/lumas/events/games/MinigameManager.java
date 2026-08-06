@@ -19,6 +19,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.event.HandlerList;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -150,6 +151,17 @@ public final class MinigameManager extends AsynchronousRunnable {
         return (currentTime - lastMinigameTime) >= this.cfg.getAutomaticMinigameCooldown();
     }
 
+    @Nullable
+    public MinigameConstant getNextAutomaticMinigame() {
+        List<MinigameConstant> availableMinigames = cfg.getEnabledAutomaticMinigames();
+        if (availableMinigames.isEmpty()) return null;
+
+        int lastIndex = availableMinigames.indexOf(this.persistentStates.getLastMinigame());
+        if (lastIndex == -1) lastIndex = 0;
+
+        return availableMinigames.get((lastIndex + 1) % availableMinigames.size());
+    }
+
     @Override
     public void accept(ScheduledTask task) {
         if (!cfg.isAutomaticMinigames() || !this.canSafelyStartMinigame(false)) {
@@ -157,16 +169,10 @@ public final class MinigameManager extends AsynchronousRunnable {
         }
 
 
-        List<MinigameConstant> availableMinigames = cfg.getEnabledAutomaticMinigames();
-        if (availableMinigames.isEmpty()) {
+        MinigameConstant nextMinigame = this.getNextAutomaticMinigame();
+        if (nextMinigame == null) {
             throw new NoAvailableMinigames("Cannot start automatic minigame: No available minigames configured!");
         }
-
-        int lastIndex = availableMinigames.indexOf(this.persistentStates.getLastMinigame());
-        if (lastIndex == -1) {
-            lastIndex = 0; // Start from the beginning if the last minigame is not found
-        }
-        MinigameConstant nextMinigame = availableMinigames.get((lastIndex + 1) % availableMinigames.size());
 
         this.persistentStates.setLastGameLaunchTime(System.currentTimeMillis());
         this.persistentStates.setLastMinigame(nextMinigame);

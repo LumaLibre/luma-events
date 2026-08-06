@@ -8,6 +8,8 @@ import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.PersistentStates;
+import dev.lumas.events.games.MinigameManager;
+import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.utility.Util;
 import org.bukkit.command.CommandSender;
 import org.jspecify.annotations.NullMarked;
@@ -32,8 +34,14 @@ public class NextMinigameCommand implements CommandModule {
 
         long timeSinceLast = System.currentTimeMillis() - persistentStates.getLastGameLaunchTime();
         long timeCombined = cfg.getAutomaticMinigameCooldown() - timeSinceLast;
+
+        MinigameConstant next = cfg.isAutomaticMinigames()
+                ? MinigameManager.getInstance().getNextAutomaticMinigame()
+                : null;
+        String suffix = next != null ? " (<gold>" + next.getDisplayName() + "</gold>)" : "";
+
         // print how long until the next minigame
-        Util.sendMsg(commandSender, "The next minigame will be in <gold>" + millisToMins(timeCombined) + "</gold>.");
+        Util.sendMsg(commandSender, "The next minigame will be in <gold>" + millisToMins(timeCombined) + "</gold>" + suffix + ".");
         return true;
     }
 

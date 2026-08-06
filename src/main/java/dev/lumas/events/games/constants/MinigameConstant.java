@@ -30,27 +30,29 @@ import java.util.Map;
 public enum MinigameConstant {
 
     // This enum should only contain real minigames!
-    FREEZE_TAG(FreezeTag::new, "freezetag", "freeze_tag"),
-    PAINTBALL2_1(Paintball2_1::new, "paintball2.1", "paintball2_1"),
-    BOATRACE2(BoatRace2::new,"boatrace2", "boatrace"),
-    TNTTAG(TNTTag::new, "tnttag"),
-    TOWERS(Towers::new, "towers"),
-    MANOR(Manor::new, "manor"),
-    PROP_HUNT(PropHunt::new, "prophunt", "prop_hunt"),
-    THE_NABBITS(TheNabbits::new, "thenabbits", "the_nabbits"),
-    PANEL_PARTY(PanelParty::new, "panelparty", "panel_party"),
-    MINEBATTLE((config) -> new MineBattle((MineBattleDefinition) config), "minebattle", "mine_battle"),
-    TNTRUN(TNTRun::new, "tntrun", "tnt_run"),
-    SOCCER(Soccer::new, "sulfur_soccer", "soccer"),
-    INCURSION(Incursion::new, "incursion"),
-    BOMBERMAN((config) -> new Bomberman((BombermanDefinition) config), "bomberman", "bomber_man")
+    FREEZE_TAG(FreezeTag::new, "Freeze Tag", "freezetag", "freeze_tag"),
+    PAINTBALL2_1(Paintball2_1::new, "Paintball 2.1", "paintball2.1", "paintball2_1"),
+    BOATRACE2(BoatRace2::new, "Boat Race 2", "boatrace2", "boatrace"),
+    TNTTAG(TNTTag::new, "TNT Tag", "tnttag"),
+    TOWERS(Towers::new, "Towers", "towers"),
+    MANOR(Manor::new, "Manor", "manor"),
+    PROP_HUNT(PropHunt::new, "Prop Hunt", "prophunt", "prop_hunt"),
+    THE_NABBITS(TheNabbits::new, "The Nabbits", "thenabbits", "the_nabbits"),
+    PANEL_PARTY(PanelParty::new, "Panel Party", "panelparty", "panel_party"),
+    MINEBATTLE((config) -> new MineBattle((MineBattleDefinition) config), "MineBattle", "minebattle", "mine_battle"),
+    TNTRUN(TNTRun::new, "TNT Run", "tntrun", "tnt_run"),
+    SOCCER(Soccer::new, "Soccer", "sulfur_soccer", "soccer"),
+    INCURSION(Incursion::new, "Incursion", "incursion"),
+    BOMBERMAN((config) -> new Bomberman((BombermanDefinition) config), "Bomberman", "bomberman", "bomber_man")
     ;
 
     private final MinigameSupplier<?> supplier;
+    private final String displayName;
     private final String[] aliases;
 
-    <T extends OkaeriConfig> MinigameConstant(MinigameSupplier<T> supplier, String... aliases) {
+    <T extends OkaeriConfig> MinigameConstant(MinigameSupplier<T> supplier, String displayName, String... aliases) {
         this.supplier = supplier;
+        this.displayName = displayName;
         this.aliases = aliases;
     }
 
