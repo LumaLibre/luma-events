@@ -1190,6 +1190,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
     }
 
+    @SuppressWarnings("removal")
     private void dealTrueDamage(LivingEntity target, Player attacker, Location source, double damage, double knockback) {
         if (damage <= 0) return;
 
@@ -1225,6 +1226,12 @@ public final class Incursion extends InventoryUnifiedMinigame {
                     return;
                 }
             }
+
+            // Our damage has no source of its own, so a lethal hit stores whatever last hit the target.
+            // Death listeners read that (InventoryRollbackPlus) and would otherwise follow it to a
+            // grenade egg the server has already discarded, which fails the region thread check:
+            if (isPlayer && remaining <= 0) unsafe(() -> target.setLastDamageCause(null));
+
             target.setHealth(Math.max(0.0, remaining));
         });
     }
