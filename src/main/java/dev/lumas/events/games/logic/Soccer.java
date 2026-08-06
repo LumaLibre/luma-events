@@ -106,7 +106,7 @@ public final class Soccer extends InventoryUnifiedMinigame {
 
     private static final long FEAT_DISPLAY_MILLIS = 3000L;
     private static final long FEAT_REPEAT_COOLDOWN_MILLIS = 750L;
-    private static final double POWER_KICK_BPS = 40.0;
+    private static final double POWER_KICK_BPS = 42.0;
     private static final long POWER_KICK_WINDOW_MILLIS = 600L;
     private static final double SAVE_RADIUS = 2.0;
     private static final double SAVE_THREAT_DISTANCE = 12.0;
@@ -653,7 +653,8 @@ public final class Soccer extends InventoryUnifiedMinigame {
                 this.touched = true;
                 soccerPlayer.award(Feat.FIRST_TOUCH);
             }
-            if (!this.sulfurCube.isOnGround()) {
+            // check if this cube is at least 0.75 off the ground
+            if (!this.sulfurCube.isOnGround() && this.sulfurCube.getLocation().getY() - this.sulfurCube.getWorld().getBlockAt(this.sulfurCube.getLocation()).getY() > 0.75) {
                 soccerPlayer.award(Feat.AIR_HIT);
             }
             if (threatensGoal(soccerPlayer.team(), this.sulfurCube)) {

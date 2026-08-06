@@ -6,7 +6,7 @@ import dev.lumas.events.utility.Couple;
 public class BombermanTokenFormula extends TokenFormula<Couple<Integer, Boolean>> {
 
     private static final int MIN_TOKENS = 3;
-    private static final int MAX_TOKENS = 11; // true max: 13
+    private static final int MAX_TOKENS = 9;
     private static final int WIN_BONUS = 2;
 
     private final int scoreForMaximum;
@@ -19,7 +19,12 @@ public class BombermanTokenFormula extends TokenFormula<Couple<Integer, Boolean>
     protected int tokens(Couple<Integer, Boolean> result) {
         double progress = Math.clamp(result.a() / (double) scoreForMaximum, 0.0, 1.0);
         int earned = MIN_TOKENS + (int) Math.round((MAX_TOKENS - MIN_TOKENS) * progress);
-        return earned + (result.b() ? WIN_BONUS : 0);
+
+        if (result.b()) {
+            earned += WIN_BONUS;
+        }
+
+        return Math.min(earned, MAX_TOKENS);
     }
 
     @Override
