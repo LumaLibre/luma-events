@@ -14,7 +14,7 @@ public enum EventJobValue {
     DIGGER( 8),
     FARMER(9),
     FISHERMAN(364),
-    HUNTER(17),
+    HUNTER(3),
     LUMBERJACK(10),
     MINER(9);
 
