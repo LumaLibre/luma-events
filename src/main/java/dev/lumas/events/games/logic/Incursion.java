@@ -28,6 +28,7 @@ import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.title.Title;
 import net.kyori.adventure.util.TriState;
 import org.bukkit.Bukkit;
@@ -43,6 +44,7 @@ import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Creature;
 import org.bukkit.entity.Drowned;
 import org.bukkit.entity.Egg;
@@ -162,7 +164,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private static final Title.Times HEADSHOT_TITLE_TIMES =
             Title.Times.times(Duration.ZERO, Duration.ofMillis(600), Duration.ofMillis(200));
 
-    // How long after a true damage hit its shooter still gets credited with the kill
+    // How long after a hit its attacker still gets credited with the kill
     private static final long DAMAGE_CREDIT_MILLIS = 10_000L;
     private static final long TARGET_SNAPSHOT_MILLIS = 50L;
 
@@ -198,7 +200,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private final Set<UUID> respawning = ConcurrentHashMap.newKeySet();
     private final Set<UUID> charging = ConcurrentHashMap.newKeySet();
     private final Set<UUID> chargeReady = ConcurrentHashMap.newKeySet();
-    private final ConcurrentHashMap<UUID, DamageCredit> lastTrueDamage = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, DamageCredit> lastDamageCredit = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, EventPlayer> participantsByUuid = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, IncursionTeam> teamsByUuid = new ConcurrentHashMap<>();
     private final Set<Integer> announcedSwapWarnings = ConcurrentHashMap.newKeySet();
@@ -686,7 +688,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         frozenAt.remove(uuid);
         charging.remove(uuid);
         chargeReady.remove(uuid);
-        lastTrueDamage.remove(uuid);
+        lastDamageCredit.remove(uuid);
         participant.operatePlayer(this::unfreeze);
     }
 
@@ -844,7 +846,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
             boolean headshot = beamTouches(target.headHitbox(settings.getHitRadius()), eye, direction, maxDistance);
             double damage = headshot ? settings.getDamage() * settings.getHeadshotMultiplier() : settings.getDamage();
 
-            dealTrueDamage(target.entity(), shooter, eye, damage, settings.getKnockback());
+            dealTrueDamage(target.entity(), shooter, eye, damage, settings.getKnockback(), Weapon.SNIPER.getPlainName(), headshot);
             if (headshot) {
                 headshotEffect(target);
                 headshots++;
@@ -908,7 +910,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
             if (length > 1.0E-4 && !hasClearShot(muzzle, toTarget.multiply(1.0 / length), length)) continue;
 
             dealTrueDamage(target.entity(), shooter, muzzle,
-                    settings.getDamage() * (1.0 - (falloff * (distance / range))), settings.getKnockback());
+                    settings.getDamage() * (1.0 - (falloff * (distance / range))), settings.getKnockback(),
+                    Weapon.SHOTGUN.getPlainName());
             hits++;
         }
 
@@ -1028,7 +1031,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 double falloff = Math.clamp(settings.getDamageFalloff(), 0.0, 1.0);
                 dealTrueDamage(target.entity(), shooter, position,
                         settings.getDamage() * (1.0 - (falloff * Math.min(1.0, travelled / range))),
-                        settings.getKnockback());
+                        settings.getKnockback(), Weapon.SIDEARM.getPlainName());
 
                 splash(world, point);
                 Executors.runSync(shooter, () -> hitFeedback(shooter));
@@ -1162,7 +1165,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
             }
 
             dealTrueDamage(target.entity(), thrower, at,
-                    settings.getDamage() * (1.0 - (falloff * (distance / radius))), settings.getKnockback());
+                    settings.getDamage() * (1.0 - (falloff * (distance / radius))), settings.getKnockback(),
+                    grenade.getPlainName());
             applyGrenadeEffect(grenade, target.entity(), settings);
             connected = true;
         }
@@ -1190,13 +1194,19 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
     }
 
+    private void dealTrueDamage(LivingEntity target, Player attacker, Location source, double damage, double knockback, String sourceName) {
+        dealTrueDamage(target, attacker, source, damage, knockback, sourceName, false);
+    }
+
     @SuppressWarnings("removal")
-    private void dealTrueDamage(LivingEntity target, Player attacker, Location source, double damage, double knockback) {
+    private void dealTrueDamage(LivingEntity target, Player attacker, Location source, double damage, double knockback,
+                                String sourceName, boolean headshot) {
         if (damage <= 0) return;
 
         boolean isPlayer = target instanceof Player;
         if (isPlayer) {
-            lastTrueDamage.put(target.getUniqueId(), new DamageCredit(attacker.getUniqueId(), System.currentTimeMillis()));
+            lastDamageCredit.put(target.getUniqueId(),
+                    new DamageCredit(attacker.getUniqueId(), System.currentTimeMillis(), sourceName, damage, headshot));
         }
 
         Executors.runSync(target, () -> {
@@ -1244,12 +1254,29 @@ public final class Incursion extends InventoryUnifiedMinigame {
     }
 
     @Nullable
-    private Player recentTrueDamageAttacker(Player victim) {
-        DamageCredit credit = lastTrueDamage.remove(victim.getUniqueId());
+    private DamageCredit recentDamageCredit(Player victim) {
+        DamageCredit credit = lastDamageCredit.remove(victim.getUniqueId());
         if (credit == null || System.currentTimeMillis() - credit.at() > DAMAGE_CREDIT_MILLIS) return null;
 
-        Player attacker = Bukkit.getPlayer(credit.attacker());
-        return attacker != null && !attacker.getUniqueId().equals(victim.getUniqueId()) ? attacker : null;
+        return credit.attacker().equals(victim.getUniqueId()) ? null : credit;
+    }
+
+    private static void sendDeathMessage(Player victim, Player killer, DamageCredit credit) {
+        Executors.runSync(killer, () -> {
+            String hearts = trimmed(killer.getHealth() / 2.0);
+            victim.sendMessage(Util.color("<red>You were killed by " + killer.getName() + " (" + hearts + "❤) using "
+                    + credit.sourceName() + " with " + trimmed(credit.damage()) + "dmg"
+                    + (credit.headshot() ? " (headshot)" : "")));
+        });
+    }
+
+    private static String trimmed(double value) {
+        double rounded = Math.round(value * 10.0) / 10.0;
+        return rounded == Math.floor(rounded) ? String.valueOf((long) rounded) : String.valueOf(rounded);
+    }
+
+    private static String stripTags(String display) {
+        return PlainTextComponentSerializer.plainText().serialize(Util.color(display));
     }
 
     private List<Target> targetsOf(IncursionTeam team) {
@@ -1401,10 +1428,13 @@ public final class Incursion extends InventoryUnifiedMinigame {
         AttributeInstance maxHealth = victim.getAttribute(Attribute.MAX_HEALTH);
         event.setReviveHealth(maxHealth != null ? maxHealth.getValue() : 20.0);
 
+        DamageCredit credit = recentDamageCredit(victim);
         Player killer = resolveKiller(event.getDamageSource().getCausingEntity(), victim);
         // True damage bypasses the damage source, so fall back to who last shot them
-        if (killer == null) killer = recentTrueDamageAttacker(victim);
+        if (killer == null && credit != null) killer = Bukkit.getPlayer(credit.attacker());
         if (killer != null) {
+            if (credit != null && credit.attacker().equals(killer.getUniqueId())) sendDeathMessage(victim, killer, credit);
+
             IncursionTeam killerTeam = teamOf(killer.getUniqueId());
             EventPlayer killerParticipant = participantOf(killer.getUniqueId());
             if (killerTeam != null && killerParticipant != null && killerTeam != victimTeam) {
@@ -1478,6 +1508,12 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
         if (attackerTeam == victimTeam || isOutOfPlay(attacker.getUniqueId())) {
             event.setCancelled(true);
+            return;
+        }
+
+        if (damager instanceof Player) {
+            lastDamageCredit.put(victim.getUniqueId(), new DamageCredit(attacker.getUniqueId(),
+                    System.currentTimeMillis(), Weapon.MELEE.getPlainName(), event.getFinalDamage(), false));
         }
     }
 
@@ -2157,8 +2193,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
         equipment.setBootsDropChance(0f);
     }
 
-    // Who last hit someone with true damage (and when)
-    private record DamageCredit(UUID attacker, long at) {}
+    // Who last hit someone, with what, for how much (and when)
+    private record DamageCredit(UUID attacker, long at, String sourceName, double damage, boolean headshot) {}
 
     @Getter
     private enum Grenade {
@@ -2174,12 +2210,14 @@ public final class Incursion extends InventoryUnifiedMinigame {
         private final String displayName;
         private final List<String> lore;
         private final Particle.DustOptions burstDust;
+        private final String plainName;
 
         Grenade(Material material, String displayName, List<String> lore, Color burstColor) {
             this.material = material;
             this.displayName = displayName;
             this.lore = lore;
             this.burstDust = new Particle.DustOptions(burstColor, 1.4f);
+            this.plainName = stripTags(displayName);
         }
 
         private ItemStack item() {
@@ -2197,7 +2235,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private enum Weapon {
 
         MELEE(0, Material.STONE_SWORD, "<white><b>Last Resort",
-                List.of("<gray>Use when everything's on cooldown")),
+                List.of("<gray>Use when everything's on cooldown"), Map.of(Enchantment.SHARPNESS, 2)),
         SNIPER(1, Material.SPYGLASS, "<light_purple><b>Overwatch",
                 List.of("<gray>Hold to charge, release to fire", "<gray>Pierces through enemies")),
         SHOTGUN(2, Material.GOAT_HORN, "<gold><b>Blunderhorn",
@@ -2209,12 +2247,20 @@ public final class Incursion extends InventoryUnifiedMinigame {
         private final Material material;
         private final String displayName;
         private final List<String> lore;
+        private final Map<Enchantment, Integer> enchantments;
+        private final String plainName;
 
         Weapon(int slot, Material material, String displayName, List<String> lore) {
+            this(slot, material, displayName, lore, Map.of());
+        }
+
+        Weapon(int slot, Material material, String displayName, List<String> lore, Map<Enchantment, Integer> enchantments) {
             this.slot = slot;
             this.material = material;
             this.displayName = displayName;
             this.lore = lore;
+            this.enchantments = enchantments;
+            this.plainName = stripTags(displayName);
         }
 
         private ItemStack item() {
@@ -2222,6 +2268,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
             item.editMeta(meta -> {
                 meta.displayName(Util.color(displayName));
                 meta.lore(Util.color(lore, NamedTextColor.GRAY));
+                enchantments.forEach((enchantment, level) -> meta.addEnchant(enchantment, level, true));
                 meta.setUnbreakable(true);
                 meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_UNBREAKABLE);
                 meta.getPersistentDataContainer().set(WEAPON_KEY, PersistentDataType.STRING, name());
