@@ -131,6 +131,16 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     }
 
     @Override
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
+        AbstractBombermanPlayer role = this.roles.get(participant.getUuid());
+        if (role != null) {
+            role.cleanup();
+            this.roles.remove(participant.getUuid());
+        }
+        return super.removeParticipant(participant, doTeleport);
+    }
+
+    @Override
     protected void handleStart() {
         int playerCount = Math.max(1, this.participants.size());
         
