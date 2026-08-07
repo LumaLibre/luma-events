@@ -19,7 +19,7 @@ public enum EventJobValue {
     MINER(9);
 
 
-    private final int bound = 120_000;
+    private final int bound = 125_000;
     private final int chance;
 
 }

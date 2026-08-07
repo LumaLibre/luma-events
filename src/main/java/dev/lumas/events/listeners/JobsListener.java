@@ -43,7 +43,7 @@ public class JobsListener implements Listener {
             if (player == null) {
                 return;
             }
-            TokenExchanging.give(player, TokenExchanging.TokenType.SUMMER_DOLLOP, RANDOM.nextInt(1, 3), TokenSource.job(jobName));
+            TokenExchanging.give(player, TokenExchanging.TokenType.SUMMER_DOLLOP, 1, TokenSource.job(jobName));
         }
     }
 
