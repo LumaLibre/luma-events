@@ -33,6 +33,9 @@ public class Config extends OkaeriConfig {
     @Comment("Enable or disable job token payouts")
     private boolean jobTokenPayouts = false;
 
+    @Comment("Enable or disable town token invite payouts")
+    private boolean townTokenInvitePayouts = false;
+
     @Comment("Automatic minigame cooldown in milliseconds")
     private long automaticMinigameCooldown = 7200000L;
 

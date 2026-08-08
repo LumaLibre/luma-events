@@ -7,7 +7,8 @@ public record TokenSource(@NotNull Type type, @NotNull String detail) {
     public enum Type {
         COMMAND,
         MINIGAME,
-        JOB
+        JOB,
+        TOWN_INVITE
     }
 
     public static TokenSource command(@NotNull String senderName) {
@@ -22,11 +23,16 @@ public record TokenSource(@NotNull Type type, @NotNull String detail) {
         return new TokenSource(Type.JOB, jobName);
     }
 
+    public static TokenSource townInvite(@NotNull String detail) {
+        return new TokenSource(Type.TOWN_INVITE, detail);
+    }
+
     public String chatLabel() {
         return switch (this.type) {
             case MINIGAME -> "Minigame";
             case JOB -> this.detail;
             case COMMAND -> "Other";
+            case TOWN_INVITE -> "Town invite";
         };
     }
 

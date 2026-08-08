@@ -71,16 +71,18 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
     private static final PluginContextLogger LOGGER = PluginContextLogger.getPluginLogger();
 
-    private static final long DURATION = 240000L;
+    private static final long ROUND_DURATION = 240000L;
     private static final int TNT_FUSE_TICKS = 30;
     private static final long BOMB_LOCK_MILLIS = (TNT_FUSE_TICKS * 50L) + 1000L;
     private static final int BLAST_RADIUS = 2;
     private static final double ALWAYS_VISIBLE_RADIUS = 5;
     private static final double[] BOX_EDGE_OFFSETS = {-0.3, 0.3};
-    private static final double SELF_DAMAGE_MULTIPLIER = 0.5;
     private static final int KILL_SCORE = 20;
+    private static final int ROUND_WIN_SCORE = 30;
+    private static final int ROUNDS = 3;
     private static final float GAME_OVER_SECONDS = 10;
     private static final int RESCUE_HEIGHT = 32;
+    private static final long DURATION = (ROUND_DURATION + (long) (GAME_OVER_SECONDS * 1000)) * ROUNDS;
 
     private static final Color[] BOMB_COLORS = pastelPalette(50);
 
@@ -89,9 +91,10 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     private final MinigameRoleMap<AbstractBombermanPlayer> roles = new MinigameRoleMap<>(AbstractBombermanPlayer::cleanup);
     private final Scoreboard<EventPlayer> scoreboard = new Scoreboard<>();
     private BombermanTokenFormula tokenFormula;
-    private volatile UUID winner;
 
     private CountdownBossBar timerBar;
+    private final Set<UUID> roundWinners = ConcurrentHashMap.newKeySet();
+    private volatile int round;
     private volatile int startingPlayers;
     private volatile boolean roundLive;
     private volatile boolean ending;
@@ -107,21 +110,39 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     protected int minimumParticipants() {
         return 1;
     }
+    
+    private void stripKit(EventPlayer participant) {
+        Player target = participant.getPlayer();
+        if (target == null) return;
+        Executors.sync(target, () -> {
+            target.getInventory().remove(Material.TNT);
+            target.getInventory().remove(Material.DIAMOND_PICKAXE);
+            target.getInventory().remove(Material.DIAMOND_AXE);
+            target.getInventory().remove(Material.COOKED_PORKCHOP);
+        });
+    }
 
-    @Override
-    protected void onPreStart() {
-        super.onPreStart();
-        for (EventPlayer participant : this.participants) {
-            participant.operatePlayer(player -> {
-                player.clearActivePotionEffects();
-                player.getInventory().setItem(0, BombermanPlayer.TNT);
-                player.getInventory().setItem(1, ItemStack.of(Material.DIAMOND_PICKAXE));
-                player.getInventory().setItem(2, ItemStack.of(Material.DIAMOND_AXE));
-                player.getInventory().setItem(3, ItemStack.of(Material.COOKED_PORKCHOP, 64));
-                player.getInventory().setHeldItemSlot(0);
-                player.addPotionEffect(BombermanPlayer.MINING_FATIGUE);
-            });
-        }
+    private void equip(EventPlayer participant) {
+        if (this.ending) return;
+        Player target = participant.getPlayer();
+        if (target == null) return;
+        Executors.sync(target, () -> {
+            if (this.ending) return;
+            Player player = target;
+            player.getInventory().clear();
+            player.clearActivePotionEffects();
+            player.setFlying(false);
+            player.setAllowFlight(false);
+            player.setFireTicks(0);
+            AttributeInstance maxHealth = player.getAttribute(Attribute.MAX_HEALTH);
+            player.setHealth(maxHealth == null ? 20.0 : maxHealth.getValue());
+            player.getInventory().setItem(0, BombermanPlayer.TNT);
+            player.getInventory().setItem(1, ItemStack.of(Material.DIAMOND_PICKAXE));
+            player.getInventory().setItem(2, ItemStack.of(Material.DIAMOND_AXE));
+            player.getInventory().setItem(3, ItemStack.of(Material.COOKED_PORKCHOP, 64));
+            player.getInventory().setHeldItemSlot(0);
+            player.addPotionEffect(BombermanPlayer.MINING_FATIGUE);
+        });
     }
 
     @Override
@@ -142,33 +163,54 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStart() {
-        int playerCount = Math.max(1, this.participants.size());
-        
-        this.arena.generate(playerCount, () -> {
+        startRound();
+    }
+
+    private void startRound() {
+        if (this.ending) return;
+        this.round++;
+        this.arena.teardown(() -> {
+            if (this.ending) return;
+            this.arena.generate(Math.max(1, this.participants.size()), () -> {
+            if (this.ending) {
+                this.arena.teardown();
+                return;
+            }
             List<Location> spawns = this.arena.spawns();
+
+            for (AbstractBombermanPlayer previous : this.roles.values()) {
+                previous.cleanup();
+            }
+            this.roles.clear();
 
             int spawnIndex = 0;
             for (EventPlayer eventPlayer : this.participants) {
                 this.roles.put(new BombermanPlayer(eventPlayer, this, BOMB_COLORS[spawnIndex % BOMB_COLORS.length]));
+                equip(eventPlayer);
                 eventPlayer.teleportAsync(spawns.get(spawnIndex % spawns.size()));
                 spawnIndex++;
             }
 
             this.timerBar = CountdownBossBar.builder()
-                    .title("<red><b>%ss remaining")
+                    .title("<red><b>Round " + this.round + "/" + ROUNDS + "</b></red> <gray>|</gray> <yellow>%ss remaining")
                     .color(BossBar.Color.RED)
-                    .miliseconds(DURATION)
+                    .miliseconds(ROUND_DURATION)
                     .audience(this.audience)
-                    .callback(this::beginGameOver)
+                    .callback(this::endRound)
                     .build();
             this.timerBar.start();
 
             this.startingPlayers = this.roles.getMatching(BombermanPlayer.class).size();
-            int fairShare = Math.max(1, this.arena.totalDestructible() / Math.max(1, this.startingPlayers));
-            this.tokenFormula = new BombermanTokenFormula((fairShare * 2) + ((this.startingPlayers - 1) * KILL_SCORE));
-            this.sendAudienceTitle("<red><b>GO!", "<gray>Last one standing wins");
+            this.scoreboard.addScorers(List.copyOf(this.participants));
+            if (this.tokenFormula == null) {
+                int fairShare = Math.max(1, this.arena.totalDestructible() / Math.max(1, this.startingPlayers));
+                int perRound = (fairShare * 2) + ((this.startingPlayers - 1) * KILL_SCORE);
+                this.tokenFormula = new BombermanTokenFormula(perRound * ROUNDS);
+            }
+            this.sendAudienceTitle("<red><b>Round " + this.round, "<gray>Last one standing wins");
             this.playAudienceSound(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.2f, 1.4f);
             this.roundLive = true;
+            });
         });
     }
 
@@ -176,7 +218,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     protected void tokenHandler(EventPlayer participant) {
         int score = this.scoreboard.getScore(participant);
         if (this.tokenFormula != null) {
-            this.tokenFormula.giveTokens(participant, Couple.of(score, participant.getUuid().equals(this.winner)));
+            this.tokenFormula.giveTokens(participant, Couple.of(score, this.roundWinners.contains(participant.getUuid())));
         } else {
             LOGGER.error("Null token formula");
         }
@@ -199,12 +241,12 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         if (!this.roundLive || this.ending) return;
         int alive = this.roles.getMatching(BombermanPlayer.class).size();
         if (alive == 0 || (this.startingPlayers > 1 && alive == 1)) {
-            beginGameOver();
+            endRound();
         }
     }
 
-    private void beginGameOver() {
-        if (!this.roundLive) return;
+    private void endRound() {
+        if (!this.roundLive || this.ending) return;
         this.roundLive = false;
 
         if (this.timerBar != null) {
@@ -215,21 +257,33 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         String outcome;
         if (alive.size() == 1) {
             BombermanPlayer winner = alive.getFirst();
-            this.winner = winner.getUuid();
-            outcome = "<yellow>" + winner.getName() + " wins!";
+            this.roundWinners.add(winner.getUuid());
+            this.scoreboard.addScore(winner.getEventPlayer(), ROUND_WIN_SCORE);
+            outcome = "<yellow>" + winner.getName() + " wins the round!";
         } else {
             outcome = "<gray>Nobody survived";
         }
         this.playAudienceSound(Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 1.0f, 2f);
 
-        this.timerBar = CountdownBossBar.builder()
-                .title("<red><b>Game Over</b></red> <gray>|</gray> " + outcome)
-                .color(BossBar.Color.WHITE)
-                .seconds(GAME_OVER_SECONDS)
-                .audience(this.audience)
-                .callback(this::stop)
-                .build();
-        this.timerBar.start();
+        boolean lastRound = this.round >= ROUNDS;
+        String header = lastRound ? "<red><b>Game Over" : "<red><b>Round " + this.round + "/" + ROUNDS;
+
+        Runnable interlude = () -> {
+            this.timerBar = CountdownBossBar.builder()
+                    .title(header + "</b></red> <gray>|</gray> " + outcome)
+                    .color(BossBar.Color.WHITE)
+                    .seconds(GAME_OVER_SECONDS)
+                    .audience(this.audience)
+                    .callback(lastRound ? this::stop : this::startRound)
+                    .build();
+            this.timerBar.start();
+        };
+
+        if (lastRound) {
+            this.scoreboard.handleGameEnd(this.audience, interlude);
+        } else {
+            interlude.run();
+        }
     }
 
     @Override
@@ -237,6 +291,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         if (this.ending) return;
         this.ending = true;
         this.roundLive = false;
+        this.round = ROUNDS;
 
         if (this.timerBar != null) {
             this.timerBar.stop(false);
@@ -247,6 +302,10 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             role.teleportAsync(this.spawnLocation); // TODO temporary
         }
         this.roles.clear();
+
+        for (EventPlayer participant : this.participants) {
+            stripKit(participant);
+        }
         this.arena.teardown();
     }
 
@@ -425,7 +484,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         if (event.getDamager() instanceof TNTPrimed tnt
                 && tnt.getSource() instanceof Player source
                 && source.getUniqueId().equals(victim.getUniqueId())) {
-            event.setDamage(event.getDamage() * SELF_DAMAGE_MULTIPLIER);
+            event.setCancelled(true);
         }
     }
 
@@ -444,7 +503,10 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         AbstractBombermanPlayer role = this.roles.get(player.getUniqueId());
         if (role == null) return;
 
-        if (!(role instanceof BombermanPlayer)) return;
+        if (!(role instanceof BombermanPlayer)) {
+            event.setCancelled(true);
+            return;
+        }
 
         Block block = event.getBlock();
         if (this.arena.typeAt(block) == Arena.Cell.DESTRUCTIBLE) {
@@ -611,6 +673,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 300, 0, false, false, false);
 
         private final Location deathLocation;
+        private volatile boolean released;
 
         public BombermanSpectator(EventPlayer eventPlayer, Bomberman context, Location deathLocation) {
             super(eventPlayer, context);
@@ -643,7 +706,9 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
         @Override
         public void tick() {
+            if (this.released) return;
             operatePlayer(player -> {
+                if (this.released) return;
                 player.addPotionEffect(INVISIBILITY);
                 if (!player.getAllowFlight()) player.setAllowFlight(true);
                 if (!player.isFlying()) player.setFlying(true);
@@ -662,6 +727,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
         @Override
         public void cleanup() {
+            this.released = true;
             setVisibleToOthers(true);
             operatePlayer(player -> {
                 player.setFlying(false);
@@ -818,10 +884,20 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         }
 
         public void teardown() {
+            teardown(null);
+        }
+
+        public void teardown(Runnable onCleared) {
             cancelBuild();
-            if (this.world == null) return;
+            if (this.world == null) {
+                if (onCleared != null) onCleared.run();
+                return;
+            }
             this.ready = false;
-            stream(true, () -> LOGGER.info("Arena cleared."));
+            stream(true, () -> {
+                LOGGER.info("Arena cleared.");
+                if (onCleared != null) onCleared.run();
+            });
         }
 
         public List<Location> spawns() {

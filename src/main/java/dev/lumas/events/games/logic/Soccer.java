@@ -52,6 +52,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.BoundingBox;
@@ -68,6 +69,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
@@ -104,9 +106,17 @@ public final class Soccer extends InventoryUnifiedMinigame {
     private static final int POINTS_PER_GOAL = 10;
     private static final int OUT_OF_BOUNDS_PENALTY = -2;
 
+    private static final long ROUND_LENGTH_MILLIS = 180_000L;
+
     private static final long FEAT_DISPLAY_MILLIS = 3000L;
     private static final long FEAT_REPEAT_COOLDOWN_MILLIS = 750L;
-    private static final double POWER_KICK_BPS = 42.0;
+    // one ball up to 25 players, then another for every 10 on top of that
+    private static final int BALL_BASE_PLAYERS = 15;
+    private static final int PLAYERS_PER_EXTRA_BALL = 10;
+    private static final double BALL_SPREAD = 3.0;
+
+    private static final double POWER_KICK_BPS = 40.0;
+    private static final double POWER_KICK_BLOCKS_PER_TICK = POWER_KICK_BPS / 20.0;
     private static final long POWER_KICK_WINDOW_MILLIS = 600L;
     private static final double SAVE_RADIUS = 2.0;
     private static final double SAVE_THREAT_DISTANCE = 12.0;
@@ -118,7 +128,8 @@ public final class Soccer extends InventoryUnifiedMinigame {
 
     private final Location spawnLocation;
     private final List<SoccerTeam> teams;
-    private final SulfurCubeSoccerBall soccerBall;
+    private final Location ballSpawnLocation;
+    private volatile List<SulfurCubeSoccerBall> balls = List.of(); // built once the roster is known
     private final MinigameRoleMap<SoccerPlayer> roleMap = new MinigameRoleMap<>();
     private final Scoreboard<SoccerTeam> scoreboard = new Scoreboard<>();
     private final Scoreboard<SoccerPlayer> playerScoreboard = new Scoreboard<>();
@@ -128,6 +139,9 @@ public final class Soccer extends InventoryUnifiedMinigame {
     private final BossBar bossBar = BossBar.bossBar(Component.empty(), 0.0f, BossBar.Color.WHITE, BossBar.Overlay.NOTCHED_6);
 
     private final Set<UUID> frozenPlayers = ConcurrentHashMap.newKeySet();
+    // with several balls out there, only the first one to score or go out gets to end the round
+    private final AtomicBoolean roundEnding = new AtomicBoolean();
+    private volatile long roundEndsAt; // wall clock the live round expires at, 0 while no round is running
 
 
     public Soccer(SulfurSoccerDefinition def) {
@@ -138,7 +152,7 @@ public final class Soccer extends InventoryUnifiedMinigame {
             1,
             true,
             true,
-            false,
+            true, // nobody needs their inventory here, and letting them touch it duplicates the team kit
             true
         );
 
@@ -151,7 +165,7 @@ public final class Soccer extends InventoryUnifiedMinigame {
             new SoccerTeam(def.getTeam2StartLocation(), def.getTeam2Goal().toWorldTiedBoundingBox(), matchup.second())
         );
 
-        this.soccerBall = new SulfurCubeSoccerBall(def.getSoccerBallStartLocation());
+        this.ballSpawnLocation = def.getSoccerBallStartLocation();
         this.goalPunchRadius = def.getPunchRadius();
     }
 
@@ -215,6 +229,11 @@ public final class Soccer extends InventoryUnifiedMinigame {
             this.roleMap.put(soccerPlayer);
         }
 
+        this.balls = this.buildBalls();
+        if (this.balls.size() > 1) {
+            sendAudienceMessage("<yellow>A big turnout - <white>" + this.balls.size() + "</white> balls are in play!");
+        }
+
         this.refreshBossBar();
         for (SoccerPlayer soccerPlayer : this.roleMap) {
             soccerPlayer.getEventPlayer().addBossBar(this.bossBar);
@@ -223,11 +242,146 @@ public final class Soccer extends InventoryUnifiedMinigame {
         this.countdownStart(5);
     }
 
+    private int ballCount() {
+        int past = this.getParticipants().size() - BALL_BASE_PLAYERS;
+        return 1 + Math.max(0, (past - 1) / PLAYERS_PER_EXTRA_BALL);
+    }
+
+    private List<SulfurCubeSoccerBall> buildBalls() {
+        int count = this.ballCount();
+        List<SulfurCubeSoccerBall> built = new ArrayList<>(count);
+        built.add(new SulfurCubeSoccerBall(this.ballSpawnLocation));
+
+        for (int i = 1; i < count; i++) {
+            double angle = (2 * Math.PI * (i - 1)) / (count - 1);
+            Location spread = this.ballSpawnLocation.clone()
+                .add(Math.cos(angle) * BALL_SPREAD, 0, Math.sin(angle) * BALL_SPREAD);
+            built.add(new SulfurCubeSoccerBall(spread));
+        }
+        return List.copyOf(built);
+    }
+
+    private void killAllBalls() {
+        for (SulfurCubeSoccerBall ball : this.balls) {
+            ball.kill();
+        }
+    }
+
+    private void finishRound(@Nullable SoccerTeam beneficiary, Location at) {
+        this.roundEndsAt = 0L;
+        if (beneficiary != null) {
+            this.scoreboard.addScore(beneficiary, POINTS_PER_GOAL);
+        }
+        this.refreshBossBar();
+        this.killAllBalls();
+
+        Executors.runSync(at, () -> {
+            if (beneficiary != null) {
+                ParticleDisplay particleDisplay = ParticleDisplay.of(Particle.DUST)
+                    .withColor(new java.awt.Color(beneficiary.template().color()))
+                    .withLocation(at);
+                Particles.spikeSphere(6.0, 25.0, 3, 0.4, 0.8, particleDisplay);
+            }
+
+            for (SoccerTeam team : this.teams) {
+                Location goalLocation = team.goalBox().getCenterLocation();
+                goalLocation.getWorld().playSound(goalLocation, Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 4f, 2f);
+                goalLocation.getWorld().playSound(goalLocation, Sound.ITEM_GOAT_HORN_SOUND_2, 4f, 1.25f);
+            }
+
+            this.ballSpawnLocation.getWorld().playSound(this.ballSpawnLocation, Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 4f, 2f);
+            this.ballSpawnLocation.getWorld().playSound(this.ballSpawnLocation, Sound.ITEM_GOAT_HORN_SOUND_2, 4f, 1.25f);
+
+            // blast every entity within a 25 block radius away from the goal
+            for (LivingEntity entity : at.getNearbyLivingEntities(35)) {
+                Vector direction = entity.getLocation().toVector().subtract(at.toVector());
+                if (direction.lengthSquared() < 1.0E-6) {
+                    direction = new Vector(0, 1, 0); // entity sitting exactly on the goal, just launch it up
+                } else {
+                    direction.normalize();
+                }
+
+                // stronger blast the closer the entity is to the goal
+                double distance = entity.getLocation().distance(at);
+                double strength = Math.max(0.5, 2.8 * (1 - distance / 35.0));
+
+                Vector knockback = direction.multiply(strength);
+                knockback.setY(knockback.getY() + 0.7); // add a little lift
+                entity.setVelocity(knockback);
+            }
+
+            // wait 3.5 seconds before starting a new round
+            Executors.delayedSync(at, 70, () -> {
+                if (beneficiary != null && leadOf(beneficiary) >= LEAD_TO_WIN) {
+                    sendAudienceMessage("<red>Game over!");
+                    sendAudienceMessage(beneficiary.template().formatted(beneficiary.getName() + " has won!"));
+                    stop();
+                } else {
+                    countdownStart(3);
+                }
+            });
+        });
+    }
+
+    private void endRoundOnPlays() {
+        if (!this.roundEnding.compareAndSet(false, true)) {
+            return;
+        }
+
+        SoccerTeam first = this.teams.getFirst();
+        SoccerTeam second = this.teams.getLast();
+        int firstPlays = first.roundPlays().get();
+        int secondPlays = second.roundPlays().get();
+
+        sendAudienceMessage("<yellow>Time! <gray>No goal this round, so it goes on plays made.");
+        if (firstPlays == secondPlays) {
+            sendAudienceMessage("<gray>Dead even at <white>" + firstPlays + "</white> each - nobody takes it.");
+            this.finishRound(null, this.ballSpawnLocation.clone());
+            return;
+        }
+
+        SoccerTeam winner = firstPlays > secondPlays ? first : second;
+        int winnerPlays = Math.max(firstPlays, secondPlays);
+        int loserPlays = Math.min(firstPlays, secondPlays);
+        sendAudienceMessage(winner.template().formatted(winner.getName() + " takes the round <dark_gray>("
+            + winnerPlays + " plays to " + loserPlays + ", +" + POINTS_PER_GOAL + " points)"));
+        this.finishRound(winner, this.ballSpawnLocation.clone());
+    }
+
+    // the readout only has room for one ball, so it follows whichever is closest to the player
+    private double nearestBallSpeed(Location from) {
+        double nearest = Double.MAX_VALUE;
+        double speed = 0.0;
+        for (SulfurCubeSoccerBall ball : this.balls) {
+            Location at = ball.speed().lastSample();
+            if (at == null || !at.getWorld().equals(from.getWorld())) {
+                continue;
+            }
+            double distance = at.distanceSquared(from);
+            if (distance < nearest) {
+                nearest = distance;
+                speed = ball.speed().blocksPerSecond();
+            }
+        }
+        return speed;
+    }
+
     @Override
     protected void onRunnable(long timeLeft) {
-        this.soccerBall.tick();
+        if (this.stopping || !this.active) {
+            return;
+        }
+
+        for (SulfurCubeSoccerBall ball : this.balls) {
+            ball.tick();
+        }
         for (SoccerPlayer player : this.roleMap) {
             player.onTick();
+        }
+
+        long endsAt = this.roundEndsAt;
+        if (endsAt > 0 && System.currentTimeMillis() >= endsAt) {
+            this.endRoundOnPlays();
         }
 
         if (timeLeft <= 0) {
@@ -237,9 +391,12 @@ public final class Soccer extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStop() {
-        this.soccerBall.kill();
+        this.killAllBalls();
         this.unfreezeAll();
         for (SoccerPlayer soccerPlayer : this.roleMap) {
+            soccerPlayer.operatePlayer(player -> {
+                player.getEquipment().setChestplate(null);
+            });
             soccerPlayer.getEventPlayer().removeBossBar(this.bossBar);
         }
         this.scoreboard.handleGameEnd(this.audience, () -> {
@@ -340,10 +497,19 @@ public final class Soccer extends InventoryUnifiedMinigame {
         this.bossBar.color(leader == null ? BossBar.Color.WHITE : leader.template().barColor());
     }
 
+    private @Nullable SulfurCubeSoccerBall ballOf(Entity entity) {
+        for (SulfurCubeSoccerBall ball : this.balls) {
+            if (entity.equals(ball.sulfurCube())) {
+                return ball;
+            }
+        }
+        return null;
+    }
+
     @EventHandler
     public void onSulfurCubePunch(EntityKnockbackByEntityEvent event) {
-        SulfurCubeSoccerBall ball = this.soccerBall;
-        if (!ball.isSpawned() || !event.getEntity().equals(ball.sulfurCube())) {
+        SulfurCubeSoccerBall ball = this.ballOf(event.getEntity());
+        if (ball == null || !ball.isSpawned()) {
             return;
         }
 
@@ -372,9 +538,23 @@ public final class Soccer extends InventoryUnifiedMinigame {
         ball.markKick(attacker);
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPlayerPunchPlayer(EntityDamageByEntityEvent event) {
+        if (!(event.getDamager() instanceof Player attacker) || !(event.getEntity() instanceof Player victim)) {
+            return;
+        }
+        if (!isParticipant(attacker) || !isParticipant(victim)) {
+            return;
+        }
+        event.setDamage(0.0);
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onSulfurCubeMove(EntityMoveEvent event) {
-        this.soccerBall.handleMove(event);
+        SulfurCubeSoccerBall ball = this.ballOf(event.getEntity());
+        if (ball != null) {
+            ball.handleMove(event);
+        }
     }
 
     private void freeze(Player player) {
@@ -431,7 +611,14 @@ public final class Soccer extends InventoryUnifiedMinigame {
         }
 
         AtomicInteger atomicCountdown = new AtomicInteger(countdown);
-        this.soccerBall.spawn();
+        this.roundEnding.set(false); // whatever ended the last round is done with, this one is live again
+        this.roundEndsAt = 0L; // the clock starts on GO, the countdown itself is not round time
+        for (SoccerTeam team : this.teams) {
+            team.roundPlays().set(0);
+        }
+        for (SulfurCubeSoccerBall ball : this.balls) {
+            ball.spawn();
+        }
         sendAudienceTitle("<yellow>" + atomicCountdown.get(), "");
         playAudienceSound(Sound.BLOCK_NOTE_BLOCK_CHIME, 1f, 1.5f);
         Executors.repeatingGlobal(20, 20, task -> {
@@ -440,10 +627,10 @@ public final class Soccer extends InventoryUnifiedMinigame {
                 Title.Times times = Title.Times.times(Duration.ZERO, Duration.ofMillis(500), Duration.ofMillis(200));
                 sendAudienceTitle("<dark_green>GO!", "", times);
                 this.unfreezeAll();
+                this.roundEndsAt = System.currentTimeMillis() + ROUND_LENGTH_MILLIS;
                 playAudienceSound(Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1.5f);
-                Executors.runSync(this.soccerBall.activeLocation(), () -> {
-                    this.soccerBall.activeLocation().getWorld().playSound(this.soccerBall.activeLocation(), Sound.ITEM_GOAT_HORN_SOUND_0, 9f, 1f);
-                });
+                Location kickoff = this.ballSpawnLocation;
+                Executors.runSync(kickoff, () -> kickoff.getWorld().playSound(kickoff, Sound.ITEM_GOAT_HORN_SOUND_0, 9f, 1f));
                 return;
             }
             sendAudienceTitle("<yellow>" + atomicCountdown.get(), "");
@@ -506,9 +693,14 @@ public final class Soccer extends InventoryUnifiedMinigame {
                     }
 
                     if (!boundingBox.contains(sulfurCube)) {
+                        if (!roundEnding.compareAndSet(false, true)) {
+                            this.kill(); // another ball already called the round, this one just leaves quietly
+                            return;
+                        }
+
                         SoccerPlayer lastContact = this.lastContactRole();
                         SoccerTeam lastContactTeam = lastContact == null ? null : lastContact.team();
-                        this.kill();
+                        killAllBalls();
                         sendAudienceMessage("<yellow>Out of bounds by " + (lastContact == null ? "Unknown" : lastContact.getName()) + "!");
                         sendAudienceMessage("<red>Penalty: <dark_gray>" + OUT_OF_BOUNDS_PENALTY + "</dark_gray> points for " + (lastContactTeam == null ? "Unknown" : lastContactTeam.getName()) + "!");
 
@@ -535,6 +727,10 @@ public final class Soccer extends InventoryUnifiedMinigame {
 
         // vanilla fires nothing when a player shoves the cube with their body, have to do the work ourselves
         private void detectContact() {
+            if (this.isPowered()) {
+                return;
+            }
+
             double cubeBottom = sulfurCube.getY();
             double cubeTop = cubeBottom + sulfurCube.getHeight();
 
@@ -573,6 +769,12 @@ public final class Soccer extends InventoryUnifiedMinigame {
             if (distance < 1.0E-4) {
                 return;
             }
+            // parking the cube against a body is what would stop a power kick dead, so a shot travelling this
+            // fast is left alone. it tunnels past everyone until a punch turns it
+            if (distance >= POWER_KICK_BLOCKS_PER_TICK) {
+                return;
+            }
+
             Vector direction = path.multiply(1.0 / distance);
 
             // goals are deliberately not tested against this path they're only sampled once a tick by
@@ -627,6 +829,11 @@ public final class Soccer extends InventoryUnifiedMinigame {
                     return false;
                 }
 
+                if (!roundEnding.compareAndSet(false, true)) {
+                    this.scored = true; // beaten to it by another ball, this goal doesn't count
+                    return true;
+                }
+
                 this.scored = true;
                 goal.scoreGoal(this, scorer);
                 return true;
@@ -663,6 +870,10 @@ public final class Soccer extends InventoryUnifiedMinigame {
 
             this.markKick(soccerPlayer);
             return true;
+        }
+
+        private boolean isPowered() {
+            return this.speed.blocksPerSecond() >= POWER_KICK_BPS;
         }
 
         private void markKick(SoccerPlayer soccerPlayer) {
@@ -778,6 +989,11 @@ public final class Soccer extends InventoryUnifiedMinigame {
             this.blocksPerSecond = 0.0;
         }
 
+        // a snapshot, safe to read off the sampled entity's thread
+        private @Nullable Location lastSample() {
+            return this.last;
+        }
+
         private double blocksPerSecond() {
             return this.blocksPerSecond;
         }
@@ -816,7 +1032,7 @@ public final class Soccer extends InventoryUnifiedMinigame {
                 this.speed.sample(player.getLocation());
                 if (System.currentTimeMillis() >= this.actionBarQuietUntil) {
                     String readout = String.format(Locale.ROOT, SPEED_READOUT,
-                        soccerBall.speed().blocksPerSecond(), this.speed.blocksPerSecond());
+                        nearestBallSpeed(player.getLocation()), this.speed.blocksPerSecond());
                     Feat active = this.activeFeat();
                     if (active != null) {
                         readout += "<gray> — " + active.formatted();
@@ -826,6 +1042,9 @@ public final class Soccer extends InventoryUnifiedMinigame {
 
                 if (this.ticks++ % GOAL_MARKER_INTERVAL_TICKS == 0) {
                     showGoalMarkers(player, this.team);
+                    if (player.getInventory().getChestplate().isEmpty()) {
+                        player.getInventory().setChestplate(this.team.chestplate());
+                    }
                 }
             });
         }
@@ -844,6 +1063,7 @@ public final class Soccer extends InventoryUnifiedMinigame {
             synchronized (playerScoreboard) {
                 playerScoreboard.addScore(this, 1);
             }
+            this.team.roundPlays().incrementAndGet();
             this.feat = feat;
             this.featAt = now;
         }
@@ -887,12 +1107,20 @@ public final class Soccer extends InventoryUnifiedMinigame {
         private final WorldTiedBoundingBox goalBox;
         private final TeamTemplate template;
         private final Particle.DustOptions dustOptions;
+        private final ItemStack chestplate;
+        private final AtomicInteger roundPlays = new AtomicInteger(); // decides a round nobody scored in
 
         private SoccerTeam(Location startLocation, WorldTiedBoundingBox goalBox, TeamTemplate template) {
             this.startLocation = startLocation;
             this.goalBox = goalBox;
             this.template = template;
             this.dustOptions = new Particle.DustOptions(Color.fromRGB(template.color()), 1.2f);
+            this.chestplate = ItemStack.of(Material.LEATHER_CHESTPLATE);
+            this.chestplate.editMeta(LeatherArmorMeta.class, meta -> {
+                meta.setColor(Color.fromRGB(template.color()));
+                //meta.setUnbreakable(true);
+                //meta.displayName(Util.color(template.formatted(template.teamName())).decoration(TextDecoration.ITALIC, false));
+            });
         }
 
         public boolean goalBoxOverlaps(Entity entity) {
@@ -915,70 +1143,17 @@ public final class Soccer extends InventoryUnifiedMinigame {
             // Check if the scorer scored on their own team first
 
             String scorerName = scorer.getEventPlayer().getName();
+            SoccerTeam beneficiary;
             if (scorer.team().equals(this)) {
-                // get opposing team
-                SoccerTeam opposingTeam = teams.stream().filter(team -> !team.equals(this)).findFirst().orElse(null);
-                Preconditions.checkNotNull(opposingTeam, "No opposing team found for scorer's team: " + scorer.team().getName());
-
-                scoreboard.addScore(opposingTeam, POINTS_PER_GOAL);
+                beneficiary = opponentOf(this);
                 sendAudienceMessage(template.formatted(scorerName + " scored on their own goal! <dark_gray>(-" + POINTS_PER_GOAL + " points) <gray>—</gray> " + Util.getRandom(EXTRA_OWN_GOAL_NUANCE).formatted(scorerName, POINTS_PER_GOAL)));
             } else {
+                beneficiary = scorer.team();
                 sendAudienceMessage(scorer.team().template().formatted(scorerName + " scored! <dark_gray>(+" + POINTS_PER_GOAL + " points)"));
-                scoreboard.addScore(scorer.team(), POINTS_PER_GOAL);
                 scorer.award(Feat.GOAL);
             }
-            refreshBossBar();
 
-            // capture where the ball is before we remove it
-            Location ballLoc = ball.activeLocation().clone();
-
-            // kill the sulfur cube and have it explode into a bunch of dust particles
-            ball.kill();
-
-            ParticleDisplay particleDisplay = ParticleDisplay.of(Particle.DUST)
-                .withColor(new java.awt.Color(scorer.team().template().color()))
-                .withLocation(ballLoc);
-            Particles.spikeSphere(6.0, 25.0, 3, 0.4, 0.8, particleDisplay);
-
-
-            for (SoccerTeam team : teams) {
-                Location goalLocation = team.goalBox().getCenterLocation();
-                goalLocation.getWorld().playSound(goalLocation, Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 4f, 2f);
-                goalLocation.getWorld().playSound(goalLocation, Sound.ITEM_GOAT_HORN_SOUND_2, 4f, 1.25f);
-            }
-
-            Location ballInitialSpawnLoc = ball.initialSpawnLocation();
-            ballInitialSpawnLoc.getWorld().playSound(ballInitialSpawnLoc, Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 4f, 2f);
-            ballInitialSpawnLoc.getWorld().playSound(ballInitialSpawnLoc, Sound.ITEM_GOAT_HORN_SOUND_2, 4f, 1.25f);
-
-            // blast every entity within a 25 block radius away from the goal
-            for (LivingEntity entity : ballLoc.getNearbyLivingEntities(35)) {
-                Vector direction = entity.getLocation().toVector().subtract(ballLoc.toVector());
-                if (direction.lengthSquared() < 1.0E-6) {
-                    direction = new Vector(0, 1, 0); // entity sitting exactly on the goal, just launch it up
-                } else {
-                    direction.normalize();
-                }
-
-                // stronger blast the closer the entity is to the goal
-                double distance = entity.getLocation().distance(ballLoc);
-                double strength = Math.max(0.5, 2.8 * (1 - distance / 35.0));
-
-                Vector knockback = direction.multiply(strength);
-                knockback.setY(knockback.getY() + 0.7); // add a little lift
-                entity.setVelocity(knockback);
-            }
-
-            // wait 3.5 seconds before starting a new round
-            Executors.delayedSync(ballLoc, 70, () -> {
-                if (leadOf(scorer.team()) >= LEAD_TO_WIN) {
-                    sendAudienceMessage("<red>Game over!");
-                    sendAudienceMessage(scorer.team().template().formatted(scorer.team().getName() + " has won!"));
-                    stop();
-                } else {
-                    countdownStart(3);
-                }
-            });
+            finishRound(beneficiary, ball.activeLocation().clone());
         }
 
         @Override

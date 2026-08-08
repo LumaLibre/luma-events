@@ -25,6 +25,7 @@ repositories {
     maven("https://repo.md-5.net/content/groups/public/")
     maven("https://maven.enginehub.org/repo/")
     maven("https://mvn.lib.co.nz/public/")
+    maven("https://repo.glaremasters.me/repository/towny/") // towny
 }
 
 
@@ -36,6 +37,7 @@ dependencies {
     compileOnly("com.nuclyon.technicallycoded.inventoryrollback:InventoryRollbackPlus:1.7.3")
     compileOnly("com.github.Zrips:jobs:v4.17.2")
     compileOnly("net.dmulloy2:ProtocolLib:5.4.0")
+    compileOnly("com.palmergames.bukkit.towny:towny:0.103.1.1")
 
     //compileOnly("io.papermc.paper:paper-api:1.21.10-R0.1-SNAPSHOT")
     compileOnly("io.canvasmc.canvas:canvas-api:26.2.build.+")

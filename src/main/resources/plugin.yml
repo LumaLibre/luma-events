@@ -8,6 +8,7 @@ depend:
   - LumaItems
   - InventoryRollbackPlus
 softdepend:
+  - Towny
   - PlaceholderAPI
   - ProtocolLib
   - LibsDisguises

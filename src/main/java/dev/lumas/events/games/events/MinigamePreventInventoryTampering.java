@@ -3,6 +3,7 @@ package dev.lumas.events.games.events;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.utility.Executors;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -26,6 +27,7 @@ public class MinigamePreventInventoryTampering implements Listener {
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
         if (minigame.getParticipants().contains(eventPlayer)/* && minigame.getBoundingBox().contains(player)*/) {
             event.setCancelled(true);
+            Executors.delayedSync(player, 1, player::updateInventory);
             eventPlayer.sendMessage("You can't change your inventory while participating in this minigame.");
         }
     }
