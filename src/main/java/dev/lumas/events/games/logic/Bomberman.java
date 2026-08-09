@@ -711,7 +711,6 @@ public final class Bomberman extends InventoryUnifiedMinigame {
                 if (this.released) return;
                 player.addPotionEffect(INVISIBILITY);
                 if (!player.getAllowFlight()) player.setAllowFlight(true);
-                if (!player.isFlying()) player.setFlying(true);
             });
         }
 
