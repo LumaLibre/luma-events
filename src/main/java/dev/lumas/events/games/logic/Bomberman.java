@@ -775,8 +775,8 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         // Widths must be 17, 21, 25 ...(multiple of 4) or the pillar lattice lands on the wrong parity.
         private static final int MIN_SIZE = 32;
         private static final int MAX_SIZE = 238;
-        private static final double CELLS_PER_PLAYER = 35.0;
-        private static final double MIN_SPAWN_SPACING = 10.0;
+        private static final double CELLS_PER_PLAYER = 120.0;
+        private static final double MIN_SPAWN_SPACING = 18.0;
         private static final int SPAWN_CLEARANCE = 2;
         private static final int PILLAR_FREE_RADIUS = 2;
         private static final int PILLAR_HEIGHT = 8;
