@@ -71,7 +71,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
     private static final PluginContextLogger LOGGER = PluginContextLogger.getPluginLogger();
 
-    private static final long ROUND_DURATION = 240000L;
+    private static final long ROUND_DURATION = 180000L;
     private static final int TNT_FUSE_TICKS = 30;
     private static final long BOMB_LOCK_MILLIS = (TNT_FUSE_TICKS * 50L) + 1000L;
     private static final int BLAST_RADIUS = 2;
@@ -79,7 +79,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     private static final double[] BOX_EDGE_OFFSETS = {-0.3, 0.3};
     private static final int KILL_SCORE = 20;
     private static final int ROUND_WIN_SCORE = 30;
-    private static final int ROUNDS = 3;
+    private static final int ROUNDS = 2;
     private static final float GAME_OVER_SECONDS = 10;
     private static final int RESCUE_HEIGHT = 32;
     private static final long DURATION = (ROUND_DURATION + (long) (GAME_OVER_SECONDS * 1000)) * ROUNDS;
