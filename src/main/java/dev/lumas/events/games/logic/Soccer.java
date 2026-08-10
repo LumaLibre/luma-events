@@ -616,13 +616,13 @@ public final class Soccer extends InventoryUnifiedMinigame {
         for (SoccerTeam team : this.teams) {
             team.roundPlays().set(0);
         }
-        for (SulfurCubeSoccerBall ball : this.balls) {
-            ball.spawn();
-        }
         sendAudienceTitle("<yellow>" + atomicCountdown.get(), "");
         playAudienceSound(Sound.BLOCK_NOTE_BLOCK_CHIME, 1f, 1.5f);
         Executors.repeatingGlobal(20, 20, task -> {
             if (atomicCountdown.decrementAndGet() <= 0) {
+                for (SulfurCubeSoccerBall ball : this.balls) {
+                    ball.spawn();
+                }
                 task.cancel();
                 Title.Times times = Title.Times.times(Duration.ZERO, Duration.ofMillis(500), Duration.ofMillis(200));
                 sendAudienceTitle("<dark_green>GO!", "", times);
