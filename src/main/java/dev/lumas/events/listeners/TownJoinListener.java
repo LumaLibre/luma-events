@@ -83,10 +83,10 @@ public final class TownJoinListener implements Listener {
             return;
         }
 
-        // Checked before the cooldown so an ineligible inviter does not burn their next window.
-        if (inviter.getStatistic(Statistic.PLAY_ONE_MINUTE) < MIN_INVITER_PLAYTIME_TICKS) {
-            return;
-        }
+        // rem 10 min requirement
+//        if (inviter.getStatistic(Statistic.PLAY_ONE_MINUTE) < MIN_INVITER_PLAYTIME_TICKS) {
+//            return;
+//        }
 
         if (!tryStartInviterRewardCooldown(inviterUuid)) {
             return;
