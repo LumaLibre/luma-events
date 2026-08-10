@@ -22,6 +22,7 @@ import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -47,6 +48,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -69,6 +72,10 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     private final GenericStructure blankPanel;
     private final List<GenericStructure> panels;
     private final MinigameRoleMap<AbstractPanelPlayer> roleMap;
+    // viewer uuid -> uuids that viewer currently has hidden. Every hide this game applies is recorded
+    // here so it can be undone on stop without depending on the participant list, which shrinks as
+    // players quit and is cleared by Minigame#stop right after handleStop runs.
+    private final Map<UUID, Set<UUID>> hiddenPlayers;
     private final Scoreboard<EventPlayer> scoreboard;
     private final TokenFormula<Integer> tokenFormula;
     private final int maxRounds;
@@ -89,6 +96,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                 .map(fileName -> new GenericStructure(this.center, fileName))
                 .toList());
         this.roleMap = new MinigameRoleMap<>(AbstractPanelPlayer::cleanup);
+        this.hiddenPlayers = new ConcurrentHashMap<>();
         this.scoreboard = new Scoreboard<>();
         this.tokenFormula = new FlatIntTokenFormula(9);
         this.maxRounds = panels.size();
@@ -134,6 +142,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                 panelParticipant.checkEnd();
             }
         }
+        this.restoreVisibilityFor(participant.getUuid()); // they are leaving, drop any spectators they had hidden
         return super.removeParticipant(participant, doTeleport);
     }
 
@@ -162,6 +171,10 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     @Override
     protected void onRunnable(long timeLeft) {
+        if (this.stopping) {
+            return; // checkEnd stops us from a delayed async task, so ticks can still land during handleStop
+        }
+
         if (this.shouldStop()) {
             this.stop();
             return;
@@ -221,6 +234,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             role.teleportAsync(this.spawnLocation);
             role.cleanup();
         }
+        this.restoreAllVisibility(); // sweep anything cleanup couldn't reach (offline spectators, ex-participants)
 
         Executors.runSync(this.center, () -> {
             this.blankPanel.paste();
@@ -250,6 +264,54 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                     .build()
                     .start();
         });
+    }
+
+    private void hideFrom(Player viewer, Player target) {
+        if (viewer.getUniqueId().equals(target.getUniqueId())) {
+            return;
+        }
+        Set<UUID> hidden = this.hiddenPlayers.computeIfAbsent(viewer.getUniqueId(), uuid -> ConcurrentHashMap.newKeySet());
+        if (!hidden.add(target.getUniqueId())) {
+            return;
+        }
+        Executors.runSync(viewer, () -> viewer.hidePlayer(EventMain.getInstance(), target));
+    }
+
+    private void restoreVisibilityOf(EventPlayer target) {
+        Player targetPlayer = target.getPlayer();
+        for (Map.Entry<UUID, Set<UUID>> entry : this.hiddenPlayers.entrySet()) {
+            if (!entry.getValue().remove(target.getUuid())) {
+                continue;
+            }
+            Player viewer = Bukkit.getPlayer(entry.getKey());
+            if (viewer != null && targetPlayer != null) {
+                Executors.runSync(viewer, () -> viewer.showPlayer(EventMain.getInstance(), targetPlayer));
+            }
+        }
+    }
+
+    private void restoreVisibilityFor(UUID viewerUuid) {
+        Set<UUID> hidden = this.hiddenPlayers.remove(viewerUuid);
+        if (hidden == null || hidden.isEmpty()) {
+            return;
+        }
+        Player viewer = Bukkit.getPlayer(viewerUuid);
+        if (viewer == null) {
+            return;
+        }
+        for (UUID targetUuid : hidden) {
+            Player target = Bukkit.getPlayer(targetUuid);
+            if (target != null) {
+                Executors.runSync(viewer, () -> viewer.showPlayer(EventMain.getInstance(), target));
+            }
+        }
+    }
+
+    private void restoreAllVisibility() {
+        for (UUID viewerUuid : this.hiddenPlayers.keySet()) {
+            this.restoreVisibilityFor(viewerUuid);
+        }
+        this.hiddenPlayers.clear();
     }
 
     public boolean shouldStop() {
@@ -458,8 +520,11 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
         private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 210, 0, true, true);
 
+        private volatile boolean released;
+
         public PanelSpectator(PanelParty context, EventPlayer eventPlayer) {
             super(context, eventPlayer);
+            this.released = false;
             this.hide();
             this.eventPlayer.operatePlayer(player -> {
                 player.setAllowFlight(true);
@@ -469,7 +534,9 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
         @Override
         public void tick() {
+            if (this.released) return;
             this.eventPlayer.operatePlayer(player -> {
+                if (this.released) return; // cleanup ran while this tick was queued
                 if (!player.getAllowFlight()) {
                     player.setAllowFlight(true);
                 }
@@ -482,6 +549,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
         @Override
         public void cleanup() {
+            this.released = true;
             this.show();
             this.eventPlayer.operatePlayer(player -> {
                 player.setAllowFlight(false);
@@ -502,25 +570,20 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         }
 
         private void hide() {
-            this.eventPlayer.operatePlayer(self -> {
-                for (PanelParticipant other : this.context.roleMap.getMatching(PanelParticipant.class)) {
-                    Player bukkitOther = other.getEventPlayer().getPlayer();
-                    if (bukkitOther != null) {
-                        bukkitOther.hidePlayer(EventMain.getInstance(), self);
-                    }
+            Player self = this.eventPlayer.getPlayer();
+            if (self == null) {
+                return;
+            }
+            for (PanelParticipant other : this.context.roleMap.getMatching(PanelParticipant.class)) {
+                Player bukkitOther = other.getEventPlayer().getPlayer();
+                if (bukkitOther != null) {
+                    this.context.hideFrom(bukkitOther, self);
                 }
-            });
+            }
         }
 
         private void show() {
-            this.eventPlayer.operatePlayer(self -> {
-                for (EventPlayer other : this.context.getParticipants()) {
-                    Player bukkitOther = other.getPlayer();
-                    if (bukkitOther != null) {
-                        bukkitOther.showPlayer(EventMain.getInstance(), self);
-                    }
-                }
-            });
+            this.context.restoreVisibilityOf(this.eventPlayer);
         }
 
     }
