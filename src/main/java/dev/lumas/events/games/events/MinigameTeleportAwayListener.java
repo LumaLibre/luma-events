@@ -30,6 +30,7 @@ public class MinigameTeleportAwayListener implements Listener {
             if (loc != null) {
                 event.setSpawnLocation(loc);
             }
+            eventPlayer.resetDisconnectedFromMinigame();
         }
     }
 }

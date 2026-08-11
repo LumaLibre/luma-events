@@ -203,4 +203,8 @@ public class EventPlayer implements Serializable, Scorer {
     public synchronized boolean wasDisconnectedFromMinigame() {
         return this.disconnectedFromMinigame;
     }
+
+    public synchronized void resetDisconnectedFromMinigame() {
+        this.disconnectedFromMinigame = false;
+    }
 }
