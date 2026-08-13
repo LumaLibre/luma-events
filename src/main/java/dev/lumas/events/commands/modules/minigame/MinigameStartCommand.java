@@ -59,7 +59,11 @@ public class MinigameStartCommand implements CommandModule {
                 return false;
             }
         } else {
-            definition = Util.getRandom(minigame.getDefinitions().values());
+            definition = minigame.randomEnabledDefinition();
+            if (definition == null) {
+                Util.sendMsg(commandSender, "Every map of this minigame is disabled. Name one explicitly to start it anyway.");
+                return false;
+            }
         }
 
         if (MinigameManager.getInstance().tryNewMinigameSafely(minigame, definition, true, seconds)){

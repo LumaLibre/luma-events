@@ -39,7 +39,11 @@ public final class MinigameManager extends AsynchronousRunnable {
 
 
     public boolean newMinigame(MinigameConstant game, boolean force, int seconds) throws GameAlreadyStartedException {
-        return this.newMinigame(game, Util.getRandom(game.getDefinitions().values()), force, seconds);
+        OkaeriConfig definition = game.randomEnabledDefinition();
+        if (definition == null) {
+            throw new NoAvailableMinigames("Cannot start " + game.getDisplayName() + ": every one of its maps is disabled!");
+        }
+        return this.newMinigame(game, definition, force, seconds);
     }
 
     public boolean newMinigame(MinigameConstant game, OkaeriConfig definition, boolean force, int seconds) throws GameAlreadyStartedException {

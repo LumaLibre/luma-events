@@ -4,6 +4,8 @@ import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.sectors.BombermanDefinition;
 import dev.lumas.events.configurable.sectors.MineBattleDefinition;
+import dev.lumas.events.configurable.sectors.ToggleableDefinition;
+import dev.lumas.events.games.exceptions.NoAvailableMinigames;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.logic.BoatRace2;
 import dev.lumas.events.games.logic.Bomberman;
@@ -24,6 +26,7 @@ import eu.okaeri.configs.OkaeriConfig;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Getter
@@ -78,8 +81,26 @@ public enum MinigameConstant {
         };
     }
 
+    public <T extends OkaeriConfig> Map<String, T> getEnabledDefinitions() {
+        Map<String, T> enabled = new LinkedHashMap<>();
+        for (Map.Entry<String, T> entry : this.<T>getDefinitions().entrySet()) {
+            if (entry.getValue() instanceof ToggleableDefinition toggleable && !toggleable.isEnabled()) continue;
+            enabled.put(entry.getKey(), entry.getValue());
+        }
+        return enabled;
+    }
+
+    @Nullable
+    public <T extends OkaeriConfig> T randomEnabledDefinition() {
+        Map<String, T> enabled = getEnabledDefinitions();
+        return enabled.isEmpty() ? null : Util.getRandom(enabled.values());
+    }
+
     public Minigame instantiateWithRandomDefinition() {
-        var randomDefinition = Util.getRandom(getDefinitions().values());
+        var randomDefinition = randomEnabledDefinition();
+        if (randomDefinition == null) {
+            throw new NoAvailableMinigames("Cannot start " + this.displayName + ": every one of its maps is disabled!");
+        }
         return instantiate(randomDefinition);
     }
 

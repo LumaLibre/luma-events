@@ -18,7 +18,10 @@ import java.util.List;
 
 @Getter
 @Setter
-public class IncursionDefinition extends OkaeriConfig {
+public class IncursionDefinition extends OkaeriConfig implements ToggleableDefinition {
+
+    @Comment("Whether this map may be picked when Incursion starts (disabled maps are skipped)")
+    private boolean enabled = true;
 
     @Comment("Where participants wait before the game starts and are sent once it has concluded")
     private Location lobbyLocation;
