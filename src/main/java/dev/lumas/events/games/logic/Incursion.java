@@ -106,6 +106,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.DoubleConsumer;
+import java.util.stream.Collectors;
 
 public final class Incursion extends InventoryUnifiedMinigame {
 
@@ -839,7 +840,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private void applyBeamDamage(Player shooter, IncursionTeam shooterTeam, Location eye, Vector direction, double maxDistance) {
         IncursionDefinition.SniperSettings settings = definition.getSniper();
         int hits = 0;
-        int headshots = 0;
+        List<Double> headshots = new ArrayList<>();
 
         for (Target target : targetsOf(shooterTeam)) {
             BoundingBox hitbox = target.expandedHitbox(settings.getHitRadius());
@@ -854,16 +855,15 @@ public final class Incursion extends InventoryUnifiedMinigame {
             dealTrueDamage(target.entity(), shooter, eye, damage, settings.getKnockback(), Weapon.SNIPER.getPlainName(), headshot);
             if (headshot) {
                 headshotEffect(target);
-                headshots++;
+                headshots.add(target.entity().getEyeLocation().distance(shooter.getEyeLocation()));
             }
             hits++;
         }
 
         if (hits > 0) {
-            int landedHeadshots = headshots;
             Executors.runSync(shooter, () -> {
-                if (landedHeadshots > 0) headshotFeedback(shooter);
-                else hitFeedback(shooter);
+                if (headshots.isEmpty()) hitFeedback(shooter);
+                else headshotFeedback(shooter, headshots);
             });
         }
     }
@@ -1086,12 +1086,19 @@ public final class Incursion extends InventoryUnifiedMinigame {
         shooter.playSound(shooter.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1f, 1.4f);
     }
 
-    private static void headshotFeedback(Player shooter) {
+    private static void headshotFeedback(Player shooter, List<Double> headshots) {
         shooter.playSound(shooter.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1f, 1.9f);
         shooter.playSound(shooter.getLocation(), Sound.ITEM_TRIDENT_RETURN, 0.6f, 1.8f);
+        headshots.sort(Double::compareTo);
+        String subtitle = headshots.stream()
+                .map(d -> (d % 1 == 0
+                        ? String.format("%.0f", d)
+                        : String.format("%.1f", d)
+                ) + "m")
+                .collect(Collectors.joining(", "));
         shooter.showTitle(Title.title(
-                Component.empty(),
-                Util.color("<red><b>HEADSHOT"),
+                Util.color("<red>HEADSHOT"),
+                Util.color("<gray>" + subtitle),
                 HEADSHOT_TITLE_TIMES));
     }
 
