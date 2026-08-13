@@ -44,6 +44,7 @@ import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Creature;
 import org.bukkit.entity.Drowned;
@@ -178,6 +179,10 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private static final List<Attribute> FREEZE_ATTRIBUTES = List.of(Attribute.MOVEMENT_SPEED, Attribute.JUMP_STRENGTH);
 
     private static final Set<Integer> WARNING_SECONDS = Set.of(60, 30, 10, 3, 2, 1);
+
+    private static final double LETHAL_FALL_BLOCKS = 10.0;
+    private static final double VANILLA_FALL_GRACE_BLOCKS = 3.0;
+    private static final double LETHAL_FALL_DAMAGE = 1_000.0;
 
     private static final Set<EntityDamageEvent.DamageCause> FIRE_DAMAGE_CAUSES =
             Set.of(EntityDamageEvent.DamageCause.FIRE, EntityDamageEvent.DamageCause.FIRE_TICK);
@@ -812,7 +817,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 return;
             }
 
-            if (!world.getBlockAt(blockX, blockY, blockZ).isPassable()) {
+            if (stopsShots(world.getBlockAt(blockX, blockY, blockZ))) {
                 Location impact = new Location(world, x, y, z);
                 world.spawnParticle(Particle.EXPLOSION, impact, 1, 0, 0, 0, 0);
                 world.spawnParticle(Particle.CRIT, impact, 8, 0.1, 0.1, 0.1, 0.25);
@@ -1020,7 +1025,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 return;
             }
 
-            if (!world.getBlockAt(point).isPassable()) {
+            if (stopsShots(world.getBlockAt(point))) {
                 splash(world, point);
                 return;
             }
@@ -1349,9 +1354,13 @@ public final class Incursion extends InventoryUnifiedMinigame {
             int blockZ = (int) Math.floor(from.getZ() + (direction.getZ() * travelled));
 
             if (!Bukkit.isOwnedByCurrentRegion(world, blockX >> 4, blockZ >> 4)) return true;
-            if (!world.getBlockAt(blockX, blockY, blockZ).isPassable()) return false;
+            if (stopsShots(world.getBlockAt(blockX, blockY, blockZ))) return false;
         }
         return true;
+    }
+
+    private static boolean stopsShots(Block block) {
+        return !block.isPassable() && block.getType() != Material.BARRIER;
     }
 
     // Drop particles rather than rescheduling them when they'd land in another region (shouldn't happen anyway)
@@ -1497,6 +1506,11 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
         if (isOutOfPlay(victim.getUniqueId())) {
             event.setCancelled(true);
+            return;
+        }
+
+        if (event.getCause() == EntityDamageEvent.DamageCause.FALL && isLethalFall(victim, event)) {
+            event.setDamage(LETHAL_FALL_DAMAGE);
             return;
         }
 
@@ -1667,6 +1681,12 @@ public final class Incursion extends InventoryUnifiedMinigame {
             player.getInventory().setChestplate(teamChestplate(team));
             Util.sendMsg(player, "You can't take off your armor!");
         });
+    }
+
+    private static boolean isLethalFall(Player victim, EntityDamageEvent event) {
+        float fallen = victim.getFallDistance();
+        if (fallen <= 0f) return event.getDamage() + VANILLA_FALL_GRACE_BLOCKS >= LETHAL_FALL_BLOCKS;
+        return fallen >= LETHAL_FALL_BLOCKS;
     }
 
     private boolean isOutOfPlay(UUID uuid) {
