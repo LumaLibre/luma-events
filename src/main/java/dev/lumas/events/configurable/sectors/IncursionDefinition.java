@@ -53,6 +53,9 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Comment("How many points a participant has to earn for one token on top of the base 3, up to 11 total")
     private int pointsPerToken = 75;
 
+    @Comment("Judging shots against where the shooter saw everyone rather than where they are now")
+    private LagCompensationSettings lagCompensation = new LagCompensationSettings();
+
     @Comment("Our equivalent of a sniper (spyglass)")
     private SniperSettings sniper = new SniperSettings();
 
@@ -76,6 +79,25 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
 
     @Comment("The minibosses guarding boss rooms")
     private MinibossSettings miniboss = new MinibossSettings();
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class LagCompensationSettings extends OkaeriConfig {
+
+        @Comment({
+                "Whether the hitscan weapons (overwatch, blunderhorn) and the spitter's stream are",
+                "judged against where their targets were when the shooter used the weapon",
+                "(Unstable eggs are always real time, so they can be dodged)"
+        })
+        private boolean enabled = true;
+
+        @Comment("How far past the shooter's ping shots are rewound (to cover render delay)")
+        private int interpolationMillis = 100;
+
+        @Comment("Hard cap on the rewind (never rewinds past one second)")
+        private int maxRewindMillis = 300;
+    }
 
     @Getter
     @Setter

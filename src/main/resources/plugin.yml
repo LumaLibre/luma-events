@@ -12,3 +12,4 @@ softdepend:
   - PlaceholderAPI
   - ProtocolLib
   - LibsDisguises
+  - packetevents

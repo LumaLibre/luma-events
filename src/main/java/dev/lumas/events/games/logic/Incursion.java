@@ -16,6 +16,7 @@ import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
+import dev.lumas.events.utility.latency.LatencyTracker;
 import dev.lumas.lumaitems.particles.ParticleDisplay;
 import dev.lumas.lumaitems.particles.Particles;
 import io.papermc.paper.datacomponent.DataComponentTypes;
@@ -95,6 +96,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -104,7 +106,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.DoubleConsumer;
 import java.util.stream.Collectors;
 
@@ -168,7 +169,9 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     // How long after a hit its attacker still gets credited with the kill
     private static final long DAMAGE_CREDIT_MILLIS = 10_000L;
-    private static final long TARGET_SNAPSHOT_MILLIS = 50L;
+
+    private static final int HISTORY_TICKS = 20;
+    private static final long MAX_REWIND_NANOS = TimeUnit.MILLISECONDS.toNanos((HISTORY_TICKS - 4) * 50L);
 
     private static final long INVINCIBILITY_AURA_PERIOD_MILLIS = 100L;
     private static final Duration INVINCIBILITY_TITLE_STAY = Duration.ofMillis(400);
@@ -219,9 +222,10 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private final List<Orb> orbs = new CopyOnWriteArrayList<>();
     private final List<ScheduledTask> orbTasks = new ArrayList<>();
 
-    private final AtomicLong targetsBuiltAt = new AtomicLong(); // Rebuilt at most once a tick by whatever thread asks for it first
-    private volatile List<Target> team1Targets = List.of();
-    private volatile List<Target> team2Targets = List.of();
+    // Every participant's and miniboss' hitbox over the last HISTORY_TICKS ticks, keyed by entity
+    private final ConcurrentHashMap<UUID, Trail> trails = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, Recorder> recorders = new ConcurrentHashMap<>();
+    private final LatencyTracker latency = new LatencyTracker(this::onlineParticipants);
 
     private final List<Miniboss> minibosses;
     private final ConcurrentHashMap<UUID, Miniboss> minibossesByEntity = new ConcurrentHashMap<>();
@@ -311,10 +315,14 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 .build();
         this.countdownBossBar.start();
 
+        this.latency.start();
+        EventMain.getInstance().getLogger().info("Incursion is measuring latency with " + latency.sourceName());
+
         this.auraTask = Executors.runRepeatingAsync(TimeUnit.MILLISECONDS, 0, INVINCIBILITY_AURA_PERIOD_MILLIS, _ -> {
             tickInvincibilityAura();
             tickSniperCharge();
             handleMinibossRespawn();
+            tickRecorders();
         });
 
         this.startOrbs();
@@ -342,6 +350,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
         this.kickoffInProgress = false;
         if (this.countdownBossBar != null) this.countdownBossBar.stop(false);
         if (this.auraTask != null) this.auraTask.cancel();
+        this.latency.stop();
+        this.stopRecording();
         this.orbTasks.forEach(ScheduledTask::cancel);
         this.orbTasks.clear();
         this.orbs.clear();
@@ -355,8 +365,6 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
         this.participantsByUuid.clear();
         this.teamsByUuid.clear();
-        this.team1Targets = List.of();
-        this.team2Targets = List.of();
 
         if (team1 != null && team2 != null) {
             scoreboard.addScore(team1, team1.getScore().get());
@@ -793,8 +801,10 @@ public final class Incursion extends InventoryUnifiedMinigame {
         eye.getWorld().playSound(eye, Sound.ITEM_TRIDENT_THROW, 1.1f, 0.5f);
         eye.getWorld().playSound(eye, Sound.ENTITY_WARDEN_SONIC_BOOM, 0.35f, 1.4f);
 
+        long firedAt = shotTime(shooter);
+
         advanceBeam(team, eye, direction, 0.0, Math.max(1.0, settings.getRange()),
-                stoppedAt -> applyBeamDamage(shooter, team, eye, direction, stoppedAt));
+                stoppedAt -> applyBeamDamage(shooter, team, eye, direction, stoppedAt, firedAt));
     }
 
     private void advanceBeam(IncursionTeam team, Location eye, Vector direction,
@@ -837,12 +847,13 @@ public final class Incursion extends InventoryUnifiedMinigame {
     }
 
     // Projects every enemy onto the beam and hits everyone within the configured radius of it
-    private void applyBeamDamage(Player shooter, IncursionTeam shooterTeam, Location eye, Vector direction, double maxDistance) {
+    private void applyBeamDamage(Player shooter, IncursionTeam shooterTeam, Location eye, Vector direction,
+                                 double maxDistance, long firedAt) {
         IncursionDefinition.SniperSettings settings = definition.getSniper();
         int hits = 0;
         List<Double> headshots = new ArrayList<>();
 
-        for (Target target : targetsOf(shooterTeam)) {
+        for (Target target : targetsOf(shooterTeam, firedAt)) {
             BoundingBox hitbox = target.expandedHitbox(settings.getHitRadius());
             double maxReach = maxDistance + hitbox.getHeight();
             if (eye.toVector().distanceSquared(hitbox.getCenter()) > maxReach * maxReach) continue;
@@ -855,7 +866,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
             dealTrueDamage(target.entity(), shooter, eye, damage, settings.getKnockback(), Weapon.SNIPER.getPlainName(), headshot);
             if (headshot) {
                 headshotEffect(target);
-                headshots.add(target.entity().getEyeLocation().distance(shooter.getEyeLocation()));
+                headshots.add(target.headHitbox(0.0).getCenter().distance(eye.toVector()));
             }
             hits++;
         }
@@ -904,7 +915,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         double cosHalfAngle = Math.cos(halfAngle);
         Vector apex = muzzle.toVector();
 
-        for (Target target : targetsOf(team)) {
+        for (Target target : targetsOf(team, shotTime(shooter))) {
             BoundingBox hitbox = target.hitbox();
             double distance = coneHitDistance(apex, direction, range, tanHalfAngle, cosHalfAngle, hitbox);
             if (distance < 0) continue;
@@ -996,11 +1007,12 @@ public final class Incursion extends InventoryUnifiedMinigame {
         muzzle.getWorld().spawnParticle(Particle.SPLASH, muzzle, 6, 0.05, 0.05, 0.05, 0.02);
         muzzle.getWorld().spawnParticle(Particle.DUST, muzzle, 6, 0.06, 0.06, 0.06, 0, SPIT_DUST);
 
-        advanceSpit(shooter, team, muzzle, velocity, 0.0);
+        advanceSpit(shooter, team, muzzle, velocity, 0.0, rewindOf(shooter));
     }
 
     // Advances the stream by one tick, then reschedules itself onto whichever region owns the position it ended up in
-    private void advanceSpit(Player shooter, IncursionTeam team, Location position, Vector velocity, double travelled) {
+    private void advanceSpit(Player shooter, IncursionTeam team, Location position, Vector velocity,
+                             double travelled, long rewind) {
         IncursionDefinition.SpitterSettings settings = definition.getSpitter();
         double range = Math.max(0.01, settings.getRange());
         if (!this.active || this.stopping || travelled >= range) return;
@@ -1010,7 +1022,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         Vector stepVector = velocity.clone().multiply(1.0 / steps);
         double stepLength = stepVector.length();
 
-        List<Target> targets = targetsOf(team);
+        List<Target> targets = targetsOf(team, System.nanoTime() - rewind);
         double hitRadius = settings.getHitRadius();
 
         Location point = position.clone();
@@ -1021,7 +1033,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
             if (!Bukkit.isOwnedByCurrentRegion(point)) {
                 Location resumeAt = point.clone();
                 double resumeTravelled = travelled;
-                Executors.sync(resumeAt, () -> advanceSpit(shooter, team, resumeAt, velocity, resumeTravelled));
+                Executors.sync(resumeAt, () -> advanceSpit(shooter, team, resumeAt, velocity, resumeTravelled, rewind));
                 return;
             }
 
@@ -1059,7 +1071,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         Vector nextVelocity = velocity.clone().subtract(new Vector(0, settings.getGravity(), 0));
         Location next = point.clone();
         double nextTravelled = travelled;
-        Executors.delayedSync(next, 1, () -> advanceSpit(shooter, team, next, nextVelocity, nextTravelled));
+        Executors.delayedSync(next, 1, () -> advanceSpit(shooter, team, next, nextVelocity, nextTravelled, rewind));
     }
 
     private static void splash(World world, Location at) {
@@ -1166,7 +1178,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         double falloff = Math.clamp(settings.getDamageFalloff(), 0.0, 1.0);
         boolean connected = false;
 
-        for (Target target : targetsOf(throwerTeam)) {
+        for (Target target : targetsOf(throwerTeam, System.nanoTime())) {
             Vector toTarget = target.hitbox().getCenter().subtract(at.toVector());
             double distance = toTarget.length();
             if (distance > radius) continue;
@@ -1291,41 +1303,184 @@ public final class Incursion extends InventoryUnifiedMinigame {
         return PlainTextComponentSerializer.plainText().serialize(Util.color(display));
     }
 
-    private List<Target> targetsOf(IncursionTeam team) {
-        refreshTargets();
-        return team == team1 ? team1Targets : team2Targets;
-    }
-
-    private void refreshTargets() {
-        long now = System.currentTimeMillis();
-        long builtAt = targetsBuiltAt.get();
-        if (now - builtAt < TARGET_SNAPSHOT_MILLIS) return;
-        if (!targetsBuiltAt.compareAndSet(builtAt, now)) return;
-
-        List<Target> forTeam1 = new ArrayList<>();
-        List<Target> forTeam2 = new ArrayList<>();
+    // Everything <team> may shoot, as it stood at <at> (System.nanoTime() output)
+    // Who is in play is always checked for right now, so a rewound shot can
+    // never hit someone who has since respawned, gone invincible or left
+    private List<Target> targetsOf(IncursionTeam team, long at) {
+        List<Target> targets = new ArrayList<>();
 
         for (EventPlayer participant : this.participants) {
             UUID uuid = participant.getUuid();
-            IncursionTeam team = teamOf(uuid);
-            if (team == null || isOutOfPlay(uuid)) continue;
+            IncursionTeam theirs = teamOf(uuid);
+            if (theirs == null || theirs == team || isOutOfPlay(uuid)) continue;
 
             Player player = participant.getPlayer();
             if (player == null) continue;
 
-            Target target = new Target(player, player.getBoundingBox(), player.getEyeHeight());
-            (team == team1 ? forTeam2 : forTeam1).add(target);
+            Target target = targetAt(player, at);
+            if (target != null) targets.add(target);
         }
 
         for (Miniboss miniboss : this.minibosses) {
-            Target target = miniboss.target();
-            if (target == null) continue;
-            forTeam1.add(target);
-            forTeam2.add(target);
+            Target target = miniboss.targetAt(at);
+            if (target != null) targets.add(target);
         }
 
-        this.team1Targets = List.copyOf(forTeam1);
-        this.team2Targets = List.copyOf(forTeam2);
+        return targets;
+    }
+
+    // Where this entity was at <at>, or null if nothing has been recorded
+    // for it and we are on the wrong thread to look its hitbox up live
+    @Nullable
+    private Target targetAt(LivingEntity entity, long at) {
+        Trail trail = trails.get(entity.getUniqueId());
+        Snapshot snapshot = trail == null ? null : trail.at(at);
+        if (snapshot != null) return new Target(entity, snapshot.hitbox(), snapshot.eyeHeight());
+
+        return Bukkit.isOwnedByCurrentRegion(entity)
+                ? new Target(entity, entity.getBoundingBox(), entity.getEyeHeight())
+                : null;
+    }
+
+    // How far behind live a shot from this player is judged: ping plus render delay
+    // (capped so victims are not shot long after they reached cover)
+    private long rewindOf(Player shooter) {
+        IncursionDefinition.LagCompensationSettings settings = definition.getLagCompensation();
+        if (!settings.isEnabled()) return 0L;
+
+        long cap = Math.min(MAX_REWIND_NANOS,
+                TimeUnit.MILLISECONDS.toNanos(Math.max(0, settings.getMaxRewindMillis())));
+        long asked = TimeUnit.MILLISECONDS.toNanos(
+                latency.pingMillis(shooter) + Math.max(0, settings.getInterpolationMillis()));
+
+        return Math.clamp(asked, 0L, cap);
+    }
+
+    // The moment a shot fired by this player right now should be judged at
+    private long shotTime(Player shooter) {
+        return System.nanoTime() - rewindOf(shooter);
+    }
+
+    private List<Player> onlineParticipants() {
+        List<Player> players = new ArrayList<>();
+        for (EventPlayer participant : this.participants) {
+            Player player = participant.getPlayer();
+            if (player != null) players.add(player);
+        }
+        return players;
+    }
+
+    // Keeps a recorder ticking on every participant and living miniboss (and forgets whatever has left the game)
+    private void tickRecorders() {
+        Set<UUID> live = new HashSet<>();
+
+        for (Player player : onlineParticipants()) {
+            live.add(player.getUniqueId());
+            startRecording(player);
+        }
+
+        for (Miniboss miniboss : this.minibosses) {
+            Mob mob = miniboss.entity;
+            if (mob == null || !miniboss.alive) continue;
+            live.add(mob.getUniqueId());
+            startRecording(mob);
+        }
+
+        recorders.entrySet().removeIf(entry -> {
+            if (live.contains(entry.getKey())) return false;
+            entry.getValue().task().cancel();
+            return true;
+        });
+        trails.keySet().removeIf(uuid -> !live.contains(uuid));
+    }
+
+    private void startRecording(LivingEntity entity) {
+        UUID uuid = entity.getUniqueId();
+        Recorder running = recorders.get(uuid);
+        if (running != null && running.entity() == entity && !running.task().isCancelled()) return;
+
+        if (running != null) running.task().cancel();
+
+        Trail trail = new Trail();
+        ScheduledTask task = Executors.repeatingSync(entity, 1L, _ -> trail.record(entity));
+        if (task == null) return; // Already gone, the next sweep can try again
+
+        trails.put(uuid, trail);
+        recorders.put(uuid, new Recorder(entity, task));
+    }
+
+    private void stopRecording() {
+        recorders.values().forEach(recorder -> recorder.task().cancel());
+        recorders.clear();
+        trails.clear();
+    }
+
+    private void forgetTrail(UUID uuid) {
+        Trail trail = trails.get(uuid);
+        if (trail != null) trail.clear();
+    }
+
+    // What an entity's hitbox looked like on one tick
+    private record Snapshot(long takenAt, BoundingBox hitbox, double eyeHeight) {}
+
+    private record Recorder(LivingEntity entity, ScheduledTask task) {}
+
+    // One entity's last HISTORY_TICKS hitboxes
+    private static final class Trail {
+
+        private final Snapshot[] snapshots = new Snapshot[HISTORY_TICKS];
+        private volatile int written;
+
+        private void record(LivingEntity entity) {
+            int index = this.written;
+            snapshots[Math.floorMod(index, HISTORY_TICKS)] =
+                    new Snapshot(System.nanoTime(), entity.getBoundingBox(), entity.getEyeHeight());
+            this.written = index + 1;
+        }
+
+        private void clear() {
+            Arrays.fill(snapshots, null);
+            this.written = 0;
+        }
+
+        // The hitbox this entity had at <when>, interpolated between the ticks either side of it
+        @Nullable
+        private Snapshot at(long when) {
+            int count = this.written; // Reading this first "publishes" every snapshot below it
+
+            Snapshot newer = null;
+            for (int age = 0; age < Math.min(count, HISTORY_TICKS); age++) {
+                Snapshot snapshot = snapshots[Math.floorMod(count - 1 - age, HISTORY_TICKS)];
+                if (snapshot == null) break;
+                if (snapshot.takenAt() <= when) {
+                    return newer == null ? snapshot : between(snapshot, newer, when);
+                }
+                newer = snapshot;
+            }
+            return newer;
+        }
+
+        private static Snapshot between(Snapshot older, Snapshot newer, long when) {
+            long span = newer.takenAt() - older.takenAt();
+            if (span <= 0) return newer;
+
+            double progress = Math.clamp((double) (when - older.takenAt()) / span, 0.0, 1.0);
+            BoundingBox from = older.hitbox();
+            BoundingBox to = newer.hitbox();
+
+            return new Snapshot(when, new BoundingBox(
+                    lerp(from.getMinX(), to.getMinX(), progress),
+                    lerp(from.getMinY(), to.getMinY(), progress),
+                    lerp(from.getMinZ(), to.getMinZ(), progress),
+                    lerp(from.getMaxX(), to.getMaxX(), progress),
+                    lerp(from.getMaxY(), to.getMaxY(), progress),
+                    lerp(from.getMaxZ(), to.getMaxZ(), progress)),
+                    lerp(older.eyeHeight(), newer.eyeHeight(), progress));
+        }
+
+        private static double lerp(double from, double to, double progress) {
+            return from + ((to - from) * progress);
+        }
     }
 
     // A shootable thing, its last known hitbox and the eye height that hitbox was taken at
@@ -1424,6 +1579,12 @@ public final class Incursion extends InventoryUnifiedMinigame {
             participant.sendMessage("<red>Don't leave the arena!");
             respawnFlow(participant, team);
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerTeleport(PlayerTeleportEvent event) {
+        if (!this.active || this.stopping) return;
+        forgetTrail(event.getPlayer().getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -1804,8 +1965,6 @@ public final class Incursion extends InventoryUnifiedMinigame {
         private volatile Mob entity;
         private volatile Entity mount;
 
-        // Refreshed on the mob's thread, so weapons can test against it from anywhere
-        private volatile BoundingBox hitbox;
         private volatile Location home;
         private volatile ScheduledTask task;
         private volatile int shownHealth = -1;
@@ -1826,10 +1985,9 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
 
         @Nullable
-        private Target target() {
+        private Target targetAt(long at) {
             Mob mob = this.entity;
-            BoundingBox box = this.hitbox;
-            return mob == null || box == null || !alive ? null : new Target(mob, box, mob.getEyeHeight());
+            return mob == null || !alive ? null : Incursion.this.targetAt(mob, at);
         }
 
         private void burnFor(int ticks) {
@@ -1853,7 +2011,6 @@ public final class Incursion extends InventoryUnifiedMinigame {
             this.alive = false;
             this.entity = null;
             this.mount = null;
-            this.hitbox = null;
             this.respawnAt = 0;
             this.burnUntil = 0;
             this.fireShown = false;
@@ -1928,7 +2085,6 @@ public final class Incursion extends InventoryUnifiedMinigame {
                     this.home = at.clone();
                     this.entity = mob;
                     this.mount = adoptMount(mob);
-                    this.hitbox = mob.getBoundingBox();
                     this.shownHealth = -1;
                     this.lastTickAt = System.currentTimeMillis();
                     this.alive = true;
@@ -1951,7 +2107,6 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
             BoundingBox box = mob.getBoundingBox();
             long now = System.currentTimeMillis();
-            this.hitbox = box;
             this.lastTickAt = now;
 
             // Only burn when hit by an incendiary egg, not when exposed to sunlight
@@ -2047,6 +2202,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
             moving.setVelocity(new Vector(0, 0, 0));
             moving.setFallDistance(0f);
+            forgetTrail(mob.getUniqueId());
             moving.teleportAsync(back);
         }
 
