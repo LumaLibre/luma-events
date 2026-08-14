@@ -53,6 +53,9 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Comment("How many points a participant has to earn for one token on top of the base 3, up to 11 total")
     private int pointsPerToken = 75;
 
+    @Comment("How the two teams are rolled when the game starts")
+    private TeamBalancingSettings teamBalancing = new TeamBalancingSettings();
+
     @Comment("Judging shots against where the shooter saw everyone rather than where they are now")
     private LagCompensationSettings lagCompensation = new LagCompensationSettings();
 
@@ -79,6 +82,24 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
 
     @Comment("The minibosses guarding boss rooms")
     private MinibossSettings miniboss = new MinibossSettings();
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class TeamBalancingSettings extends OkaeriConfig {
+
+        @Comment("Whether both sides should have a somewhat similar average ping")
+        private boolean byPing = true;
+
+        @Comment({
+                "How far a player may drift from their place in the draft order",
+                "(higher = more randomness, lower = more balance)"
+        })
+        private int jitterMillis = 25;
+
+        @Comment("Sides whose totals are this close count as level, so the next pick is random")
+        private int tieMillis = 40;
+    }
 
     @Getter
     @Setter

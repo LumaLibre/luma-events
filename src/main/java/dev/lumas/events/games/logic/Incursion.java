@@ -96,6 +96,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -277,6 +279,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
     protected boolean handleParticipantJoin(EventPlayer player) {
         super.handleParticipantJoin(player);
         participantsByUuid.put(player.getUuid(), player);
+        this.latency.start();
         player.teleportAsync(definition.getLobbyLocation());
         return true;
     }
@@ -286,15 +289,11 @@ public final class Incursion extends InventoryUnifiedMinigame {
         this.team1 = new IncursionTeam(definition.getTeam1(), side1);
         this.team2 = new IncursionTeam(definition.getTeam2(), side2);
 
-        List<EventPlayer> shuffled = new ArrayList<>(this.participants);
-        Collections.shuffle(shuffled, RANDOM);
-        for (int i = 0; i < shuffled.size(); i++) {
-            EventPlayer participant = shuffled.get(i);
-            participantsByUuid.put(participant.getUuid(), participant);
-            teamsByUuid.put(participant.getUuid(), i % 2 == 0 ? team1 : team2);
-        }
+        this.latency.start(); // No-op if already started
+        EventMain.getInstance().getLogger().info("Incursion is measuring latency with " + latency.sourceName());
 
-        for (EventPlayer participant : shuffled) {
+        List<EventPlayer> drafted = draftTeams();
+        for (EventPlayer participant : drafted) {
             IncursionTeam team = teamOf(participant.getUuid());
             if (team == null) continue; // Shouldn't happen
             participant.operatePlayer(player -> {
@@ -315,9 +314,6 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 .build();
         this.countdownBossBar.start();
 
-        this.latency.start();
-        EventMain.getInstance().getLogger().info("Incursion is measuring latency with " + latency.sourceName());
-
         this.auraTask = Executors.runRepeatingAsync(TimeUnit.MILLISECONDS, 0, INVINCIBILITY_AURA_PERIOD_MILLIS, _ -> {
             tickInvincibilityAura();
             tickSniperCharge();
@@ -328,6 +324,78 @@ public final class Incursion extends InventoryUnifiedMinigame {
         this.startOrbs();
         this.minibosses.forEach(Miniboss::spawn);
         this.kickoff("<gold><b>First Half");
+    }
+
+    private List<EventPlayer> draftTeams() {
+        IncursionDefinition.TeamBalancingSettings settings = definition.getTeamBalancing();
+
+        List<EventPlayer> drafted = new ArrayList<>(this.participants);
+        Collections.shuffle(drafted, RANDOM);
+        for (EventPlayer participant : drafted) {
+            participantsByUuid.put(participant.getUuid(), participant);
+        }
+
+        if (!settings.isByPing()) {
+            for (int i = 0; i < drafted.size(); i++) {
+                teamsByUuid.put(drafted.get(i).getUuid(), i % 2 == 0 ? team1 : team2);
+            }
+            return drafted;
+        }
+
+        Map<UUID, Integer> pings = measurePings(drafted);
+        int jitter = Math.max(0, settings.getJitterMillis());
+        Map<UUID, Integer> order = new HashMap<>();
+        for (EventPlayer participant : drafted) {
+            order.put(participant.getUuid(),
+                    pings.get(participant.getUuid()) + RANDOM.nextInt(-jitter, jitter + 1));
+        }
+
+        // Worst connections first, so the picks left over at the end fine-tune the split
+        drafted.sort(Comparator.comparingInt((EventPlayer participant) -> order.get(participant.getUuid())).reversed());
+
+        int cap = (drafted.size() + 1) / 2;
+        int tie = Math.max(0, settings.getTieMillis());
+        int[] totals = new int[2];
+        int[] sizes = new int[2];
+
+        for (EventPlayer participant : drafted) {
+            int side;
+            if (sizes[0] >= cap) side = 1;
+            else if (sizes[1] >= cap) side = 0;
+            else if (Math.abs(totals[0] - totals[1]) <= tie) side = RANDOM.nextInt(2);
+            else side = totals[0] < totals[1] ? 0 : 1;
+
+            totals[side] += pings.get(participant.getUuid());
+            sizes[side]++;
+            teamsByUuid.put(participant.getUuid(), side == 0 ? team1 : team2);
+        }
+
+        EventMain.getInstance().getLogger().info(String.format(
+                "Incursion drafted %s with %d players averaging %dms and %s with %d players averaging %dms",
+                team1.getName(), sizes[0], sizes[0] == 0 ? 0 : totals[0] / sizes[0],
+                team2.getName(), sizes[1], sizes[1] == 0 ? 0 : totals[1] / sizes[1]));
+
+        return drafted;
+    }
+
+    private Map<UUID, Integer> measurePings(List<EventPlayer> drafted) {
+        Map<UUID, Integer> pings = new HashMap<>();
+        long total = 0;
+
+        for (EventPlayer participant : drafted) {
+            Player player = participant.getPlayer();
+            if (player == null) continue;
+
+            int ping = latency.pingMillis(player);
+            pings.put(participant.getUuid(), ping);
+            total += ping;
+        }
+
+        int average = pings.isEmpty() ? 0 : (int) (total / pings.size());
+        for (EventPlayer participant : drafted) {
+            pings.putIfAbsent(participant.getUuid(), average);
+        }
+        return pings;
     }
 
     @Override
