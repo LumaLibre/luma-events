@@ -73,6 +73,7 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerEggThrowEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
@@ -213,7 +214,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private final ConcurrentHashMap<UUID, Location> frozenAt = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, Long> invincibleUntil = new ConcurrentHashMap<>();
     private final Set<UUID> respawning = ConcurrentHashMap.newKeySet();
-    private final Set<UUID> charging = ConcurrentHashMap.newKeySet();
+    private final ConcurrentHashMap<UUID, Integer> charging = new ConcurrentHashMap<>();
     private final Set<UUID> chargeReady = ConcurrentHashMap.newKeySet();
     private final ConcurrentHashMap<UUID, DamageCredit> lastDamageCredit = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, EventPlayer> participantsByUuid = new ConcurrentHashMap<>();
@@ -817,8 +818,13 @@ public final class Incursion extends InventoryUnifiedMinigame {
         return false;
     }
 
+    private static boolean stillAiming(Player player, int startSlot) {
+        return player.getInventory().getHeldItemSlot() == startSlot
+                && weaponOf(player.getInventory().getItemInMainHand()) == Weapon.SNIPER;
+    }
+
     private void tickSniperCharge() {
-        for (UUID uuid : charging) {
+        for (UUID uuid : charging.keySet()) {
             EventPlayer participant = participantOf(uuid);
             if (participant == null) {
                 charging.remove(uuid);
@@ -828,13 +834,15 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
             participant.operatePlayer(player -> {
                 if (!player.hasActiveItem() || weaponOf(player.getActiveItem()) != Weapon.SNIPER) {
-                    boolean ours = charging.remove(uuid);
+                    Integer startSlot = charging.remove(uuid);
                     boolean wasCharged = chargeReady.remove(uuid);
-                    if (ours && wasCharged && !isOutOfPlay(uuid)) {
-                        IncursionTeam team = teamOf(uuid);
-                        player.clearTitle();
-                        if (team != null) fireOverwatch(player, team);
-                    }
+                    if (startSlot == null) return;
+
+                    player.clearTitle();
+                    if (!wasCharged || isOutOfPlay(uuid) || !stillAiming(player, startSlot)) return;
+
+                    IncursionTeam team = teamOf(uuid);
+                    if (team != null) fireOverwatch(player, team);
                     return;
                 }
 
@@ -845,7 +853,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
                         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 1f, 1f);
                     }
                     player.showTitle(Title.title(
-                            Util.color("<green><b>◎"),
+                            Util.color("<green><b>⌄"),
                             Util.color("<green><b>READY"),
                             CHARGE_TITLE_TIMES));
                     return;
@@ -853,7 +861,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
                 int filled = (int) Math.round(((double) held / chargeTicks) * CHARGE_BAR_SEGMENTS);
                 player.showTitle(Title.title(
-                        Util.color("<yellow><b>◎"),
+                        Util.color("<yellow><b>⌄"),
                         Util.color("<yellow>" + "|".repeat(filled) + "<dark_gray>" + "|".repeat(CHARGE_BAR_SEGMENTS - filled)),
                         CHARGE_TITLE_TIMES));
             });
@@ -1860,6 +1868,16 @@ public final class Incursion extends InventoryUnifiedMinigame {
         Util.sendMsg(event.getPlayer(), "<red>You can't drop your gear in this minigame.");
     }
 
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onItemHeld(PlayerItemHeldEvent event) {
+        if (!this.active || this.stopping) return;
+
+        Player player = event.getPlayer();
+        if (charging.remove(player.getUniqueId()) == null) return;
+        chargeReady.remove(player.getUniqueId());
+        player.clearTitle();
+    }
+
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onSwapHandItems(PlayerSwapHandItemsEvent event) {
         if (!this.active || this.stopping) return;
@@ -1894,7 +1912,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
                     event.setCancelled(true);
                     return;
                 }
-                charging.add(player.getUniqueId());
+                charging.put(player.getUniqueId(), player.getInventory().getHeldItemSlot());
             }
             case SHOTGUN -> {
                 event.setUseItemInHand(Event.Result.DENY);
@@ -1954,13 +1972,14 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
-        boolean wasCharging = charging.remove(uuid);
+        Integer startSlot = charging.remove(uuid);
         chargeReady.remove(uuid);
 
         IncursionTeam team = teamOf(uuid);
-        if (!wasCharging || team == null) return;
+        if (startSlot == null || team == null) return;
 
         player.clearTitle();
+        if (!stillAiming(player, startSlot)) return;
         if (event.getTicksHeldFor() < definition.getSniper().getChargeTicks()) {
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 0.8f, 0.6f);
             Util.sendMsg(player, "<red>The shot wasn't fully charged!");
