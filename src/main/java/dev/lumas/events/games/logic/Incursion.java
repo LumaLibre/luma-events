@@ -1635,18 +1635,13 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private static double solidHitDistance(Block block, Vector origin, Vector direction, double maxDistance) {
         if (!couldStopShots(block)) return -1;
 
-        double nearest = -1;
-        for (BoundingBox box : block.getBlockData().getCollisionShape(block.getLocation()).getBoundingBoxes()) {
-            if (box.contains(origin)) return 0; // Fired from inside the block itself
+        BoundingBox bounds = block.getBoundingBox();
+        if (bounds.getVolume() <= 0) return -1;
+        if (bounds.contains(origin)) return 0; // Fired from inside the block itself
 
-            RayTraceResult hit = box.rayTrace(origin, direction, maxDistance);
-            if (hit == null) continue;
-
-            // <direction> is normalized, so this is the distance along the ray
-            double distance = hit.getHitPosition().distance(origin);
-            if (nearest < 0 || distance < nearest) nearest = distance;
-        }
-        return nearest;
+        // <direction> is normalized, so this is the distance along the ray
+        RayTraceResult hit = bounds.rayTrace(origin, direction, maxDistance);
+        return hit == null ? -1 : hit.getHitPosition().distance(origin);
     }
 
     private static boolean couldStopShots(Block block) {
