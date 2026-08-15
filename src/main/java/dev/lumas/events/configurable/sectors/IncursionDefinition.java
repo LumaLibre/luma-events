@@ -114,7 +114,7 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
         private boolean enabled = true;
 
         @Comment("How far past the shooter's ping shots are rewound (to cover render delay)")
-        private int interpolationMillis = 100;
+        private int interpolationMillis = 120;
 
         @Comment("Hard cap on the rewind (never rewinds past one second)")
         private int maxRewindMillis = 300;

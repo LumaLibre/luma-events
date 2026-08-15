@@ -89,6 +89,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.BoundingBox;
+import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 
@@ -878,7 +879,12 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private void advanceBeam(IncursionTeam team, Location eye, Vector direction,
                              double startDistance, double maxRange, DoubleConsumer onStopped) {
         World world = eye.getWorld();
+        Vector origin = eye.toVector();
         int step = 0;
+        int lastX = Integer.MIN_VALUE;
+        int lastY = Integer.MIN_VALUE;
+        int lastZ = Integer.MIN_VALUE;
+        double drawnTo = startDistance;
 
         for (double distance = startDistance; distance <= maxRange; distance += BEAM_STEP, step++) {
             double x = eye.getX() + (direction.getX() * distance);
@@ -896,12 +902,28 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 return;
             }
 
-            if (stopsShots(world.getBlockAt(blockX, blockY, blockZ))) {
-                Location impact = new Location(world, x, y, z);
+            // Steps can land in the same block more than once
+            boolean sameBlock = blockX == lastX && blockY == lastY && blockZ == lastZ;
+            lastX = blockX;
+            lastY = blockY;
+            lastZ = blockZ;
+
+            double stoppedAt = sameBlock
+                    ? -1
+                    : solidHitDistance(world.getBlockAt(blockX, blockY, blockZ), origin, direction, maxRange);
+
+            if (stoppedAt >= 0) {
+                // Fences and walls collide above their own block
+                double impactAt = Math.max(stoppedAt, drawnTo);
+                Location impact = new Location(world,
+                        eye.getX() + (direction.getX() * impactAt),
+                        eye.getY() + (direction.getY() * impactAt),
+                        eye.getZ() + (direction.getZ() * impactAt));
+
                 world.spawnParticle(Particle.EXPLOSION, impact, 1, 0, 0, 0, 0);
                 world.spawnParticle(Particle.CRIT, impact, 8, 0.1, 0.1, 0.1, 0.25);
                 world.playSound(impact, Sound.ENTITY_GENERIC_EXPLODE, 0.4f, 1.9f);
-                onStopped.accept(distance);
+                onStopped.accept(impactAt);
                 return;
             }
 
@@ -909,6 +931,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
             if (step % 4 == 0) {
                 world.spawnParticle(Particle.END_ROD, x, y, z, 1, 0, 0, 0, 0);
             }
+            drawnTo = distance;
         }
 
         onStopped.accept(maxRange);
@@ -1093,8 +1116,11 @@ public final class Incursion extends InventoryUnifiedMinigame {
         List<Target> targets = targetsOf(team, System.nanoTime() - rewind);
         double hitRadius = settings.getHitRadius();
 
+        Vector stepDirection = stepLength > 1.0E-6 ? stepVector.clone().multiply(1.0 / stepLength) : null;
+
         Location point = position.clone();
         for (int step = 0; step < steps; step++) {
+            Vector from = point.toVector();
             point.add(stepVector);
             travelled += stepLength;
 
@@ -1105,7 +1131,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 return;
             }
 
-            if (stopsShots(world.getBlockAt(point))) {
+            if (stepDirection != null
+                    && solidHitDistance(world.getBlockAt(point), from, stepDirection, stepLength) >= 0) {
                 splash(world, point);
                 return;
             }
@@ -1578,18 +1605,48 @@ public final class Incursion extends InventoryUnifiedMinigame {
     // Cheap-ish line of sight check to make sure shots don't travel through walls
     private static boolean hasClearShot(Location from, Vector direction, double distance) {
         World world = from.getWorld();
+        Vector origin = from.toVector();
+        int lastX = Integer.MIN_VALUE;
+        int lastY = Integer.MIN_VALUE;
+        int lastZ = Integer.MIN_VALUE;
+
         for (double travelled = BEAM_STEP; travelled < distance; travelled += BEAM_STEP) {
             int blockX = (int) Math.floor(from.getX() + (direction.getX() * travelled));
             int blockY = (int) Math.floor(from.getY() + (direction.getY() * travelled));
             int blockZ = (int) Math.floor(from.getZ() + (direction.getZ() * travelled));
 
+            if (blockX == lastX && blockY == lastY && blockZ == lastZ) continue; // Same block as the last step
+            lastX = blockX;
+            lastY = blockY;
+            lastZ = blockZ;
+
             if (!Bukkit.isOwnedByCurrentRegion(world, blockX >> 4, blockZ >> 4)) return true;
-            if (stopsShots(world.getBlockAt(blockX, blockY, blockZ))) return false;
+            if (solidHitDistance(world.getBlockAt(blockX, blockY, blockZ), origin, direction, distance) >= 0) {
+                return false;
+            }
         }
         return true;
     }
 
-    private static boolean stopsShots(Block block) {
+    // How far along the ray it first meets something solid inside this block, or -1 if it doesn't
+    private static double solidHitDistance(Block block, Vector origin, Vector direction, double maxDistance) {
+        if (!couldStopShots(block)) return -1;
+
+        double nearest = -1;
+        for (BoundingBox box : block.getBlockData().getCollisionShape(block.getLocation()).getBoundingBoxes()) {
+            if (box.contains(origin)) return 0; // Fired from inside the block itself
+
+            RayTraceResult hit = box.rayTrace(origin, direction, maxDistance);
+            if (hit == null) continue;
+
+            // <direction> is normalized, so this is the distance along the ray
+            double distance = hit.getHitPosition().distance(origin);
+            if (nearest < 0 || distance < nearest) nearest = distance;
+        }
+        return nearest;
+    }
+
+    private static boolean couldStopShots(Block block) {
         return !block.isPassable() && block.getType() != Material.BARRIER;
     }
 
