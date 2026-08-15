@@ -155,6 +155,9 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     private static final Particle.DustOptions SPIT_DUST = new Particle.DustOptions(Color.fromRGB(70, 145, 230), 0.5f);
 
+    private static final Color BLUNDERHORN_GUNMETAL = Color.fromRGB(88, 92, 99);
+    private static final double BLUNDERHORN_TEAM_TINT = 0.4;
+
     private static final int CHARGE_BAR_SEGMENTS = 10;
     private static final int SHOTGUN_PELLETS = 16;
     private static final double BEAM_STEP = 0.5;
@@ -1079,7 +1082,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
             for (double distance = 0.6; distance <= range; distance += 0.7) {
                 Location point = muzzle.clone().add(pelletDirection.clone().multiply(distance));
-                spawnParticleIfOwned(world, point, Particle.DUST, 1, 0, 0, team.getBeamDust());
+                spawnParticleIfOwned(world, point, Particle.DUST, 1, 0, 0, team.getPelletDust());
             }
         }
     }
@@ -1648,6 +1651,17 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     private static boolean couldStopShots(Block block) {
         return !block.isPassable() && block.getType() != Material.BARRIER;
+    }
+
+    // <base> pulled <amount> of the way towards <tint>, 0 leaving it alone and 1 replacing it
+    private static Color blend(Color base, Color tint, double amount) {
+        double towards = Math.clamp(amount, 0.0, 1.0);
+        double keep = 1.0 - towards;
+
+        return Color.fromRGB(
+                (int) Math.round((base.getRed() * keep) + (tint.getRed() * towards)),
+                (int) Math.round((base.getGreen() * keep) + (tint.getGreen() * towards)),
+                (int) Math.round((base.getBlue() * keep) + (tint.getBlue() * towards)));
     }
 
     // Drop particles rather than rescheduling them when they'd land in another region (shouldn't happen anyway)
@@ -2600,6 +2614,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         private final Color armorColor;
         private final Particle.DustOptions dustOptions;
         private final Particle.DustOptions beamDust;
+        private final Particle.DustOptions pelletDust;
         private final AtomicInteger score = new AtomicInteger();
 
         @Setter
@@ -2611,6 +2626,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
             this.armorColor = definition.getArmorColor();
             this.dustOptions = new Particle.DustOptions(this.armorColor, 1.0f);
             this.beamDust = new Particle.DustOptions(this.armorColor, 0.6f);
+            this.pelletDust = new Particle.DustOptions(
+                    blend(BLUNDERHORN_GUNMETAL, this.armorColor, BLUNDERHORN_TEAM_TINT), 0.6f);
             this.side = side;
         }
 
