@@ -116,6 +116,7 @@ import java.util.stream.Collectors;
 public final class Incursion extends InventoryUnifiedMinigame {
 
     private static final NamespacedKey FREEZE_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_freeze");
+    private static final NamespacedKey SPEED_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_speed");
     private static final NamespacedKey MINIBOSS_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_miniboss");
     private static final NamespacedKey KIT_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_kit");
     private static final NamespacedKey WEAPON_KEY = new NamespacedKey(EventMain.getInstance(), "incursion_weapon");
@@ -206,6 +207,10 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     private final IncursionDefinition definition;
     private final IncursionTokenFormula tokenFormula;
+
+    @Nullable
+    private final AttributeModifier speedModifier;
+
     private final MapSide side1;
     private final MapSide side2;
 
@@ -259,6 +264,11 @@ public final class Incursion extends InventoryUnifiedMinigame {
         this.side2 = new MapSide(definition.getTeam2().getSpawnArea(), definition.getTeam2().getHole().toBlockBoundingBox());
         this.tokenFormula = new IncursionTokenFormula(definition.getPointsPerToken());
 
+        double multiplier = Math.max(0.0, definition.getMovementSpeedMultiplier());
+        this.speedModifier = multiplier == 1.0
+                ? null
+                : new AttributeModifier(SPEED_KEY, multiplier - 1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
+
         List<Miniboss> rooms = new ArrayList<>();
         for (WorldTiedBoundingBox room : definition.getBossRooms()) {
             if (room == null || room.getWorld() == null) continue;
@@ -285,6 +295,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         super.handleParticipantJoin(player);
         participantsByUuid.put(player.getUuid(), player);
         this.latency.start();
+        player.operatePlayer(this::applySpeed);
         player.teleportAsync(definition.getLobbyLocation());
         return true;
     }
@@ -307,6 +318,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 }
                 player.setFoodLevel(20);
                 player.setSaturation(20f);
+                applySpeed(player);
                 equipKit(player, team);
             });
         }
@@ -757,6 +769,24 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
     }
 
+    private void applySpeed(Player player) {
+        if (speedModifier == null) return;
+        AttributeInstance instance = player.getAttribute(Attribute.MOVEMENT_SPEED);
+        if (instance == null) return;
+        if (instance.getModifiers().stream().noneMatch(modifier -> SPEED_KEY.equals(modifier.getKey()))) {
+            instance.addTransientModifier(speedModifier);
+        }
+    }
+
+    private static void clearSpeed(Player player) {
+        AttributeInstance instance = player.getAttribute(Attribute.MOVEMENT_SPEED);
+        if (instance == null) return;
+        instance.getModifiers().stream()
+                .filter(modifier -> SPEED_KEY.equals(modifier.getKey()))
+                .toList()
+                .forEach(instance::removeModifier);
+    }
+
     private static void restoreVitals(Player player) {
         player.setFireTicks(0);
         player.setFreezeTicks(0);
@@ -776,7 +806,10 @@ public final class Incursion extends InventoryUnifiedMinigame {
         charging.remove(uuid);
         chargeReady.remove(uuid);
         lastDamageCredit.remove(uuid);
-        participant.operatePlayer(this::unfreeze);
+        participant.operatePlayer(player -> {
+            unfreeze(player);
+            clearSpeed(player);
+        });
     }
 
     private void equipKit(Player player, IncursionTeam team) {

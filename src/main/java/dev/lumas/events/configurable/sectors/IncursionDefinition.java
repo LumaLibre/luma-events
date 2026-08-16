@@ -44,6 +44,9 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Comment("How long a player cannot deal or take damage after being sent back to their spawn")
     private int respawnInvincibilityTicks = 50;
 
+    @Comment("A movement speed multiplier backed by transient attribute modifiers")
+    private double movementSpeedMultiplier = 1.0;
+
     @Comment("Points awarded for jumping into the enemy team's hole")
     private int holePoints = 100;
 
