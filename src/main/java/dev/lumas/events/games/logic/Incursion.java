@@ -94,6 +94,7 @@ import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 
+import java.text.DecimalFormat;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1241,11 +1242,9 @@ public final class Incursion extends InventoryUnifiedMinigame {
         shooter.playSound(shooter.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1f, 1.9f);
         shooter.playSound(shooter.getLocation(), Sound.ITEM_TRIDENT_RETURN, 0.6f, 1.8f);
         headshots.sort(Double::compareTo);
+        DecimalFormat format = new DecimalFormat("0.#");
         String subtitle = headshots.stream()
-                .map(d -> (d % 1 == 0
-                        ? String.format("%.0f", d)
-                        : String.format("%.1f", d)
-                ) + "m")
+                .map(d -> format.format(d) + "m")
                 .collect(Collectors.joining(", "));
         shooter.showTitle(Title.title(
                 Util.color("<red>HEADSHOT"),
