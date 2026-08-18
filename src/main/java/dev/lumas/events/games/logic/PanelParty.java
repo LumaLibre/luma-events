@@ -12,7 +12,7 @@ import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
 import dev.lumas.events.games.interfaces.structures.GenericStructure;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
-import dev.lumas.events.games.tokenformula.FlatIntTokenFormula;
+import dev.lumas.events.games.tokenformula.PanelPartyTokenFormula;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
@@ -77,7 +77,10 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     // players quit and is cleared by Minigame#stop right after handleStop runs.
     private final Map<UUID, Set<UUID>> hiddenPlayers;
     private final Scoreboard<EventPlayer> scoreboard;
-    private final TokenFormula<Integer> tokenFormula;
+    private final TokenFormula<PanelPartyTokenFormula.Context> tokenFormula;
+    private final int panelsPerToken;
+    private final Map<UUID, Integer> panelsSurvived = new HashMap<>();
+    private final Map<UUID, Integer> purplePanelsSurvived = new HashMap<>();
     private final int maxRounds;
     private final boolean superSpeed;
     private final int superSpeedBoost;
@@ -98,7 +101,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         this.roleMap = new MinigameRoleMap<>(AbstractPanelPlayer::cleanup);
         this.hiddenPlayers = new ConcurrentHashMap<>();
         this.scoreboard = new Scoreboard<>();
-        this.tokenFormula = new FlatIntTokenFormula(9);
+        this.tokenFormula = new PanelPartyTokenFormula(9);
+        this.panelsPerToken = RANDOM.nextBoolean() ? 2 : 3;
         this.maxRounds = panels.size();
         this.superSpeed = def.isSuperSpeed();
         this.superSpeedBoost = def.getSuperSpeedBoost();
@@ -123,7 +127,12 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     @Override
     protected void tokenHandler(EventPlayer participant) {
         int score = this.scoreboard.getScore(participant);
-        this.tokenFormula.giveTokens(participant, score);
+        UUID uuid = participant.getUuid();
+        this.tokenFormula.giveTokens(participant, new PanelPartyTokenFormula.Context(
+                this.panelsSurvived.getOrDefault(uuid, 0),
+                this.purplePanelsSurvived.getOrDefault(uuid, 0),
+                this.panelsPerToken
+        ));
         participant.addPermanentScore(MinigameConstant.PANEL_PARTY, score);
     }
 
@@ -209,8 +218,15 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         }
 
         int points = this.currentProcess.difficulty.getScoreboardWeight();
+        boolean purpleRound = this.currentProcess.difficulty == PanelDifficulty.HARDER_THAN_HARD_I_GUESS;
         for (PanelParticipant panelParticipant : this.roleMap.getMatching(PanelParticipant.class)) {
             this.scoreboard.addScore(panelParticipant.getEventPlayer(), points); // Award points for surviving the round
+
+            UUID uuid = panelParticipant.getEventPlayer().getUuid();
+            this.panelsSurvived.merge(uuid, 1, Integer::sum);
+            if (purpleRound) {
+                this.purplePanelsSurvived.merge(uuid, 1, Integer::sum); // last panels guarantee an extra token
+            }
         }
 
         this.round++;
