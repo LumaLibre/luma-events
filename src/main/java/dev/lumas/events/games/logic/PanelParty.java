@@ -28,6 +28,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.Tag;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -43,6 +44,7 @@ import org.joml.Vector3i;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -57,6 +59,9 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     private static final long DURATION = 600000L; // 10 mins, unlikely to reach
     private static final long TICK_INTERVAL = 1L;
+    private static final int GLAZED_CHANCE = 35;
+    // terracotta -> its glazed counterpart, plain TERRACOTTA has none so it is simply absent here
+    private static final Map<Material, Material> GLAZED_VARIANTS = glazedVariants();
     private static final String[] ELIMINATION_MESSAGES = {
             "<red>%s</red> fell to their doom.",
             "<aqua>%s</aqua> couldn't keep up.",
@@ -84,6 +89,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     private final int maxRounds;
     private final boolean superSpeed;
     private final int superSpeedBoost;
+    private final boolean glazed;
+    private final Map<Material, BlockData> glazedBlockData = new ConcurrentHashMap<>();
 
     private int round;
     private @NotNull PanelPartyProcess currentProcess;
@@ -106,6 +113,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         this.maxRounds = panels.size();
         this.superSpeed = def.isSuperSpeed();
         this.superSpeedBoost = def.getSuperSpeedBoost();
+        this.glazed = RANDOM.nextInt(100) < GLAZED_CHANCE;
 
 
 
@@ -280,6 +288,43 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                     .build()
                     .start();
         });
+    }
+
+    private static Map<Material, Material> glazedVariants() {
+        // String matching is gross
+        Map<Material, Material> variants = new EnumMap<>(Material.class);
+        variants.put(Material.WHITE_TERRACOTTA, Material.WHITE_GLAZED_TERRACOTTA);
+        variants.put(Material.ORANGE_TERRACOTTA, Material.ORANGE_GLAZED_TERRACOTTA);
+        variants.put(Material.MAGENTA_TERRACOTTA, Material.MAGENTA_GLAZED_TERRACOTTA);
+        variants.put(Material.LIGHT_BLUE_TERRACOTTA, Material.LIGHT_BLUE_GLAZED_TERRACOTTA);
+        variants.put(Material.YELLOW_TERRACOTTA, Material.YELLOW_GLAZED_TERRACOTTA);
+        variants.put(Material.LIME_TERRACOTTA, Material.LIME_GLAZED_TERRACOTTA);
+        variants.put(Material.PINK_TERRACOTTA, Material.PINK_GLAZED_TERRACOTTA);
+        variants.put(Material.GRAY_TERRACOTTA, Material.GRAY_GLAZED_TERRACOTTA);
+        variants.put(Material.LIGHT_GRAY_TERRACOTTA, Material.LIGHT_GRAY_GLAZED_TERRACOTTA);
+        variants.put(Material.CYAN_TERRACOTTA, Material.CYAN_GLAZED_TERRACOTTA);
+        variants.put(Material.PURPLE_TERRACOTTA, Material.PURPLE_GLAZED_TERRACOTTA);
+        variants.put(Material.BLUE_TERRACOTTA, Material.BLUE_GLAZED_TERRACOTTA);
+        variants.put(Material.BROWN_TERRACOTTA, Material.BROWN_GLAZED_TERRACOTTA);
+        variants.put(Material.GREEN_TERRACOTTA, Material.GREEN_GLAZED_TERRACOTTA);
+        variants.put(Material.RED_TERRACOTTA, Material.RED_GLAZED_TERRACOTTA);
+        variants.put(Material.BLACK_TERRACOTTA, Material.BLACK_GLAZED_TERRACOTTA);
+        return variants;
+    }
+
+    private BlockData glaze(BlockData blockData) {
+        Material glazedMaterial = this.glazedMaterial(blockData.getMaterial());
+        if (glazedMaterial == blockData.getMaterial()) {
+            return blockData;
+        }
+        return this.glazedBlockData.computeIfAbsent(glazedMaterial, Material::createBlockData);
+    }
+
+    private Material glazedMaterial(Material material) {
+        if (!this.glazed) {
+            return material;
+        }
+        return GLAZED_VARIANTS.getOrDefault(material, material);
     }
 
     private void hideFrom(Player viewer, Player target) {
@@ -520,10 +565,14 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         }
 
 
+        private static boolean isPanelBlock(Material material) {
+            return Tag.TERRACOTTA.isTagged(material) || Tag.GLAZED_TERRACOTTA.isTagged(material);
+        }
+
         public void setItemInHand(ItemStack itemStack) {
             this.eventPlayer.operatePlayer(player -> {
                 for (ItemStack item : player.getInventory().getContents()) {
-                    if (item != null && !Tag.TERRACOTTA.isTagged(item.getType())) {
+                    if (item != null && !isPanelBlock(item.getType())) {
                         return; // lazy fix, probably broke because of folia scheduling
                     }
                 }
@@ -696,7 +745,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                         // remove panel
                         Executors.sync(context.center, () -> {
                             panel.remove((vector3i, blockData) ->
-                                    !blockData.getMaterial().equals(this.chosenMaterial)
+                                    !this.context.glazedMaterial(blockData.getMaterial()).equals(this.chosenMaterial)
                             );
                         });
 
@@ -754,7 +803,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                     this.availableMaterials.add(material);
                 }
                 return true;
-            });
+            }, this.context::glaze);
         }
 
         private boolean isReachable(Vector3i v) {

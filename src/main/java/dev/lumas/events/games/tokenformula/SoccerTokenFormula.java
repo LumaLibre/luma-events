@@ -6,7 +6,7 @@ import dev.lumas.events.utility.Couple;
 public class SoccerTokenFormula extends TokenFormula<Couple<Integer, Boolean>> {
 
     private static final int MINIMUM_TOKENS = 3;
-    private static final int MAXIMUM_TOKENS = 9;
+    private static final int MAXIMUM_TOKENS = 11;
     private static final int PLAYS_PER_TOKEN = 2;
     private static final int WINNER_BONUS = 2;
 

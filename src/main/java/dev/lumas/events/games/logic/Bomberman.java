@@ -52,6 +52,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,17 +73,27 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     private static final PluginContextLogger LOGGER = PluginContextLogger.getPluginLogger();
 
     private static final long ROUND_DURATION = 180000L;
+    private static final long SUDDEN_DEATH_DURATION = 60000L;
     private static final int TNT_FUSE_TICKS = 30;
     private static final long BOMB_LOCK_MILLIS = (TNT_FUSE_TICKS * 50L) + 1000L;
     private static final int BLAST_RADIUS = 2;
     private static final double ALWAYS_VISIBLE_RADIUS = 5;
     private static final double[] BOX_EDGE_OFFSETS = {-0.3, 0.3};
-    private static final int KILL_SCORE = 20;
+    private static final int KILL_SCORE = 30;
     private static final int ROUND_WIN_SCORE = 30;
     private static final int ROUNDS = 2;
     private static final float GAME_OVER_SECONDS = 10;
     private static final int RESCUE_HEIGHT = 32;
-    private static final long DURATION = (ROUND_DURATION + (long) (GAME_OVER_SECONDS * 1000)) * ROUNDS;
+    private static final long ROUND_OVERHEAD = 15000L;
+    private static final long DURATION =
+            (ROUND_DURATION + SUDDEN_DEATH_DURATION + (long) (GAME_OVER_SECONDS * 1000) + ROUND_OVERHEAD) * ROUNDS;
+
+    /**
+     * Slowness VII for a second after a spawn teleport. Players coming back from a spectator round keep their
+     * momentum and are often still leaning on a movement key, which used to walk them straight off the edge.
+     */
+    private static final PotionEffect SPAWN_FREEZE =
+            new PotionEffect(PotionEffectType.SLOWNESS, 20, 6, false, false, false);
 
     private static final Color[] BOMB_COLORS = pastelPalette(50);
 
@@ -97,6 +108,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     private volatile int round;
     private volatile int startingPlayers;
     private volatile boolean roundLive;
+    private volatile boolean suddenDeath;
     private volatile boolean ending;
 
     public Bomberman(BombermanDefinition def) {
@@ -145,6 +157,15 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         });
     }
 
+    /** Teleports a participant onto the arena and pins them where they land for a moment. */
+    private void spawnAt(EventPlayer participant, Location location) {
+        participant.teleportAsync(location).thenRun(() -> participant.operatePlayer(player -> {
+            player.setVelocity(new Vector(0, 0, 0));
+            player.setFallDistance(0.0f);
+            player.addPotionEffect(SPAWN_FREEZE);
+        }));
+    }
+
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
         player.teleportAsync(this.spawnLocation);
@@ -169,6 +190,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     private void startRound() {
         if (this.ending) return;
         this.round++;
+        this.suddenDeath = false;
         this.arena.teardown(() -> {
             if (this.ending) return;
             this.arena.generate(Math.max(1, this.participants.size()), () -> {
@@ -187,7 +209,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             for (EventPlayer eventPlayer : this.participants) {
                 this.roles.put(new BombermanPlayer(eventPlayer, this, BOMB_COLORS[spawnIndex % BOMB_COLORS.length]));
                 equip(eventPlayer);
-                eventPlayer.teleportAsync(spawns.get(spawnIndex % spawns.size()));
+                spawnAt(eventPlayer, spawns.get(spawnIndex % spawns.size()));
                 spawnIndex++;
             }
 
@@ -232,8 +254,13 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         }
         updateVisibility();
         if (this.arena.isReady()) {
-            int remaining = (int) Math.round(this.arena.remainingFraction() * 100.0);
-            Component actionBar = Util.color("<gray>Map remaining: <yellow>" + remaining + "%");
+            Component actionBar;
+            if (this.suddenDeath) {
+                actionBar = Util.color("<dark_red><b>!!!");
+            } else {
+                int remaining = (int) Math.round(this.arena.remainingFraction() * 100.0);
+                actionBar = Util.color("<gray>Map remaining: <yellow>" + remaining + "%");
+            }
             for (EventPlayer participant : this.participants) {
                 participant.operatePlayer(player -> player.sendActionBar(actionBar));
             }
@@ -254,12 +281,19 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         }
 
         List<BombermanPlayer> alive = this.roles.getMatching(BombermanPlayer.class);
+        if (!this.suddenDeath && alive.size() > 1) {
+            beginSuddenDeath();
+            return;
+        }
+
         String outcome;
         if (alive.size() == 1) {
             BombermanPlayer winner = alive.getFirst();
             this.roundWinners.add(winner.getUuid());
             this.scoreboard.addScore(winner.getEventPlayer(), ROUND_WIN_SCORE);
             outcome = "<yellow>" + winner.getName() + " wins the round!";
+        } else if (this.suddenDeath) {
+            outcome = "<gray>Sudden death settled nothing, no winner";
         } else {
             outcome = "<gray>Nobody survived";
         }
@@ -284,6 +318,52 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         } else {
             interlude.run();
         }
+    }
+
+
+    private void beginSuddenDeath() {
+        this.suddenDeath = true;
+        this.sendAudienceTitle("<dark_red><b>Sudden Death", "<gray>GO!");
+        this.playAudienceSound(Sound.ENTITY_WITHER_SPAWN, 0.6f, 1.4f);
+
+        this.arena.flatten(() -> {
+            if (this.ending) return;
+
+            List<BombermanPlayer> alive = this.roles.getMatching(BombermanPlayer.class);
+            if (alive.size() < 2) {
+                // Everyone blew up while the map was being stripped, resolve on the survivors we have left.
+                this.roundLive = true;
+                endRound();
+                return;
+            }
+
+            List<Location> centre = this.arena.centreSpawns(alive.size());
+            int spawnIndex = 0;
+            for (BombermanPlayer bomber : alive) {
+                bomber.releaseBomb();
+                equip(bomber.getEventPlayer());
+                spawnAt(bomber.getEventPlayer(), centre.get(spawnIndex % centre.size()));
+                spawnIndex++;
+            }
+            Location viewpoint = this.arena.centre(RESCUE_HEIGHT);
+            for (BombermanSpectator spectator : this.roles.getMatching(BombermanSpectator.class)) {
+                spectator.teleportAsync(viewpoint);
+            }
+
+            this.startingPlayers = alive.size();
+            this.timerBar = CountdownBossBar.builder()
+                    .title("<dark_red><b>Sudden Death</b></dark_red> <gray>|</gray> <yellow>%ss remaining")
+                    .color(BossBar.Color.PURPLE)
+                    .miliseconds(SUDDEN_DEATH_DURATION)
+                    .audience(this.audience)
+                    .callback(this::endRound)
+                    .build();
+            this.timerBar.start();
+
+            this.sendAudienceTitle("<dark_red><b>Sudden Death", "<gray>Last one standing takes the round");
+            this.playAudienceSound(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.2f, 0.6f);
+            this.roundLive = true;
+        });
     }
 
     @Override
@@ -897,6 +977,39 @@ public final class Bomberman extends InventoryUnifiedMinigame {
                 LOGGER.info("Arena cleared.");
                 if (onCleared != null) onCleared.run();
             });
+        }
+
+        public void flatten(Runnable onComplete) {
+            if (this.world == null || this.opened == null) {
+                if (onComplete != null) onComplete.run();
+                return;
+            }
+            for (int cx = 0; cx < this.size; cx++) {
+                for (int cz = 0; cz < this.size; cz++) {
+                    if (!isPillarCell(cx, cz)) this.opened[cx][cz] = true;
+                }
+            }
+            this.remainingDestructible = 0;
+            stream(false, onComplete);
+        }
+
+        public List<Location> centreSpawns(int count) {
+            int middle = this.size / 2;
+            List<Location> found = new ArrayList<>(count);
+            for (int radius = 0; radius < this.size && found.size() < count; radius++) {
+                for (int dx = -radius; dx <= radius && found.size() < count; dx++) {
+                    for (int dz = -radius; dz <= radius && found.size() < count; dz++) {
+                        if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
+                        int cx = middle + dx;
+                        int cz = middle + dz;
+                        if (cx < 0 || cz < 0 || cx >= this.size || cz >= this.size) continue;
+                        if (isPillarCell(cx, cz)) continue;
+                        found.add(facingCentre(cellCentre(cx, cz)));
+                    }
+                }
+            }
+            if (found.isEmpty()) found.add(centre(1));
+            return List.copyOf(found);
         }
 
         public List<Location> spawns() {

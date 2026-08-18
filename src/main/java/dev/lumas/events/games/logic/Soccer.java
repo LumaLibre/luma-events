@@ -63,6 +63,7 @@ import org.jspecify.annotations.Nullable;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -106,14 +107,17 @@ public final class Soccer extends InventoryUnifiedMinigame {
     private static final int POINTS_PER_GOAL = 10;
     private static final int OUT_OF_BOUNDS_PENALTY = -2;
 
-    private static final long ROUND_LENGTH_MILLIS = 180_000L;
+    private static final long ROUND_LENGTH_MILLIS = 90_000L;
 
     private static final long FEAT_DISPLAY_MILLIS = 3000L;
     private static final long FEAT_REPEAT_COOLDOWN_MILLIS = 750L;
-    // one ball up to 25 players, then another for every 10 on top of that
-    private static final int BALL_BASE_PLAYERS = 15;
-    private static final int PLAYERS_PER_EXTRA_BALL = 10;
-    private static final double BALL_SPREAD = 3.0;
+    // one ball up to 18 players, then another for every 8 on top of that
+    private static final int BALL_BASE_PLAYERS = 10;
+    private static final int PLAYERS_PER_EXTRA_BALL = 8;
+    private static final int MAX_BALLS = 6;
+    private static final double BALL_SPREAD_MIN = 3.0;
+    private static final double BALL_SPREAD_MAX = 12.0;
+    private static final double BALL_SPREAD_PITCH_FRACTION = 0.18;
 
     private static final double POWER_KICK_BPS = 40.0;
     private static final double POWER_KICK_BLOCKS_PER_TICK = POWER_KICK_BPS / 20.0;
@@ -135,6 +139,7 @@ public final class Soccer extends InventoryUnifiedMinigame {
     private final Scoreboard<SoccerPlayer> playerScoreboard = new Scoreboard<>();
     private final SoccerTokenFormula tokenFormula = new SoccerTokenFormula();
     private final int goalPunchRadius;
+    private final double ballSpreadRadius;
 
     private final BossBar bossBar = BossBar.bossBar(Component.empty(), 0.0f, BossBar.Color.WHITE, BossBar.Overlay.NOTCHED_6);
 
@@ -157,7 +162,12 @@ public final class Soccer extends InventoryUnifiedMinigame {
         );
 
         this.spawnLocation = def.getSpawnLocation();
-        this.boundingBox = def.getBounds().toWorldTiedBoundingBox();
+        WorldTiedBoundingBox pitch = def.getBounds().toWorldTiedBoundingBox();
+        this.boundingBox = pitch;
+        this.ballSpreadRadius = Math.clamp(
+            Math.min(pitch.getWidthX(), pitch.getWidthZ()) * BALL_SPREAD_PITCH_FRACTION,
+            BALL_SPREAD_MIN,
+            BALL_SPREAD_MAX);
 
         TeamMatchup matchup = Util.getRandom(TeamMatchup.values());
         this.teams = List.of(
@@ -244,7 +254,7 @@ public final class Soccer extends InventoryUnifiedMinigame {
 
     private int ballCount() {
         int past = this.getParticipants().size() - BALL_BASE_PLAYERS;
-        return 1 + Math.max(0, (past - 1) / PLAYERS_PER_EXTRA_BALL);
+        return Math.min(MAX_BALLS, 1 + Math.max(0, (past - 1) / PLAYERS_PER_EXTRA_BALL));
     }
 
     private List<SulfurCubeSoccerBall> buildBalls() {
@@ -255,7 +265,7 @@ public final class Soccer extends InventoryUnifiedMinigame {
         for (int i = 1; i < count; i++) {
             double angle = (2 * Math.PI * (i - 1)) / (count - 1);
             Location spread = this.ballSpawnLocation.clone()
-                .add(Math.cos(angle) * BALL_SPREAD, 0, Math.sin(angle) * BALL_SPREAD);
+                .add(Math.cos(angle) * this.ballSpreadRadius, 0, Math.sin(angle) * this.ballSpreadRadius);
             built.add(new SulfurCubeSoccerBall(spread));
         }
         return List.copyOf(built);
@@ -647,6 +657,11 @@ public final class Soccer extends InventoryUnifiedMinigame {
 
         private static final double PUSH_DISTANCE_THRESHOLD = 1.3;
         private static final long KICK_COOLDOWN_MILLIS = 250L;
+
+        private static final double PUSH_BASE_BLOCKS_PER_TICK = 0.35; // a standing bump, ~7 b/s
+        private static final double PUSH_DRIVE_SCALE = 0.09; // per block/second the pusher is closing at
+        private static final double PUSH_MAX_BLOCKS_PER_TICK = POWER_KICK_BLOCKS_PER_TICK * 0.8; // a body never quite power kicks
+        private static final double PUSH_LIFT = 0.22; // a skip off the turf rather than a grind along it
         private static final Sound KICK_SOUND = Sound.ENTITY_SULFUR_CUBE_BOUNCY_PUSH;
 
         private final Location initialSpawnLocation;
@@ -725,7 +740,10 @@ public final class Soccer extends InventoryUnifiedMinigame {
             });
         }
 
-        // vanilla fires nothing when a player shoves the cube with their body, have to do the work ourselves
+        // vanilla fires nothing when a player shoves the cube with their body, have to do the work ourselves.
+        // leaving it to entity collision means every body nudges the cube separately, so a crowd cancels itself
+        // out and the ball just sits there jittering. instead the whole crowd resolves to a single push: whoever
+        // is driving hardest into the ball this tick takes it, and their shove is applied outright
         private void detectContact() {
             if (this.isPowered()) {
                 return;
@@ -733,6 +751,9 @@ public final class Soccer extends InventoryUnifiedMinigame {
 
             double cubeBottom = sulfurCube.getY();
             double cubeTop = cubeBottom + sulfurCube.getHeight();
+
+            record Contender(SoccerPlayer soccerPlayer, Vector push, double drive) {}
+            List<Contender> contenders = new ArrayList<>();
 
             for (Player player : sulfurCube.getLocation().getNearbyPlayers(PUSH_DISTANCE_THRESHOLD + 1.0)) {
                 Location playerLocation = player.getLocation();
@@ -752,9 +773,44 @@ public final class Soccer extends InventoryUnifiedMinigame {
                     continue;
                 }
 
-                this.registerContact(soccerPlayer, sulfurCube.getLocation());
-                return; // one contact per tick
+                // standing dead centre on the cube leaves nothing to push along, so fall back to where they look
+                Vector push = new Vector(dx, 0.0, dz);
+                if (push.lengthSquared() < 1.0E-6) {
+                    push = playerLocation.getDirection().setY(0.0);
+                    if (push.lengthSquared() < 1.0E-6) {
+                        continue;
+                    }
+                }
+                push.normalize();
+
+                // how fast they are actually closing on the ball, not just that they are stood next to it
+                Vector running = soccerPlayer.speed().velocity();
+                double drive = running == null ? 0.0 : running.setY(0.0).dot(push);
+                contenders.add(new Contender(soccerPlayer, push, drive));
             }
+
+            if (contenders.isEmpty()) {
+                return;
+            }
+
+            contenders.sort(Comparator.comparingDouble(Contender::drive).reversed());
+            for (Contender contender : contenders) {
+                if (this.registerContact(contender.soccerPlayer(), sulfurCube.getLocation())) {
+                    this.applyPush(contender.push(), contender.drive());
+                    return;
+                }
+            }
+        }
+
+        private void applyPush(Vector push, double drive) {
+            double power = Math.clamp(
+                PUSH_BASE_BLOCKS_PER_TICK + Math.max(0.0, drive) * PUSH_DRIVE_SCALE,
+                PUSH_BASE_BLOCKS_PER_TICK,
+                PUSH_MAX_BLOCKS_PER_TICK);
+
+            Vector impulse = push.multiply(power);
+            impulse.setY(sulfurCube.isOnGround() ? PUSH_LIFT : sulfurCube.getVelocity().getY());
+            sulfurCube.setVelocity(impulse);
         }
 
         private void handleMove(EntityMoveEvent event) {
@@ -973,12 +1029,15 @@ public final class Soccer extends InventoryUnifiedMinigame {
         private volatile Location last;
         private volatile long lastAt;
         private volatile double blocksPerSecond;
+        private volatile @Nullable Vector velocity;
 
         private void sample(Location current) {
             long now = System.currentTimeMillis();
             Location previous = this.last;
             if (previous != null && previous.getWorld().equals(current.getWorld()) && now > this.lastAt) {
-                this.blocksPerSecond = previous.distance(current) / ((now - this.lastAt) / 1000.0);
+                double seconds = (now - this.lastAt) / 1000.0;
+                this.blocksPerSecond = previous.distance(current) / seconds;
+                this.velocity = current.toVector().subtract(previous.toVector()).multiply(1.0 / seconds);
             }
             this.last = current;
             this.lastAt = now;
@@ -987,6 +1046,7 @@ public final class Soccer extends InventoryUnifiedMinigame {
         private void reset() {
             this.last = null;
             this.blocksPerSecond = 0.0;
+            this.velocity = null;
         }
 
         // a snapshot, safe to read off the sampled entity's thread
@@ -996,6 +1056,11 @@ public final class Soccer extends InventoryUnifiedMinigame {
 
         private double blocksPerSecond() {
             return this.blocksPerSecond;
+        }
+
+        private @Nullable Vector velocity() {
+            Vector snapshot = this.velocity;
+            return snapshot == null ? null : snapshot.clone();
         }
     }
 

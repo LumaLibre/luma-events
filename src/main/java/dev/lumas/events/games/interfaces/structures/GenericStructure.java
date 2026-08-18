@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.function.BiPredicate;
+import java.util.function.UnaryOperator;
 
 @Getter
 public class GenericStructure extends Structure {
@@ -51,6 +52,12 @@ public class GenericStructure extends Structure {
     // Liberally borrowed from ThorinWasher in Garden
 
     public void paste(BiPredicate<Vector3i, BlockData> prePastePredicate) {
+        paste(prePastePredicate, UnaryOperator.identity());
+    }
+
+    // blockDataMapper lets callers swap the schematic's blocks for something else (both the predicate and the
+    // world receive the mapped data, so callers never have to reason about the raw palette)
+    public void paste(BiPredicate<Vector3i, BlockData> prePastePredicate, UnaryOperator<BlockData> blockDataMapper) {
         Vector3i size = schematic.size(transformation);
         Vector3i offset = new Vector3i(size.x() / 2, 0, size.z() / 2);
         World world = origin.getWorld();
@@ -66,10 +73,11 @@ public class GenericStructure extends Structure {
 
                 vector3i.sub(offset);
 
-                if (!prePastePredicate.test(vector3i, blockData)) return;
+                BlockData mappedBlockData = blockDataMapper.apply(blockData);
+                if (!prePastePredicate.test(vector3i, mappedBlockData)) return;
                 Location posToReplace = new Location(world, origin.getX(), origin.getY(), origin.getZ()).add(vector3i.x, vector3i.y, vector3i.z);
 
-                world.setBlockData(posToReplace, blockData);
+                world.setBlockData(posToReplace, mappedBlockData);
             });
         });
     }

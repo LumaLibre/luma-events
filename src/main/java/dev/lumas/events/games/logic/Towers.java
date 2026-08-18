@@ -19,6 +19,7 @@ import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.lumacore.utility.Logging;
 import dev.lumas.lumacore.utility.Text;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
@@ -28,6 +29,8 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Egg;
 import org.bukkit.entity.Entity;
@@ -37,6 +40,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
@@ -53,6 +57,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -71,6 +76,8 @@ public final class Towers extends InventoryUnifiedMinigame {
     private static final int TICK_INTERVAL = 2;
     private static final String KEY_STRING = "towers_game";
     private static final Particle.DustTransition DUST_TRANSITION = new Particle.DustTransition(Color.ORANGE, Color.RED, 4.0f);
+    private static final double SPECTATOR_FLOOR_BUFFER = 10.0;
+    private static final double SPECTATOR_RESCUE_HEIGHT = 10.0;
 
 
     private final Location spawnLocation;
@@ -400,7 +407,7 @@ public final class Towers extends InventoryUnifiedMinigame {
     }
 
     @EventHandler
-    public void onEntityDamage(EntityDamageByEntityEvent event) {
+    public void onEntityDamage(EntityDamageEvent event) {
         this.ensureNotIllegal();
         if (!(event.getEntity() instanceof Player targetPlayer)) {
             return;
@@ -480,6 +487,39 @@ public final class Towers extends InventoryUnifiedMinigame {
         TowersPlayer newRole = newRoleSupplier.get();
         towersPlayers.put(eventPlayer.getUuid(), newRole);
         return (T) newRole;
+    }
+
+    /**
+     * The lowest Y a spectator is allowed to be at before we pull them back above the towers.
+     * In escalation the rising floor is the boundary, otherwise it's a fixed drop below the tower tops.
+     */
+    private double getSpectatorFloorY() {
+        return this.isEscalation ? this.forceGameArenaYLevel : this.centerPoint.getY() - SPECTATOR_FLOOR_BUFFER;
+    }
+
+    private boolean hasFallenOutOfArena(Location location) {
+        return location.getY() < this.getSpectatorFloorY();
+    }
+
+
+    private Location getSpectateLocation(@Nullable Location preferred) {
+        if (preferred != null && !this.hasFallenOutOfArena(preferred)) {
+            return preferred.clone();
+        }
+        Location location = this.centerPoint.clone();
+        location.setY(Math.max(this.centerPoint.getY(), this.getSpectatorFloorY()) + SPECTATOR_RESCUE_HEIGHT);
+        return location;
+    }
+
+
+    private static void survive(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+        event.setCancelled(true);
+        event.getDrops().clear();
+        AttributeInstance maxHealth = player.getAttribute(Attribute.MAX_HEALTH);
+        player.setHealth(maxHealth == null ? 20.0 : maxHealth.getValue());
+        player.setFallDistance(0f);
+        player.setFireTicks(0);
     }
 
     private List<ActivePlayer> getActivePlayers() {
@@ -632,22 +672,21 @@ public final class Towers extends InventoryUnifiedMinigame {
 
         @Override
         public void onDeath(PlayerDeathEvent event) {
-            this.context.swapRole(ActivePlayer.class, this, () -> new Spectator(this.getEventPlayer(), this.context));
+            // grabbed before the swap, the spectator role empties the inventory as soon as it's created
+            Player victimBukkit = event.getEntity();
+            ItemStack[] victimItems = victimBukkit.getInventory().getContents();
+            victimBukkit.getInventory().clear();
+
+            survive(event);
+            this.context.sendAudienceMessage(event.deathMessage());
+
+            Location deathLocation = this.respawnLocation;
+            this.context.swapRole(ActivePlayer.class, this, () -> new Spectator(this.getEventPlayer(), this.context, deathLocation));
 
             if (!dirty) {
                 this.dirty = true;
                 this.context.scoreboard.addScore(this.eventPlayer, 1);
             }
-
-            event.setCancelled(true);
-            this.context.sendAudienceMessage(event.deathMessage());
-            if (this.respawnLocation != null) {
-                this.eventPlayer.teleportAsync(this.respawnLocation);
-            }
-
-            Player victimBukkit = event.getEntity();
-            ItemStack[] victimItems = victimBukkit.getInventory().getContents();
-            victimBukkit.getInventory().clear();
 
             if (this.lastAttacker == null || this.lastAttacker.equals(this.getUuid())) {
                 return;
@@ -676,13 +715,42 @@ public final class Towers extends InventoryUnifiedMinigame {
     private static class Spectator extends TowersPlayer {
 
         private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 300, 0, false, true, true);
+        // long enough for the death event that usually creates us to finish before we teleport
+        private static final long RESCUE_DELAY_TICKS = 2;
 
         private boolean hidden = false;
+        private volatile boolean rescuing = false;
+        private volatile boolean released = false;
 
-        public Spectator(EventPlayer eventPlayer, Towers context) {
+        public Spectator(EventPlayer eventPlayer, Towers context, @Nullable Location deathLocation) {
             super(eventPlayer, context);
+            this.respawnLocation = deathLocation;
             this.hidePlayer();
             this.eventPlayer.operatePlayer(player -> player.getInventory().clear());
+            this.rescue();
+        }
+
+        private void rescue() {
+            if (this.rescuing || this.released) {
+                return;
+            }
+            this.rescuing = true;
+            Location rescueLocation = this.context.getSpectateLocation(this.respawnLocation);
+            ScheduledTask task = Executors.delayedSync(this.eventPlayer, RESCUE_DELAY_TICKS, () -> {
+                Player player = this.eventPlayer.getPlayer();
+                if (player == null || this.released) {
+                    this.rescuing = false;
+                    return;
+                }
+                player.setFallDistance(0f);
+                player.setVelocity(new Vector());
+                player.setAllowFlight(true);
+                player.setFlying(true);
+                player.teleportAsync(rescueLocation).whenComplete((success, throwable) -> this.rescuing = false);
+            });
+            if (task == null) {
+                this.rescuing = false;
+            }
         }
 
         public void hidePlayer() {
@@ -727,25 +795,24 @@ public final class Towers extends InventoryUnifiedMinigame {
                     player.setFlying(true);
                 }
 
+                if (this.context.hasFallenOutOfArena(player.getLocation())) {
+                    this.rescue();
+                }
+
                 player.sendActionBar(Text.mm("<yellow>Time left: " + Util.millisToSecs(timeLeft) + "s"));
             });
         }
 
         @Override
         public void onDeath(PlayerDeathEvent event) {
-            event.setCancelled(true);
-            this.eventPlayer.operatePlayer(player -> {
-                player.teleportAsync(this.context.centerPoint);
-                if (!player.getAllowFlight()) {
-                    player.setAllowFlight(true);
-                }
-                player.setFlying(true);
-            });
+            survive(event);
+            this.rescue();
         }
 
 
         @Override
         public void cleanup() {
+            this.released = true;
             this.showPlayer();
             this.eventPlayer.operatePlayer(player -> {
                 player.teleportAsync(this.context.spawnLocation);
