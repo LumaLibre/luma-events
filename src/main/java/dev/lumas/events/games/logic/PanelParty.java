@@ -59,7 +59,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     private static final long DURATION = 600000L; // 10 mins, unlikely to reach
     private static final long TICK_INTERVAL = 1L;
-    private static final int GLAZED_CHANCE = 35;
+    private static final int GLAZED_CHANCE = 45;
     // terracotta -> its glazed counterpart, plain TERRACOTTA has none so it is simply absent here
     private static final Map<Material, Material> GLAZED_VARIANTS = glazedVariants();
     private static final String[] ELIMINATION_MESSAGES = {
