@@ -259,6 +259,9 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             role.cleanup();
         }
         this.restoreAllVisibility(); // sweep anything cleanup couldn't reach (offline spectators, ex-participants)
+        for (EventPlayer participant : this.participants) {
+            participant.operatePlayer(PanelParty::disableFlight);
+        }
 
         Executors.runSync(this.center, () -> {
             this.blankPanel.paste();
@@ -288,6 +291,24 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                     .build()
                     .start();
         });
+    }
+
+    private boolean isEnding() {
+        return this.stopping;
+    }
+
+    private boolean spawnSpectator(PanelParticipant from) {
+        if (this.isEnding()) {
+            from.getEventPlayer().operatePlayer(PanelParty::disableFlight);
+            return false;
+        }
+        this.roleMap.swapRole(from, () -> new PanelSpectator(this, from.getEventPlayer()));
+        return true;
+    }
+
+    private static void disableFlight(Player player) {
+        player.setFlying(false);
+        player.setAllowFlight(false);
     }
 
     private static Map<Material, Material> glazedVariants() {
@@ -441,14 +462,47 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     private static abstract class AbstractPanelPlayer extends MinigameRole {
         protected final PanelParty context;
+        // Ticks reach the player through the entity scheduler, so a tick queued before cleanup can still run after it.
+        // Every path that touches flight latches on this first, and it is set before cleanup schedules anything.
+        protected volatile boolean released;
 
         protected AbstractPanelPlayer(PanelParty context, EventPlayer eventPlayer) {
             super(eventPlayer);
             this.context = context;
+            this.released = false;
         }
 
-        public abstract void tick();
-        public abstract void cleanup();
+        public final void tick() {
+            if (this.released || this.context.isEnding()) {
+                return;
+            }
+            this.handleTick();
+        }
+
+        public final void cleanup() {
+            this.released = true;
+            this.handleCleanup();
+            this.eventPlayer.operatePlayer(PanelParty::disableFlight);
+        }
+
+
+        protected final void grantFlight() {
+            this.eventPlayer.operatePlayer(player -> {
+                if (this.released || this.context.isEnding()) {
+                    disableFlight(player);
+                    return;
+                }
+                if (!player.getAllowFlight()) {
+                    player.setAllowFlight(true);
+                }
+                if (!player.isFlying()) {
+                    player.setFlying(true);
+                }
+            });
+        }
+
+        protected abstract void handleTick();
+        protected abstract void handleCleanup();
         public abstract void eliminate();
         public abstract void attacked(EntityDamageByEntityEvent event, AbstractPanelPlayer attacker);
     }
@@ -478,10 +532,13 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         }
 
         @Override
-        public void tick() {
+        protected void handleTick() {
             if (!this.readyToTick) return;
 
             this.eventPlayer.operatePlayer(player -> {
+                if (this.released || this.context.isEnding()) {
+                    return;
+                }
                 PanelPartyProcess process = this.context.currentProcess;
 
 
@@ -513,7 +570,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         }
 
         @Override
-        public void cleanup() {
+        protected void handleCleanup() {
             this.eventPlayer.operatePlayer(player -> {
                 player.removePotionEffect(PotionEffectType.JUMP_BOOST);
             });
@@ -521,12 +578,14 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
         @Override
         public void eliminate() {
-            if (this.eliminated) return;
+            if (this.eliminated || this.released || this.context.isEnding()) return;
             this.eliminated = true;
 
             this.setItemInHand(AIR);
 
-            this.context.roleMap.swapRole(this, () -> new PanelSpectator(this.context, this.eventPlayer));
+            if (!this.context.spawnSpectator(this)) {
+                return;
+            }
 
             Location location = this.context.center.clone().add(0, 10, 0);
             this.eventPlayer.operatePlayer(player ->  {
@@ -585,40 +644,29 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
         private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 210, 0, true, true);
 
-        private volatile boolean released;
-
         public PanelSpectator(PanelParty context, EventPlayer eventPlayer) {
             super(context, eventPlayer);
-            this.released = false;
+            if (context.isEnding()) {
+                this.released = true;
+                this.eventPlayer.operatePlayer(PanelParty::disableFlight);
+                return;
+            }
             this.hide();
-            this.eventPlayer.operatePlayer(player -> {
-                player.setAllowFlight(true);
-                player.setFlying(true);
-            });
+            this.grantFlight();
         }
 
         @Override
-        public void tick() {
-            if (this.released) return;
+        protected void handleTick() {
+            this.grantFlight();
             this.eventPlayer.operatePlayer(player -> {
-                if (this.released) return; // cleanup ran while this tick was queued
-                if (!player.getAllowFlight()) {
-                    player.setAllowFlight(true);
-                }
-                if (!player.isFlying()) {
-                    player.setFlying(true);
-                }
                 player.addPotionEffect(INVISIBILITY);
             });
         }
 
         @Override
-        public void cleanup() {
-            this.released = true;
+        protected void handleCleanup() {
             this.show();
             this.eventPlayer.operatePlayer(player -> {
-                player.setAllowFlight(false);
-                player.setFlying(false);
                 player.removePotionEffect(PotionEffectType.INVISIBILITY);
             });
         }
