@@ -47,6 +47,9 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Comment("A movement speed multiplier backed by transient attribute modifiers")
     private double movementSpeedMultiplier = 1.0;
 
+    @Comment("Slowing the team that outnumbers the other one down, on top of the multiplier above")
+    private ImbalanceCompensationSettings imbalanceCompensation = new ImbalanceCompensationSettings();
+
     @Comment("Points awarded for jumping into the enemy team's hole")
     private int holePoints = 100;
 
@@ -85,6 +88,24 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
 
     @Comment("The minibosses guarding boss rooms")
     private MinibossSettings miniboss = new MinibossSettings();
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class ImbalanceCompensationSettings extends OkaeriConfig {
+
+        @Comment("Whether the team with more players is slowed down while it outnumbers the other one")
+        private boolean enabled = true;
+
+        @Comment("How much slower a team twice the enemy's size should be (0.3 = 30% slower)")
+        private double slowdownAtDoubleSize = 0.25;
+
+        @Comment("The most the bigger team may ever be slowed (0.4 = 40% slower)")
+        private double maxSlowdown = 0.4;
+
+        @Comment("Penalties below this are ignored")
+        private double minSlowdown = 0.02;
+    }
 
     @Getter
     @Setter

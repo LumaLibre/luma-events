@@ -191,6 +191,9 @@ public final class Incursion extends InventoryUnifiedMinigame {
             new AttributeModifier(FREEZE_KEY, -1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
     private static final List<Attribute> FREEZE_ATTRIBUTES = List.of(Attribute.MOVEMENT_SPEED, Attribute.JUMP_STRENGTH);
 
+    private static final double MAX_IMBALANCE_SLOWDOWN = 0.6;
+    private static final double LN_2 = Math.log(2.0);
+
     private static final Set<Integer> WARNING_SECONDS = Set.of(60, 30, 10, 3, 2, 1);
 
     private static final double LETHAL_FALL_BLOCKS = 10.0;
@@ -209,8 +212,16 @@ public final class Incursion extends InventoryUnifiedMinigame {
     private final IncursionDefinition definition;
     private final IncursionTokenFormula tokenFormula;
 
+    private final double baseSpeedMultiplier;
+
+    private final boolean imbalanceEnabled;
+    private final double imbalanceSlowdownAtDouble;
+    private final double imbalanceMaxSlowdown;
+    private final double imbalanceMinSlowdown;
+
     @Nullable
-    private final AttributeModifier speedModifier;
+    private volatile IncursionTeam slowedTeam;
+    private volatile double slowdown = 0.0;
 
     private final MapSide side1;
     private final MapSide side2;
@@ -265,10 +276,13 @@ public final class Incursion extends InventoryUnifiedMinigame {
         this.side2 = new MapSide(definition.getTeam2().getSpawnArea(), definition.getTeam2().getHole().toBlockBoundingBox());
         this.tokenFormula = new IncursionTokenFormula(definition.getPointsPerToken());
 
-        double multiplier = Math.max(0.0, definition.getMovementSpeedMultiplier());
-        this.speedModifier = multiplier == 1.0
-                ? null
-                : new AttributeModifier(SPEED_KEY, multiplier - 1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
+        this.baseSpeedMultiplier = Math.max(0.0, definition.getMovementSpeedMultiplier());
+
+        IncursionDefinition.ImbalanceCompensationSettings imbalance = definition.getImbalanceCompensation();
+        this.imbalanceEnabled = imbalance.isEnabled();
+        this.imbalanceMaxSlowdown = Math.clamp(imbalance.getMaxSlowdown(), 0.0, MAX_IMBALANCE_SLOWDOWN);
+        this.imbalanceSlowdownAtDouble = Math.clamp(imbalance.getSlowdownAtDoubleSize(), 0.0, MAX_IMBALANCE_SLOWDOWN);
+        this.imbalanceMinSlowdown = Math.max(0.0, imbalance.getMinSlowdown());
 
         List<Miniboss> rooms = new ArrayList<>();
         for (WorldTiedBoundingBox room : definition.getBossRooms()) {
@@ -305,6 +319,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
     protected void handleStart() {
         this.team1 = new IncursionTeam(definition.getTeam1(), side1);
         this.team2 = new IncursionTeam(definition.getTeam2(), side2);
+        this.slowedTeam = null;
+        this.slowdown = 0.0;
 
         this.latency.start(); // No-op if already started
         EventMain.getInstance().getLogger().info("Incursion is measuring latency with " + latency.sourceName());
@@ -419,6 +435,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
     @Override
     protected void onRunnable(long timeLeft) {
         if (team1 == null || team2 == null) return;
+
+        tickImbalanceCompensation();
 
         if (!secondHalf) {
             long untilSwap = (this.getDuration() / 2) - (this.getDuration() - timeLeft);
@@ -770,13 +788,87 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
     }
 
+    private void tickImbalanceCompensation() {
+        if (!imbalanceEnabled) return;
+
+        int size1 = teamSize(team1);
+        int size2 = teamSize(team2);
+
+        IncursionTeam bigger = null;
+        double penalty = 0.0;
+
+        if (size1 > 0 && size2 > 0 && size1 != size2) {
+            bigger = size1 > size2 ? team1 : team2;
+            penalty = slowdownFor((double) Math.max(size1, size2) / Math.min(size1, size2));
+            if (penalty <= 0.0) bigger = null;
+        }
+
+        IncursionTeam previousTeam = this.slowedTeam;
+        double previousSlowdown = this.slowdown;
+        if (bigger == previousTeam && Math.abs(penalty - previousSlowdown) < 1.0e-6) return;
+
+        this.slowedTeam = bigger;
+        this.slowdown = penalty;
+
+        for (EventPlayer participant : new ArrayList<>(this.participants)) {
+            IncursionTeam team = teamOf(participant.getUuid());
+            if (team == null) continue;
+
+            double before = team == previousTeam ? previousSlowdown : 0.0;
+            double after = team == bigger ? penalty : 0.0;
+            if (Math.abs(before - after) < 1.0e-6) continue;
+
+            participant.operatePlayer(this::applySpeed);
+            announceSpeedChange(participant, team, after, team == team1 ? size1 : size2, team == team1 ? size2 : size1);
+        }
+    }
+
+    private double slowdownFor(double ratio) {
+        double penalty = Math.min(imbalanceMaxSlowdown, imbalanceSlowdownAtDouble * (Math.log(ratio) / LN_2));
+        return penalty < imbalanceMinSlowdown ? 0.0 : penalty;
+    }
+
+    private void announceSpeedChange(EventPlayer participant, IncursionTeam team, double slowdown, int own, int other) {
+        if (slowdown <= 0.0) {
+            participant.sendMessage("<green>You no longer outnumber " + enemyOf(team).getName()
+                    + "<reset> - your movement speed is back to normal.");
+            return;
+        }
+        participant.sendMessage("<yellow>Your team outnumbers " + enemyOf(team).getName() + " " + own + " to " + other
+                + "<reset> - you move <yellow>" + Math.round(slowdown * 100.0) + "%<reset> slower until that evens out.");
+    }
+
+    private int teamSize(@Nullable IncursionTeam team) {
+        if (team == null) return 0;
+        int size = 0;
+        for (EventPlayer participant : this.participants) {
+            if (team == teamOf(participant.getUuid()) && participant.getPlayer() != null) size++;
+        }
+        return size;
+    }
+
     private void applySpeed(Player player) {
-        if (speedModifier == null) return;
         AttributeInstance instance = player.getAttribute(Attribute.MOVEMENT_SPEED);
         if (instance == null) return;
-        if (instance.getModifiers().stream().noneMatch(modifier -> SPEED_KEY.equals(modifier.getKey()))) {
-            instance.addTransientModifier(speedModifier);
+
+        double amount = speedMultiplierFor(teamOf(player.getUniqueId())) - 1.0;
+        AttributeModifier current = instance.getModifiers().stream()
+                .filter(modifier -> SPEED_KEY.equals(modifier.getKey()))
+                .findFirst()
+                .orElse(null);
+
+        if (current != null) {
+            if (Math.abs(current.getAmount() - amount) < 1.0e-6) return; // already at the right speed
+            clearSpeed(player);
         }
+        if (Math.abs(amount) < 1.0e-6) return;
+        instance.addTransientModifier(new AttributeModifier(SPEED_KEY, amount, AttributeModifier.Operation.MULTIPLY_SCALAR_1));
+    }
+
+    private double speedMultiplierFor(@Nullable IncursionTeam team) {
+        IncursionTeam slowed = this.slowedTeam;
+        if (slowed == null || slowed != team) return baseSpeedMultiplier;
+        return baseSpeedMultiplier * (1.0 - this.slowdown);
     }
 
     private static void clearSpeed(Player player) {
