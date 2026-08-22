@@ -8,6 +8,7 @@ import dev.lumas.events.games.exceptions.GameAlreadyStartedException;
 import dev.lumas.events.games.exceptions.NoAvailableMinigames;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.logic.NonActiveMinigame;
+import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import eu.okaeri.configs.OkaeriConfig;
@@ -35,7 +36,7 @@ public final class MinigameManager extends AsynchronousRunnable {
 
     @NotNull
     @Getter
-    private Minigame current = new NonActiveMinigame();
+    private volatile Minigame current = new NonActiveMinigame();
 
 
     public boolean newMinigame(MinigameConstant game, boolean force, int seconds) throws GameAlreadyStartedException {
@@ -55,9 +56,9 @@ public final class MinigameManager extends AsynchronousRunnable {
         }
 
         Util.broadcast("<hover:show_text:'Click me!'><click:run_command:/event join>A minigame is starting! Use <gold>/event join</gold> to participate!");
-        Bukkit.getOnlinePlayers().forEach(player -> {
-            player.playSound(player.getLocation(), Sound.ENTITY_EVOKER_PREPARE_WOLOLO, 1f, 0.75f);
-        });
+        // newMinigame runs on the async scheduler, so read each player's location on the region that owns them
+        Bukkit.getOnlinePlayers().forEach(player -> Executors.runSync(player,
+                () -> player.playSound(player.getLocation(), Sound.ENTITY_EVOKER_PREPARE_WOLOLO, 1f, 0.75f)));
 
         try {
             this.current = game.instantiate(definition);

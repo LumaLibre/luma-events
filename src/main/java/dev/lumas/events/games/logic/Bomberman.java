@@ -159,16 +159,17 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
     /** Teleports a participant onto the arena and pins them where they land for a moment. */
     private void spawnAt(EventPlayer participant, Location location) {
-        participant.teleportAsync(location).thenRun(() -> participant.operatePlayer(player -> {
-            player.setVelocity(new Vector(0, 0, 0));
-            player.setFallDistance(0.0f);
-            player.addPotionEffect(SPAWN_FREEZE);
-        }));
+        participant.teleportAsync(location).thenRun(() -> Executors.delayedSync(participant, 1, () ->
+                participant.operatePlayer(player -> {
+                    player.setVelocity(new Vector(0, 0, 0));
+                    player.setFallDistance(0.0f);
+                    player.addPotionEffect(SPAWN_FREEZE);
+                })));
     }
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
-        player.teleportAsync(this.spawnLocation);
+        this.teleportOnJoin(player, this.spawnLocation);
         return super.handleParticipantJoin(player);
     }
 
@@ -724,7 +725,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
                 this.context.sendAudienceMessage("<red>" + getName() + "</red> blew themselves up!");
             }
 
-            player.teleportAsync(restAt);
+            Executors.teleportSafely(player, restAt);
             this.context.roles.swapRole(this, () -> new BombermanSpectator(getEventPlayer(), this.context, restAt));
             this.context.playAudienceSound(Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 0.5f);
             if (!fellOff) player.getWorld().strikeLightningEffect(restAt);

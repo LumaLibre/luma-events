@@ -311,7 +311,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         participantsByUuid.put(player.getUuid(), player);
         this.latency.start();
         player.operatePlayer(this::applySpeed);
-        player.teleportAsync(definition.getLobbyLocation());
+        this.teleportOnJoin(player, definition.getLobbyLocation());
         return true;
     }
 
@@ -717,7 +717,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
 
         Location spawn = team.getSide().spawnArea().randomSpawn();
-        player.teleportAsync(spawn).whenComplete((_, _) -> Executors.runSync(player, () -> {
+        Executors.teleportSafely(player, spawn).whenComplete((_, _) -> Executors.delayedSync(player, 1, () -> {
             player.setVelocity(new Vector(0, 0, 0));
             player.setFallDistance(0f);
             restoreVitals(player);
@@ -2480,7 +2480,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
             moving.setVelocity(new Vector(0, 0, 0));
             moving.setFallDistance(0f);
             forgetTrail(mob.getUniqueId());
-            moving.teleportAsync(back);
+            Executors.teleportSafely(moving, back);
         }
 
         // The closest spot just inside the room, or null if the mob wouldn't fit there

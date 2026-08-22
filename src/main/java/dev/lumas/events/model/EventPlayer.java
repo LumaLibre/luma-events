@@ -111,7 +111,7 @@ public class EventPlayer implements Serializable, Scorer {
         if (player == null) {
             return CompletableFuture.completedFuture(false);
         }
-        return player.teleportAsync(location);
+        return Executors.teleportSafely(player, location);
     }
 
     @Nullable

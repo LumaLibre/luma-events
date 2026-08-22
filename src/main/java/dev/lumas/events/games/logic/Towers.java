@@ -253,7 +253,7 @@ public final class Towers extends InventoryUnifiedMinigame {
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
-        player.teleportAsync(this.spawnLocation);
+        this.teleportOnJoin(player, this.spawnLocation);
         return super.handleParticipantJoin(player);
     }
 
@@ -634,7 +634,7 @@ public final class Towers extends InventoryUnifiedMinigame {
                 player.setVelocity(new Vector());
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 100, false, false, true));
                 Executors.runDelayedAsync(TimeUnit.MILLISECONDS, 300, (taks) -> {
-                    player.teleportAsync(spawnLocation.add(0, 1, 0).toCenterLocation());
+                    Executors.teleportSafely(player, spawnLocation.add(0, 1, 0).toCenterLocation());
                     player.setFlying(false);
                     player.setAllowFlight(false);
                 });
@@ -746,7 +746,7 @@ public final class Towers extends InventoryUnifiedMinigame {
                 player.setVelocity(new Vector());
                 player.setAllowFlight(true);
                 player.setFlying(true);
-                player.teleportAsync(rescueLocation).whenComplete((success, throwable) -> this.rescuing = false);
+                Executors.teleportSafely(player, rescueLocation).whenComplete((success, throwable) -> this.rescuing = false);
             });
             if (task == null) {
                 this.rescuing = false;

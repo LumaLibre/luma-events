@@ -5,6 +5,7 @@ import dev.lumas.core.annotation.CommandMeta;
 import dev.lumas.core.annotation.Register;
 import dev.lumas.core.model.command.AbstractCommandManager;
 import dev.lumas.events.EventMain;
+import dev.lumas.events.utility.Executors;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -34,7 +35,7 @@ public class CommandManager extends AbstractCommandManager<EventMain, CommandMod
         Location loc = EventMain.getOkaeriConfig().getEventSpawnLocation();
 
         if (loc != null) {
-            player.teleportAsync(loc.toCenterLocation());
+            Executors.teleportSafely(player, loc.toCenterLocation());
         }
         return true;
     }

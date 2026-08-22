@@ -3,6 +3,7 @@ package dev.lumas.events.manager;
 import com.google.gson.Gson;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import org.bukkit.Bukkit;
 import org.jetbrains.annotations.NotNull;
@@ -42,14 +43,22 @@ public final class EventPlayerManager {
      */
     @NotNull
     public static EventPlayer getByUUID(UUID uuid) {
-        CachedPlayer cached = cache.compute(uuid, (key, existing) -> {
-            if (existing != null) {
-                return new CachedPlayer(existing.player(), System.currentTimeMillis());
-            }
-            EventMain.getInstance().getLogger().info("Loading player " + key + " from disk");
-            return new CachedPlayer(loadFromDisk(key), System.currentTimeMillis());
-        });
-        return cached.player();
+        CachedPlayer cached = cache.computeIfPresent(uuid, (key, existing) ->
+                new CachedPlayer(existing.player(), System.currentTimeMillis()));
+        if (cached != null) {
+            return cached.player();
+        }
+
+        EventMain.getInstance().getLogger().info("Loading player " + uuid + " from disk");
+        EventPlayer loaded = loadFromDisk(uuid);
+
+        CachedPlayer existing = cache.putIfAbsent(uuid, new CachedPlayer(loaded, System.currentTimeMillis()));
+        return existing != null ? existing.player() : loaded;
+    }
+
+    public static void warmCache(UUID uuid) {
+        if (cache.containsKey(uuid)) return;
+        Executors.runAsync(() -> getByUUID(uuid));
     }
 
     @Nullable
@@ -64,8 +73,8 @@ public final class EventPlayerManager {
         long now = System.currentTimeMillis();
         cache.forEach((uuid, cached) -> {
             if (now - cached.lastAccessed() >= EXPIRY_MS && !cached.player().isOnline()) {
-                cache.remove(uuid);
                 save(cached.player());
+                cache.remove(uuid, cached);
             }
         });
     }

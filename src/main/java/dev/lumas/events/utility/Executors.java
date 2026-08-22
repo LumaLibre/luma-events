@@ -14,6 +14,8 @@ import org.jspecify.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -43,12 +45,15 @@ public final class Executors {
         return Bukkit.getAsyncScheduler().runNow(instance, t -> runnable.run());
     }
 
-    // TODO: Log if entity was retired
     // Synchronous
 
     @Nullable
     public static ScheduledTask delayedSync(Entity entity, long delay, Runnable runnable) {
-        return entity.getScheduler().runDelayed(instance, t -> runnable.run(), null, delay);
+        ScheduledTask task = entity.getScheduler().runDelayed(instance, t -> runnable.run(), null, delay);
+        if (task == null) {
+            instance.getLogger().warning("Dropped a delayed task for retired entity " + entity.getUniqueId());
+        }
+        return task;
     }
 
     @Nullable
@@ -70,8 +75,13 @@ public final class Executors {
         return Bukkit.getRegionScheduler().runAtFixedRate(instance, location, consumer, 1, period);
     }
 
+    @Nullable
     public static ScheduledTask sync(Entity entity, Runnable runnable) {
-        return entity.getScheduler().run(instance, t -> runnable.run(), null);
+        ScheduledTask task = entity.getScheduler().run(instance, t -> runnable.run(), null);
+        if (task == null) {
+            instance.getLogger().warning("Dropped a task for retired entity " + entity.getUniqueId());
+        }
+        return task;
     }
 
     public static ScheduledTask sync(Location location, Runnable runnable) {
@@ -144,6 +154,74 @@ public final class Executors {
         }
     }
 
+    public static CompletableFuture<Boolean> teleportSafely(Entity entity, @Nullable Location location, @Nullable String site) {
+        if (location == null) {
+            return CompletableFuture.completedFuture(false);
+        }
+
+        UUID uuid = entity.getUniqueId();
+        JoinTrace.teleportRequest(uuid, "Entity#teleportAsync", entity instanceof Player player ? player : null);
+
+        if (Bukkit.isOwnedByCurrentRegion(entity)) {
+            return report(uuid, entity.teleportAsync(location));
+        }
+
+        JoinTrace.offRegionTeleport(entity, site != null ? site : callerSite());
+
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        boolean scheduled = entity.getScheduler().execute(
+                instance,
+                () -> {
+                    Entity target = entity instanceof Player ? Bukkit.getPlayer(uuid) : entity;
+                    if (target == null || !target.isValid()) {
+                        future.complete(false);
+                        return;
+                    }
+                    report(uuid, target.teleportAsync(location)).whenComplete((success, throwable) -> {
+                        if (throwable != null) future.completeExceptionally(throwable);
+                        else future.complete(Boolean.TRUE.equals(success));
+                    });
+                },
+                () -> future.complete(false),
+                1L
+        );
+
+        if (!scheduled) {
+            future.complete(false);
+        }
+        return future;
+    }
+
+    public static CompletableFuture<Boolean> teleportSafely(Entity entity, @Nullable Location location) {
+        return teleportSafely(entity, location, null);
+    }
+
+    private static final Set<String> WRAPPER_CLASSES = Set.of(
+            Executors.class.getName(),
+            "dev.lumas.events.model.EventPlayer",
+            "dev.lumas.events.games.interfaces.models.MinigameRole"
+    );
+
+    private static String callerSite() {
+        return StackWalker.getInstance()
+                .walk(frames -> frames
+                        .filter(frame -> !WRAPPER_CLASSES.contains(frame.getClassName()))
+                        .filter(frame -> frame.getClassName().startsWith("dev.lumas."))
+                        .findFirst()
+                        .map(frame -> frame.getClassName().substring(frame.getClassName().lastIndexOf('.') + 1)
+                                + "#" + frame.getMethodName() + ":" + frame.getLineNumber()))
+                .orElse("unknown");
+    }
+
+    private static CompletableFuture<Boolean> report(UUID uuid, CompletableFuture<Boolean> upstream) {
+        CompletableFuture<Boolean> downstream = new CompletableFuture<>();
+        upstream.whenComplete((success, throwable) -> {
+            JoinTrace.teleportComplete(uuid, success, throwable);
+            if (throwable != null) downstream.completeExceptionally(throwable);
+            else downstream.complete(Boolean.TRUE.equals(success));
+        });
+        return downstream;
+    }
 
     public static Collection<CompletableFuture<Boolean>> teleportGroupAsync(List<EventPlayer> eventPlayers, Location location) {
         List<Entity> players = new ArrayList<>(eventPlayers.size());
@@ -159,35 +237,34 @@ public final class Executors {
     public static Collection<CompletableFuture<Boolean>> teleportGroupAsync(Collection<Entity> entities, Location location) {
         List<Entity> entityList = new ArrayList<>(entities);
         List<CompletableFuture<Boolean>> futures = new ArrayList<>(entityList.size());
+
         for (int i = 0; i < entityList.size(); i++) {
-            futures.add(new CompletableFuture<>());
-        }
+            Entity entity = entityList.get(i);
+            UUID uuid = entity.getUniqueId();
+            CompletableFuture<Boolean> downstream = new CompletableFuture<>();
+            futures.add(downstream);
 
-        int totalBatches = (entityList.size() + TELEPORTS_PER_TICK - 1) / TELEPORTS_PER_TICK;
+            long delay = Math.max(1L, i / TELEPORTS_PER_TICK);
 
-        for (int batch = 0; batch < totalBatches; batch++) {
-            final int batchIndex = batch;
-            Runnable task = () -> {
-                int start = batchIndex * TELEPORTS_PER_TICK;
-                int end = Math.min(start + TELEPORTS_PER_TICK, entityList.size());
-                for (int i = start; i < end; i++) {
-                    Entity entity = entityList.get(i);
-                    CompletableFuture<Boolean> downstream = futures.get(i);
-                    if (!entity.isValid()) {
-                        downstream.complete(false);
-                        continue;
-                    }
-                    entity.teleportAsync(location).whenComplete((success, ex) -> {
-                        if (ex != null) downstream.completeExceptionally(ex);
-                        else downstream.complete(success);
-                    });
-                }
-            };
+            boolean scheduled = entity.getScheduler().execute(
+                    instance,
+                    () -> {
+                        Entity target = entity instanceof Player ? Bukkit.getPlayer(uuid) : entity;
+                        if (target == null || !target.isValid()) {
+                            downstream.complete(false);
+                            return;
+                        }
+                        report(uuid, target.teleportAsync(location)).whenComplete((success, throwable) -> {
+                            if (throwable != null) downstream.completeExceptionally(throwable);
+                            else downstream.complete(Boolean.TRUE.equals(success));
+                        });
+                    },
+                    () -> downstream.complete(false),
+                    delay
+            );
 
-            if (batchIndex == 0) {
-                Bukkit.getGlobalRegionScheduler().run(EventMain.getInstance(), scheduledTask -> task.run());
-            } else {
-                Bukkit.getGlobalRegionScheduler().runDelayed(EventMain.getInstance(), scheduledTask -> task.run(), batchIndex);
+            if (!scheduled) {
+                downstream.complete(false);
             }
         }
 

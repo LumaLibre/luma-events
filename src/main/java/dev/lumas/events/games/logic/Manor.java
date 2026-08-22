@@ -79,7 +79,7 @@ public final class Manor extends InventoryUnifiedMinigame {
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer participant) {
-        participant.teleportAsync(this.spawnLocation);
+        this.teleportOnJoin(participant, this.spawnLocation);
         return super.handleParticipantJoin(participant);
     }
 

@@ -125,9 +125,8 @@ public final class BoatRace2 extends Minigame {
                 loc = this.overFlowPoint.toCenterLocation().add(RANDOM.nextDouble(6), 0, RANDOM.nextDouble(6));
             }
 
-            player.teleportAsync(loc).whenComplete((v, b) -> {
-                // Synchronize
-                Executors.sync(player, () -> {
+            Executors.teleportSafely(player, loc).whenComplete((v, b) -> {
+                Executors.delayedSync(player, 1, () -> {
                     BoatRaceBoatType boatType = BoatRaceBoatType.BAMBOO; // Util.getRandom(BoatRaceBoatType.values());
                     Boat boat = player.getWorld().spawn(loc, boatType.getBoatType());
                     boat.addPassenger(player);
@@ -180,7 +179,7 @@ public final class BoatRace2 extends Minigame {
 
         scoreboard.handleGameEnd(this.audience, () -> {
             this.participants.stream().filter(player -> player.getPlayer() != null
-            ).forEach(p -> p.getPlayer().teleportAsync(this.spawnLocation));
+            ).forEach(p -> p.teleportAsync(this.spawnLocation));
             CountdownBossBar.builder()
                     .audience(this.audience)
                     .color(BossBar.Color.RED)
@@ -199,7 +198,7 @@ public final class BoatRace2 extends Minigame {
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
-        player.teleportAsync(this.spawnLocation);
+        this.teleportOnJoin(player, this.spawnLocation);
         return true;
     }
 

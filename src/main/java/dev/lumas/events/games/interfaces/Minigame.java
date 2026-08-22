@@ -10,6 +10,7 @@ import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.MinigameBoundingBox;
 import dev.lumas.events.utility.Util;
+import dev.lumas.events.utility.JoinTrace;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
@@ -31,8 +32,12 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Getter
@@ -54,6 +59,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
     // Iterated from async and region threads while joins/leaves mutate it:
     protected final List<EventPlayer> participants = new CopyOnWriteArrayList<>();
+    private final Map<UUID, CompletableFuture<Boolean>> joinTeleports = new ConcurrentHashMap<>();
     protected final List<Listener> extraListeners = new ArrayList<>();
     private final MinigamePreventInventoryTampering inventoryTampering;
     private final MinigamePreventDamageListener preventDamage;
@@ -117,11 +123,12 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
     }
 
     public boolean start() {
+        this.open = false;
+
         if (this.participants.size() < this.minimumParticipants()) {
             // Nothing has happened at this point other than these values
             // being changed to true, so we can just set them to false and return
             this.active = false;
-            this.open = false;
             if (this.inventoryTampering != null) {
                 unregisterEvents(this.inventoryTampering);
             }
@@ -146,7 +153,6 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         registerEvents(this);
         this.audience = Audience.audience(participants.stream()
                 .map(EventPlayer::getPlayer).filter(Objects::nonNull).toList());
-        this.open = false;
         this.startTime = System.currentTimeMillis();
         extraListeners.stream()
                 .filter(Objects::nonNull)
@@ -225,6 +231,22 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         if (!this.participants.contains(player)) {
             this.participants.add(player);
         }
+
+        // The rollback must not be able to run before the player is a participant
+        CompletableFuture<Boolean> teleport = this.joinTeleports.remove(player.getUuid());
+        if (teleport != null) {
+            teleport.whenComplete((success, throwable) -> {
+                if (Boolean.TRUE.equals(success) && throwable == null) {
+                    JoinTrace.joinComplete(player.getUuid());
+                    return;
+                }
+                EventMain.getInstance().getLogger().warning("Join teleport failed for " + player.getUuid()
+                        + " (success=" + success + ", ex=" + throwable + "), removing them from " + this.name);
+                this.removeParticipant(player, false);
+                player.sendMessage("<red>Could not move you into the minigame, so you were removed from it.");
+            });
+        }
+
         player.sendTitle(
                 "<yellow>" + this.name,
                 "<red>" + this.description
@@ -404,6 +426,16 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
     protected abstract void onRunnable(long timeLeft);
     // Minigame stops, returns true if successful
     protected abstract void handleStop();
+
+    protected CompletableFuture<Boolean> teleportOnJoin(EventPlayer player, @Nullable Location destination) {
+        Player bukkitPlayer = player.getPlayer();
+        if (bukkitPlayer != null) {
+            JoinTrace.joinStart(bukkitPlayer, destination);
+        }
+        CompletableFuture<Boolean> future = player.teleportAsync(destination);
+        this.joinTeleports.put(player.getUuid(), future);
+        return future;
+    }
 
     protected abstract boolean handleParticipantJoin(EventPlayer player);
 }

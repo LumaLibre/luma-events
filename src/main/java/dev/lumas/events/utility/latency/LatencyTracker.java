@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 public final class LatencyTracker {
@@ -22,6 +23,8 @@ public final class LatencyTracker {
     private final Supplier<List<Player>> players;
 
     private volatile PingSource source = new VanillaPingSource();
+
+    private final AtomicBoolean started = new AtomicBoolean();
 
     @Nullable
     private volatile ScheduledTask task;
@@ -44,7 +47,7 @@ public final class LatencyTracker {
     }
 
     public void start() {
-        if (this.task != null) return;
+        if (!this.started.compareAndSet(false, true)) return;
 
         PingSource picked = pickSource();
         this.source = picked;
@@ -64,6 +67,7 @@ public final class LatencyTracker {
     public void stop() {
         ScheduledTask running = this.task;
         this.task = null;
+        this.started.set(false);
         if (running != null) running.cancel();
         source.stop();
     }

@@ -6,15 +6,15 @@ import dev.lumas.events.utility.Util;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-public class MinigameRoleMap<T extends MinigameRole> extends HashMap<UUID, T> implements Iterable<T> {
+public class MinigameRoleMap<T extends MinigameRole> extends ConcurrentHashMap<UUID, T> implements Iterable<T> {
 
     private final Consumer<T> cleanupConsumer;
 

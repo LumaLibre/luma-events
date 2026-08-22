@@ -107,7 +107,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         this.scoreboard.handleGameEnd(this.audience, () -> {
             this.participants.stream().filter(
                     p -> p.getPlayer() != null
-            ).forEach(p -> p.getPlayer().teleportAsync(this.spawnPoint));
+            ).forEach(p -> p.teleportAsync(this.spawnPoint));
             CountdownBossBar.builder()
                     .audience(this.audience)
                     .color(BossBar.Color.RED)
@@ -116,7 +116,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
                     .callback(() -> this.boundingBox.getPlayers().forEach(player -> {
                         Location loc = this.getGameDropOffLocation();
                         if (loc != null) {
-                            player.teleportAsync(loc);
+                            Executors.teleportSafely(player, loc);
                         }
                         Util.sendMsg(player, "This minigame has concluded.");
                     }))
@@ -135,7 +135,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
         super.handleParticipantJoin(player);
-        player.teleportAsync(this.spawnPoint);
+        this.teleportOnJoin(player, this.spawnPoint);
         return true;
     }
 
@@ -265,7 +265,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     public void teleportNearSpawnPoint(Player player) {
         Location spawnLocation = this.spawnPoint.clone();
         spawnLocation.add(RANDOM.nextDouble(6), 0, RANDOM.nextDouble(6));
-        player.teleportAsync(spawnLocation);
+        Executors.teleportSafely(player, spawnLocation);
     }
 
     @EventHandler

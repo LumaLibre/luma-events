@@ -245,7 +245,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
         super.handleParticipantJoin(player);
-        player.teleportAsync(def.getSpawnLocation());
+        this.teleportOnJoin(player, def.getSpawnLocation());
         return true;
     }
 

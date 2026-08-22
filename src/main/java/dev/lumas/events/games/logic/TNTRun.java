@@ -239,14 +239,14 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer eventPlayer) {
-        eventPlayer.teleportAsync(this.lobbyLocation);
+        this.teleportOnJoin(eventPlayer, this.lobbyLocation);
         return super.handleParticipantJoin(eventPlayer);
     }
 
     @Override
     public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
         AbstractTNTRunPlayer tntRunPlayer = this.roleMap.remove(participant.getUuid());
-        tntRunPlayer.cleanup();
+        if (tntRunPlayer != null) tntRunPlayer.cleanup(); // a second quit, or a quit before roles were built
         participant.operatePlayer(p -> p.setFallDistance(0f));
         return super.removeParticipant(participant, doTeleport);
     }

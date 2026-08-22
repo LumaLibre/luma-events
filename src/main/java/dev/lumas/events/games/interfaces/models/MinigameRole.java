@@ -6,6 +6,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 @Getter
@@ -26,8 +27,8 @@ public abstract class MinigameRole {
         return eventPlayer.getName();
     }
 
-    public void teleportAsync(Location location) {
-        eventPlayer.teleportAsync(location);
+    public CompletableFuture<Boolean> teleportAsync(Location location) {
+        return eventPlayer.teleportAsync(location);
     }
 
     public void operatePlayer(Consumer<Player> consumer) {

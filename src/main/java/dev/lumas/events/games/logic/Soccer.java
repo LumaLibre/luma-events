@@ -202,7 +202,7 @@ public final class Soccer extends InventoryUnifiedMinigame {
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
-        player.teleportAsync(this.spawnLocation);
+        this.teleportOnJoin(player, this.spawnLocation);
         return super.handleParticipantJoin(player);
     }
 

@@ -167,7 +167,7 @@ public final class TheNabbits extends InventoryUnifiedMinigame {
                 Player bukkitPlayer = eventPlayer.getPlayer();
 
                 if (bukkitPlayer != null) {
-                    bukkitPlayer.teleportAsync(dropOffLocation).whenComplete((b, t) -> {
+                    Executors.teleportSafely(bukkitPlayer, dropOffLocation).whenComplete((b, t) -> {
                         bukkitPlayer.playSound(bukkitPlayer.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.0f);
                         if (this.earlyGameEnd) {
                             eventPlayer.sendTitle("<dark_purple>Nabbits Win", "All fleeing players were caught.");
@@ -201,7 +201,7 @@ public final class TheNabbits extends InventoryUnifiedMinigame {
             return false;
         }
 
-        bukkitPlayer.teleportAsync(this.spawnPoint);
+        this.teleportOnJoin(player, this.spawnPoint);
         return true;
     }
 

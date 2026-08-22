@@ -283,7 +283,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer participant) {
-        participant.teleportAsync(this.lobbyLocation);
+        this.teleportOnJoin(participant, this.lobbyLocation);
         return super.handleParticipantJoin(participant);
     }
 

@@ -216,7 +216,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer participant) {
-        participant.teleportAsync(this.spawnLocation);
+        this.teleportOnJoin(participant, this.spawnLocation);
         return super.handleParticipantJoin(participant);
     }
 
@@ -570,7 +570,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             player.leaveVehicle();
             player.removePotionEffect(PotionEffectType.INVISIBILITY);
             if (lockedBlock != null) {
-                player.teleportAsync(lockedBlock.getLocation().toCenterLocation());
+                Executors.teleportSafely(player, lockedBlock.getLocation().toCenterLocation());
                 lockedBlock.setType(Material.AIR);
             }
 

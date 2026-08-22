@@ -23,6 +23,9 @@ public class MinigameTeleportAwayListener implements Listener {
             return;
         }
 
+        // Preload data so /event join isn't a blocking file read on a region tick
+        EventPlayerManager.warmCache(uuid);
+
         EventPlayer eventPlayer = EventPlayerManager.getByUUIDOrNull(uuid);
 
         if (eventPlayer != null && eventPlayer.wasDisconnectedFromMinigame()) {

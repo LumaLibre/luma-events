@@ -10,10 +10,11 @@ import org.bukkit.entity.Player;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class TokenFormula<C> {
 
-    private final Map<UUID, Integer> dirty = new HashMap<>();
+    private final Map<UUID, Integer> dirty = new ConcurrentHashMap<>();
     private final boolean makeDirty;
     private volatile String minigameName;
 
@@ -35,11 +36,11 @@ public abstract class TokenFormula<C> {
         int amount = tokens(context);
         Player bukkitPlayer = player.getPlayer();
         UUID uuid = player.getUuid();
-        if (amount < 1 || bukkitPlayer == null || isDirty(uuid)) {
+        if (amount < 1 || bukkitPlayer == null) {
             return 0;
         }
 
-        makeDirty(uuid, amount);
+        if (makeDirty && dirty.putIfAbsent(uuid, amount) != null) return 0;
         if (this.minigameName == null) {
             this.minigameName = MinigameManager.getInstance().getCurrent().getName();
         }
@@ -60,11 +61,5 @@ public abstract class TokenFormula<C> {
 
     private boolean isDirty(UUID uuid) {
         return makeDirty && dirty.containsKey(uuid);
-    }
-
-    private void makeDirty(UUID uuid, int tokens) {
-        if (makeDirty) {
-            dirty.put(uuid, tokens);
-        }
     }
 }

@@ -230,7 +230,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
         super.handleParticipantJoin(player);
-        player.teleportAsync(settings.getLobbyLocation());
+        this.teleportOnJoin(player, settings.getLobbyLocation());
         return true;
     }
 
@@ -408,7 +408,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         Location back = state.frozenAt().clone();
         back.setYaw(to.getYaw());
         back.setPitch(to.getPitch());
-        player.teleportAsync(back);
+        Executors.teleportSafely(player, back);
     }
 
     private void pauseStatusActionBar(Player player, long millis) {
