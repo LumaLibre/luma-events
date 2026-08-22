@@ -32,7 +32,7 @@ public class MinigameNextPlaceholder implements PlaceholderModule {
         PersistentStates persistentStates = EventMain.getPersistentStates();
 
         long timeSinceLast = System.currentTimeMillis() - persistentStates.getLastGameLaunchTime();
-        long timeCombined = cfg.getAutomaticMinigameCooldown() - timeSinceLast;
-        return String.format("%dm", TimeUnit.MILLISECONDS.toMinutes(timeCombined));
+        long remaining = Math.max(0, cfg.getAutomaticMinigameCooldown() - timeSinceLast);
+        return String.format("%dm", TimeUnit.MILLISECONDS.toMinutes(remaining));
     }
 }

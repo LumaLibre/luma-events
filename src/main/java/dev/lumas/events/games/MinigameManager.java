@@ -140,7 +140,7 @@ public final class MinigameManager extends AsynchronousRunnable {
     }
 
     public boolean canSafelyStartMinigame(boolean ignoreCooldown) {
-        if (this.current.isActive() || this.current.isOpen() || !cfg.isAutomaticMinigames()) {
+        if (this.current.isActive() || this.current.isOpen()) {
             return false; // We can't start another minigame if one is active or has a queue open!
         }
 

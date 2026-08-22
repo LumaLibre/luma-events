@@ -30,18 +30,27 @@ public class NextMinigameCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
         Config cfg = EventMain.getOkaeriConfig();
+
+        if (!cfg.isAutomaticMinigames()) {
+            Util.sendMsg(commandSender, "No minigames are currently scheduled.");
+            return true;
+        }
+
         PersistentStates persistentStates = EventMain.getPersistentStates();
 
         long timeSinceLast = System.currentTimeMillis() - persistentStates.getLastGameLaunchTime();
-        long timeCombined = cfg.getAutomaticMinigameCooldown() - timeSinceLast;
+        long remaining = Math.max(0, cfg.getAutomaticMinigameCooldown() - timeSinceLast);
 
-        MinigameConstant next = cfg.isAutomaticMinigames()
-                ? MinigameManager.getInstance().getNextAutomaticMinigame()
-                : null;
+        MinigameConstant next = MinigameManager.getInstance().getNextAutomaticMinigame();
         String suffix = next != null ? " (<gold>" + next.getDisplayName() + "</gold>)" : "";
 
+        if (remaining == 0) {
+            Util.sendMsg(commandSender, "The next minigame is due to start any moment now" + suffix + ".");
+            return true;
+        }
+
         // print how long until the next minigame
-        Util.sendMsg(commandSender, "The next minigame will be in <gold>" + millisToMins(timeCombined) + "</gold>" + suffix + ".");
+        Util.sendMsg(commandSender, "The next minigame will be in <gold>" + millisToMins(remaining) + "</gold>" + suffix + ".");
         return true;
     }
 
