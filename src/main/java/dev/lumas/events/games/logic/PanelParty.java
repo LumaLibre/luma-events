@@ -60,6 +60,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     private static final long DURATION = 600000L; // 10 mins, unlikely to reach
     private static final long TICK_INTERVAL = 1L;
     private static final int GLAZED_CHANCE = 45;
+    private static final int FLIGHT_DISABLE_ATTEMPTS = 5;
+    private static final long FLIGHT_DISABLE_RETRY_MILLIS = 200L;
     // terracotta -> its glazed counterpart, plain TERRACOTTA has none so it is simply absent here
     private static final Map<Material, Material> GLAZED_VARIANTS = glazedVariants();
     private static final String[] ELIMINATION_MESSAGES = {
@@ -94,6 +96,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     private int round;
     private @NotNull PanelPartyProcess currentProcess;
+    private volatile boolean flightLocked;
 
     public PanelParty(PanelPartyMinigameDefinition def) {
         super("Panel Party", "Stand on the correct color!", DURATION, TICK_INTERVAL, true, true, true, false);
@@ -118,6 +121,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
 
         this.round = 0;
+        this.flightLocked = false;
         this.currentProcess = new PanelPartyProcess(this, PanelDifficulty.fromRounds(this.round, this.maxRounds));
 
         Collections.shuffle(this.panels, RANDOM); // shuffle panels
@@ -250,22 +254,21 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStop() {
+        this.flightLocked = true;
+
         if (!this.currentProcess.isFinished()) {
             this.currentProcess.interrupt(false);
         }
 
+        this.disableFlightForEveryone();
         for (AbstractPanelPlayer role : this.roleMap) {
             role.teleportAsync(this.spawnLocation);
             role.cleanup();
         }
         this.restoreAllVisibility(); // sweep anything cleanup couldn't reach (offline spectators, ex-participants)
-        for (EventPlayer participant : this.participants) {
-            participant.operatePlayer(PanelParty::disableFlight);
-        }
+        this.disableFlightForEveryone();
 
-        Executors.runSync(this.center, () -> {
-            this.blankPanel.paste();
-        });
+        Executors.runSync(this.center, this.blankPanel::paste);
 
         this.scoreboard.handleGameEnd(this.getAudience(), () -> {
             CountdownBossBar.builder()
@@ -299,11 +302,54 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     private boolean spawnSpectator(PanelParticipant from) {
         if (this.isEnding()) {
-            from.getEventPlayer().operatePlayer(PanelParty::disableFlight);
+            disableFlightPersistently(from.getEventPlayer());
             return false;
         }
         this.roleMap.swapRole(from, () -> new PanelSpectator(this, from.getEventPlayer()));
         return true;
+    }
+
+    private boolean isFlightBlocked() {
+        return this.stopping || this.flightLocked;
+    }
+
+    private void disableFlightForEveryone() {
+        Set<UUID> handled = new HashSet<>();
+        for (AbstractPanelPlayer role : this.roleMap) {
+            if (handled.add(role.getUuid())) {
+                disableFlightPersistently(role.getEventPlayer());
+            }
+        }
+        for (EventPlayer participant : this.participants) {
+            if (handled.add(participant.getUuid())) {
+                disableFlightPersistently(participant);
+            }
+        }
+    }
+
+    private static void disableFlightPersistently(EventPlayer eventPlayer) {
+        attemptDisableFlight(eventPlayer.getUuid(), 1);
+    }
+
+    private static void attemptDisableFlight(UUID uuid, int attempt) {
+        Player player = Bukkit.getPlayer(uuid);
+        if (player == null) return;
+        if (Bukkit.isOwnedByCurrentRegion(player)) {
+            disableFlight(player);
+            return;
+        }
+        Runnable retired = () -> retryDisableFlight(uuid, attempt);
+        if (player.getScheduler().run(EventMain.getInstance(), task -> disableFlight(player), retired) == null) {
+            retired.run();
+        }
+    }
+
+    private static void retryDisableFlight(UUID uuid, int attempt) {
+        if (attempt >= FLIGHT_DISABLE_ATTEMPTS) {
+            return;
+        }
+        Executors.runDelayedAsync(TimeUnit.MILLISECONDS, FLIGHT_DISABLE_RETRY_MILLIS,
+                task -> attemptDisableFlight(uuid, attempt + 1));
     }
 
     private static void disableFlight(Player player) {
@@ -482,13 +528,14 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         public final void cleanup() {
             this.released = true;
             this.handleCleanup();
-            this.eventPlayer.operatePlayer(PanelParty::disableFlight);
+            disableFlightPersistently(this.eventPlayer);
         }
 
 
         protected final void grantFlight() {
+            if (this.released || this.context.isFlightBlocked()) return;
             this.eventPlayer.operatePlayer(player -> {
-                if (this.released || this.context.isEnding()) {
+                if (this.released || this.context.isFlightBlocked()) {
                     disableFlight(player);
                     return;
                 }
@@ -648,7 +695,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             super(context, eventPlayer);
             if (context.isEnding()) {
                 this.released = true;
-                this.eventPlayer.operatePlayer(PanelParty::disableFlight);
+                disableFlightPersistently(this.eventPlayer);
                 return;
             }
             this.hide();
