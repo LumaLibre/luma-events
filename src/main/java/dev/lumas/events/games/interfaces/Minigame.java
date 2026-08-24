@@ -72,6 +72,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
 
     protected long startTime = -1;
+    private volatile double tokenMultiplier = 1.0;
     protected volatile boolean open = false;
     protected volatile boolean active = false;
     protected volatile boolean stopping = false;

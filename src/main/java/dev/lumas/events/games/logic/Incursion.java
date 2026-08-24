@@ -103,6 +103,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -339,6 +340,7 @@ public final class Incursion extends InventoryUnifiedMinigame {
                 equipKit(player, team);
             });
         }
+        logSpeedState("game start");
 
         this.countdownBossBar = CountdownBossBar.builder()
                 .title("<white><b>Time Remaining: %ss")
@@ -717,6 +719,18 @@ public final class Incursion extends InventoryUnifiedMinigame {
         }
 
         Location spawn = team.getSide().spawnArea().randomSpawn();
+        if (Bukkit.isOwnedByCurrentRegion(player)) {
+            teleportToSpawn(player, team, spawn, uuid);
+            return;
+        }
+        boolean scheduled = player.getScheduler().execute(EventMain.getInstance(),
+                () -> teleportToSpawn(player, team, spawn, uuid),
+                () -> respawning.remove(uuid),
+                1L);
+        if (!scheduled) respawning.remove(uuid);
+    }
+
+    private void teleportToSpawn(Player player, IncursionTeam team, Location spawn, UUID uuid) {
         Executors.teleportSafely(player, spawn).whenComplete((_, _) -> Executors.delayedSync(player, 1, () -> {
             player.setVelocity(new Vector(0, 0, 0));
             player.setFallDistance(0f);
@@ -819,8 +833,10 @@ public final class Incursion extends InventoryUnifiedMinigame {
             if (Math.abs(before - after) < 1.0e-6) continue;
 
             participant.operatePlayer(this::applySpeed);
-            announceSpeedChange(participant, team, after, team == team1 ? size1 : size2, team == team1 ? size2 : size1);
         }
+
+        announceSpeedChange(previousTeam, bigger, penalty, size1, size2);
+        logSpeedState(bigger == null ? "imbalance cleared" : "imbalance updated", size1, size2);
     }
 
     private double slowdownFor(double ratio) {
@@ -828,14 +844,55 @@ public final class Incursion extends InventoryUnifiedMinigame {
         return penalty < imbalanceMinSlowdown ? 0.0 : penalty;
     }
 
-    private void announceSpeedChange(EventPlayer participant, IncursionTeam team, double slowdown, int own, int other) {
-        if (slowdown <= 0.0) {
-            participant.sendMessage("<green>You no longer outnumber " + enemyOf(team).getName()
+    private void announceSpeedChange(@Nullable IncursionTeam previouslySlowed, @Nullable IncursionTeam slowed,
+                                     double slowdown, int size1, int size2) {
+        if (slowed == null || slowdown <= 0.0) {
+            if (previouslySlowed == null) return;
+            IncursionTeam evened = enemyOf(previouslySlowed);
+            sendTeamMessage(previouslySlowed, "<green>You no longer outnumber " + evened.getName()
                     + "<reset> - your movement speed is back to normal.");
+            sendTeamMessage(evened, "<green>" + previouslySlowed.getName()
+                    + " no longer outnumbers you<reset> - their movement speed is back to normal.");
             return;
         }
-        participant.sendMessage("<yellow>Your team outnumbers " + enemyOf(team).getName() + " " + own + " to " + other
-                + "<reset> - you move <yellow>" + Math.round(slowdown * 100.0) + "%<reset> slower until that evens out.");
+
+        IncursionTeam outnumbered = enemyOf(slowed);
+        int biggerSize = slowed == team1 ? size1 : size2;
+        int smallerSize = slowed == team1 ? size2 : size1;
+        long percent = Math.round(slowdown * 100.0);
+
+        sendTeamMessage(slowed, "<yellow>Your team outnumbers " + outnumbered.getName()
+                + " " + biggerSize + " to " + smallerSize
+                + "<reset> - you move <yellow>" + percent + "%<reset> slower until that evens out.");
+        sendTeamMessage(outnumbered, "<aqua>" + slowed.getName() + "<reset> outnumbers your team "
+                + biggerSize + " to " + smallerSize + " - they move <yellow>" + percent
+                + "%<reset> slower until that evens out.");
+    }
+
+    private void sendTeamMessage(IncursionTeam team, String message) {
+        for (EventPlayer participant : new ArrayList<>(this.participants)) {
+            if (team == teamOf(participant.getUuid())) participant.sendMessage(message);
+        }
+    }
+
+    private void logSpeedState(String reason) {
+        logSpeedState(reason, teamSize(team1), teamSize(team2));
+    }
+
+    private void logSpeedState(String reason, int size1, int size2) {
+        if (team1 == null || team2 == null) return;
+        EventMain.getInstance().getLogger().info(String.format(Locale.ROOT,
+                "Incursion speed (%s): configured multiplier x%.3f | %s | %s",
+                reason, baseSpeedMultiplier, describeSpeed(team1, size1), describeSpeed(team2, size2)));
+    }
+
+    private String describeSpeed(IncursionTeam team, int size) {
+        double multiplier = speedMultiplierFor(team);
+        String note = (this.slowedTeam == team && this.slowdown > 0.0)
+                ? String.format(Locale.ROOT, "slowed %.1f%%", this.slowdown * 100.0)
+                : "not slowed";
+        return String.format(Locale.ROOT, "%s (%d players): speed x%.3f, attribute modifier %+.3f (%s)",
+                team.getName(), size, multiplier, multiplier - 1.0, note);
     }
 
     private int teamSize(@Nullable IncursionTeam team) {

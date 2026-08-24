@@ -33,24 +33,26 @@ public abstract class TokenFormula<C> {
     }
 
     public final int giveTokens(EventPlayer player, C context) {
-        int amount = tokens(context);
+        int amount = scale(tokens(context), MinigameManager.getInstance().getCurrent().getTokenMultiplier());
         Player bukkitPlayer = player.getPlayer();
         UUID uuid = player.getUuid();
-        if (amount < 1 || bukkitPlayer == null) {
-            return 0;
-        }
-
+        if (amount < 1 || bukkitPlayer == null) return 0;
         if (makeDirty && dirty.putIfAbsent(uuid, amount) != null) return 0;
         if (this.minigameName == null) {
             this.minigameName = MinigameManager.getInstance().getCurrent().getName();
         }
         TokenSource source = TokenSource.minigame(this.minigameName);
-        Executors.runSync(bukkitPlayer, () -> {
-            TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.SUMMER_DOLLOP, amount, source);
-        });
+        Executors.runSync(bukkitPlayer, () ->
+                TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.SUMMER_DOLLOP, amount, source));
         return amount;
     }
 
+
+    private static int scale(int amount, double multiplier) {
+        if (amount < 1 || multiplier <= 0.0) return 0;
+        if (multiplier == 1.0) return amount;
+        return (int) Math.min(Integer.MAX_VALUE, Math.round(amount * multiplier));
+    }
 
     public final Map<UUID, Integer> earnersSorted() {
         return dirty.entrySet().stream()

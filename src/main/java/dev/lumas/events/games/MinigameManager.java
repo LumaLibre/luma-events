@@ -48,6 +48,10 @@ public final class MinigameManager extends AsynchronousRunnable {
     }
 
     public boolean newMinigame(MinigameConstant game, OkaeriConfig definition, boolean force, int seconds) throws GameAlreadyStartedException {
+        return this.newMinigame(game, definition, force, seconds, 1.0);
+    }
+
+    public boolean newMinigame(MinigameConstant game, OkaeriConfig definition, boolean force, int seconds, double tokenMultiplier) throws GameAlreadyStartedException {
         if (this.current.isActive()) {
             if (!force) {
                 throw new GameAlreadyStartedException("Minigame: " + this.current.getName() + " is already active!");
@@ -62,6 +66,10 @@ public final class MinigameManager extends AsynchronousRunnable {
 
         try {
             this.current = game.instantiate(definition);
+            this.current.setTokenMultiplier(tokenMultiplier);
+            if (tokenMultiplier != 1.0) {
+                EventMain.getInstance().getLogger().info(game.getDisplayName() + " was started with a token payout multiplier of " + tokenMultiplier);
+            }
         } catch (Throwable throwable) {
             throwable.printStackTrace();
             // FIXME
@@ -104,12 +112,16 @@ public final class MinigameManager extends AsynchronousRunnable {
     }
 
     public boolean tryNewMinigameSafely(MinigameConstant game, OkaeriConfig definition, boolean ignoreCooldown, int seconds) {
+        return this.tryNewMinigameSafely(game, definition, ignoreCooldown, seconds, 1.0);
+    }
+
+    public boolean tryNewMinigameSafely(MinigameConstant game, OkaeriConfig definition, boolean ignoreCooldown, int seconds, double tokenMultiplier) {
         if (!this.canSafelyStartMinigame(ignoreCooldown)) {
             return false;
         }
 
         try {
-            this.newMinigame(game, definition, false, seconds);
+            this.newMinigame(game, definition, false, seconds, tokenMultiplier);
             return true;
         } catch (GameAlreadyStartedException oopsie) {
             oopsie.printStackTrace();
