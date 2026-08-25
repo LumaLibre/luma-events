@@ -13,6 +13,7 @@ import dev.lumas.events.games.interfaces.structures.GenericStructure;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
 import dev.lumas.events.games.tokenformula.PanelPartyTokenFormula;
+import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
@@ -47,6 +48,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,8 +62,9 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     private static final long DURATION = 600000L; // 10 mins, unlikely to reach
     private static final long TICK_INTERVAL = 1L;
     private static final int GLAZED_CHANCE = 45;
-    private static final int FLIGHT_DISABLE_ATTEMPTS = 5;
-    private static final long FLIGHT_DISABLE_RETRY_MILLIS = 200L;
+    private static final int FLIGHT_DISABLE_ATTEMPTS = 10;
+    private static final long FLIGHT_DISABLE_RETRY_MILLIS = 250L;
+    private static final long FLIGHT_FINAL_SWEEP_MILLIS = 2000L;
     // terracotta -> its glazed counterpart, plain TERRACOTTA has none so it is simply absent here
     private static final Map<Material, Material> GLAZED_VARIANTS = glazedVariants();
     private static final String[] ELIMINATION_MESSAGES = {
@@ -260,13 +263,20 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             this.currentProcess.interrupt(false);
         }
 
-        this.disableFlightForEveryone();
+        List<EventPlayer> roster = this.flightSweepTargets();
+
+        disableFlightForAll(roster);
         for (AbstractPanelPlayer role : this.roleMap) {
-            role.teleportAsync(this.spawnLocation);
+            EventPlayer eventPlayer = role.getEventPlayer();
+            role.teleportAsync(this.spawnLocation)
+                    .whenComplete((_, _) -> disableFlightPersistently(eventPlayer));
             role.cleanup();
         }
-        this.restoreAllVisibility(); // sweep anything cleanup couldn't reach (offline spectators, ex-participants)
-        this.disableFlightForEveryone();
+        this.restoreAllVisibility();
+        disableFlightForAll(roster);
+
+        Executors.runDelayedAsync(TimeUnit.MILLISECONDS, FLIGHT_FINAL_SWEEP_MILLIS,
+                task -> disableFlightForAll(roster));
 
         Executors.runSync(this.center, this.blankPanel::paste);
 
@@ -278,8 +288,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                     .seconds(10)
                     .callback(() -> {
                         try {
-                            this.participants.forEach(eventPlayer -> {
-                                Location loc = this.getGameDropOffLocation();
+                            Location loc = this.getGameDropOffLocation();
+                            roster.forEach(eventPlayer -> {
                                 if (loc != null) {
                                     Executors.runDelayedAsync(TimeUnit.MILLISECONDS, 100, (t) -> {
                                         eventPlayer.teleportAsync(loc);
@@ -313,17 +323,20 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         return this.stopping || this.flightLocked;
     }
 
-    private void disableFlightForEveryone() {
-        Set<UUID> handled = new HashSet<>();
+    private List<EventPlayer> flightSweepTargets() {
+        Map<UUID, EventPlayer> targets = new LinkedHashMap<>();
         for (AbstractPanelPlayer role : this.roleMap) {
-            if (handled.add(role.getUuid())) {
-                disableFlightPersistently(role.getEventPlayer());
-            }
+            targets.putIfAbsent(role.getUuid(), role.getEventPlayer());
         }
         for (EventPlayer participant : this.participants) {
-            if (handled.add(participant.getUuid())) {
-                disableFlightPersistently(participant);
-            }
+            targets.putIfAbsent(participant.getUuid(), participant);
+        }
+        return List.copyOf(targets.values());
+    }
+
+    private static void disableFlightForAll(List<EventPlayer> targets) {
+        for (EventPlayer target : targets) {
+            disableFlightPersistently(target);
         }
     }
 
@@ -331,9 +344,19 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         attemptDisableFlight(eventPlayer.getUuid(), 1);
     }
 
+    private static void markPendingFlightRevoke(UUID uuid) {
+        EventPlayer eventPlayer = EventPlayerManager.getByUUIDOrNull(uuid);
+        if (eventPlayer != null) {
+            eventPlayer.markPendingFlightRevoke();
+        }
+    }
+
     private static void attemptDisableFlight(UUID uuid, int attempt) {
         Player player = Bukkit.getPlayer(uuid);
-        if (player == null) return;
+        if (player == null) {
+            markPendingFlightRevoke(uuid);
+            return;
+        }
         if (Bukkit.isOwnedByCurrentRegion(player)) {
             disableFlight(player);
             return;
@@ -346,6 +369,9 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     private static void retryDisableFlight(UUID uuid, int attempt) {
         if (attempt >= FLIGHT_DISABLE_ATTEMPTS) {
+            markPendingFlightRevoke(uuid);
+            EventMain.getInstance().getLogger().warning("[PanelParty] Gave up revoking flight for " + uuid
+                    + " after " + attempt + " attempts (it will be revoked on their next join)");
             return;
         }
         Executors.runDelayedAsync(TimeUnit.MILLISECONDS, FLIGHT_DISABLE_RETRY_MILLIS,
@@ -355,6 +381,18 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     private static void disableFlight(Player player) {
         player.setFlying(false);
         player.setAllowFlight(false);
+
+        if (player.getAllowFlight()) {
+            markPendingFlightRevoke(player.getUniqueId());
+            EventMain.getInstance().getLogger().warning("[PanelParty] Flight revoke did not stick for "
+                    + player.getName() + " (gamemode " + player.getGameMode() + ") (revoking on next join)");
+            return;
+        }
+
+        EventPlayer eventPlayer = EventPlayerManager.getByUUIDOrNull(player.getUniqueId());
+        if (eventPlayer != null) {
+            eventPlayer.clearPendingFlightRevoke();
+        }
     }
 
     private static Map<Material, Material> glazedVariants() {
@@ -575,6 +613,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                 if (player.getGameMode() != GameMode.SURVIVAL) {
                     player.setGameMode(GameMode.SURVIVAL);
                 }
+                player.setFlying(false);
+                player.setAllowFlight(false);
             });
         }
 
