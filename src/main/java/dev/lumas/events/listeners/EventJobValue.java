@@ -8,13 +8,13 @@ import lombok.Getter;
 public enum EventJobValue {
 
     ALCHEMIST(9),
-    BLACKSMITH(15),
+    BLACKSMITH(9),
     BUILDER(17),
-    COOK(15),
+    COOK(9),
     DIGGER( 8),
     FARMER(9),
     FISHERMAN(364),
-    HUNTER(3),
+    HUNTER(6),
     LUMBERJACK(10),
     MINER(9);
 
