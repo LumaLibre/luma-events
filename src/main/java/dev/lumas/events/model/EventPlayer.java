@@ -42,7 +42,6 @@ public class EventPlayer implements Serializable, Scorer {
     private long secondsPlayed;
     private boolean townInviteRewardClaimed;
     private boolean disconnectedFromMinigame;
-    private boolean pendingFlightRevoke;
 
 
     // Initial creation
@@ -207,17 +206,5 @@ public class EventPlayer implements Serializable, Scorer {
 
     public synchronized void resetDisconnectedFromMinigame() {
         this.disconnectedFromMinigame = false;
-    }
-
-    public synchronized void markPendingFlightRevoke() {
-        this.pendingFlightRevoke = true;
-    }
-
-    public synchronized boolean hasPendingFlightRevoke() {
-        return this.pendingFlightRevoke;
-    }
-
-    public synchronized void clearPendingFlightRevoke() {
-        this.pendingFlightRevoke = false;
     }
 }

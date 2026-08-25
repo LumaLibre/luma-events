@@ -13,7 +13,6 @@ import dev.lumas.events.games.interfaces.structures.GenericStructure;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
 import dev.lumas.events.games.tokenformula.PanelPartyTokenFormula;
-import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
@@ -48,7 +47,6 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -62,9 +60,6 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     private static final long DURATION = 600000L; // 10 mins, unlikely to reach
     private static final long TICK_INTERVAL = 1L;
     private static final int GLAZED_CHANCE = 45;
-    private static final int FLIGHT_DISABLE_ATTEMPTS = 10;
-    private static final long FLIGHT_DISABLE_RETRY_MILLIS = 250L;
-    private static final long FLIGHT_FINAL_SWEEP_MILLIS = 2000L;
     // terracotta -> its glazed counterpart, plain TERRACOTTA has none so it is simply absent here
     private static final Map<Material, Material> GLAZED_VARIANTS = glazedVariants();
     private static final String[] ELIMINATION_MESSAGES = {
@@ -99,7 +94,6 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     private int round;
     private @NotNull PanelPartyProcess currentProcess;
-    private volatile boolean flightLocked;
 
     public PanelParty(PanelPartyMinigameDefinition def) {
         super("Panel Party", "Stand on the correct color!", DURATION, TICK_INTERVAL, true, true, true, false);
@@ -124,7 +118,6 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
 
         this.round = 0;
-        this.flightLocked = false;
         this.currentProcess = new PanelPartyProcess(this, PanelDifficulty.fromRounds(this.round, this.maxRounds));
 
         Collections.shuffle(this.panels, RANDOM); // shuffle panels
@@ -161,7 +154,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
         AbstractPanelPlayer role = this.roleMap.remove(participant.getUuid());
         if (role != null) {
-            role.cleanup();
+            Executors.runSync(participant, role::cleanup); // cleanup touches the player, so run it on their thread
             if (role instanceof PanelParticipant panelParticipant) {
                 panelParticipant.checkEnd();
             }
@@ -218,11 +211,11 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             component = null;
         }
 
-        this.roleMap.forEach(abstractPanelPlayer -> {
-            abstractPanelPlayer.tick();
+        this.roleMap.forEach(role -> {
+            Executors.runSync(role.getEventPlayer(), role::tick);
 
             if (component != null) {
-                abstractPanelPlayer.getEventPlayer().sendActionBar(component);
+                role.getEventPlayer().sendActionBar(component);
             }
         });
 
@@ -257,28 +250,21 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStop() {
-        this.flightLocked = true;
-
         if (!this.currentProcess.isFinished()) {
             this.currentProcess.interrupt(false);
         }
 
-        List<EventPlayer> roster = this.flightSweepTargets();
-
-        disableFlightForAll(roster);
         for (AbstractPanelPlayer role : this.roleMap) {
-            EventPlayer eventPlayer = role.getEventPlayer();
-            role.teleportAsync(this.spawnLocation)
-                    .whenComplete((_, _) -> disableFlightPersistently(eventPlayer));
-            role.cleanup();
+            Executors.runSync(role.getEventPlayer(), () -> {
+                role.cleanup();
+                role.teleportAsync(this.spawnLocation);
+            });
         }
         this.restoreAllVisibility();
-        disableFlightForAll(roster);
 
-        Executors.runDelayedAsync(TimeUnit.MILLISECONDS, FLIGHT_FINAL_SWEEP_MILLIS,
-                task -> disableFlightForAll(roster));
-
-        Executors.runSync(this.center, this.blankPanel::paste);
+        Executors.runSync(this.center, () -> {
+            this.blankPanel.paste();
+        });
 
         this.scoreboard.handleGameEnd(this.getAudience(), () -> {
             CountdownBossBar.builder()
@@ -288,8 +274,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                     .seconds(10)
                     .callback(() -> {
                         try {
-                            Location loc = this.getGameDropOffLocation();
-                            roster.forEach(eventPlayer -> {
+                            this.participants.forEach(eventPlayer -> {
+                                Location loc = this.getGameDropOffLocation();
                                 if (loc != null) {
                                     Executors.runDelayedAsync(TimeUnit.MILLISECONDS, 100, (t) -> {
                                         eventPlayer.teleportAsync(loc);
@@ -310,89 +296,9 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         return this.stopping;
     }
 
-    private boolean spawnSpectator(PanelParticipant from) {
-        if (this.isEnding()) {
-            disableFlightPersistently(from.getEventPlayer());
-            return false;
-        }
-        this.roleMap.swapRole(from, () -> new PanelSpectator(this, from.getEventPlayer()));
-        return true;
-    }
-
-    private boolean isFlightBlocked() {
-        return this.stopping || this.flightLocked;
-    }
-
-    private List<EventPlayer> flightSweepTargets() {
-        Map<UUID, EventPlayer> targets = new LinkedHashMap<>();
-        for (AbstractPanelPlayer role : this.roleMap) {
-            targets.putIfAbsent(role.getUuid(), role.getEventPlayer());
-        }
-        for (EventPlayer participant : this.participants) {
-            targets.putIfAbsent(participant.getUuid(), participant);
-        }
-        return List.copyOf(targets.values());
-    }
-
-    private static void disableFlightForAll(List<EventPlayer> targets) {
-        for (EventPlayer target : targets) {
-            disableFlightPersistently(target);
-        }
-    }
-
-    private static void disableFlightPersistently(EventPlayer eventPlayer) {
-        attemptDisableFlight(eventPlayer.getUuid(), 1);
-    }
-
-    private static void markPendingFlightRevoke(UUID uuid) {
-        EventPlayer eventPlayer = EventPlayerManager.getByUUIDOrNull(uuid);
-        if (eventPlayer != null) {
-            eventPlayer.markPendingFlightRevoke();
-        }
-    }
-
-    private static void attemptDisableFlight(UUID uuid, int attempt) {
-        Player player = Bukkit.getPlayer(uuid);
-        if (player == null) {
-            markPendingFlightRevoke(uuid);
-            return;
-        }
-        if (Bukkit.isOwnedByCurrentRegion(player)) {
-            disableFlight(player);
-            return;
-        }
-        Runnable retired = () -> retryDisableFlight(uuid, attempt);
-        if (player.getScheduler().run(EventMain.getInstance(), task -> disableFlight(player), retired) == null) {
-            retired.run();
-        }
-    }
-
-    private static void retryDisableFlight(UUID uuid, int attempt) {
-        if (attempt >= FLIGHT_DISABLE_ATTEMPTS) {
-            markPendingFlightRevoke(uuid);
-            EventMain.getInstance().getLogger().warning("[PanelParty] Gave up revoking flight for " + uuid
-                    + " after " + attempt + " attempts (it will be revoked on their next join)");
-            return;
-        }
-        Executors.runDelayedAsync(TimeUnit.MILLISECONDS, FLIGHT_DISABLE_RETRY_MILLIS,
-                task -> attemptDisableFlight(uuid, attempt + 1));
-    }
-
     private static void disableFlight(Player player) {
         player.setFlying(false);
         player.setAllowFlight(false);
-
-        if (player.getAllowFlight()) {
-            markPendingFlightRevoke(player.getUniqueId());
-            EventMain.getInstance().getLogger().warning("[PanelParty] Flight revoke did not stick for "
-                    + player.getName() + " (gamemode " + player.getGameMode() + ") (revoking on next join)");
-            return;
-        }
-
-        EventPlayer eventPlayer = EventPlayerManager.getByUUIDOrNull(player.getUniqueId());
-        if (eventPlayer != null) {
-            eventPlayer.clearPendingFlightRevoke();
-        }
     }
 
     private static Map<Material, Material> glazedVariants() {
@@ -546,8 +452,6 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     private static abstract class AbstractPanelPlayer extends MinigameRole {
         protected final PanelParty context;
-        // Ticks reach the player through the entity scheduler, so a tick queued before cleanup can still run after it.
-        // Every path that touches flight latches on this first, and it is set before cleanup schedules anything.
         protected volatile boolean released;
 
         protected AbstractPanelPlayer(PanelParty context, EventPlayer eventPlayer) {
@@ -556,38 +460,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             this.released = false;
         }
 
-        public final void tick() {
-            if (this.released || this.context.isEnding()) {
-                return;
-            }
-            this.handleTick();
-        }
-
-        public final void cleanup() {
-            this.released = true;
-            this.handleCleanup();
-            disableFlightPersistently(this.eventPlayer);
-        }
-
-
-        protected final void grantFlight() {
-            if (this.released || this.context.isFlightBlocked()) return;
-            this.eventPlayer.operatePlayer(player -> {
-                if (this.released || this.context.isFlightBlocked()) {
-                    disableFlight(player);
-                    return;
-                }
-                if (!player.getAllowFlight()) {
-                    player.setAllowFlight(true);
-                }
-                if (!player.isFlying()) {
-                    player.setFlying(true);
-                }
-            });
-        }
-
-        protected abstract void handleTick();
-        protected abstract void handleCleanup();
+        public abstract void tick();
+        public abstract void cleanup();
         public abstract void eliminate();
         public abstract void attacked(EntityDamageByEntityEvent event, AbstractPanelPlayer attacker);
     }
@@ -613,54 +487,54 @@ public final class PanelParty extends InventoryUnifiedMinigame {
                 if (player.getGameMode() != GameMode.SURVIVAL) {
                     player.setGameMode(GameMode.SURVIVAL);
                 }
-                player.setFlying(false);
-                player.setAllowFlight(false);
             });
         }
 
         @Override
-        protected void handleTick() {
-            if (!this.readyToTick) return;
+        public void tick() {
+            if (!this.readyToTick || this.released) return;
 
-            this.eventPlayer.operatePlayer(player -> {
-                if (this.released || this.context.isEnding()) {
-                    return;
+            Player player = this.eventPlayer.getPlayer();
+            if (player == null) return;
+
+            PanelPartyProcess process = this.context.currentProcess;
+
+            boolean ss = this.context.superSpeed;
+
+            if (process.difficulty.hasModifier(PanelDifficultyModifier.JUMP_BOOST_ENABLED)) {
+                player.addPotionEffect(JUMP_BOOST);
+                player.getActivePotionEffects().forEach(potionEffect -> {
+                    if (!potionEffect.equals(JUMP_BOOST)) {
+                        player.removePotionEffect(potionEffect.getType());
+                    }
+                });
+            } else if (!ss) {
+                player.clearActivePotionEffects();
+            }
+
+            if (ss) {
+                player.addPotionEffect(SPEED.withAmplifier(this.context.superSpeedBoost));
+            }
+
+            if (player.getLocation().getY() <= this.eliminationYLevel) {
+                this.eliminate();
+                player.playSound(player.getLocation(), Sound.ITEM_TOTEM_USE, 0.8f, 1.0f);
+            } else {
+                if (player.getAllowFlight()) {
+                    disableFlight(player);
                 }
-                PanelPartyProcess process = this.context.currentProcess;
-
-
-                boolean ss = this.context.superSpeed;
-
-                if (process.difficulty.hasModifier(PanelDifficultyModifier.JUMP_BOOST_ENABLED)) {
-                    player.addPotionEffect(JUMP_BOOST);
-                    player.getActivePotionEffects().forEach(potionEffect -> {
-                        if (!potionEffect.equals(JUMP_BOOST)) {
-                            player.removePotionEffect(potionEffect.getType());
-                        }
-                    });
-                } else if (!ss) {
-                    player.clearActivePotionEffects();
-                }
-
-                if (ss) {
-                    player.addPotionEffect(SPEED.withAmplifier(this.context.superSpeedBoost));
-                }
-
-                if (player.getLocation().getY() <= this.eliminationYLevel) {
-                    this.eliminate();
-                    player.playSound(player.getLocation(), Sound.ITEM_TOTEM_USE, 0.8f, 1.0f);
-                } else {
-                    if (player.isFlying()) player.setFlying(false); // tfly works with enough lag, so we cancel it here
-                    player.setFoodLevel(20);
-                }
-            });
+                player.setFoodLevel(20);
+            }
         }
 
         @Override
-        protected void handleCleanup() {
-            this.eventPlayer.operatePlayer(player -> {
-                player.removePotionEffect(PotionEffectType.JUMP_BOOST);
-            });
+        public void cleanup() {
+            this.released = true;
+
+            Player player = this.eventPlayer.getPlayer();
+            if (player == null) return;
+            player.removePotionEffect(PotionEffectType.JUMP_BOOST);
+            disableFlight(player);
         }
 
         @Override
@@ -670,9 +544,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
             this.setItemInHand(AIR);
 
-            if (!this.context.spawnSpectator(this)) {
-                return;
-            }
+            this.context.roleMap.swapRole(this, () -> new PanelSpectator(this.context, this.eventPlayer));
 
             Location location = this.context.center.clone().add(0, 10, 0);
             this.eventPlayer.operatePlayer(player ->  {
@@ -735,27 +607,42 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             super(context, eventPlayer);
             if (context.isEnding()) {
                 this.released = true;
-                disableFlightPersistently(this.eventPlayer);
+                this.eventPlayer.operatePlayer(PanelParty::disableFlight);
                 return;
             }
             this.hide();
-            this.grantFlight();
-        }
-
-        @Override
-        protected void handleTick() {
-            this.grantFlight();
             this.eventPlayer.operatePlayer(player -> {
-                player.addPotionEffect(INVISIBILITY);
+                if (this.released) return;
+                player.setAllowFlight(true);
+                player.setFlying(true);
             });
         }
 
         @Override
-        protected void handleCleanup() {
+        public void tick() {
+            if (this.released) return;
+
+            Player player = this.eventPlayer.getPlayer();
+            if (player == null) return;
+
+            if (!player.getAllowFlight()) {
+                player.setAllowFlight(true);
+            }
+            if (!player.isFlying()) {
+                player.setFlying(true);
+            }
+            player.addPotionEffect(INVISIBILITY);
+        }
+
+        @Override
+        public void cleanup() {
+            this.released = true;
             this.show();
-            this.eventPlayer.operatePlayer(player -> {
-                player.removePotionEffect(PotionEffectType.INVISIBILITY);
-            });
+
+            Player player = this.eventPlayer.getPlayer();
+            if (player == null) return;
+            disableFlight(player);
+            player.removePotionEffect(PotionEffectType.INVISIBILITY);
         }
 
         @Override
