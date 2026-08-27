@@ -103,7 +103,7 @@ public final class Soccer extends InventoryUnifiedMinigame {
         new NamespacedKey(EventMain.getInstance(), "sulfur_soccer_freeze"), -1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
     private static final List<Attribute> FREEZE_ATTRIBUTES = List.of(Attribute.MOVEMENT_SPEED, Attribute.JUMP_STRENGTH);
 
-    private static final int LEAD_TO_WIN = 30;
+    private static final int POINTS_TO_WIN = 30;
     private static final int POINTS_PER_GOAL = 10;
     private static final int OUT_OF_BOUNDS_PENALTY = -2;
 
@@ -322,7 +322,7 @@ public final class Soccer extends InventoryUnifiedMinigame {
 
             // wait 3.5 seconds before starting a new round
             Executors.delayedSync(at, 70, () -> {
-                if (beneficiary != null && leadOf(beneficiary) >= LEAD_TO_WIN) {
+                if (beneficiary != null && scoreboard.getScore(beneficiary) >= POINTS_TO_WIN) {
                     sendAudienceMessage("<red>Game over!");
                     sendAudienceMessage(beneficiary.template().formatted(beneficiary.getName() + " has won!"));
                     stop();
@@ -436,21 +436,26 @@ public final class Soccer extends InventoryUnifiedMinigame {
         return team;
     }
 
-    private int leadOf(SoccerTeam team) {
-        return this.scoreboard.getScore(team) - this.scoreboard.getScore(this.opponentOf(team));
-    }
-
+    // a team only ever races its own total to POINTS_TO_WIN, the opponent scoring never drags it back
     private int winPercent(SoccerTeam team) {
-        return Math.clamp(this.leadOf(team) * 100L / LEAD_TO_WIN, 0, 100);
+        return Math.clamp(this.scoreboard.getScore(team) * 100L / POINTS_TO_WIN, 0, 100);
     }
 
     private @Nullable SoccerTeam leadingTeam() {
+        SoccerTeam leader = null;
+        int best = 0;
+        boolean tied = false;
         for (SoccerTeam team : this.teams) {
-            if (this.leadOf(team) > 0) {
-                return team;
+            int score = this.scoreboard.getScore(team);
+            if (leader == null || score > best) {
+                leader = team;
+                best = score;
+                tied = false;
+            } else if (score == best) {
+                tied = true;
             }
         }
-        return null;
+        return tied || best <= 0 ? null : leader; // level or nothing scored yet, nobody is out front
     }
 
     private String scoreLine() {
@@ -716,11 +721,14 @@ public final class Soccer extends InventoryUnifiedMinigame {
                         SoccerPlayer lastContact = this.lastContactRole();
                         SoccerTeam lastContactTeam = lastContact == null ? null : lastContact.team();
                         killAllBalls();
+                        // never take a team below zero, the race to POINTS_TO_WIN only ever moves forwards
+                        int penalty = lastContactTeam == null ? 0
+                            : -Math.min(-OUT_OF_BOUNDS_PENALTY, scoreboard.getScore(lastContactTeam));
                         sendAudienceMessage("<yellow>Out of bounds by " + (lastContact == null ? "Unknown" : lastContact.getName()) + "!");
-                        sendAudienceMessage("<red>Penalty: <dark_gray>" + OUT_OF_BOUNDS_PENALTY + "</dark_gray> points for " + (lastContactTeam == null ? "Unknown" : lastContactTeam.getName()) + "!");
+                        sendAudienceMessage("<red>Penalty: <dark_gray>" + penalty + "</dark_gray> points for " + (lastContactTeam == null ? "Unknown" : lastContactTeam.getName()) + "!");
 
                         if (lastContactTeam != null) {
-                            scoreboard.addScore(lastContactTeam, OUT_OF_BOUNDS_PENALTY);
+                            scoreboard.addScore(lastContactTeam, penalty);
                             refreshBossBar();
                         }
 
