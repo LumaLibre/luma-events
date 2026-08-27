@@ -59,7 +59,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
     private static final long DURATION = 600000L; // 10 mins, unlikely to reach
     private static final long TICK_INTERVAL = 1L;
-    private static final int GLAZED_CHANCE = 45;
+    private static final int GLAZED_CHANCE = 30;
     // terracotta -> its glazed counterpart, plain TERRACOTTA has none so it is simply absent here
     private static final Map<Material, Material> GLAZED_VARIANTS = glazedVariants();
     private static final String[] ELIMINATION_MESSAGES = {
@@ -304,22 +304,22 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     private static Map<Material, Material> glazedVariants() {
         // String matching is gross
         Map<Material, Material> variants = new EnumMap<>(Material.class);
-        variants.put(Material.WHITE_TERRACOTTA, Material.WHITE_GLAZED_TERRACOTTA);
-        variants.put(Material.ORANGE_TERRACOTTA, Material.ORANGE_GLAZED_TERRACOTTA);
-        variants.put(Material.MAGENTA_TERRACOTTA, Material.MAGENTA_GLAZED_TERRACOTTA);
-        variants.put(Material.LIGHT_BLUE_TERRACOTTA, Material.LIGHT_BLUE_GLAZED_TERRACOTTA);
-        variants.put(Material.YELLOW_TERRACOTTA, Material.YELLOW_GLAZED_TERRACOTTA);
-        variants.put(Material.LIME_TERRACOTTA, Material.LIME_GLAZED_TERRACOTTA);
-        variants.put(Material.PINK_TERRACOTTA, Material.PINK_GLAZED_TERRACOTTA);
-        variants.put(Material.GRAY_TERRACOTTA, Material.GRAY_GLAZED_TERRACOTTA);
-        variants.put(Material.LIGHT_GRAY_TERRACOTTA, Material.LIGHT_GRAY_GLAZED_TERRACOTTA);
-        variants.put(Material.CYAN_TERRACOTTA, Material.CYAN_GLAZED_TERRACOTTA);
-        variants.put(Material.PURPLE_TERRACOTTA, Material.PURPLE_GLAZED_TERRACOTTA);
-        variants.put(Material.BLUE_TERRACOTTA, Material.BLUE_GLAZED_TERRACOTTA);
-        variants.put(Material.BROWN_TERRACOTTA, Material.BROWN_GLAZED_TERRACOTTA);
-        variants.put(Material.GREEN_TERRACOTTA, Material.GREEN_GLAZED_TERRACOTTA);
-        variants.put(Material.RED_TERRACOTTA, Material.RED_GLAZED_TERRACOTTA);
-        variants.put(Material.BLACK_TERRACOTTA, Material.BLACK_GLAZED_TERRACOTTA);
+        variants.put(Material.WHITE_TERRACOTTA, Material.WHITE_WOOL);
+        variants.put(Material.ORANGE_TERRACOTTA, Material.ORANGE_WOOL);
+        variants.put(Material.MAGENTA_TERRACOTTA, Material.MAGENTA_WOOL);
+        variants.put(Material.LIGHT_BLUE_TERRACOTTA, Material.LIGHT_BLUE_WOOL);
+        variants.put(Material.YELLOW_TERRACOTTA, Material.YELLOW_WOOL);
+        variants.put(Material.LIME_TERRACOTTA, Material.LIME_WOOL);
+        variants.put(Material.PINK_TERRACOTTA, Material.PINK_WOOL);
+        variants.put(Material.GRAY_TERRACOTTA, Material.GRAY_WOOL);
+        variants.put(Material.LIGHT_GRAY_TERRACOTTA, Material.LIGHT_GRAY_WOOL);
+        variants.put(Material.CYAN_TERRACOTTA, Material.CYAN_WOOL);
+        variants.put(Material.PURPLE_TERRACOTTA, Material.PURPLE_WOOL);
+        variants.put(Material.BLUE_TERRACOTTA, Material.BLUE_WOOL);
+        variants.put(Material.BROWN_TERRACOTTA, Material.BROWN_WOOL);
+        variants.put(Material.GREEN_TERRACOTTA, Material.GREEN_WOOL);
+        variants.put(Material.RED_TERRACOTTA, Material.RED_WOOL);
+        variants.put(Material.BLACK_TERRACOTTA, Material.BLACK_WOOL);
         return variants;
     }
 
