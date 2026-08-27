@@ -8,18 +8,18 @@ import lombok.Getter;
 public enum EventJobValue {
 
     ALCHEMIST(9),
-    BLACKSMITH(9),
+    BLACKSMITH(10),
     BUILDER(17),
-    COOK(9),
-    DIGGER( 8),
+    COOK(11),
+    DIGGER(8),
     FARMER(9),
     FISHERMAN(364),
-    HUNTER(6),
+    HUNTER(7),
     LUMBERJACK(10),
     MINER(9);
 
 
-    private final int bound = 125_000;
+    private final int bound = 95_000; // 125k p1
     private final int chance;
 
 }
