@@ -54,7 +54,6 @@ import java.util.function.Supplier;
 // TODO:
 //  - better cues for seekers (some particles also when not locked in place? Cues on distance to the nearest hidden player?)
 //  - debug
-//  - Player shouldn't be able to disguise as barriers, signs, and other transparent blocks
 //  - Player's blockInteractionRange attribute should be 0 so they can't interact with the map
 public final class PropHunt extends InventoryUnifiedMinigame {
 
@@ -464,14 +463,22 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             }
 
             Material type = clickedBlock.getType();
-            if (type.isSolid()) {
-                this.disguiseAsBlock(clickedBlock.getType());
+            if (isValidDisguiseBlock(type)) {
+                this.disguiseAsBlock(type);
                 this.disguiseCooldownCounter = DISGUISE_COOLDOWN;
 
-                this.getEventPlayer().sendMessage("You have disguised yourself as a <yellow>" + Util.formatMaterialName(clickedBlock.getType().toString()) + "</yellow> block.");
+                this.getEventPlayer().sendMessage("You have disguised yourself as a <yellow>" + Util.formatMaterialName(type.toString()) + "</yellow> block.");
             } else {
-                this.getEventPlayer().sendMessage("You can only disguise as solid blocks.");
+                this.getEventPlayer().sendMessage("You can only disguise as solid, opaque blocks.");
             }
+        }
+
+        /**
+         * Blocks that can be hidden behind. Transparent blocks (barriers, signs, glass, leaves, etc.) are
+         * rejected since disguising as one would make the hider invisible or nearly so.
+         */
+        private static boolean isValidDisguiseBlock(Material material) {
+            return material.isSolid() && material.isOccluding();
         }
 
         @Override
@@ -712,7 +719,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
 
             this.kills++;
-            this.context.scoreboard.addScore(this.getEventPlayer(), 2);
+            this.context.scoreboard.addScore(this.getEventPlayer(), 1);
 
 //            this.context.sendAudienceMessage("30 seconds have been added to the game time!");
 //            this.context.setDuration(this.context.getDuration() + Util.secsToMillis(30));
