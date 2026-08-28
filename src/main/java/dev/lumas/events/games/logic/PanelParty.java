@@ -109,7 +109,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         this.hiddenPlayers = new ConcurrentHashMap<>();
         this.scoreboard = new Scoreboard<>();
         this.tokenFormula = new PanelPartyTokenFormula(13);
-        this.panelsPerToken = RANDOM.nextBoolean() ? 2 : 3;
+        this.panelsPerToken = 2;
         this.maxRounds = panels.size();
         this.superSpeed = def.isSuperSpeed();
         this.superSpeedBoost = def.getSuperSpeedBoost();
