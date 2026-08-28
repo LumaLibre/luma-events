@@ -14,12 +14,12 @@ public enum EventJobValue {
     DIGGER(8),
     FARMER(9),
     FISHERMAN(364),
-    HUNTER(7),
+    HUNTER(6),
     LUMBERJACK(10),
     MINER(9);
 
 
-    private final int bound = 95_000; // 125k p1
+    private final int bound = 90_000; // 125k p1
     private final int chance;
 
 }

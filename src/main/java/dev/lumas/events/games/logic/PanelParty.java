@@ -108,7 +108,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         this.roleMap = new MinigameRoleMap<>(AbstractPanelPlayer::cleanup);
         this.hiddenPlayers = new ConcurrentHashMap<>();
         this.scoreboard = new Scoreboard<>();
-        this.tokenFormula = new PanelPartyTokenFormula(9);
+        this.tokenFormula = new PanelPartyTokenFormula(13);
         this.panelsPerToken = RANDOM.nextBoolean() ? 2 : 3;
         this.maxRounds = panels.size();
         this.superSpeed = def.isSuperSpeed();
@@ -867,8 +867,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     private enum PanelDifficulty {
         EASY(11, BossBar.Color.GREEN, "<green>", 1, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
         MEDIUM(7, BossBar.Color.YELLOW, "<yellow>", 1, PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK),
-        HARD(6, BossBar.Color.RED, "<dark_red>", 1, PanelDifficultyModifier.IGNORE_MINIMUM_BLOCKS),
-        HARDER_THAN_HARD_I_GUESS(4, BossBar.Color.PURPLE, "<dark_purple>", 1, PanelDifficultyModifier.PVP_ENABLED, PanelDifficultyModifier.IGNORE_MINIMUM_BLOCKS);
+        HARD(6, BossBar.Color.RED, "<dark_red>", 2, PanelDifficultyModifier.IGNORE_MINIMUM_BLOCKS),
+        HARDER_THAN_HARD_I_GUESS(4, BossBar.Color.PURPLE, "<dark_purple>", 2, PanelDifficultyModifier.PVP_ENABLED, PanelDifficultyModifier.IGNORE_MINIMUM_BLOCKS);
 
         private final int seconds;
         private final BossBar.Color bossBarColor;

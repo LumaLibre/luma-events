@@ -79,7 +79,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     private static final int BLAST_RADIUS = 2;
     private static final double ALWAYS_VISIBLE_RADIUS = 5;
     private static final double[] BOX_EDGE_OFFSETS = {-0.3, 0.3};
-    private static final int KILL_SCORE = 30;
+    private static final int KILL_SCORE = 60;
     private static final int ROUND_WIN_SCORE = 30;
     private static final int ROUNDS = 2;
     private static final float GAME_OVER_SECONDS = 10;

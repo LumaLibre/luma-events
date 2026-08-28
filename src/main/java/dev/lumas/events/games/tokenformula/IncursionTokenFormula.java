@@ -5,7 +5,7 @@ import dev.lumas.events.games.interfaces.TokenFormula;
 public class IncursionTokenFormula extends TokenFormula<Integer> {
 
     private static final int MIN_TOKENS = 3;
-    private static final int MAX_TOKEN = 9;
+    private static final int MAX_TOKEN = 13;
 
     private final int pointsPerToken;
 
