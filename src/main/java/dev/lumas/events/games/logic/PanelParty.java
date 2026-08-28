@@ -625,12 +625,6 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             Player player = this.eventPlayer.getPlayer();
             if (player == null) return;
 
-            if (!player.getAllowFlight()) {
-                player.setAllowFlight(true);
-            }
-            if (!player.isFlying()) {
-                player.setFlying(true);
-            }
             player.addPotionEffect(INVISIBILITY);
         }
 
