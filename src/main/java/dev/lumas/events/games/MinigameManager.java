@@ -7,6 +7,7 @@ import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.exceptions.GameAlreadyStartedException;
 import dev.lumas.events.games.exceptions.NoAvailableMinigames;
 import dev.lumas.events.games.interfaces.Minigame;
+import dev.lumas.events.games.interfaces.TokenPayout;
 import dev.lumas.events.games.logic.NonActiveMinigame;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
@@ -48,10 +49,10 @@ public final class MinigameManager extends AsynchronousRunnable {
     }
 
     public boolean newMinigame(MinigameConstant game, OkaeriConfig definition, boolean force, int seconds) throws GameAlreadyStartedException {
-        return this.newMinigame(game, definition, force, seconds, 1.0);
+        return this.newMinigame(game, definition, force, seconds, TokenPayout.NORMAL);
     }
 
-    public boolean newMinigame(MinigameConstant game, OkaeriConfig definition, boolean force, int seconds, double tokenMultiplier) throws GameAlreadyStartedException {
+    public boolean newMinigame(MinigameConstant game, OkaeriConfig definition, boolean force, int seconds, TokenPayout tokenPayout) throws GameAlreadyStartedException {
         if (this.current.isActive()) {
             if (!force) {
                 throw new GameAlreadyStartedException("Minigame: " + this.current.getName() + " is already active!");
@@ -60,15 +61,17 @@ public final class MinigameManager extends AsynchronousRunnable {
         }
 
         Util.broadcast("<hover:show_text:'Click me!'><click:run_command:/event join>A minigame is starting! Use <gold>/event join</gold> to participate!");
+        if (!tokenPayout.isNormal()) Util.broadcast(describePayout(tokenPayout));
+
         // newMinigame runs on the async scheduler, so read each player's location on the region that owns them
         Bukkit.getOnlinePlayers().forEach(player -> Executors.runSync(player,
                 () -> player.playSound(player.getLocation(), Sound.ENTITY_EVOKER_PREPARE_WOLOLO, 1f, 0.75f)));
 
         try {
             this.current = game.instantiate(definition);
-            this.current.setTokenMultiplier(tokenMultiplier);
-            if (tokenMultiplier != 1.0) {
-                EventMain.getInstance().getLogger().info(game.getDisplayName() + " was started with a token payout multiplier of " + tokenMultiplier);
+            this.current.setTokenPayout(tokenPayout);
+            if (!tokenPayout.isNormal()) {
+                EventMain.getInstance().getLogger().info(game.getDisplayName() + " was started with a token payout of " + tokenPayout);
             }
         } catch (Throwable throwable) {
             throwable.printStackTrace();
@@ -78,6 +81,15 @@ public final class MinigameManager extends AsynchronousRunnable {
             return false;
         }
         return this.current.timedStart(seconds);
+    }
+
+    private static String describePayout(TokenPayout tokenPayout) {
+        if (tokenPayout.paysNothing()) return "This one is <yellow>just for fun</yellow> - it pays out no tokens.";
+        if (tokenPayout.flat()) {
+            String tokens = "<gold>" + tokenPayout.flatTokens() + "</gold> token" + (tokenPayout.flatTokens() == 1 ? "" : "s");
+            return "This one is <yellow>casual</yellow> - everyone gets " + tokens + ", regardless of score.";
+        }
+        return "This one pays out <gold>" + TokenPayout.format(tokenPayout.amount()) + "x</gold> the usual tokens!";
     }
 
     public boolean newMinigame(MinigameConstant game, boolean force) throws GameAlreadyStartedException {
@@ -112,16 +124,16 @@ public final class MinigameManager extends AsynchronousRunnable {
     }
 
     public boolean tryNewMinigameSafely(MinigameConstant game, OkaeriConfig definition, boolean ignoreCooldown, int seconds) {
-        return this.tryNewMinigameSafely(game, definition, ignoreCooldown, seconds, 1.0);
+        return this.tryNewMinigameSafely(game, definition, ignoreCooldown, seconds, TokenPayout.NORMAL);
     }
 
-    public boolean tryNewMinigameSafely(MinigameConstant game, OkaeriConfig definition, boolean ignoreCooldown, int seconds, double tokenMultiplier) {
+    public boolean tryNewMinigameSafely(MinigameConstant game, OkaeriConfig definition, boolean ignoreCooldown, int seconds, TokenPayout tokenPayout) {
         if (!this.canSafelyStartMinigame(ignoreCooldown)) {
             return false;
         }
 
         try {
-            this.newMinigame(game, definition, false, seconds, tokenMultiplier);
+            this.newMinigame(game, definition, false, seconds, tokenPayout);
             return true;
         } catch (GameAlreadyStartedException oopsie) {
             oopsie.printStackTrace();

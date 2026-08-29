@@ -33,7 +33,7 @@ public abstract class TokenFormula<C> {
     }
 
     public final int giveTokens(EventPlayer player, C context) {
-        int amount = scale(tokens(context), MinigameManager.getInstance().getCurrent().getTokenMultiplier());
+        int amount = MinigameManager.getInstance().getCurrent().getTokenPayout().apply(tokens(context));
         Player bukkitPlayer = player.getPlayer();
         UUID uuid = player.getUuid();
         if (amount < 1 || bukkitPlayer == null) return 0;
@@ -47,12 +47,6 @@ public abstract class TokenFormula<C> {
         return amount;
     }
 
-
-    private static int scale(int amount, double multiplier) {
-        if (amount < 1 || multiplier <= 0.0) return 0;
-        if (multiplier == 1.0) return amount;
-        return (int) Math.min(Integer.MAX_VALUE, Math.round(amount * multiplier));
-    }
 
     public final Map<UUID, Integer> earnersSorted() {
         return dirty.entrySet().stream()
