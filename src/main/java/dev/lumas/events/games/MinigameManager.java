@@ -89,7 +89,7 @@ public final class MinigameManager extends AsynchronousRunnable {
             String tokens = "<gold>" + tokenPayout.flatTokens() + "</gold> token" + (tokenPayout.flatTokens() == 1 ? "" : "s");
             return "This one is <yellow>casual</yellow> - everyone gets " + tokens + ", regardless of score.";
         }
-        return "This one pays out <gold>" + TokenPayout.format(tokenPayout.amount()) + "x</gold> the usual tokens!";
+        return "This one pays out <gold>" + tokenPayout.percentDifference() + "</gold> tokens than usual!";
     }
 
     public boolean newMinigame(MinigameConstant game, boolean force) throws GameAlreadyStartedException {

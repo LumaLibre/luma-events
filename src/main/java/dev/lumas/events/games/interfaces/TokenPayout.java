@@ -39,6 +39,11 @@ public record TokenPayout(double amount, boolean flat) {
         return (int) Math.min(Integer.MAX_VALUE, Math.round(value));
     }
 
+    public String percentDifference() {
+        double percent = Math.abs(this.amount - 1.0) * 100.0;
+        return format(Math.round(percent * 10.0) / 10.0) + "% " + (this.amount >= 1.0 ? "more" : "fewer");
+    }
+
     public static String format(double amount) {
         return amount == Math.rint(amount)
                 ? String.valueOf((long) amount)
