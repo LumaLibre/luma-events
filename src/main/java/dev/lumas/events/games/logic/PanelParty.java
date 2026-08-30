@@ -584,7 +584,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
 
         private static boolean isPanelBlock(Material material) {
-            return Tag.TERRACOTTA.isTagged(material) || Tag.GLAZED_TERRACOTTA.isTagged(material);
+            return Tag.TERRACOTTA.isTagged(material) || Tag.GLAZED_TERRACOTTA.isTagged(material) || Tag.WOOL.isTagged(material);
         }
 
         public void setItemInHand(ItemStack itemStack) {
