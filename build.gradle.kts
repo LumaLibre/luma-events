@@ -35,7 +35,11 @@ dependencies {
     compileOnly("dev.lumas.glowapi:LumaGlowAPI:325d91d")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("com.nuclyon.technicallycoded.inventoryrollback:InventoryRollbackPlus:1.7.3")
-    compileOnly("com.github.Zrips:jobs:v4.17.2")
+    // Transitively drags in worldguard/worldedit SNAPSHOTs we don't use, which makes every build
+    // depend on enginehub's repo being up. WorldEdit itself comes from FAWE below.
+    compileOnly("com.github.Zrips:jobs:v4.17.2") {
+        isTransitive = false
+    }
     compileOnly("net.dmulloy2:ProtocolLib:5.4.0")
     compileOnly("com.palmergames.bukkit.towny:towny:0.103.1.1")
 
