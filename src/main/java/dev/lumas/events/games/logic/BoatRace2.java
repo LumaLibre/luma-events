@@ -340,7 +340,7 @@ public final class BoatRace2 extends Minigame {
                 eventPlayer.sendTitle("<green>Finished!", "<gray>You placed <gold>#" + position);
                 Util.sendMsg(this.audience, "<gold>"+bukkitPlayer.getName()+"</gold>"+ " has finished in <gold>#" + position + "</gold> place!");
                 racer.finish(position);
-                event.getPlayer().teleportAsync(this.spectateLocation);
+                Executors.teleportSafely(event.getPlayer(), this.spectateLocation);
                 this.tryEndIfNoMoreRacers();
             }
         });

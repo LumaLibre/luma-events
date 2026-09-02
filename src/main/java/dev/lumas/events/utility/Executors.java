@@ -17,13 +17,18 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public final class Executors {
 
     private static final EventMain instance = EventMain.getInstance();
     private static final int TELEPORTS_PER_TICK = 5;
+    private static final long TELEPORT_CHAIN_TIMEOUT_MILLIS = 10_000L;
+
+    private static final ConcurrentHashMap<UUID, CompletableFuture<Boolean>> PENDING_TELEPORTS = new ConcurrentHashMap<>();
 
     public static ScheduledTask runRepeatingAsync(TimeUnit timeUnit, long delay, long period, Consumer<ScheduledTask> consumer) {
         return Bukkit.getAsyncScheduler().runAtFixedRate(instance, consumer, delay, period, timeUnit);
@@ -161,14 +166,26 @@ public final class Executors {
 
         UUID uuid = entity.getUniqueId();
         JoinTrace.teleportRequest(uuid, "Entity#teleportAsync", entity instanceof Player player ? player : null);
+        String callSite = site != null ? site : callerSite();
 
+        return serialized(uuid, future -> beginTeleport(entity, uuid, location, callSite, future));
+    }
+
+    public static CompletableFuture<Boolean> teleportSafely(Entity entity, @Nullable Location location) {
+        return teleportSafely(entity, location, null);
+    }
+
+    private static void beginTeleport(Entity entity, UUID uuid, Location location, String site, CompletableFuture<Boolean> future) {
         if (Bukkit.isOwnedByCurrentRegion(entity)) {
-            return report(uuid, entity.teleportAsync(location));
+            forward(report(uuid, entity.teleportAsync(location)), future);
+            return;
         }
 
-        JoinTrace.offRegionTeleport(entity, site != null ? site : callerSite());
+        JoinTrace.offRegionTeleport(entity, site);
+        scheduleTeleport(entity, uuid, location, 1L, future);
+    }
 
-        CompletableFuture<Boolean> future = new CompletableFuture<>();
+    private static void scheduleTeleport(Entity entity, UUID uuid, Location location, long delay, CompletableFuture<Boolean> future) {
         boolean scheduled = entity.getScheduler().execute(
                 instance,
                 () -> {
@@ -177,23 +194,47 @@ public final class Executors {
                         future.complete(false);
                         return;
                     }
-                    report(uuid, target.teleportAsync(location)).whenComplete((success, throwable) -> {
-                        if (throwable != null) future.completeExceptionally(throwable);
-                        else future.complete(Boolean.TRUE.equals(success));
-                    });
+                    forward(report(uuid, target.teleportAsync(location)), future);
                 },
                 () -> future.complete(false),
-                1L
+                delay
         );
 
         if (!scheduled) {
             future.complete(false);
         }
+    }
+
+    private static CompletableFuture<Boolean> serialized(UUID uuid, Consumer<CompletableFuture<Boolean>> teleport) {
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        CompletableFuture<Boolean> previous = PENDING_TELEPORTS.put(uuid, future);
+        future.whenComplete((success, throwable) -> PENDING_TELEPORTS.remove(uuid, future));
+
+        AtomicBoolean started = new AtomicBoolean();
+        Runnable start = () -> {
+            if (!started.compareAndSet(false, true)) return;
+            try {
+                teleport.accept(future);
+            } catch (Throwable throwable) {
+                future.completeExceptionally(throwable);
+            }
+        };
+
+        if (previous == null || previous.isDone()) {
+            start.run();
+            return future;
+        }
+
+        previous.whenComplete((success, throwable) -> start.run());
+        runDelayedAsync(TimeUnit.MILLISECONDS, TELEPORT_CHAIN_TIMEOUT_MILLIS, task -> start.run());
         return future;
     }
 
-    public static CompletableFuture<Boolean> teleportSafely(Entity entity, @Nullable Location location) {
-        return teleportSafely(entity, location, null);
+    private static void forward(CompletableFuture<Boolean> upstream, CompletableFuture<Boolean> downstream) {
+        upstream.whenComplete((success, throwable) -> {
+            if (throwable != null) downstream.completeExceptionally(throwable);
+            else downstream.complete(Boolean.TRUE.equals(success));
+        });
     }
 
     private static final Set<String> WRAPPER_CLASSES = Set.of(
@@ -241,31 +282,9 @@ public final class Executors {
         for (int i = 0; i < entityList.size(); i++) {
             Entity entity = entityList.get(i);
             UUID uuid = entity.getUniqueId();
-            CompletableFuture<Boolean> downstream = new CompletableFuture<>();
-            futures.add(downstream);
-
             long delay = Math.max(1L, i / TELEPORTS_PER_TICK);
 
-            boolean scheduled = entity.getScheduler().execute(
-                    instance,
-                    () -> {
-                        Entity target = entity instanceof Player ? Bukkit.getPlayer(uuid) : entity;
-                        if (target == null || !target.isValid()) {
-                            downstream.complete(false);
-                            return;
-                        }
-                        report(uuid, target.teleportAsync(location)).whenComplete((success, throwable) -> {
-                            if (throwable != null) downstream.completeExceptionally(throwable);
-                            else downstream.complete(Boolean.TRUE.equals(success));
-                        });
-                    },
-                    () -> downstream.complete(false),
-                    delay
-            );
-
-            if (!scheduled) {
-                downstream.complete(false);
-            }
+            futures.add(serialized(uuid, future -> scheduleTeleport(entity, uuid, location, delay, future)));
         }
 
         return futures;

@@ -9,8 +9,9 @@ import dev.lumas.events.games.exceptions.GameComponentIllegallyActive;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.MinigameBoundingBox;
-import dev.lumas.events.utility.Util;
+import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.JoinTrace;
+import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
@@ -261,7 +262,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         Location loc = this.getGameDropOffLocation();
         if (loc != null && doTeleport) {
             player.operatePlayer(bukkitPlayer -> {
-                bukkitPlayer.teleportAsync(loc);
+                Executors.teleportSafely(bukkitPlayer, loc);
                 Util.sendMsg(bukkitPlayer, "You have been removed from the active minigame!");
             });
         }

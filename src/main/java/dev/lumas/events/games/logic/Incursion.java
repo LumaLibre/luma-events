@@ -709,6 +709,8 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     // Teleports a participant into their team's spawn area AND FREEZES THEM THERE
     private void sendToSpawn(EventPlayer participant, IncursionTeam team, int invincibilityTicks) {
+        if (!this.active || this.stopping) return;
+
         Player player = participant.getPlayer();
         if (player == null) return;
 
@@ -732,6 +734,13 @@ public final class Incursion extends InventoryUnifiedMinigame {
 
     private void teleportToSpawn(Player player, IncursionTeam team, Location spawn, UUID uuid) {
         Executors.teleportSafely(player, spawn).whenComplete((_, _) -> Executors.delayedSync(player, 1, () -> {
+            // The game can end while we're in flight, and handleStop has already cleaned this player
+            // up and sent them to the lobby by now. Re-freezing them there would strand them.
+            if (!this.active || this.stopping) {
+                respawning.remove(uuid);
+                return;
+            }
+
             player.setVelocity(new Vector(0, 0, 0));
             player.setFallDistance(0f);
             restoreVitals(player);
