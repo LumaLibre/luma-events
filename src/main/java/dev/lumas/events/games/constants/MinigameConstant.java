@@ -16,6 +16,7 @@ import dev.lumas.events.games.logic.MineBattle;
 import dev.lumas.events.games.logic.Paintball2_1;
 import dev.lumas.events.games.logic.PanelParty;
 import dev.lumas.events.games.logic.PropHunt;
+import dev.lumas.events.games.logic.SkyWars;
 import dev.lumas.events.games.logic.Soccer;
 import dev.lumas.events.games.logic.TNTRun;
 import dev.lumas.events.games.logic.TNTTag;
@@ -46,7 +47,8 @@ public enum MinigameConstant {
     TNTRUN(TNTRun::new, "TNT Run", "tntrun", "tnt_run"),
     SOCCER(Soccer::new, "Soccer", "sulfur_soccer", "soccer"),
     INCURSION(Incursion::new, "Incursion", "incursion"),
-    BOMBERMAN((config) -> new Bomberman((BombermanDefinition) config), "Bomberman", "bomberman", "bomber_man")
+    BOMBERMAN((config) -> new Bomberman((BombermanDefinition) config), "Bomberman", "bomberman", "bomber_man"),
+    SKYWARS(SkyWars::new, "SkyWars", "skywars")
     ;
 
     private final MinigameSupplier<?> supplier;
@@ -78,6 +80,7 @@ public enum MinigameConstant {
             case SOCCER -> (Map<String, T>) cfg.getSulfurSoccerMaps();
             case INCURSION -> (Map<String, T>) cfg.getIncursionMaps();
             case BOMBERMAN -> (Map<String, T>) cfg.getBombermanMaps();
+            case SKYWARS -> (Map<String, T>) cfg.getSkyWarsMaps();
         };
     }
 

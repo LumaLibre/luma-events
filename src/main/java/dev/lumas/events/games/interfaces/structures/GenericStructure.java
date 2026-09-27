@@ -4,6 +4,7 @@ import dev.lumas.events.utility.Executors;
 import dev.thorinwasher.schem.Schematic;
 import dev.thorinwasher.schem.SchematicReader;
 import lombok.Getter;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -15,7 +16,16 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
+import java.util.function.DoubleConsumer;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
 @Getter
@@ -80,6 +90,120 @@ public class GenericStructure extends Structure {
                 world.setBlockData(posToReplace, mappedBlockData);
             });
         });
+    }
+
+    public CompletableFuture<Void> pasteAsync() {
+        return pasteAsync((vector3i, blockData) -> true);
+    }
+
+    public CompletableFuture<Void> pasteAsync(BiPredicate<Vector3i, BlockData> prePastePredicate) {
+        return pasteAsync(prePastePredicate, UnaryOperator.identity());
+    }
+
+    public CompletableFuture<Void> pasteAsync(BiPredicate<Vector3i, BlockData> prePastePredicate, UnaryOperator<BlockData> blockDataMapper) {
+        return pasteAsync(prePastePredicate, blockDataMapper, progress -> {});
+    }
+
+    // onProgress receives the fraction of chunks written so far (0 to 1), from whichever region thread finished one
+    public CompletableFuture<Void> pasteAsync(DoubleConsumer onProgress) {
+        return pasteAsync((vector3i, blockData) -> true, UnaryOperator.identity(), onProgress);
+    }
+
+    // Placed without physics: nothing reacts to a half-built structure (falling sand, flowing water,
+    // one half of a double chest before the other exists), and it's much faster
+    public CompletableFuture<Void> pasteAsync(BiPredicate<Vector3i, BlockData> prePastePredicate, UnaryOperator<BlockData> blockDataMapper, DoubleConsumer onProgress) {
+        World world = origin.getWorld();
+        return applyByChunk((relative, blockData) -> {
+            BlockData mappedBlockData = blockDataMapper.apply(blockData);
+            if (!prePastePredicate.test(relative, mappedBlockData)) return;
+            world.getBlockAt(origin.getBlockX() + relative.x, origin.getBlockY() + relative.y, origin.getBlockZ() + relative.z)
+                    .setBlockData(mappedBlockData, false);
+        }, onProgress);
+    }
+
+    public CompletableFuture<Void> removeAsync() {
+        return removeAsync((vector3i, blockData) -> true);
+    }
+
+    // Removed without physics, same as pasting: containers don't spill their contents and nothing falls
+    public CompletableFuture<Void> removeAsync(BiPredicate<Vector3i, BlockData> preRemovePredicate) {
+        World world = origin.getWorld();
+        return applyByChunk((relative, blockData) -> {
+            if (!preRemovePredicate.test(relative, blockData)) return;
+            world.getBlockAt(origin.getBlockX() + relative.x, origin.getBlockY() + relative.y, origin.getBlockZ() + relative.z)
+                    .setBlockData(AIR_BLOCK_DATA, false);
+        }, progress -> {});
+    }
+
+    private CompletableFuture<Void> applyByChunk(BiConsumer<Vector3i, BlockData> action, DoubleConsumer onProgress) {
+        Vector3i size = schematic.size(transformation);
+        Vector3i offset = new Vector3i(size.x() / 2, 0, size.z() / 2);
+        World world = origin.getWorld();
+
+        Map<Long, List<Placement>> byChunk = new HashMap<>();
+        schematic.apply(transformation, (vector3i, blockData) -> {
+            if (blockData.getMaterial().isAir()) return;
+            Vector3i relative = new Vector3i(vector3i).sub(offset);
+            long chunkKey = Chunk.getChunkKey((origin.getBlockX() + relative.x) >> 4, (origin.getBlockZ() + relative.z) >> 4);
+            byChunk.computeIfAbsent(chunkKey, k -> new ArrayList<>()).add(new Placement(relative, blockData));
+        });
+
+        int total = byChunk.size();
+        AtomicInteger done = new AtomicInteger();
+        List<CompletableFuture<Void>> futures = new ArrayList<>(total);
+        byChunk.forEach((chunkKey, placements) -> {
+            int chunkX = (int) (long) chunkKey;
+            int chunkZ = (int) (chunkKey >>> 32);
+            CompletableFuture<Void> future = new CompletableFuture<>();
+            world.getChunkAtAsync(chunkX, chunkZ).whenComplete((chunk, throwable) -> {
+                if (throwable != null) {
+                    future.completeExceptionally(throwable);
+                    return;
+                }
+                Executors.runSync(world, chunkX, chunkZ, () -> {
+                    try {
+                        for (Placement placement : placements) {
+                            action.accept(placement.relative(), placement.blockData());
+                        }
+                        // Report before completing, so the last update can't land after the caller has moved on
+                        onProgress.accept((double) done.incrementAndGet() / total);
+                        future.complete(null);
+                    } catch (Throwable t) {
+                        future.completeExceptionally(t);
+                    }
+                });
+            });
+            futures.add(future);
+        });
+        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+    }
+
+    private record Placement(Vector3i relative, BlockData blockData) {}
+
+    // Reads only the in-memory schematic (no world access), so this is safe to call from any thread
+    public List<Location> findBlocks(Predicate<BlockData> filter) {
+        Vector3i size = schematic.size(transformation);
+        Vector3i offset = new Vector3i(size.x() / 2, 0, size.z() / 2);
+        World world = origin.getWorld();
+        List<Location> found = new ArrayList<>();
+        schematic.apply(transformation, (vector3i, blockData) -> {
+            if (!filter.test(blockData)) return;
+            Vector3i relative = new Vector3i(vector3i).sub(offset);
+            found.add(new Location(world, origin.getBlockX() + relative.x, origin.getBlockY() + relative.y, origin.getBlockZ() + relative.z));
+        });
+        return found;
+    }
+
+    public CompletableFuture<List<Location>> findBlocksAsync(Predicate<BlockData> filter) {
+        CompletableFuture<List<Location>> future = new CompletableFuture<>();
+        Executors.runAsync(() -> {
+            try {
+                future.complete(findBlocks(filter));
+            } catch (Throwable t) {
+                future.completeExceptionally(t);
+            }
+        });
+        return future;
     }
 
     public void remove(BiPredicate<Vector3i, BlockData> preRemovePredicate) {

@@ -13,6 +13,7 @@ import dev.lumas.events.configurable.sectors.SulfurSoccerDefinition;
 import dev.lumas.events.configurable.sectors.TNTRunDefinition;
 import dev.lumas.events.configurable.sectors.TheNabbitsMinigameDefinition;
 import dev.lumas.events.configurable.sectors.TowersDefinition;
+import dev.lumas.events.configurable.sectors.skywars.SkyWarsDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.annotation.Comment;
@@ -59,6 +60,12 @@ public class Config extends OkaeriConfig {
     private List<String> commandWhitelist = List.of(
             "g", "l", "lc", "pc", "p", "sc", "msg", "r", "w", "whisper", "tell", "partychat", "staffchat",
             "event"
+    );
+
+    // halloween 2026
+
+    private Map<String, SkyWarsDefinition> skyWarsMaps = Map.of(
+            "default", new SkyWarsDefinition()
     );
 
     // summer 2026

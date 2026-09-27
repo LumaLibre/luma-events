@@ -1,5 +1,6 @@
 package dev.lumas.events.games.interfaces.models;
 
+import dev.lumas.events.games.interfaces.Scorer;
 import dev.lumas.events.model.EventPlayer;
 import lombok.Getter;
 import org.bukkit.Location;
@@ -10,7 +11,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 @Getter
-public abstract class MinigameRole {
+public abstract class MinigameRole implements Scorer {
 
     protected final EventPlayer eventPlayer;
 
@@ -23,6 +24,7 @@ public abstract class MinigameRole {
         return eventPlayer.getUuid();
     }
 
+    @Override
     public String getName() {
         return eventPlayer.getName();
     }

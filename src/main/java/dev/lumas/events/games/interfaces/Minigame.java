@@ -169,7 +169,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         return true;
     }
 
-    public boolean stop() {
+    public synchronized boolean stop() {
         if (!this.active || this.stopping) {
             return false;
         }

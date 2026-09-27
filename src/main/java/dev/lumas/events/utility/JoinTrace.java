@@ -98,6 +98,7 @@ public final class JoinTrace {
     }
 
     public static void offRegionTeleport(Entity entity, String site) {
+        if (!verbose) return;
         String line = "OFF_REGION_TELEPORT site=" + site
                 + " entity=" + entity.getUniqueId()
                 + " type=" + entity.getType()
