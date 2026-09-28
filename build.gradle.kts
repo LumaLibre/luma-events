@@ -67,6 +67,8 @@ dependencies {
     }
 
     compileOnly("com.github.LumaLibre:HiddenArmor-Folia:96bcba105e") // TODO: needs to be on repo.jsinco.dev
+
+    compileOnly("com.dre.brewery:BreweryX:3.7.0")
 }
 
 tasks {
