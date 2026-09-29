@@ -12,6 +12,7 @@ import dev.lumas.events.games.logic.Bomberman;
 import dev.lumas.events.games.logic.FreezeTag;
 import dev.lumas.events.games.logic.Incursion;
 import dev.lumas.events.games.logic.Manor;
+import dev.lumas.events.games.logic.Manor2;
 import dev.lumas.events.games.logic.MineBattle;
 import dev.lumas.events.games.logic.Paintball2_1;
 import dev.lumas.events.games.logic.PanelParty;
@@ -48,8 +49,8 @@ public enum MinigameConstant {
     SOCCER(Soccer::new, "Soccer", "sulfur_soccer", "soccer"),
     INCURSION(Incursion::new, "Incursion", "incursion"),
     BOMBERMAN((config) -> new Bomberman((BombermanDefinition) config), "Bomberman", "bomberman", "bomber_man"),
-    SKYWARS(SkyWars::new, "SkyWars", "skywars")
-    ;
+    SKYWARS(SkyWars::new, "SkyWars", "skywars"),
+    MANOR_2(Manor2::new, "Manor 2", "manor2");
 
     private final MinigameSupplier<?> supplier;
     private final String displayName;
@@ -71,7 +72,7 @@ public enum MinigameConstant {
             case BOATRACE2 -> (Map<String, T>) cfg.getBoatRaceMaps();
             case TNTTAG -> (Map<String, T>) cfg.getTntTagMaps();
             case TOWERS -> (Map<String, T>) cfg.getTowersMaps();
-            case MANOR ->  (Map<String, T>) cfg.getManorMaps();
+            case MANOR -> (Map<String, T>) cfg.getManorMaps();
             case PROP_HUNT -> (Map<String, T>) cfg.getPropHuntMaps();
             case THE_NABBITS -> (Map<String, T>) cfg.getTheNabbitsMaps();
             case PANEL_PARTY -> (Map<String, T>) cfg.getPanelPartyMaps();
@@ -81,6 +82,7 @@ public enum MinigameConstant {
             case INCURSION -> (Map<String, T>) cfg.getIncursionMaps();
             case BOMBERMAN -> (Map<String, T>) cfg.getBombermanMaps();
             case SKYWARS -> (Map<String, T>) cfg.getSkyWarsMaps();
+            case MANOR_2 -> (Map<String, T>) cfg.getManor2Maps();
         };
     }
 

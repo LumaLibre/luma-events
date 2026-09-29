@@ -1,0 +1,251 @@
+package dev.lumas.events.games.logic;
+
+import dev.lumas.events.EventMain;
+import dev.lumas.events.configurable.sectors.Manor2Definition;
+import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
+import dev.lumas.events.games.interfaces.models.MinigameRole;
+import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
+import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.utility.Executors;
+import dev.lumas.events.utility.Util;
+import dev.lumas.events.utility.clientside.LocalizedFakeBlockCache;
+import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.block.BlockType;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
+public class Manor2 extends InventoryUnifiedMinigame {
+    private static final String[] SPLASH = {
+            "Are you afraid of ghosts?",
+            "Boooooooooooo!!!!",
+            "Ghost Busters!",
+            "Who you gonna call?"
+    };
+    private static final long TICK_INTERVAL = 1L;
+    private static final int TELEPORTS_PER_TICK = 5;
+    private static final long END_DELAY_SECONDS = 10;
+    private static final NamespacedKey TAGGED = new NamespacedKey(EventMain.getInstance(), "manor2/item_tag");
+    private final Location lobbyLocation;
+    private final List<Location> huntersStartLocations;
+    private final List<Location> ghostStartLocations;
+    private final int playerRatio;
+    private final MinigameRoleMap<Manor2Role> roleMap = new MinigameRoleMap<>();
+    private final int ghostRevealTime;
+    private final int hunterDeathTime;
+    private final LocalizedFakeBlockCache blockCache = new LocalizedFakeBlockCache(32);
+
+    public Manor2(Manor2Definition definition) {
+        super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, true, false);
+        this.lobbyLocation = definition.getLobby();
+        this.huntersStartLocations = definition.getHunterStartLocations();
+        this.ghostStartLocations = definition.getGhostStartLocations();
+        this.playerRatio = definition.getHunterRatio();
+        this.ghostRevealTime = definition.getGhostRevealTime();
+        this.hunterDeathTime = definition.getHunterDeathTime();
+    }
+
+    @Override
+    protected void tokenHandler(EventPlayer participant) {
+
+    }
+
+    @Override
+    protected void handleStart() {
+        Collections.shuffle(participants);
+        int ghostsToSpecify = Math.ceilDiv(participants.size(), playerRatio);
+        for (int i = 0; i < participants.size(); i++) {
+            Player player = participants.get(i).getPlayer();
+            if (player == null) {
+                continue;
+            }
+            Manor2Role role;
+            List<Location> teleportTargets;
+            if (ghostsToSpecify-- > 0) {
+                role = new Ghost(participants.get(i));
+                teleportTargets = ghostStartLocations;
+            } else {
+                role = new GhostHunter(participants.get(i));
+                teleportTargets = huntersStartLocations;
+            }
+            roleMap.put(role);
+            Location target = teleportTargets.get(i % teleportTargets.size());
+            Executors.delayedSync(player, Math.floorDiv(i, TELEPORTS_PER_TICK) + 1, () -> {
+                        Executors.teleportSafely(player, target);
+                        role.initiatePlay();
+                    }
+            );
+        }
+    }
+
+    @Override
+    protected boolean handleParticipantJoin(EventPlayer player) {
+        player.teleportAsync(lobbyLocation);
+        return super.handleParticipantJoin(player);
+    }
+
+    @Override
+    protected void onRunnable(long timeLeft) {
+        if (this.stopping) return;
+        if (timeLeft <= TimeUnit.SECONDS.toMillis(END_DELAY_SECONDS)) {
+            this.handleStop();
+        }
+        for (Manor2Role role : roleMap) {
+            if (role instanceof GhostHunter ghostHunter) {
+                ghostHunter.getEventPlayer().operatePlayer(player -> {
+                    illuminateSync(player.getLocation(), ghostHunter);
+                });
+            } else {
+
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+
+    }
+
+    @Override
+    protected void handleStop() {
+
+    }
+
+    private void illuminateSync(Location location, GhostHunter manor2Role) {
+        Location head = location.toCenterLocation().add(0, 1, 0);
+        int stepsPerIncrease = 3;
+        Set<Location> alreadyChanged = new HashSet<>();
+        for (int i = 0; i < 20; i++) {
+            int lightLevel = Math.floorDiv(i, stepsPerIncrease) + 1;
+            Location lightLoc = head.clone().add(location.getDirection().clone().multiply((double) i / 2)).toBlockLocation();
+            if (lightLoc.getBlock().getType().isAir()) {
+                alreadyChanged.add(lightLoc);
+                blockCache.setBlock(lightLoc, BlockType.LIGHT.createBlockData(light -> light.setLevel(lightLevel)), 10);
+            }
+        }
+        blockCache.showSync();
+    }
+
+    private abstract class Manor2Role extends MinigameRole {
+
+        protected Manor2Role(EventPlayer eventPlayer) {
+            super(eventPlayer);
+        }
+
+        public CompletableFuture<Void> retire() {
+            CompletableFuture<Void> completed = new CompletableFuture<>();
+            this.operatePlayer(player -> {
+                Inventory inventory = player.getInventory();
+                for (int i = 0; i < inventory.getSize(); i++) {
+                    if (inventory.getItem(i) instanceof ItemStack itemStack && Util.hasPersistentKey(itemStack, TAGGED)) {
+                        inventory.setItem(i, null);
+                    }
+                }
+                player.clearActivePotionEffects();
+                completed.complete(null);
+            });
+            return completed;
+        }
+
+        public abstract void die();
+
+        public abstract CompletableFuture<Void> initiatePlay();
+    }
+
+    private class Ghost extends Manor2Role {
+
+        private int revealedTime = 0;
+        private volatile boolean revealed = false;
+
+        protected Ghost(EventPlayer eventPlayer) {
+            super(eventPlayer);
+        }
+
+        @Override
+        public void die() {
+
+        }
+
+        private void showRevealedResult() {
+            eventPlayer.operatePlayer(player -> {
+                AttributeInstance maxHealth = player.getAttribute(Attribute.MAX_HEALTH);
+                if (maxHealth != null) {
+                    double newHealth = maxHealth.getValue() * (1 - (double) revealedTime / ghostRevealTime);
+                    player.setHealth(newHealth);
+                } else {
+                    EventMain.getInstance().getLogger().warning("Player has no max health attribute - can not take damage");
+                }
+            });
+        }
+
+        @Override
+        public CompletableFuture<Void> initiatePlay() {
+            CompletableFuture<Void> future = new CompletableFuture<>();
+            eventPlayer.operatePlayer(player -> {
+                player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0));
+                future.complete(null);
+            });
+            return future;
+        }
+
+        public void reveal() {
+            eventPlayer.operatePlayer(player -> player.setInvisible(false));
+            revealed = true;
+        }
+    }
+
+    private class GhostHunter extends Manor2Role {
+
+        private int ghostConsumedTime = 0;
+
+        protected GhostHunter(EventPlayer eventPlayer) {
+            super(eventPlayer);
+        }
+
+        @Override
+        public void die() {
+
+        }
+
+        @Override
+        public CompletableFuture<Void> initiatePlay() {
+            return null;
+        }
+
+        public void consumeTick(Ghost attacker) {
+
+        }
+    }
+
+    private class Spectator extends Manor2Role {
+
+        protected Spectator(EventPlayer eventPlayer) {
+            super(eventPlayer);
+        }
+
+        @Override
+        public void die() {
+
+        }
+
+        @Override
+        public CompletableFuture<Void> initiatePlay() {
+            return null;
+        }
+    }
+
+}

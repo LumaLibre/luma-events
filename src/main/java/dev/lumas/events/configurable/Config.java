@@ -4,6 +4,7 @@ import dev.lumas.events.configurable.sectors.BoatRace2Definition;
 import dev.lumas.events.configurable.sectors.BombermanDefinition;
 import dev.lumas.events.configurable.sectors.FreezeTagDefinition;
 import dev.lumas.events.configurable.sectors.IncursionDefinition;
+import dev.lumas.events.configurable.sectors.Manor2Definition;
 import dev.lumas.events.configurable.sectors.ManorMinigameDefinition;
 import dev.lumas.events.configurable.sectors.MineBattleDefinition;
 import dev.lumas.events.configurable.sectors.MinigameDefinition;
@@ -140,5 +141,7 @@ public class Config extends OkaeriConfig {
     @Comment("Minigame definition for 'The Nabbits'")
     private Map<String, TheNabbitsMinigameDefinition> theNabbitsMaps = Map.of();
 
+    @Comment("Minigame definition for 'Manor 2'")
+    private Map<String, Manor2Definition> manor2Maps = Map.of();
 }
 
