@@ -26,6 +26,7 @@ repositories {
     maven("https://maven.enginehub.org/repo/")
     maven("https://mvn.lib.co.nz/public/")
     maven("https://repo.glaremasters.me/repository/towny/") // towny
+    maven("https://repo.opencollab.dev/main/")
 }
 
 
@@ -42,6 +43,7 @@ dependencies {
     }
     compileOnly("net.dmulloy2:ProtocolLib:5.4.0")
     compileOnly("com.palmergames.bukkit.towny:towny:0.103.1.1")
+    compileOnly("org.geysermc.floodgate:api:2.2.5-SNAPSHOT")
 
     //compileOnly("io.papermc.paper:paper-api:1.21.10-R0.1-SNAPSHOT")
     compileOnly("io.canvasmc.canvas:canvas-api:26.2.build.+")

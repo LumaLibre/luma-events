@@ -10,6 +10,7 @@ import dev.lumas.events.games.models.Scoreboard;
 import dev.lumas.events.games.tokenformula.PropHuntTokenFormula;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
+import dev.lumas.events.utility.FloodgateHook;
 import dev.lumas.events.utility.Util;
 import dev.lumas.lumacore.utility.Logging;
 import lombok.Getter;
@@ -45,6 +46,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -99,7 +101,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             });
         }
 
-        PropHuntPlayer firstSeeker = Util.getRandom(this.propHuntPlayers.values());
+        PropHuntPlayer firstSeeker = Util.getRandom(excludeBedrock(this.propHuntPlayers.values()));
         this.propHuntPlayers.swapRole(firstSeeker.getEventPlayer(), () -> new Seeker(this, firstSeeker.getEventPlayer()));
         firstSeeker.getEventPlayer().sendMessage("You are a <yellow>Seeker</yellow>. <red>Find and catch all the Hiders!</red>");
 
@@ -328,6 +330,13 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         }
     }
 
+
+    private static List<PropHuntPlayer> excludeBedrock(Collection<PropHuntPlayer> candidates) {
+        List<PropHuntPlayer> javaPlayers = candidates.stream()
+                .filter(player -> !FloodgateHook.isBedrockPlayer(player.getEventPlayer().getUuid()))
+                .toList();
+        return javaPlayers.isEmpty() ? List.copyOf(candidates) : javaPlayers;
+    }
 
     @Getter
     @RequiredArgsConstructor
@@ -707,7 +716,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             hiderEventPlayer.sendMessage("You have been caught by <yellow>" + this.getEventPlayer().getName() + "</yellow>!");
 
             Supplier<PropHuntPlayer> newRoleSupplier;
-            if (RANDOM.nextInt(101) < 20) {
+            if (!FloodgateHook.isBedrockPlayer(hiderEventPlayer.getUuid()) && RANDOM.nextInt(101) < 20) {
                 newRoleSupplier = () -> new Seeker(this.context, hiderEventPlayer);
                 hiderEventPlayer.sendMessage("You have become a Seeker. Catch the remaining Hiders!");
                 this.context.sendAudienceMessage("<yellow>" + hiderEventPlayer.getName() + "</yellow> has become a Seeker. Don't let them catch you!");
@@ -896,9 +905,9 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                 return true;
             }
             int difference = count - (int) currentCount;
-            List<PropHuntPlayer> candidates = this.values().stream()
+            List<PropHuntPlayer> candidates = excludeBedrock(this.values().stream()
                     .filter(player -> Util.isAssignableFromAny(player.getClass(), fromTypes))
-                    .toList();
+                    .toList());
 
             if (candidates.size() < difference) {
                 return false; // Not enough candidates to promote
