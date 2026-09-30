@@ -5,10 +5,12 @@ import dev.lumas.events.configurable.sectors.Manor2Definition;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.models.MinigameRole;
 import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
+import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.clientside.LocalizedFakeBlockCache;
+import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -56,6 +58,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
     private static final int FLASHLIGHT_DISTANCE = 8;
     private static final int ILLUMINANCE = 8;
     private final LocalizedFakeBlockCache blockCache = new LocalizedFakeBlockCache(32);
+    private CountdownBossBar timer;
 
     public Manor2(Manor2Definition definition) {
         super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, true, false);
@@ -108,12 +111,28 @@ public class Manor2 extends InventoryUnifiedMinigame {
                     }
                     blockCache.showSync();
                 }, 1L, 1L);
+
+        timer = CountdownBossBar.builder()
+                .title("<white><b>Time Remaining: %ss")
+                .color(BossBar.Color.WHITE)
+                .miliseconds(getDuration())
+                .audience(audience)
+                .build();
+        timer.start();
     }
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
         player.teleportAsync(lobbyLocation);
         return super.handleParticipantJoin(player);
+    }
+
+    @Override
+    public boolean removeParticipant(EventPlayer player, boolean doTeleport) {
+        if (player.getPlayer() != null && this.timer != null) {
+            this.timer.getBossBar().removeViewer(player.getPlayer());
+        }
+        return super.removeParticipant(player, doTeleport);
     }
 
     @Override
@@ -140,6 +159,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStop() {
+        if (timer != null) timer.stop(false);
         List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
         for (Manor2Role role : roleMap) {
             completableFutures.add(role.retire());
