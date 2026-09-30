@@ -25,6 +25,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -37,7 +38,8 @@ public class Manor2 extends InventoryUnifiedMinigame {
             "Are you afraid of ghosts?",
             "Boooooooooooo!!!!",
             "Ghost Busters!",
-            "Who you gonna call?"
+            "Who you gonna call?",
+            "House of Dracula!"
     };
     private static final long TICK_INTERVAL = 1L;
     private static final int TELEPORTS_PER_TICK = 5;
@@ -138,12 +140,16 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStop() {
-
+        List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
+        for (Manor2Role role : roleMap) {
+            completableFutures.add(role.retire());
+        }
+        CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
+                .join();
     }
 
     private void illuminateSync(Location location, GhostHunter manor2Role) {
         Location head = location.toCenterLocation().add(0, 1, 0);
-        int stepsPerIncrease = 4;
         Set<Location> alreadyPlaced = new HashSet<>();
         int firstHit = 0;
         for (int i = 0; i < FLASHLIGHT_DISTANCE * 2; i++) {

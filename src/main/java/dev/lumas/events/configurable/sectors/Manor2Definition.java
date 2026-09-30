@@ -14,7 +14,7 @@ public class Manor2Definition extends OkaeriConfig {
     private List<Location> hunterStartLocations;
     private List<Location> ghostStartLocations;
     private Region region = new Region();
-    private long duration = 20 * 60 * 5;
+    private long duration = 1000 * 60 * 5;
     @Comment("The ratio of hunters per ghost (rounds up)")
     private int hunterRatio = 10;
     @Comment("The time until a ghost is killed by being revealed (ticks)")
