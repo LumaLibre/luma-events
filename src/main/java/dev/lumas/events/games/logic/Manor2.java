@@ -61,7 +61,8 @@ public class Manor2 extends InventoryUnifiedMinigame {
             "It's alive! It's alive!",
             "Be afraid. Be very afraid",
             "What is the color of night?",
-            "This is not a dream!"
+            "This is not a dream!",
+            "Someone must extinguish thy flame."
     };
     private static final long TICK_INTERVAL = 1L;
     private static final int TELEPORTS_PER_TICK = 5;
@@ -166,6 +167,8 @@ public class Manor2 extends InventoryUnifiedMinigame {
                 if (flashlight != null) {
                     flashlight.tick();
                 }
+
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION, 20, 0, false, false, false));
             });
 
             if (role instanceof GhostHunter ghostHunter) {
@@ -277,7 +280,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
             CompletableFuture<Void> future = new CompletableFuture<>();
             eventPlayer.operatePlayer(player -> {
-                player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0));
+                //player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0));
                 future.complete(null);
             });
             return future;
@@ -348,10 +351,13 @@ public class Manor2 extends InventoryUnifiedMinigame {
         private final Player player;
 
         @Getter
-        private float batteryCharge = 100f;
+        private float batteryCharge = 50f; // TODO: set to 100% after testing
 
         @Getter
         private boolean active = false;
+
+        private int flickerTicksRemaining = 0;
+        private boolean flickerOff = false;
 
         public Flashlight(Player player) {
             this.player = player;
@@ -408,27 +414,48 @@ public class Manor2 extends InventoryUnifiedMinigame {
             if (base <= 0) return 0;
 
             float chargePercent = batteryCharge / MAX_BATTERY_CHARGE * 100f;
-            if (chargePercent > FLICKER_START) return base;
-
-            double lowBatteryFactor = 1.0 - chargePercent / FLICKER_START;
-            double flickerChance = 0.05 + lowBatteryFactor * 0.3;
-            if (Math.random() >= flickerChance) return base;
-
-            // Mild flicker
-            if (chargePercent > HEAVY_FLICKER_START) {
-                return Math.max(base - ((int) (Math.random() * 3)), MIN_ILLUMINANCE);
+            if (chargePercent > FLICKER_START) {
+                flickerTicksRemaining = 0;
+                flickerOff = false;
+                return base;
             }
 
-            double random = Math.random();
-            if (random < 0.4) return Math.max(base - (int) (Math.random() * 3), MIN_ILLUMINANCE); // Mild flicker
-            if (random < 0.7) return Math.max(base - (2 + (int) (Math.random() * 5)), MIN_ILLUMINANCE); // Strong flicker
-            else return 0; // Complete blackout
+            if (flickerTicksRemaining > 0) {
+                flickerTicksRemaining--;
+                if (flickerOff) return 0;
+                return Math.max(base - 3, MIN_ILLUMINANCE);
+            }
+
+            double severity = 1.0 - chargePercent / FLICKER_START;
+            double startChance = 0.01 + severity * 0.1;
+
+            if (Math.random() < startChance) {
+                flickerTicksRemaining = 1 + (int) Math.round(severity * 5);
+
+                if (chargePercent <= HEAVY_FLICKER_START) {
+                    flickerOff = Math.random() < 0.6;
+                } else {
+                    flickerOff = Math.random() < 0.2;
+                }
+
+                if (flickerOff) return 0;
+                return Math.max(base - 2, MIN_ILLUMINANCE);
+            }
+
+            return base;
         }
 
         private void illuminate(int illuminance) {
             Location location = player.getLocation();
             Location head = location.toCenterLocation().add(0, 1, 0);
             Set<Location> alreadyPlaced = new HashSet<>();
+
+            Location headBlock = head.toBlockLocation();
+            if (headBlock.getBlock().getType().isAir()) {
+                alreadyPlaced.add(headBlock);
+                blockCache.setBlock(headBlock, BlockType.LIGHT.createBlockData(light -> light.setLevel(illuminance)), LIGHT_BLOCK_LIFETIME);
+            }
+
             int firstHit = 0;
 
             for (int i = 0; i < FLASHLIGHT_DISTANCE * 2; i++) {
