@@ -9,10 +9,13 @@ import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.clientside.LocalizedFakeBlockCache;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -47,6 +50,9 @@ public class Manor2 extends InventoryUnifiedMinigame {
     private final MinigameRoleMap<Manor2Role> roleMap = new MinigameRoleMap<>();
     private final int ghostRevealTime;
     private final int hunterDeathTime;
+    private static final int LIGHT_BLOCK_LIFETIME = 4;
+    private static final int FLASHLIGHT_DISTANCE = 8;
+    private static final int ILLUMINANCE = 8;
     private final LocalizedFakeBlockCache blockCache = new LocalizedFakeBlockCache(32);
 
     public Manor2(Manor2Definition definition) {
@@ -90,6 +96,16 @@ public class Manor2 extends InventoryUnifiedMinigame {
                     }
             );
         }
+        Bukkit.getRegionScheduler().runAtFixedRate(
+                EventMain.getInstance(),
+                huntersStartLocations.getFirst(),
+                scheduledTask -> {
+                    if (stopping) {
+                        scheduledTask.cancel();
+                        return;
+                    }
+                    blockCache.showSync();
+                }, 1L, 1L);
     }
 
     @Override
@@ -127,17 +143,35 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
     private void illuminateSync(Location location, GhostHunter manor2Role) {
         Location head = location.toCenterLocation().add(0, 1, 0);
-        int stepsPerIncrease = 3;
-        Set<Location> alreadyChanged = new HashSet<>();
-        for (int i = 0; i < 20; i++) {
-            int lightLevel = Math.floorDiv(i, stepsPerIncrease) + 1;
+        int stepsPerIncrease = 4;
+        Set<Location> alreadyPlaced = new HashSet<>();
+        int firstHit = 0;
+        for (int i = 0; i < FLASHLIGHT_DISTANCE * 2; i++) {
+            Location posToCheck = head.clone().add(location.getDirection().clone().multiply((double) i / 2));
+            if (posToCheck.getBlock().getType().isOccluding()) {
+                break;
+            }
+            firstHit = i;
+        }
+        for (int i = firstHit; i > 0; i--) {
+            int lightLevel = Math.floorDiv(i * ILLUMINANCE, firstHit);
             Location lightLoc = head.clone().add(location.getDirection().clone().multiply((double) i / 2)).toBlockLocation();
-            if (lightLoc.getBlock().getType().isAir()) {
-                alreadyChanged.add(lightLoc);
-                blockCache.setBlock(lightLoc, BlockType.LIGHT.createBlockData(light -> light.setLevel(lightLevel)), 10);
+            Block block = lightLoc.getBlock();
+            if (block.getType().isAir()) {
+                if (alreadyPlaced.contains(lightLoc)) {
+                    continue;
+                }
+                alreadyPlaced.add(lightLoc);
+                blockCache.setBlock(lightLoc, BlockType.LIGHT.createBlockData(light -> light.setLevel(lightLevel)), LIGHT_BLOCK_LIFETIME);
+            } else if (!block.getType().isOccluding() && block.getRelative(BlockFace.UP).getType().isAir()) {
+                Location newLoc = lightLoc.clone().add(0, 1, 0);
+                if (alreadyPlaced.contains(newLoc)) {
+                    continue;
+                }
+                blockCache.setBlock(newLoc, BlockType.LIGHT.createBlockData(light -> light.setLevel(lightLevel)), LIGHT_BLOCK_LIFETIME);
+                alreadyPlaced.add(lightLoc);
             }
         }
-        blockCache.showSync();
     }
 
     private abstract class Manor2Role extends MinigameRole {

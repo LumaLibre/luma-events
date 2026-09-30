@@ -2,6 +2,7 @@ package dev.lumas.events.utility.clientside;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 
@@ -19,46 +20,47 @@ public class LocalizedFakeBlockCache {
 
     private long time = 0;
     private final int renderDistance;
-    private final Map<Location, CachedFakeBlock> cache = new ConcurrentHashMap<>();
-    private final Map<Location, Set<UUID>> shownToPlayersCache = new ConcurrentHashMap<>();
+    private final Map<Location3i, CachedFakeBlock> cache = new ConcurrentHashMap<>();
+    private final Map<Location3i, Set<UUID>> shownToPlayersCache = new ConcurrentHashMap<>();
 
     public LocalizedFakeBlockCache(int renderDistance) {
         this.renderDistance = renderDistance;
     }
 
     public void setBlock(Location position, BlockData blockData, int lifetime) {
-        Location blockLocation = position.toBlockLocation();
+        Location3i blockLocation = Location3i.from(position.toBlockLocation());
         CachedFakeBlock previous = cache.put(blockLocation, new CachedFakeBlock(
                 blockData, time + lifetime
         ));
-        if (previous == null || !blockData.equals(previous.blockData)) {
+        if (previous != null && !blockData.equals(previous.blockData)) {
             shownToPlayersCache.remove(blockLocation);
         }
     }
 
     public void showSync() {
-        List<Map.Entry<Location, CachedFakeBlock>> toRemove = new ArrayList<>();
+        List<Map.Entry<Location3i, CachedFakeBlock>> toRemove = new ArrayList<>();
         BlockChangeSession blockChangeSession = new BlockChangeSession();
-        for (Map.Entry<Location, CachedFakeBlock> entry : cache.entrySet()) {
+        for (Map.Entry<Location3i, CachedFakeBlock> entry : cache.entrySet()) {
             if (entry.getValue().expired < time) {
                 toRemove.add(entry);
                 continue;
             }
-            cache.put(entry.getKey(), entry.getValue());
-            for (Player player : entry.getKey().getNearbyPlayers(renderDistance)) {
-                if (shownToPlayersCache.containsKey(entry.getKey()) &&
-                        shownToPlayersCache.get(entry.getKey()).contains(player.getUniqueId())) {
+            Location location = entry.getKey().toLocation();
+            for (Player player : location.getNearbyPlayers(renderDistance)) {
+                if (shownToPlayersCache.get(entry.getKey()) instanceof Set<UUID> shownToPlayers &&
+                        shownToPlayers.contains(player.getUniqueId())) {
                     continue;
                 }
                 shownToPlayersCache.computeIfAbsent(
                         entry.getKey(),
                         ignored -> Collections.newSetFromMap(new ConcurrentHashMap<>())
                 ).add(player.getUniqueId());
-                blockChangeSession.addBlockChange(player, entry.getKey(), entry.getValue().blockData());
+                blockChangeSession.addBlockChange(player, location, entry.getValue().blockData());
             }
         }
-        for (Map.Entry<Location, CachedFakeBlock> entry : toRemove) {
+        for (Map.Entry<Location3i, CachedFakeBlock> entry : toRemove) {
             Set<UUID> stored = shownToPlayersCache.remove(entry.getKey());
+            Location location = entry.getKey().toLocation();
             cache.remove(entry.getKey(), entry.getValue());
             if (stored != null) {
                 stored.stream()
@@ -66,18 +68,19 @@ public class LocalizedFakeBlockCache {
                         .filter(Objects::nonNull)
                         .forEach(player -> {
                             int blockViewDistance = player.getSimulationDistance() * 16;
-                            if (blockViewDistance * blockViewDistance < player.getLocation().distanceSquared(entry.getKey())) {
+                            if (blockViewDistance * blockViewDistance < player.getLocation().distanceSquared(location)) {
                                 return;
                             }
-                            blockChangeSession.addBlockChange(player, entry.getKey(), entry.getKey().getBlock().getBlockData());
+                            blockChangeSession.addBlockChange(player, location, location.getBlock().getBlockData());
                         });
             }
         }
         blockChangeSession.send();
+        time++;
     }
 
     private static class BlockChangeSession {
-        Map<Player, Map<Location, BlockData>> toRender = new HashMap<>();
+        private final Map<Player, Map<Location, BlockData>> toRender = new HashMap<>();
 
         private void addBlockChange(Player player, Location location, BlockData blockData) {
             toRender.computeIfAbsent(player, ignored -> new HashMap<>())
@@ -93,5 +96,16 @@ public class LocalizedFakeBlockCache {
 
 
     private record CachedFakeBlock(BlockData blockData, long expired) {
+    }
+
+    private record Location3i(World world, int x, int y, int z) {
+
+        public static Location3i from(Location location) {
+            return new Location3i(location.getWorld(), location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        }
+
+        public Location toLocation() {
+            return new Location(world, x, y, z);
+        }
     }
 }
