@@ -61,6 +61,7 @@ public class LocalizedFakeBlockCache {
         for (Map.Entry<Location3i, CachedFakeBlock> entry : toRemove) {
             Set<UUID> stored = shownToPlayersCache.remove(entry.getKey());
             Location location = entry.getKey().toLocation();
+            BlockData blockData = location.getBlock().getBlockData();
             cache.remove(entry.getKey(), entry.getValue());
             if (stored != null) {
                 stored.stream()
@@ -71,12 +72,31 @@ public class LocalizedFakeBlockCache {
                             if (blockViewDistance * blockViewDistance < player.getLocation().distanceSquared(location)) {
                                 return;
                             }
-                            blockChangeSession.addBlockChange(player, location, location.getBlock().getBlockData());
+                            blockChangeSession.addBlockChange(player, location, blockData);
                         });
             }
         }
         blockChangeSession.send();
         time++;
+    }
+
+    public void shutdown() {
+        BlockChangeSession blockChangeSession = new BlockChangeSession();
+        for (Map.Entry<Location3i, Set<UUID>> entry : shownToPlayersCache.entrySet()) {
+            Location location = entry.getKey().toLocation();
+            BlockData blockData = location.getBlock().getBlockData();
+            entry.getValue().stream()
+                    .map(Bukkit::getPlayer)
+                    .filter(Objects::nonNull)
+                    .forEach(player -> {
+                        int blockViewDistance = player.getSimulationDistance() * 16;
+                        if (blockViewDistance * blockViewDistance < player.getLocation().distanceSquared(location)) {
+                            return;
+                        }
+                        blockChangeSession.addBlockChange(player, location, blockData);
+                    });
+        }
+        blockChangeSession.send();
     }
 
     private static class BlockChangeSession {

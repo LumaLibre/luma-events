@@ -51,7 +51,17 @@ public class Manor2 extends InventoryUnifiedMinigame {
             "Boooooooooooo!!!!",
             "Ghost Busters!",
             "Who you gonna call?",
-            "House of Dracula!"
+            "House of Dracula!",
+            "Trick or treat?",
+            "Here's Johny!!!",
+            "Put these foolish ambitions to rest",
+            "Go eat candy instead :(",
+            "Wazzzuup!",
+            "Did you pray enough?",
+            "It's alive! It's alive!",
+            "Be afraid. Be very afraid",
+            "What is the color of night?",
+            "This is not a dream!"
     };
     private static final long TICK_INTERVAL = 1L;
     private static final int TELEPORTS_PER_TICK = 5;
@@ -188,12 +198,19 @@ public class Manor2 extends InventoryUnifiedMinigame {
     @Override
     protected void handleStop() {
         if (timer != null) timer.stop(false);
+
+        Bukkit.getRegionScheduler().run(
+                EventMain.getInstance(),
+                huntersStartLocations.getFirst(),
+                ignore -> blockCache.shutdown()
+        );
         List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
         for (Manor2Role role : roleMap) {
             completableFutures.add(role.retire());
         }
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
                 .join();
+
     }
 
     private abstract class Manor2Role extends MinigameRole {
