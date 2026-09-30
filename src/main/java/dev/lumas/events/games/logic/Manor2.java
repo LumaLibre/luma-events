@@ -202,12 +202,19 @@ public class Manor2 extends InventoryUnifiedMinigame {
     @Override
     protected void handleStop() {
         if (timer != null) timer.stop(false);
+
+        Bukkit.getRegionScheduler().run(
+                EventMain.getInstance(),
+                huntersStartLocations.getFirst(),
+                ignore -> blockCache.shutdown()
+        );
         List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
         for (Manor2Role role : roleMap) {
             completableFutures.add(role.retire());
         }
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
                 .join();
+
     }
 
     private void illuminateSync(Location location) {
