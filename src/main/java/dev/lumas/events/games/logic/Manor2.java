@@ -1,5 +1,6 @@
 package dev.lumas.events.games.logic;
 
+import com.destroystokyo.paper.event.player.PlayerLaunchProjectileEvent;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.Manor2Definition;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
@@ -10,9 +11,12 @@ import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.clientside.LocalizedFakeBlockCache;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.UseEffects;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -20,10 +24,13 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockType;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Trident;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
@@ -58,10 +65,11 @@ public class Manor2 extends InventoryUnifiedMinigame {
     private static final int FLASHLIGHT_DISTANCE = 8;
     private static final int ILLUMINANCE = 8;
     private final LocalizedFakeBlockCache blockCache = new LocalizedFakeBlockCache(32);
+    private final Set<Player> usingFlashlight = new HashSet<>();
     private CountdownBossBar timer;
 
     public Manor2(Manor2Definition definition) {
-        super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, true, false);
+        super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, false, false);
         this.lobbyLocation = definition.getLobby();
         this.huntersStartLocations = definition.getHunterStartLocations();
         this.ghostStartLocations = definition.getGhostStartLocations();
@@ -142,9 +150,16 @@ public class Manor2 extends InventoryUnifiedMinigame {
             this.handleStop();
         }
         for (Manor2Role role : roleMap) {
+
+            role.operatePlayer(player -> {
+                if (Flashlight.isFlashlight(player.getInventory().getItemInMainHand()) && usingFlashlight.contains(player)) {
+                    illuminateSync(player.getLocation());
+                }
+            });
+
             if (role instanceof GhostHunter ghostHunter) {
                 ghostHunter.getEventPlayer().operatePlayer(player -> {
-                    illuminateSync(player.getLocation(), ghostHunter);
+
                 });
             } else {
 
@@ -154,7 +169,24 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction().isRightClick()) {
+            ItemStack item = event.getItem();
+            if (item == null) return;
+            if (Flashlight.isFlashlight(item)) {
+                usingFlashlight.add(event.getPlayer());
+            }
+        }
+    }
 
+    @EventHandler
+    public void onTridentThrow(PlayerLaunchProjectileEvent event) {
+        if (event.getProjectile() instanceof Trident) {
+            Player player = event.getPlayer();
+            if (Flashlight.isFlashlight(event.getItemStack())) {
+                usingFlashlight.remove(player);
+                event.setCancelled(true);
+            }
+        }
     }
 
     @Override
@@ -168,7 +200,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
                 .join();
     }
 
-    private void illuminateSync(Location location, GhostHunter manor2Role) {
+    private void illuminateSync(Location location) {
         Location head = location.toCenterLocation().add(0, 1, 0);
         Set<Location> alreadyPlaced = new HashSet<>();
         int firstHit = 0;
@@ -254,6 +286,12 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
         @Override
         public CompletableFuture<Void> initiatePlay() {
+
+            // testing
+            eventPlayer.operatePlayer(player -> {
+                player.getInventory().setItem(0, Flashlight.createItem());
+            });
+
             CompletableFuture<Void> future = new CompletableFuture<>();
             eventPlayer.operatePlayer(player -> {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0));
@@ -283,6 +321,9 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
         @Override
         public CompletableFuture<Void> initiatePlay() {
+            eventPlayer.operatePlayer(player -> {
+                player.getInventory().setItem(0, Flashlight.createItem());
+            });
             return null;
         }
 
@@ -306,6 +347,34 @@ public class Manor2 extends InventoryUnifiedMinigame {
         public CompletableFuture<Void> initiatePlay() {
             return null;
         }
+    }
+
+    private static class Flashlight {
+
+        public static ItemStack createItem() {
+            ItemStack item = ItemStack.of(Material.TRIDENT);
+            item.editMeta(meta -> {
+                meta.setItemModel(NamespacedKey.minecraft("spyglass"));
+                meta.displayName(Util.color("<gold><bold>Flashlight"));
+                meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+            });
+            item.editPersistentDataContainer(pdc -> {
+                pdc.set(TAGGED, PersistentDataType.STRING, "flashlight");
+            });
+            item.setData(DataComponentTypes.MAX_DAMAGE, 100);
+            item.setData(DataComponentTypes.USE_EFFECTS, UseEffects.useEffects()
+                    .canSprint(true)
+                    .speedMultiplier(1.0f)
+                    .interactVibrations(true)
+                    .build());
+            return item;
+        }
+
+        public static boolean isFlashlight(ItemStack item) {
+            String tag = item.getPersistentDataContainer().get(TAGGED, PersistentDataType.STRING);
+            return tag != null && tag.equals("flashlight");
+        }
+
     }
 
 }
