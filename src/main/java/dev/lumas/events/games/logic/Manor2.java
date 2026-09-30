@@ -336,7 +336,10 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
     private class Flashlight {
 
+        private static final int MIN_ILLUMINANCE = 4;
         private static final int MAX_ILLUMINANCE = 12;
+        private static final float FLICKER_START = 25f;
+        private static final float HEAVY_FLICKER_START = 10f;
         private static final float MAX_BATTERY_CHARGE = 100f;
         private static final float BATTERY_DRAIN_PER_TICK = 100f / (20f * 120f);
         private static final int LIGHT_BLOCK_LIFETIME = 4;
@@ -380,7 +383,9 @@ public class Manor2 extends InventoryUnifiedMinigame {
                 return;
             }
 
-            illuminate(getIlluminance());
+            int illuminance = getFlickeringIlluminance();
+            if (illuminance <= 0) return;
+            illuminate(illuminance);
         }
 
         private void drainBattery() {
@@ -391,11 +396,33 @@ public class Manor2 extends InventoryUnifiedMinigame {
             return isFlashlight(player.getInventory().getItemInMainHand());
         }
 
-        private int getIlluminance() {
+        private int getBaseIlluminance() {
             if (batteryCharge <= 0f) return 0;
             double percentage = batteryCharge / MAX_BATTERY_CHARGE;
             double brightness = Math.sqrt(percentage);
-            return Math.clamp((int) Math.round(MAX_ILLUMINANCE * brightness), 1, MAX_ILLUMINANCE);
+            return MIN_ILLUMINANCE + (int) Math.round((MAX_ILLUMINANCE - MIN_ILLUMINANCE) * brightness);
+        }
+
+        private int getFlickeringIlluminance() {
+            int base = getBaseIlluminance();
+            if (base <= 0) return 0;
+
+            float chargePercent = batteryCharge / MAX_BATTERY_CHARGE * 100f;
+            if (chargePercent > FLICKER_START) return base;
+
+            double lowBatteryFactor = 1.0 - chargePercent / FLICKER_START;
+            double flickerChance = 0.05 + lowBatteryFactor * 0.3;
+            if (Math.random() >= flickerChance) return base;
+
+            // Mild flicker
+            if (chargePercent > HEAVY_FLICKER_START) {
+                return Math.max(base - ((int) (Math.random() * 3)), MIN_ILLUMINANCE);
+            }
+
+            double random = Math.random();
+            if (random < 0.4) return Math.max(base - (int) (Math.random() * 3), MIN_ILLUMINANCE); // Mild flicker
+            if (random < 0.7) return Math.max(base - (2 + (int) (Math.random() * 5)), MIN_ILLUMINANCE); // Strong flicker
+            else return 0; // Complete blackout
         }
 
         private void illuminate(int illuminance) {
