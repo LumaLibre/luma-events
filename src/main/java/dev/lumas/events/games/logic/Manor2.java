@@ -13,6 +13,7 @@ import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.clientside.LocalizedFakeBlockCache;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.UseEffects;
+import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -36,8 +37,10 @@ import org.bukkit.potion.PotionEffectType;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -61,11 +64,8 @@ public class Manor2 extends InventoryUnifiedMinigame {
     private final MinigameRoleMap<Manor2Role> roleMap = new MinigameRoleMap<>();
     private final int ghostRevealTime;
     private final int hunterDeathTime;
-    private static final int LIGHT_BLOCK_LIFETIME = 4;
-    private static final int FLASHLIGHT_DISTANCE = 8;
-    private static final int ILLUMINANCE = 8;
     private final LocalizedFakeBlockCache blockCache = new LocalizedFakeBlockCache(32);
-    private final Set<Player> usingFlashlight = new HashSet<>();
+    private final Map<Player, Flashlight> flashlights = new HashMap<>();
     private CountdownBossBar timer;
 
     public Manor2(Manor2Definition definition) {
@@ -152,8 +152,9 @@ public class Manor2 extends InventoryUnifiedMinigame {
         for (Manor2Role role : roleMap) {
 
             role.operatePlayer(player -> {
-                if (Flashlight.isFlashlight(player.getInventory().getItemInMainHand()) && usingFlashlight.contains(player)) {
-                    illuminateSync(player.getLocation());
+                Flashlight flashlight = flashlights.get(player);
+                if (flashlight != null) {
+                    flashlight.tick();
                 }
             });
 
@@ -169,24 +170,19 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if (event.getAction().isRightClick()) {
-            ItemStack item = event.getItem();
-            if (item == null) return;
-            if (Flashlight.isFlashlight(item)) {
-                usingFlashlight.add(event.getPlayer());
-            }
-        }
+        if (!event.getAction().isRightClick()) return;
+        if (!Flashlight.isFlashlight(event.getItem())) return;
+        Flashlight flashlight = flashlights.get(event.getPlayer());
+        if (flashlight != null) flashlight.startUsing();
     }
 
     @EventHandler
     public void onTridentThrow(PlayerLaunchProjectileEvent event) {
-        if (event.getProjectile() instanceof Trident) {
-            Player player = event.getPlayer();
-            if (Flashlight.isFlashlight(event.getItemStack())) {
-                usingFlashlight.remove(player);
-                event.setCancelled(true);
-            }
-        }
+        if (!(event.getProjectile() instanceof Trident)) return;
+        if (!Flashlight.isFlashlight(event.getItemStack())) return;
+        event.setCancelled(true);
+        Flashlight flashlight = flashlights.get(event.getPlayer());
+        if (flashlight != null) flashlight.stopUsing();
     }
 
     @Override
@@ -198,38 +194,6 @@ public class Manor2 extends InventoryUnifiedMinigame {
         }
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
                 .join();
-    }
-
-    private void illuminateSync(Location location) {
-        Location head = location.toCenterLocation().add(0, 1, 0);
-        Set<Location> alreadyPlaced = new HashSet<>();
-        int firstHit = 0;
-        for (int i = 0; i < FLASHLIGHT_DISTANCE * 2; i++) {
-            Location posToCheck = head.clone().add(location.getDirection().clone().multiply((double) i / 2));
-            if (posToCheck.getBlock().getType().isOccluding()) {
-                break;
-            }
-            firstHit = i;
-        }
-        for (int i = firstHit; i > 0; i--) {
-            int lightLevel = Math.floorDiv(i * ILLUMINANCE, firstHit);
-            Location lightLoc = head.clone().add(location.getDirection().clone().multiply((double) i / 2)).toBlockLocation();
-            Block block = lightLoc.getBlock();
-            if (block.getType().isAir()) {
-                if (alreadyPlaced.contains(lightLoc)) {
-                    continue;
-                }
-                alreadyPlaced.add(lightLoc);
-                blockCache.setBlock(lightLoc, BlockType.LIGHT.createBlockData(light -> light.setLevel(lightLevel)), LIGHT_BLOCK_LIFETIME);
-            } else if (!block.getType().isOccluding() && block.getRelative(BlockFace.UP).getType().isAir()) {
-                Location newLoc = lightLoc.clone().add(0, 1, 0);
-                if (alreadyPlaced.contains(newLoc)) {
-                    continue;
-                }
-                blockCache.setBlock(newLoc, BlockType.LIGHT.createBlockData(light -> light.setLevel(lightLevel)), LIGHT_BLOCK_LIFETIME);
-                alreadyPlaced.add(lightLoc);
-            }
-        }
     }
 
     private abstract class Manor2Role extends MinigameRole {
@@ -289,7 +253,9 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
             // testing
             eventPlayer.operatePlayer(player -> {
-                player.getInventory().setItem(0, Flashlight.createItem());
+                Flashlight flashlight = new Flashlight(player);
+                player.getInventory().setItem(0, flashlight.getItem());
+                flashlights.put(player, flashlight);
             });
 
             CompletableFuture<Void> future = new CompletableFuture<>();
@@ -322,7 +288,9 @@ public class Manor2 extends InventoryUnifiedMinigame {
         @Override
         public CompletableFuture<Void> initiatePlay() {
             eventPlayer.operatePlayer(player -> {
-                player.getInventory().setItem(0, Flashlight.createItem());
+                Flashlight flashlight = new Flashlight(player);
+                player.getInventory().setItem(0, flashlight.getItem());
+                flashlights.put(player, flashlight);
             });
             return null;
         }
@@ -349,9 +317,111 @@ public class Manor2 extends InventoryUnifiedMinigame {
         }
     }
 
-    private static class Flashlight {
+    private class Flashlight {
 
-        public static ItemStack createItem() {
+        private static final int MAX_ILLUMINANCE = 12;
+        private static final float MAX_BATTERY_CHARGE = 100f;
+        private static final float BATTERY_DRAIN_PER_TICK = 100f / (20f * 120f);
+        private static final int LIGHT_BLOCK_LIFETIME = 4;
+        private static final int FLASHLIGHT_DISTANCE = 8;
+
+        private final Player player;
+
+        @Getter
+        private float batteryCharge = 100f;
+
+        @Getter
+        private boolean active = false;
+
+        public Flashlight(Player player) {
+            this.player = player;
+        }
+
+        public void startUsing() {
+            if (batteryCharge <= 0f) return;
+            if (!isHeld()) return;
+            active = true;
+        }
+
+        public void stopUsing() {
+            active = false;
+        }
+
+        public void tick() {
+            if (!active) return;
+
+            if (!isHeld()) {
+                stopUsing();
+                return;
+            }
+
+            drainBattery();
+            updateItem();
+
+            if (batteryCharge <= 0f) {
+                stopUsing();
+                return;
+            }
+
+            illuminate(getIlluminance());
+        }
+
+        private void drainBattery() {
+            batteryCharge = Math.max(batteryCharge - BATTERY_DRAIN_PER_TICK, 0f);
+        }
+
+        private boolean isHeld() {
+            return isFlashlight(player.getInventory().getItemInMainHand());
+        }
+
+        private int getIlluminance() {
+            if (batteryCharge <= 0f) return 0;
+            double percentage = batteryCharge / MAX_BATTERY_CHARGE;
+            double brightness = Math.sqrt(percentage);
+            return Math.clamp((int) Math.round(MAX_ILLUMINANCE * brightness), 1, MAX_ILLUMINANCE);
+        }
+
+        private void illuminate(int illuminance) {
+            Location location = player.getLocation();
+            Location head = location.toCenterLocation().add(0, 1, 0);
+            Set<Location> alreadyPlaced = new HashSet<>();
+            int firstHit = 0;
+
+            for (int i = 0; i < FLASHLIGHT_DISTANCE * 2; i++) {
+                Location posToCheck = head.clone().add(location.getDirection().clone().multiply((double) i / 2));
+                if (posToCheck.getBlock().getType().isOccluding()) break;
+                firstHit = i;
+            }
+
+            if (firstHit == 0) return;
+
+            for (int i = firstHit; i > 0; i--) {
+                int lightLevel = Math.floorDiv(i * illuminance, firstHit);
+                if (lightLevel <= 0) continue;
+
+                Location lightLoc = head.clone().add(location.getDirection().clone().multiply((double) i / 2)).toBlockLocation();
+                Block block = lightLoc.getBlock();
+
+                if (block.getType().isAir()) {
+                    if (alreadyPlaced.contains(lightLoc)) continue;
+                    alreadyPlaced.add(lightLoc);
+                    blockCache.setBlock(lightLoc, BlockType.LIGHT.createBlockData(light -> light.setLevel(lightLevel)), LIGHT_BLOCK_LIFETIME);
+                }
+                else if (!block.getType().isOccluding() && block.getRelative(BlockFace.UP).getType().isAir()) {
+                    Location newLoc = lightLoc.clone().add(0, 1, 0);
+                    if (!alreadyPlaced.add(newLoc)) continue;
+                    blockCache.setBlock(newLoc, BlockType.LIGHT.createBlockData(light -> light.setLevel(lightLevel)), LIGHT_BLOCK_LIFETIME);
+                }
+            }
+        }
+
+        private void updateItem() {
+            ItemStack item = player.getInventory().getItemInMainHand();
+            if (!isFlashlight(item)) return;
+            item.setData(DataComponentTypes.DAMAGE, 100 - Math.round(batteryCharge));
+        }
+
+        public ItemStack getItem() {
             ItemStack item = ItemStack.of(Material.TRIDENT);
             item.editMeta(meta -> {
                 meta.setItemModel(NamespacedKey.minecraft("spyglass"));
@@ -367,12 +437,14 @@ public class Manor2 extends InventoryUnifiedMinigame {
                     .speedMultiplier(1.0f)
                     .interactVibrations(true)
                     .build());
+            item.setData(DataComponentTypes.DAMAGE, 100 - Math.round(batteryCharge));
             return item;
         }
 
         public static boolean isFlashlight(ItemStack item) {
+            if (item == null || item.isEmpty()) return false;
             String tag = item.getPersistentDataContainer().get(TAGGED, PersistentDataType.STRING);
-            return tag != null && tag.equals("flashlight");
+            return "flashlight".equals(tag);
         }
 
     }
