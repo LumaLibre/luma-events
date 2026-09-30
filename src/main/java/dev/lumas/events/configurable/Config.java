@@ -142,6 +142,8 @@ public class Config extends OkaeriConfig {
     private Map<String, TheNabbitsMinigameDefinition> theNabbitsMaps = Map.of();
 
     @Comment("Minigame definition for 'Manor 2'")
-    private Map<String, Manor2Definition> manor2Maps = Map.of();
+    private Map<String, Manor2Definition> manor2Maps = Map.of(
+            "default", new Manor2Definition()
+    );
 }
 
