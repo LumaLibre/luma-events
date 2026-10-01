@@ -11,9 +11,11 @@ import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.clientside.LocalizedFakeBlockCache;
+import dev.lumas.events.utility.latency.LatencyTracker;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import io.papermc.paper.datacomponent.item.UseEffects;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
@@ -53,6 +55,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 public class Manor2 extends InventoryUnifiedMinigame {
     private static final String[] SPLASH = {
@@ -80,6 +83,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
     // Mitality's secret
     private static final double[] BODY_SAMPLE_FRACTIONS = {0.2, 0.5, 0.8};
     private static final double BEAM_STEP = 0.5;
+    private static final long MAX_REWIND_NANOS = TimeUnit.MILLISECONDS.toNanos((TRAIL_HISTORY_TICKS - 4) * 50L);
     // End of mitality's secret
     private static final NamespacedKey TAGGED = new NamespacedKey(EventMain.getInstance(), "manor2/item_tag");
     private final Location lobbyLocation;
@@ -89,9 +93,12 @@ public class Manor2 extends InventoryUnifiedMinigame {
     private final MinigameRoleMap<Manor2Role> roleMap = new MinigameRoleMap<>();
     private final int ghostRevealTime;
     private final int hunterDeathTime;
+    private final Manor2Definition.LagCompensationSettings lagCompensation;
 
     private final ConcurrentHashMap<UUID, Trail> trails = new ConcurrentHashMap<>();
     private final LocalizedFakeBlockCache blockCache = new LocalizedFakeBlockCache(32);
+    private final LatencyTracker latency = new LatencyTracker(this::onlineParticipants);
+    private final ConcurrentHashMap<UUID, Recorder> recorders = new ConcurrentHashMap<>();
     private CountdownBossBar timer;
 
     public Manor2(Manor2Definition definition) {
@@ -102,6 +109,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
         this.playerRatio = definition.getHunterRatio();
         this.ghostRevealTime = definition.getGhostRevealTime();
         this.hunterDeathTime = definition.getHunterDeathTime();
+        this.lagCompensation = definition.getLagCompensation();
     }
 
     @Override
@@ -111,6 +119,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStart() {
+        this.latency.start(); // No-op if already started
         Collections.shuffle(participants);
         int ghostsToSpecify = Math.ceilDiv(participants.size(), playerRatio);
         for (int i = 0; i < participants.size(); i++) {
@@ -155,8 +164,24 @@ public class Manor2 extends InventoryUnifiedMinigame {
         timer.start();
     }
 
+    private void startRecording(LivingEntity entity) {
+        UUID uuid = entity.getUniqueId();
+        Recorder running = recorders.get(uuid);
+        if (running != null && running.entity() == entity && !running.task().isCancelled()) return;
+
+        if (running != null) running.task().cancel();
+
+        Trail trail = new Trail();
+        ScheduledTask task = Executors.repeatingSync(entity, 1L, _ -> trail.record(entity));
+        if (task == null) return; // Already gone, the next sweep can try again
+
+        trails.put(uuid, trail);
+        recorders.put(uuid, new Recorder(entity, task));
+    }
+
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
+        this.latency.start(); // No-op if already started
         player.teleportAsync(lobbyLocation);
         return super.handleParticipantJoin(player);
     }
@@ -175,6 +200,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
         if (timeLeft <= TimeUnit.SECONDS.toMillis(END_DELAY_SECONDS)) {
             this.handleStop();
         }
+        tickRecorders();
         for (Manor2Role role : roleMap) {
             role.tick();
             role.operatePlayer(player -> {
@@ -206,6 +232,34 @@ public class Manor2 extends InventoryUnifiedMinigame {
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
                 .join();
 
+    }
+
+    private List<Player> onlineParticipants() {
+        List<Player> players = new ArrayList<>();
+        for (EventPlayer participant : this.participants) {
+            Player player = participant.getPlayer();
+            if (player != null) players.add(player);
+        }
+        return players;
+    }
+
+    private void tickRecorders() {
+        Set<UUID> live = new HashSet<>();
+
+        for (Player player : onlineParticipants()) {
+            live.add(player.getUniqueId());
+            startRecording(player);
+        }
+
+        recorders.entrySet().removeIf(entry -> {
+            if (live.contains(entry.getKey())) return false;
+            entry.getValue().task().cancel();
+            return true;
+        });
+        trails.keySet().removeIf(uuid -> !live.contains(uuid));
+    }
+
+    private record Recorder(LivingEntity entity, ScheduledTask task) {
     }
 
     private abstract class Manor2Role extends MinigameRole {
@@ -241,11 +295,8 @@ public class Manor2 extends InventoryUnifiedMinigame {
         private int revealedTime = 0;
         private volatile boolean revealed = false;
 
-        private Flashlight tempFlashlight;
-
         protected Ghost(EventPlayer eventPlayer) {
             super(eventPlayer);
-            tempFlashlight = new Flashlight(eventPlayer.getPlayer());
         }
 
         @Override
@@ -269,16 +320,12 @@ public class Manor2 extends InventoryUnifiedMinigame {
         public CompletableFuture<Void> initiatePlay() {
             CompletableFuture<Void> future = new CompletableFuture<>();
             eventPlayer.operatePlayer(player -> {
-                player.getInventory().setItem(0, tempFlashlight.createItem());
                 future.complete(null);
             });
             return future;
         }
 
         public void tick() {
-            eventPlayer.operatePlayer(player -> {
-                tempFlashlight.tick();
-            });
         }
 
         public void reveal() {
@@ -287,11 +334,11 @@ public class Manor2 extends InventoryUnifiedMinigame {
         }
     }
 
-    private List<Target> targetsOf(long atTimestamp) {
+    private List<Target> targetsOf(long atTimestamp, Predicate<Manor2Role> rolePredicate) {
         List<Target> targets = new ArrayList<>();
 
         for (Manor2Role participant : this.roleMap) {
-            if (participant instanceof Spectator) {
+            if (!rolePredicate.test(participant)) {
                 continue;
             }
             Player player = participant.getEventPlayer().getPlayer();
@@ -306,6 +353,17 @@ public class Manor2 extends InventoryUnifiedMinigame {
         }
 
         return targets;
+    }
+
+    private long rewindOf(Player shooter) {
+        if (!lagCompensation.isEnabled()) return 0L;
+
+        long cap = Math.min(MAX_REWIND_NANOS,
+                TimeUnit.MILLISECONDS.toNanos(Math.max(0, lagCompensation.getMaxRewindMillis())));
+        long asked = TimeUnit.MILLISECONDS.toNanos(
+                latency.pingMillis(shooter) + Math.max(0, lagCompensation.getInterpolationMillis()));
+
+        return Math.clamp(asked, 0L, cap);
     }
 
     private Target targetAt(LivingEntity entity, long at) {
@@ -486,10 +544,10 @@ public class Manor2 extends InventoryUnifiedMinigame {
             }
 
             int illuminance = getFlickeringIlluminance();
-            triggerLightCheck(player, FLASHLIGHT_DISTANCE, illuminance, targetsOf());
             if (illuminance <= 0) {
                 return;
             }
+            triggerLightCheck(player, FLASHLIGHT_DISTANCE, illuminance, targetsOf(rewindOf(player), Ghost.class::isInstance));
             illuminate(illuminance);
         }
 
@@ -624,12 +682,9 @@ public class Manor2 extends InventoryUnifiedMinigame {
             Vector direction = muzzle.getDirection().normalize();
             double range = Math.max(0.5, lightDistance);
 
-            muzzle.getWorld().playSound(muzzle, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.8f);
-            muzzle.getWorld().playSound(muzzle, Sound.ITEM_FIRECHARGE_USE, 0.9f, 0.7f);
-
-            int hits = 0;
+            List<Player> hitPlayers = new ArrayList<>();
             double tanHalfAngle = maxLight / lightDistance;
-            double cosHalfAngle = maxLight / Math.sqrt(maxLight * maxLight + lightDistance * lightDistance);
+            double cosHalfAngle = lightDistance / Math.sqrt(maxLight * maxLight + lightDistance * lightDistance);
             Vector apex = muzzle.toVector();
 
             for (Target target : targets) {
@@ -645,7 +700,10 @@ public class Manor2 extends InventoryUnifiedMinigame {
                 if (length > 1.0E-4 && !hasClearShot(muzzle, toTarget.multiply(1.0 / length), length)) {
                     continue;
                 }
-                hits++;
+                hitPlayers.add((Player) target.entity);
+            }
+            if (!hitPlayers.isEmpty()) {
+                shooter.playSound(shooter, Sound.BLOCK_BELL_USE, 1f, 1f); //TODO add actual damage
             }
         }
 

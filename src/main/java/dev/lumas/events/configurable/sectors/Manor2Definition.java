@@ -21,4 +21,13 @@ public class Manor2Definition extends OkaeriConfig {
     private int ghostRevealTime = 100;
     @Comment("The time until a hunter is killed by being consumed by ghost (ticks)")
     private int hunterDeathTime = 50;
+    private LagCompensationSettings lagCompensation = new LagCompensationSettings();
+
+    @Getter
+    public static class LagCompensationSettings extends OkaeriConfig {
+
+        private boolean enabled = true;
+        private int interpolationMillis = 120;
+        private int maxRewindMillis = 300;
+    }
 }
