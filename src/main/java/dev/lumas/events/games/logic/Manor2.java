@@ -332,19 +332,20 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
     private class Flashlight {
 
-        private static final int MIN_ILLUMINANCE = 8;
+        private static final int MIN_ILLUMINANCE = 7;
         private static final int MAX_ILLUMINANCE = 12;
         private static final float FLICKER_START = 25f;
         private static final float HEAVY_FLICKER_START = 10f;
         private static final float MAX_BATTERY_CHARGE = 100f;
-        private static final float BATTERY_DRAIN_PER_TICK = 100f / (20f * 120f);
+        private static final float BATTERY_DRAIN_PER_TICK = 100f / (20f * 40f);
+        private static final float BATTERY_SELF_CHARGE_PER_TICK = 100f / (20f * 20f);
         private static final int LIGHT_BLOCK_LIFETIME = 4;
         private static final int FLASHLIGHT_DISTANCE = 8;
 
         private final Player player;
 
         @Getter
-        private float batteryCharge = 50f; // TODO: set to 100% after testing
+        private float batteryCharge = 100f;
 
         @Getter
         private boolean active = false;
@@ -357,7 +358,13 @@ public class Manor2 extends InventoryUnifiedMinigame {
         }
 
         public void tick() {
-            active = isInUse() && batteryCharge > 0f;
+            if (!isInUse()) {
+                batteryCharge = Math.clamp(batteryCharge + BATTERY_SELF_CHARGE_PER_TICK, 0f, 100f);
+                updateItem();
+                return;
+            }
+
+            active = batteryCharge > 0f;
             if (!active) return;
 
             drainBattery();
@@ -475,12 +482,12 @@ public class Manor2 extends InventoryUnifiedMinigame {
             item.setData(DataComponentTypes.ITEM_MODEL, NamespacedKey.minecraft("spyglass"));
             item.setData(DataComponentTypes.CUSTOM_NAME, Util.color("<gold><bold>Flashlight"));
             item.setData(DataComponentTypes.TOOLTIP_DISPLAY, TooltipDisplay.tooltipDisplay()
-                    .addHiddenComponents(DataComponentTypes.DAMAGE)
+                    .addHiddenComponents(DataComponentTypes.ATTRIBUTE_MODIFIERS)
                     .build());
             item.editPersistentDataContainer(pdc -> {
                 pdc.set(TAGGED, PersistentDataType.STRING, "flashlight");
             });
-            item.setData(DataComponentTypes.MAX_DAMAGE, 100);
+            item.setData(DataComponentTypes.MAX_DAMAGE, 101);
             item.setData(DataComponentTypes.USE_EFFECTS, UseEffects.useEffects()
                     .canSprint(true)
                     .speedMultiplier(1.0f)
