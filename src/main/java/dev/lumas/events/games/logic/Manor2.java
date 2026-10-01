@@ -24,10 +24,10 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockType;
+import org.bukkit.block.data.type.Slab;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Trident;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
@@ -182,20 +182,10 @@ public class Manor2 extends InventoryUnifiedMinigame {
     }
 
     @EventHandler
-    public void onPlayerInteract(PlayerInteractEvent event) {
-        if (!event.getAction().isRightClick()) return;
-        if (!Flashlight.isFlashlight(event.getItem())) return;
-        Flashlight flashlight = flashlights.get(event.getPlayer());
-        if (flashlight != null) flashlight.startUsing();
-    }
-
-    @EventHandler
     public void onTridentThrow(PlayerLaunchProjectileEvent event) {
         if (!(event.getProjectile() instanceof Trident)) return;
         if (!Flashlight.isFlashlight(event.getItemStack())) return;
         event.setCancelled(true);
-        Flashlight flashlight = flashlights.get(event.getPlayer());
-        if (flashlight != null) flashlight.stopUsing();
     }
 
     @Override
@@ -363,29 +353,15 @@ public class Manor2 extends InventoryUnifiedMinigame {
             this.player = player;
         }
 
-        public void startUsing() {
-            if (batteryCharge <= 0f) return;
-            if (!isHeld()) return;
-            active = true;
-        }
-
-        public void stopUsing() {
-            active = false;
-        }
-
         public void tick() {
+            active = isInUse() && batteryCharge > 0f;
             if (!active) return;
-
-            if (!isHeld()) {
-                stopUsing();
-                return;
-            }
 
             drainBattery();
             updateItem();
 
             if (batteryCharge <= 0f) {
-                stopUsing();
+                active = false;
                 return;
             }
 
@@ -398,8 +374,8 @@ public class Manor2 extends InventoryUnifiedMinigame {
             batteryCharge = Math.max(batteryCharge - BATTERY_DRAIN_PER_TICK, 0f);
         }
 
-        private boolean isHeld() {
-            return isFlashlight(player.getInventory().getItemInMainHand());
+        private boolean isInUse() {
+            return player.hasActiveItem() && isFlashlight(player.getActiveItem());
         }
 
         private int getBaseIlluminance() {
@@ -450,24 +426,19 @@ public class Manor2 extends InventoryUnifiedMinigame {
             Location head = location.toCenterLocation().add(0, 1, 0);
             Set<Location> alreadyPlaced = new HashSet<>();
 
-            Location headBlock = head.toBlockLocation();
-            if (headBlock.getBlock().getType().isAir()) {
-                alreadyPlaced.add(headBlock);
-                blockCache.setBlock(headBlock, BlockType.LIGHT.createBlockData(light -> light.setLevel(illuminance)), LIGHT_BLOCK_LIFETIME);
-            }
-
             int firstHit = 0;
 
             for (int i = 0; i < FLASHLIGHT_DISTANCE * 2; i++) {
                 Location posToCheck = head.clone().add(location.getDirection().clone().multiply((double) i / 2));
-                if (posToCheck.getBlock().getType().isOccluding()) break;
+                if (blocksBeam(posToCheck.getBlock())) break;
                 firstHit = i;
             }
 
-            if (firstHit == 0) return;
+            int maxSteps = FLASHLIGHT_DISTANCE * 2;
+            int offset = maxSteps - 1 - firstHit;
 
-            for (int i = firstHit; i > 0; i--) {
-                int lightLevel = Math.floorDiv(i * illuminance, firstHit);
+            for (int i = 0; i <= firstHit; i++) {
+                int lightLevel = Math.floorDiv((i + 1 + offset) * illuminance, maxSteps);
                 if (lightLevel <= 0) continue;
 
                 Location lightLoc = head.clone().add(location.getDirection().clone().multiply((double) i / 2)).toBlockLocation();
@@ -478,7 +449,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
                     alreadyPlaced.add(lightLoc);
                     blockCache.setBlock(lightLoc, BlockType.LIGHT.createBlockData(light -> light.setLevel(lightLevel)), LIGHT_BLOCK_LIFETIME);
                 }
-                else if (!block.getType().isOccluding() && block.getRelative(BlockFace.UP).getType().isAir()) {
+                else if (!blocksBeam(block) && block.getRelative(BlockFace.UP).getType().isAir()) {
                     Location newLoc = lightLoc.clone().add(0, 1, 0);
                     if (!alreadyPlaced.add(newLoc)) continue;
                     blockCache.setBlock(newLoc, BlockType.LIGHT.createBlockData(light -> light.setLevel(lightLevel)), LIGHT_BLOCK_LIFETIME);
@@ -486,8 +457,13 @@ public class Manor2 extends InventoryUnifiedMinigame {
             }
         }
 
+        private boolean blocksBeam(Block block) {
+            if (block.getType().isOccluding()) return true;
+            return block.getBlockData() instanceof Slab slab && slab.getType() == Slab.Type.DOUBLE;
+        }
+
         private void updateItem() {
-            ItemStack item = player.getInventory().getItemInMainHand();
+            ItemStack item = player.getInventory().getItem(player.getActiveItemHand());
             if (!isFlashlight(item)) return;
             item.setData(DataComponentTypes.DAMAGE, 100 - Math.round(batteryCharge));
         }
