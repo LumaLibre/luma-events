@@ -20,12 +20,15 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockType;
 import org.bukkit.block.data.type.Slab;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Trident;
 import org.bukkit.event.EventHandler;
@@ -34,14 +37,21 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.util.BoundingBox;
+import org.bukkit.util.RayTraceResult;
+import org.bukkit.util.Vector;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class Manor2 extends InventoryUnifiedMinigame {
@@ -66,6 +76,11 @@ public class Manor2 extends InventoryUnifiedMinigame {
     private static final long TICK_INTERVAL = 1L;
     private static final int TELEPORTS_PER_TICK = 5;
     private static final long END_DELAY_SECONDS = 10;
+    private static final int TRAIL_HISTORY_TICKS = 20;
+    // Mitality's secret
+    private static final double[] BODY_SAMPLE_FRACTIONS = {0.2, 0.5, 0.8};
+    private static final double BEAM_STEP = 0.5;
+    // End of mitality's secret
     private static final NamespacedKey TAGGED = new NamespacedKey(EventMain.getInstance(), "manor2/item_tag");
     private final Location lobbyLocation;
     private final List<Location> huntersStartLocations;
@@ -74,6 +89,8 @@ public class Manor2 extends InventoryUnifiedMinigame {
     private final MinigameRoleMap<Manor2Role> roleMap = new MinigameRoleMap<>();
     private final int ghostRevealTime;
     private final int hunterDeathTime;
+
+    private final ConcurrentHashMap<UUID, Trail> trails = new ConcurrentHashMap<>();
     private final LocalizedFakeBlockCache blockCache = new LocalizedFakeBlockCache(32);
     private CountdownBossBar timer;
 
@@ -270,6 +287,97 @@ public class Manor2 extends InventoryUnifiedMinigame {
         }
     }
 
+    private List<Target> targetsOf(long atTimestamp) {
+        List<Target> targets = new ArrayList<>();
+
+        for (Manor2Role participant : this.roleMap) {
+            if (participant instanceof Spectator) {
+                continue;
+            }
+            Player player = participant.getEventPlayer().getPlayer();
+            if (player == null) {
+                continue;
+            }
+
+            Target target = targetAt(player, atTimestamp);
+            if (target != null) {
+                targets.add(target);
+            }
+        }
+
+        return targets;
+    }
+
+    private Target targetAt(LivingEntity entity, long at) {
+        Trail trail = trails.get(entity.getUniqueId());
+        Snapshot snapshot = trail == null ? null : trail.at(at);
+        if (snapshot != null) return new Target(entity, snapshot.hitbox(), snapshot.eyeHeight());
+
+        return Bukkit.isOwnedByCurrentRegion(entity)
+                ? new Target(entity, entity.getBoundingBox(), entity.getEyeHeight())
+                : null;
+    }
+
+    private static final class Trail {
+
+        private final Snapshot[] snapshots = new Snapshot[TRAIL_HISTORY_TICKS];
+        private volatile int written;
+
+        private void record(LivingEntity entity) {
+            int index = this.written;
+            snapshots[Math.floorMod(index, TRAIL_HISTORY_TICKS)] =
+                    new Snapshot(System.nanoTime(), entity.getBoundingBox(), entity.getEyeHeight());
+            this.written = index + 1;
+        }
+
+        private void clear() {
+            Arrays.fill(snapshots, null);
+            this.written = 0;
+        }
+
+        // The hitbox this entity had at <when>, interpolated between the ticks either side of it
+        @org.jetbrains.annotations.Nullable
+        private Snapshot at(long when) {
+            int count = this.written; // Reading this first "publishes" every snapshot below it
+
+            Snapshot newer = null;
+            for (int age = 0; age < Math.min(count, TRAIL_HISTORY_TICKS); age++) {
+                Snapshot snapshot = snapshots[Math.floorMod(count - 1 - age, TRAIL_HISTORY_TICKS)];
+                if (snapshot == null) break;
+                if (snapshot.takenAt() <= when) {
+                    return newer == null ? snapshot : between(snapshot, newer, when);
+                }
+                newer = snapshot;
+            }
+            return newer;
+        }
+
+        private static Snapshot between(Snapshot older, Snapshot newer, long when) {
+            long span = newer.takenAt() - older.takenAt();
+            if (span <= 0) return newer;
+
+            double progress = Math.clamp((double) (when - older.takenAt()) / span, 0.0, 1.0);
+            BoundingBox from = older.hitbox();
+            BoundingBox to = newer.hitbox();
+
+            return new Snapshot(when, new BoundingBox(
+                    lerp(from.getMinX(), to.getMinX(), progress),
+                    lerp(from.getMinY(), to.getMinY(), progress),
+                    lerp(from.getMinZ(), to.getMinZ(), progress),
+                    lerp(from.getMaxX(), to.getMaxX(), progress),
+                    lerp(from.getMaxY(), to.getMaxY(), progress),
+                    lerp(from.getMaxZ(), to.getMaxZ(), progress)),
+                    lerp(older.eyeHeight(), newer.eyeHeight(), progress));
+        }
+
+        private static double lerp(double from, double to, double progress) {
+            return from + ((to - from) * progress);
+        }
+    }
+
+    private record Snapshot(long takenAt, BoundingBox hitbox, double eyeHeight) {
+    }
+
     private class GhostHunter extends Manor2Role {
 
         private int ghostConsumedTime = 0;
@@ -285,6 +393,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
         public void tick() {
             eventPlayer.operatePlayer(player -> {
                 flashlight.tick();
+
             });
         }
 
@@ -346,7 +455,6 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
         @Getter
         private float batteryCharge = 100f;
-
         @Getter
         private boolean active = false;
 
@@ -365,7 +473,9 @@ public class Manor2 extends InventoryUnifiedMinigame {
             }
 
             active = batteryCharge > 0f;
-            if (!active) return;
+            if (!active) {
+                return;
+            }
 
             drainBattery();
             updateItem();
@@ -376,7 +486,10 @@ public class Manor2 extends InventoryUnifiedMinigame {
             }
 
             int illuminance = getFlickeringIlluminance();
-            if (illuminance <= 0) return;
+            triggerLightCheck(player, FLASHLIGHT_DISTANCE, illuminance, targetsOf());
+            if (illuminance <= 0) {
+                return;
+            }
             illuminate(illuminance);
         }
 
@@ -472,9 +585,12 @@ public class Manor2 extends InventoryUnifiedMinigame {
         }
 
         private void updateItem() {
-            ItemStack item = player.getInventory().getItem(player.getActiveItemHand());
-            if (!isFlashlight(item)) return;
-            item.setData(DataComponentTypes.DAMAGE, 100 - Math.round(batteryCharge));
+            for (ItemStack itemStack : player.getInventory()) {
+                if (!isFlashlight(itemStack)) {
+                    continue;
+                }
+                itemStack.setData(DataComponentTypes.DAMAGE, 101 - Math.round(batteryCharge));
+            }
         }
 
         public ItemStack createItem() {
@@ -493,7 +609,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
                     .speedMultiplier(1.0f)
                     .interactVibrations(true)
                     .build());
-            item.setData(DataComponentTypes.DAMAGE, 100 - Math.round(batteryCharge));
+            item.setData(DataComponentTypes.DAMAGE, 101 - Math.round(batteryCharge));
             return item;
         }
 
@@ -503,6 +619,124 @@ public class Manor2 extends InventoryUnifiedMinigame {
             return "flashlight".equals(tag);
         }
 
+        private void triggerLightCheck(Player shooter, double lightDistance, double maxLight, Collection<Target> targets) {
+            Location muzzle = shooter.getEyeLocation();
+            Vector direction = muzzle.getDirection().normalize();
+            double range = Math.max(0.5, lightDistance);
+
+            muzzle.getWorld().playSound(muzzle, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.8f);
+            muzzle.getWorld().playSound(muzzle, Sound.ITEM_FIRECHARGE_USE, 0.9f, 0.7f);
+
+            int hits = 0;
+            double tanHalfAngle = maxLight / lightDistance;
+            double cosHalfAngle = maxLight / Math.sqrt(maxLight * maxLight + lightDistance * lightDistance);
+            Vector apex = muzzle.toVector();
+
+            for (Target target : targets) {
+                BoundingBox hitbox = target.hitbox();
+                double distance = coneHitDistance(apex, direction, range, tanHalfAngle, cosHalfAngle, hitbox);
+                if (distance < 0) {
+                    continue;
+                }
+
+                // Occlusion has to be checked towards the target, not down the middle of the cone / Mitality
+                Vector toTarget = hitbox.getCenter().subtract(apex);
+                double length = toTarget.length();
+                if (length > 1.0E-4 && !hasClearShot(muzzle, toTarget.multiply(1.0 / length), length)) {
+                    continue;
+                }
+                hits++;
+            }
+        }
+
+        private static double coneHitDistance(Vector apex, Vector axis, double range, double tanHalfAngle, double cosHalfAngle, BoundingBox hitbox) {
+            double height = hitbox.getHeight();
+            double radius = Math.max(Math.max(hitbox.getWidthX(), hitbox.getWidthZ()) / 2.0, height / 6.0);
+
+            // Nothing beyond this can reach the cone
+            double maxReach = range + (height / 2.0) + radius;
+            if (apex.distanceSquared(hitbox.getCenter()) > maxReach * maxReach) return -1;
+
+            double best = -1;
+            for (double fraction : BODY_SAMPLE_FRACTIONS) {
+                double dx = hitbox.getCenterX() - apex.getX();
+                double dy = (hitbox.getMinY() + (height * fraction)) - apex.getY();
+                double dz = hitbox.getCenterZ() - apex.getZ();
+
+                double distance = Math.sqrt((dx * dx) + (dy * dy) + (dz * dz));
+                if (distance <= radius) return 0; // muzzle is inside target
+
+                double along = (dx * axis.getX()) + (dy * axis.getY()) + (dz * axis.getZ());
+                if (along < 0 || along - radius > range) continue;
+
+                double offX = dx - (axis.getX() * along);
+                double offY = dy - (axis.getY() * along);
+                double offZ = dz - (axis.getZ() * along);
+                double fromAxis = Math.sqrt((offX * offX) + (offY * offY) + (offZ * offZ));
+
+                // The cone widens with distance, and a sphere of <radius> widens what counts as touching it
+                if (fromAxis > (along * tanHalfAngle) + (radius / cosHalfAngle)) continue;
+
+                double toSurface = Math.max(0, distance - radius);
+                if (toSurface <= range && (best < 0 || toSurface < best)) best = toSurface;
+            }
+            return best;
+        }
+
+        private static boolean hasClearShot(Location from, Vector direction, double distance) {
+            World world = from.getWorld();
+            Vector origin = from.toVector();
+            int lastX = Integer.MIN_VALUE;
+            int lastY = Integer.MIN_VALUE;
+            int lastZ = Integer.MIN_VALUE;
+
+            for (double travelled = BEAM_STEP; travelled < distance; travelled += BEAM_STEP) {
+                int blockX = (int) Math.floor(from.getX() + (direction.getX() * travelled));
+                int blockY = (int) Math.floor(from.getY() + (direction.getY() * travelled));
+                int blockZ = (int) Math.floor(from.getZ() + (direction.getZ() * travelled));
+
+                if (blockX == lastX && blockY == lastY && blockZ == lastZ) continue; // Same block as the last step
+                lastX = blockX;
+                lastY = blockY;
+                lastZ = blockZ;
+
+                if (!Bukkit.isOwnedByCurrentRegion(world, blockX >> 4, blockZ >> 4)) return true;
+                if (solidHitDistance(world.getBlockAt(blockX, blockY, blockZ), origin, direction, distance) >= 0) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static double solidHitDistance(Block block, Vector origin, Vector direction, double maxDistance) {
+            if (!couldStopShots(block)) return -1;
+
+            BoundingBox bounds = block.getBoundingBox();
+            if (bounds.getVolume() <= 0) return -1;
+            if (bounds.contains(origin)) return 0; // Fired from inside the block itself
+
+            // <direction> is normalized, so this is the distance along the ray
+            RayTraceResult hit = bounds.rayTrace(origin, direction, maxDistance);
+            return hit == null ? -1 : hit.getHitPosition().distance(origin);
+        }
+
+        private static boolean couldStopShots(Block block) {
+            return !block.isPassable() && block.getType() != Material.BARRIER;
+        }
+
+
     }
 
+    private record Target(LivingEntity entity, BoundingBox hitbox, double eyeHeight) {
+
+        private BoundingBox expandedHitbox(double radius) {
+            return hitbox.clone().expand(radius);
+        }
+
+        private boolean containsWithin(double radius, double x, double y, double z) {
+            return x >= hitbox.getMinX() - radius && x < hitbox.getMaxX() + radius
+                    && y >= hitbox.getMinY() - radius && y < hitbox.getMaxY() + radius
+                    && z >= hitbox.getMinZ() - radius && z < hitbox.getMaxZ() + radius;
+        }
+    }
 }
