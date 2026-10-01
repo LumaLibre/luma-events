@@ -332,7 +332,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
     private class Flashlight {
 
-        private static final int MIN_ILLUMINANCE = 4;
+        private static final int MIN_ILLUMINANCE = 8;
         private static final int MAX_ILLUMINANCE = 12;
         private static final float FLICKER_START = 25f;
         private static final float HEAVY_FLICKER_START = 10f;
