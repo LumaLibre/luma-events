@@ -26,6 +26,7 @@ repositories {
     maven("https://maven.enginehub.org/repo/")
     maven("https://mvn.lib.co.nz/public/")
     maven("https://repo.glaremasters.me/repository/towny/") // towny
+    maven("https://repo.opencollab.dev/main/") // floodgate
 }
 
 
@@ -35,8 +36,6 @@ dependencies {
     compileOnly("dev.lumas.glowapi:LumaGlowAPI:325d91d")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("com.nuclyon.technicallycoded.inventoryrollback:InventoryRollbackPlus:1.7.3")
-    // Transitively drags in worldguard/worldedit SNAPSHOTs we don't use, which makes every build
-    // depend on enginehub's repo being up. WorldEdit itself comes from FAWE below.
     compileOnly("com.github.Zrips:jobs:v4.17.2") {
         isTransitive = false
     }
@@ -67,6 +66,7 @@ dependencies {
     }
 
     compileOnly("com.github.LumaLibre:HiddenArmor-Folia:96bcba105e") // TODO: needs to be on repo.jsinco.dev
+    compileOnly("org.geysermc.floodgate:api:2.2.5-SNAPSHOT")
 }
 
 tasks {
