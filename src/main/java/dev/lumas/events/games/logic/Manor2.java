@@ -21,9 +21,11 @@ import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
@@ -61,6 +63,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -75,7 +78,6 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             "Trick or treat?",
             "Here's Johny!!!",
             "Put these foolish ambitions to rest",
-            "Go eat candy instead :(",
             "Wazzzuup!",
             "Did you pray enough?",
             "It's alive! It's alive!",
@@ -201,7 +203,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             this.timer.getBossBar().removeViewer(player.getPlayer());
         }
         if (roleMap.get(player.getUuid()) instanceof Ghost ghost) {
-            ghost.visibility.release();
+            ghost.visibility.stop();
         }
         return super.removeParticipant(player, doTeleport);
     }
@@ -364,7 +366,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         @Override
         public CompletableFuture<Void> retire() {
-            visibility.release();
+            visibility.stop();
             return super.retire();
         }
     }
@@ -737,8 +739,9 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             double range = Math.max(0.5, lightDistance);
 
             Map<Ghost, LightHit> hit = new HashMap<>();
-            double tanHalfAngle = maxLight / lightDistance;
-            double cosHalfAngle = lightDistance / Math.sqrt(maxLight * maxLight + lightDistance * lightDistance);
+            double hitWidth = maxLight / 2;
+            double tanHalfAngle = hitWidth / lightDistance;
+            double cosHalfAngle = lightDistance / Math.sqrt(hitWidth * hitWidth + lightDistance * lightDistance);
             Vector apex = muzzle.toVector();
 
             for (Target target : targets) {
@@ -884,8 +887,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private final class GhostVisibility {
 
         private static final int HIDE_AFTER_UNLIT_TICKS = 10;
-        private static final double EXPOSED_MIN_CENTEREDNESS = 0.8;
-        private static final double SILHOUETTE_MIN_CENTEREDNESS = 0.6;
+        private static final double EXPOSED_MIN_CENTEREDNESS = 0.6;
+        private static final double SILHOUETTE_MIN_CENTEREDNESS = 0.1;
         private static final int EXPOSED_MIN_LIGHT_LEVEL = 7;
         private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 3, 0, true, true, false);
         private static final PotionEffect GLOW = new PotionEffect(PotionEffectType.GLOWING, 3, 0, true, true, false);
@@ -898,26 +901,28 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         private final Set<UUID> hiddenFrom = ConcurrentHashMap.newKeySet();
         private final Object vanishLock = new Object(); // TODO: probably a better way to do this, i didnt want to deal with the race conditions - Jsinco
-        private volatile boolean released = false;
+        private volatile boolean stopping = false;
 
         private GhostVisibility(EventPlayer ghost) {
             this.ghost = ghost;
         }
 
         public void light(LightHit hit) {
-            if (released) return;
+            if (stopping) return;
             pendingLight.accumulateAndGet(hit, (current, next) -> current == null || isStronger(next, current) ? next : current);
         }
 
         public void tick() {
-            if (released) return;
+            if (stopping) return;
             LightHit hit = pendingLight.getAndSet(null);
+            RevealState previous = state;
             if (hit != null) {
                 unlitTicks = 0;
                 state = stateOf(hit);
             } else if (++unlitTicks >= HIDE_AFTER_UNLIT_TICKS) {
                 state = RevealState.HIDDEN;
             }
+            boolean changed = state != previous;
 
             Bukkit.broadcastMessage("Ghost visibility tick (" + ghost.getName() + "): " + state + ", unlitTicks: " + unlitTicks + (hit == null
                     ? ", not lit"
@@ -925,15 +930,35 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
             RevealState current = state;
             ghost.operatePlayer(player -> {
-                if (released) return; // Released while this was queued
+                if (stopping) return; // Released while this was queued
                 if (current == RevealState.EXPOSED) {
                     player.removePotionEffect(PotionEffectType.INVISIBILITY);
+                    if (changed) {
+                        Location playerLocation = player.getLocation();
+                        playerLocation.getWorld().spawnParticle(
+                                Particle.DUST_PILLAR,
+                                playerLocation,
+                                10,
+                                BlockType.WHITE_CONCRETE.createBlockData()
+                        );
+                    }
                 } else {
                     player.addPotionEffect(INVISIBILITY);
                 }
 
                 if (current.isRevealed()) {
                     player.addPotionEffect(GLOW);
+                    Location playerLocation = player.getLocation();
+                    playerLocation.getWorld().spawnParticle(
+                            Particle.DUST,
+                            playerLocation.clone().add(
+                                    ThreadLocalRandom.current().nextDouble(-0.5, 0.5),
+                                    ThreadLocalRandom.current().nextDouble(0, 2),
+                                    ThreadLocalRandom.current().nextDouble(-0.5, 0.5)
+                            ),
+                            1,
+                            new Particle.DustOptions(Color.GRAY, 1f)
+                    );
                 } else {
                     player.removePotionEffect(PotionEffectType.GLOWING);
                 }
@@ -942,11 +967,11 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             });
         }
 
-        public void release() {
+        public void stop() {
             List<UUID> toShow;
             synchronized (vanishLock) {
-                if (released) return;
-                released = true;
+                if (stopping) return;
+                stopping = true;
                 toShow = List.copyOf(hiddenFrom);
             }
             pendingLight.set(null);
@@ -999,7 +1024,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         private void hideFrom(Player viewer, Player self) {
             synchronized (vanishLock) {
-                if (released) return;
+                if (stopping) return;
                 viewer.hidePlayer(EventMain.getInstance(), self);
                 hiddenFrom.add(viewer.getUniqueId());
             }
