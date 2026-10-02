@@ -12,12 +12,14 @@ import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.clientside.LocalizedFakeBlockCache;
 import dev.lumas.events.utility.latency.LatencyTracker;
+import dev.lumas.glowapi.model.GlowColorManager;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import io.papermc.paper.datacomponent.item.UseEffects;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -29,6 +31,9 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockType;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Levelled;
+import org.bukkit.block.data.type.Light;
 import org.bukkit.block.data.type.Slab;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -48,16 +53,19 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
-public class Manor2 extends InventoryUnifiedMinigame {
+public final class Manor2 extends InventoryUnifiedMinigame {
     private static final String[] SPLASH = {
             "Are you afraid of ghosts?",
             "Boooooooooooo!!!!",
@@ -144,6 +152,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
                     }
             );
         }
+        showParticipantsToEachOther();
         Bukkit.getRegionScheduler().runAtFixedRate(
                 EventMain.getInstance(),
                 huntersStartLocations.getFirst(),
@@ -191,6 +200,9 @@ public class Manor2 extends InventoryUnifiedMinigame {
         if (player.getPlayer() != null && this.timer != null) {
             this.timer.getBossBar().removeViewer(player.getPlayer());
         }
+        if (roleMap.get(player.getUuid()) instanceof Ghost ghost) {
+            ghost.visibility.release();
+        }
         return super.removeParticipant(player, doTeleport);
     }
 
@@ -198,7 +210,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
     protected void onRunnable(long timeLeft) {
         if (this.stopping) return;
         if (timeLeft <= TimeUnit.SECONDS.toMillis(END_DELAY_SECONDS)) {
-            this.handleStop();
+            this.stop();
         }
         tickRecorders();
         for (Manor2Role role : roleMap) {
@@ -209,22 +221,12 @@ public class Manor2 extends InventoryUnifiedMinigame {
         }
     }
 
-    @EventHandler
-    public void onTridentThrow(PlayerLaunchProjectileEvent event) {
-        if (!(event.getProjectile() instanceof Trident)) return;
-        if (!Flashlight.isFlashlight(event.getItemStack())) return;
-        event.setCancelled(true);
-    }
-
     @Override
     protected void handleStop() {
         if (timer != null) timer.stop(false);
 
-        Bukkit.getRegionScheduler().run(
-                EventMain.getInstance(),
-                huntersStartLocations.getFirst(),
-                ignore -> blockCache.shutdown()
-        );
+        Executors.sync(huntersStartLocations.getFirst(), blockCache::shutdown);
+
         List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
         for (Manor2Role role : roleMap) {
             completableFutures.add(role.retire());
@@ -232,6 +234,25 @@ public class Manor2 extends InventoryUnifiedMinigame {
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
                 .join();
 
+    }
+
+    @EventHandler
+    public void onTridentThrow(PlayerLaunchProjectileEvent event) {
+        if (!(event.getProjectile() instanceof Trident)) return;
+        if (!Flashlight.isFlashlight(event.getItemStack())) return;
+        event.setCancelled(true);
+    }
+
+
+    private void showParticipantsToEachOther() {
+        List<Player> players = onlineParticipants();
+        for (Player viewer : players) {
+            Executors.runSync(viewer, () -> {
+                for (Player other : players) {
+                    if (other != viewer) viewer.showPlayer(EventMain.getInstance(), other);
+                }
+            });
+        }
     }
 
     private List<Player> onlineParticipants() {
@@ -278,6 +299,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
                     }
                 }
                 player.clearActivePotionEffects();
+                GlowColorManager.getInstance().update(player);
                 completed.complete(null);
             });
             return completed;
@@ -292,11 +314,15 @@ public class Manor2 extends InventoryUnifiedMinigame {
 
     private class Ghost extends Manor2Role {
 
+        private final GhostVisibility visibility;
         private int revealedTime = 0;
-        private volatile boolean revealed = false;
 
         protected Ghost(EventPlayer eventPlayer) {
             super(eventPlayer);
+            this.visibility = new GhostVisibility(eventPlayer);
+            eventPlayer.operatePlayer(player -> {
+                GlowColorManager.getInstance().setTransientColor(player, NamedTextColor.GRAY);
+            });
         }
 
         @Override
@@ -326,11 +352,20 @@ public class Manor2 extends InventoryUnifiedMinigame {
         }
 
         public void tick() {
+            visibility.tick();
+
+            if (visibility.getState().isRevealed()) revealedTime++;
+            else revealedTime = 0; // <- TODO: intended?
         }
 
-        public void reveal() {
-            eventPlayer.operatePlayer(player -> player.setInvisible(false));
-            revealed = true;
+        public void light(LightHit hit) {
+            visibility.light(hit);
+        }
+
+        @Override
+        public CompletableFuture<Void> retire() {
+            visibility.release();
+            return super.retire();
         }
     }
 
@@ -394,8 +429,7 @@ public class Manor2 extends InventoryUnifiedMinigame {
         }
 
         // The hitbox this entity had at <when>, interpolated between the ticks either side of it
-        @org.jetbrains.annotations.Nullable
-        private Snapshot at(long when) {
+        private @Nullable Snapshot at(long when) {
             int count = this.written; // Reading this first "publishes" every snapshot below it
 
             Snapshot newer = null;
@@ -508,6 +542,10 @@ public class Manor2 extends InventoryUnifiedMinigame {
         private static final float BATTERY_SELF_CHARGE_PER_TICK = 100f / (20f * 20f);
         private static final int LIGHT_BLOCK_LIFETIME = 4;
         private static final int FLASHLIGHT_DISTANCE = 8;
+        private static final double LIGHT_SAMPLE_STEP = 0.25;
+        private static final BlockFace[] LIGHT_FALLBACK_FACES = {
+                BlockFace.UP, BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.DOWN
+        };
 
         private final Player player;
 
@@ -547,7 +585,8 @@ public class Manor2 extends InventoryUnifiedMinigame {
             if (illuminance <= 0) {
                 return;
             }
-            triggerLightCheck(player, FLASHLIGHT_DISTANCE, illuminance, targetsOf(rewindOf(player), Ghost.class::isInstance));
+            // rewindOf is how far back to look, the trails want the moment itself
+            triggerLightCheck(player, FLASHLIGHT_DISTANCE, illuminance, targetsOf(System.nanoTime() - rewindOf(player), Ghost.class::isInstance));
             illuminate(illuminance);
         }
 
@@ -603,38 +642,53 @@ public class Manor2 extends InventoryUnifiedMinigame {
         }
 
         private void illuminate(int illuminance) {
-            Location location = player.getLocation();
-            Location head = location.toCenterLocation().add(0, 1, 0);
-            Set<Location> alreadyPlaced = new HashSet<>();
+            Location eye = player.getEyeLocation();
+            Vector direction = eye.getDirection();
 
-            int firstHit = 0;
-
-            for (int i = 0; i < FLASHLIGHT_DISTANCE * 2; i++) {
-                Location posToCheck = head.clone().add(location.getDirection().clone().multiply((double) i / 2));
-                if (blocksBeam(posToCheck.getBlock())) break;
-                firstHit = i;
+            List<Block> beam = new ArrayList<>();
+            int maxSteps = (int) Math.ceil(FLASHLIGHT_DISTANCE / LIGHT_SAMPLE_STEP);
+            for (int i = 0; i <= maxSteps; i++) {
+                Block block = eye.clone().add(direction.clone().multiply(i * LIGHT_SAMPLE_STEP)).getBlock();
+                if (blocksBeam(block)) break;
+                if (beam.isEmpty() || !beam.getLast().equals(block)) beam.add(block);
             }
+            if (beam.isEmpty()) return;
 
-            int maxSteps = FLASHLIGHT_DISTANCE * 2;
-            int offset = maxSteps - 1 - firstHit;
-
-            for (int i = 0; i <= firstHit; i++) {
-                int lightLevel = Math.floorDiv((i + 1 + offset) * illuminance, maxSteps);
+            Location end = beam.getLast().getLocation().toCenterLocation();
+            Map<Block, Integer> lights = new HashMap<>();
+            for (Block block : beam) {
+                double distanceFromEnd = block.getLocation().toCenterLocation().distance(end);
+                int lightLevel = (int) Math.floor(illuminance * (1 - distanceFromEnd / FLASHLIGHT_DISTANCE));
                 if (lightLevel <= 0) continue;
 
-                Location lightLoc = head.clone().add(location.getDirection().clone().multiply((double) i / 2)).toBlockLocation();
-                Block block = lightLoc.getBlock();
-
-                if (block.getType().isAir()) {
-                    if (alreadyPlaced.contains(lightLoc)) continue;
-                    alreadyPlaced.add(lightLoc);
-                    blockCache.setBlock(lightLoc, BlockType.LIGHT.createBlockData(light -> light.setLevel(lightLevel)), LIGHT_BLOCK_LIFETIME);
-                } else if (!blocksBeam(block) && block.getRelative(BlockFace.UP).getType().isAir()) {
-                    Location newLoc = lightLoc.clone().add(0, 1, 0);
-                    if (!alreadyPlaced.add(newLoc)) continue;
-                    blockCache.setBlock(newLoc, BlockType.LIGHT.createBlockData(light -> light.setLevel(lightLevel)), LIGHT_BLOCK_LIFETIME);
-                }
+                Block spot = findLightSpot(block, lightLevel);
+                if (spot == null) continue;
+                lights.merge(spot, lightLevel, Math::max);
             }
+
+            lights.forEach((spot, lightLevel) -> {
+                BlockData blockData = BlockType.LIGHT.createBlockData(light -> {
+                    light.setLevel(lightLevel);
+                    light.setWaterlogged(spot.getType() == Material.WATER);
+                });
+                blockCache.setBlock(spot.getLocation(), blockData, LIGHT_BLOCK_LIFETIME);
+            });
+        }
+
+        private @Nullable Block findLightSpot(Block block, int lightLevel) {
+            if (canHoldLight(block, lightLevel)) return block;
+            for (BlockFace face : LIGHT_FALLBACK_FACES) {
+                Block relative = block.getRelative(face);
+                if (canHoldLight(relative, lightLevel)) return relative;
+            }
+            return null;
+        }
+
+        private boolean canHoldLight(Block block, int lightLevel) {
+            BlockData data = block.getBlockData();
+            if (data instanceof Light light) return light.getLevel() < lightLevel;
+            if (block.getType().isAir()) return true;
+            return block.getType() == Material.WATER && data instanceof Levelled water && water.getLevel() == 0;
         }
 
         private boolean blocksBeam(Block block) {
@@ -682,15 +736,15 @@ public class Manor2 extends InventoryUnifiedMinigame {
             Vector direction = muzzle.getDirection().normalize();
             double range = Math.max(0.5, lightDistance);
 
-            List<Player> hitPlayers = new ArrayList<>();
+            Map<Ghost, LightHit> hit = new HashMap<>();
             double tanHalfAngle = maxLight / lightDistance;
             double cosHalfAngle = lightDistance / Math.sqrt(maxLight * maxLight + lightDistance * lightDistance);
             Vector apex = muzzle.toVector();
 
             for (Target target : targets) {
                 BoundingBox hitbox = target.hitbox();
-                double distance = coneHitDistance(apex, direction, range, tanHalfAngle, cosHalfAngle, hitbox);
-                if (distance < 0) {
+                LightHit lightHit = coneHit(apex, direction, range, maxLight, tanHalfAngle, cosHalfAngle, hitbox);
+                if (lightHit == null) {
                     continue;
                 }
 
@@ -700,29 +754,39 @@ public class Manor2 extends InventoryUnifiedMinigame {
                 if (length > 1.0E-4 && !hasClearShot(muzzle, toTarget.multiply(1.0 / length), length)) {
                     continue;
                 }
-                hitPlayers.add((Player) target.entity);
+
+                if (target.entity instanceof Player hitPlayer) {
+                    Ghost ghost = roleMap.as(hitPlayer.getUniqueId(), Ghost.class);
+                    if (ghost != null) {
+                        hit.put(ghost, lightHit);
+                    }
+                }
             }
-            if (!hitPlayers.isEmpty()) {
+
+            hit.forEach(Ghost::light);
+            if (!hit.isEmpty()) {
                 shooter.playSound(shooter, Sound.BLOCK_BELL_USE, 1f, 1f); //TODO add actual damage
             }
         }
 
-        private static double coneHitDistance(Vector apex, Vector axis, double range, double tanHalfAngle, double cosHalfAngle, BoundingBox hitbox) {
+        // Where the cone catches the hitbox: the closest distance to it and how near the centre of the beam it gets
+        private static @Nullable LightHit coneHit(Vector apex, Vector axis, double range, double maxLight, double tanHalfAngle, double cosHalfAngle, BoundingBox hitbox) {
             double height = hitbox.getHeight();
             double radius = Math.max(Math.max(hitbox.getWidthX(), hitbox.getWidthZ()) / 2.0, height / 6.0);
 
             // Nothing beyond this can reach the cone
             double maxReach = range + (height / 2.0) + radius;
-            if (apex.distanceSquared(hitbox.getCenter()) > maxReach * maxReach) return -1;
+            if (apex.distanceSquared(hitbox.getCenter()) > maxReach * maxReach) return null;
 
             double best = -1;
+            double bestCenteredness = 0;
             for (double fraction : BODY_SAMPLE_FRACTIONS) {
                 double dx = hitbox.getCenterX() - apex.getX();
                 double dy = (hitbox.getMinY() + (height * fraction)) - apex.getY();
                 double dz = hitbox.getCenterZ() - apex.getZ();
 
                 double distance = Math.sqrt((dx * dx) + (dy * dy) + (dz * dz));
-                if (distance <= radius) return 0; // muzzle is inside target
+                if (distance <= radius) return new LightHit(0, 1, (int) maxLight); // muzzle is inside target
 
                 double along = (dx * axis.getX()) + (dy * axis.getY()) + (dz * axis.getZ());
                 if (along < 0 || along - radius > range) continue;
@@ -733,12 +797,18 @@ public class Manor2 extends InventoryUnifiedMinigame {
                 double fromAxis = Math.sqrt((offX * offX) + (offY * offY) + (offZ * offZ));
 
                 // The cone widens with distance, and a sphere of <radius> widens what counts as touching it
-                if (fromAxis > (along * tanHalfAngle) + (radius / cosHalfAngle)) continue;
+                double coneRadius = (along * tanHalfAngle) + (radius / cosHalfAngle);
+                if (fromAxis > coneRadius) continue;
 
                 double toSurface = Math.max(0, distance - radius);
-                if (toSurface <= range && (best < 0 || toSurface < best)) best = toSurface;
+                if (toSurface > range) continue;
+                if (best < 0 || toSurface < best) best = toSurface;
+                bestCenteredness = Math.max(bestCenteredness, 1 - (fromAxis / coneRadius));
             }
-            return best;
+            if (best < 0) return null;
+
+            int lightLevel = (int) Math.floor(maxLight * (1 - best / range));
+            return new LightHit(best, bestCenteredness, lightLevel);
         }
 
         private static boolean hasClearShot(Location from, Vector direction, double distance) {
@@ -795,6 +865,149 @@ public class Manor2 extends InventoryUnifiedMinigame {
             return x >= hitbox.getMinX() - radius && x < hitbox.getMaxX() + radius
                     && y >= hitbox.getMinY() - radius && y < hitbox.getMaxY() + radius
                     && z >= hitbox.getMinZ() - radius && z < hitbox.getMaxZ() + radius;
+        }
+    }
+
+    private enum RevealState {
+        HIDDEN, // vanished + invisibility
+        SILHOUETTE, // glow + invisibility
+        EXPOSED; // glow
+
+        public boolean isRevealed() {
+            return this != HIDDEN;
+        }
+    }
+
+    private record LightHit(double distance, double centeredness, int lightLevel) {
+    }
+
+    private final class GhostVisibility {
+
+        private static final int HIDE_AFTER_UNLIT_TICKS = 10;
+        private static final double EXPOSED_MIN_CENTEREDNESS = 0.8;
+        private static final double SILHOUETTE_MIN_CENTEREDNESS = 0.6;
+        private static final int EXPOSED_MIN_LIGHT_LEVEL = 7;
+        private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 3, 0, true, true, false);
+        private static final PotionEffect GLOW = new PotionEffect(PotionEffectType.GLOWING, 3, 0, true, true, false);
+
+        private final EventPlayer ghost;
+        private final AtomicReference<@Nullable LightHit> pendingLight = new AtomicReference<>(); // strongest light from any hunter
+        @Getter
+        private volatile RevealState state = RevealState.HIDDEN;
+        private int unlitTicks = 0;
+
+        private final Set<UUID> hiddenFrom = ConcurrentHashMap.newKeySet();
+        private final Object vanishLock = new Object(); // TODO: probably a better way to do this, i didnt want to deal with the race conditions - Jsinco
+        private volatile boolean released = false;
+
+        private GhostVisibility(EventPlayer ghost) {
+            this.ghost = ghost;
+        }
+
+        public void light(LightHit hit) {
+            if (released) return;
+            pendingLight.accumulateAndGet(hit, (current, next) -> current == null || isStronger(next, current) ? next : current);
+        }
+
+        public void tick() {
+            if (released) return;
+            LightHit hit = pendingLight.getAndSet(null);
+            if (hit != null) {
+                unlitTicks = 0;
+                state = stateOf(hit);
+            } else if (++unlitTicks >= HIDE_AFTER_UNLIT_TICKS) {
+                state = RevealState.HIDDEN;
+            }
+
+            Bukkit.broadcastMessage("Ghost visibility tick (" + ghost.getName() + "): " + state + ", unlitTicks: " + unlitTicks + (hit == null
+                    ? ", not lit"
+                    : String.format(", distance: %.2f, centeredness: %.2f, light level: %d", hit.distance(), hit.centeredness(), hit.lightLevel())));
+
+            RevealState current = state;
+            ghost.operatePlayer(player -> {
+                if (released) return; // Released while this was queued
+                if (current == RevealState.EXPOSED) {
+                    player.removePotionEffect(PotionEffectType.INVISIBILITY);
+                } else {
+                    player.addPotionEffect(INVISIBILITY);
+                }
+
+                if (current.isRevealed()) {
+                    player.addPotionEffect(GLOW);
+                } else {
+                    player.removePotionEffect(PotionEffectType.GLOWING);
+                }
+
+                setVanished(player, current == RevealState.HIDDEN);
+            });
+        }
+
+        public void release() {
+            List<UUID> toShow;
+            synchronized (vanishLock) {
+                if (released) return;
+                released = true;
+                toShow = List.copyOf(hiddenFrom);
+            }
+            pendingLight.set(null);
+            state = RevealState.EXPOSED;
+
+            ghost.operatePlayer(player -> {
+                player.removePotionEffect(PotionEffectType.INVISIBILITY);
+                player.removePotionEffect(PotionEffectType.GLOWING);
+            });
+
+            Player self = ghost.getPlayer();
+            if (self == null) return;
+            for (UUID viewerId : toShow) {
+                Player viewer = Bukkit.getPlayer(viewerId);
+                if (viewer == null) {
+                    hiddenFrom.remove(viewerId);
+                    continue;
+                }
+
+                Executors.runSync(viewer, () -> showTo(viewer, self));
+            }
+        }
+
+        private static RevealState stateOf(LightHit hit) {
+            if (hit.centeredness() < SILHOUETTE_MIN_CENTEREDNESS) return RevealState.HIDDEN;
+            boolean exposed = hit.centeredness() >= EXPOSED_MIN_CENTEREDNESS || hit.lightLevel() >= EXPOSED_MIN_LIGHT_LEVEL;
+            return exposed ? RevealState.EXPOSED : RevealState.SILHOUETTE;
+        }
+
+        private static boolean isStronger(LightHit hit, LightHit than) {
+            int byState = stateOf(hit).compareTo(stateOf(than));
+            return byState != 0 ? byState > 0 : hit.lightLevel() > than.lightLevel();
+        }
+
+        private void setVanished(Player self, boolean vanished) {
+            for (Manor2Role role : roleMap) {
+                if (role instanceof Ghost) continue; // TODO: ghosts can always see each other?
+                Player viewer = role.getEventPlayer().getPlayer();
+                if (viewer == null || viewer == self) continue;
+
+                boolean hide = vanished && participants.contains(role.getEventPlayer());
+                if (viewer.canSee(self) != hide) continue;
+
+                role.operatePlayer(target -> {
+                    if (hide) hideFrom(target, self);
+                    else showTo(target, self);
+                });
+            }
+        }
+
+        private void hideFrom(Player viewer, Player self) {
+            synchronized (vanishLock) {
+                if (released) return;
+                viewer.hidePlayer(EventMain.getInstance(), self);
+                hiddenFrom.add(viewer.getUniqueId());
+            }
+        }
+
+        private void showTo(Player viewer, Player self) {
+            viewer.showPlayer(EventMain.getInstance(), self);
+            hiddenFrom.remove(viewer.getUniqueId());
         }
     }
 }
