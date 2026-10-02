@@ -26,7 +26,6 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
-import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -360,8 +359,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             else revealedTime = 0; // <- TODO: intended?
         }
 
-        public void light(LightHit hit) {
-            visibility.light(hit);
+        public void light(LightHit hit, UUID playerUuid) {
+            visibility.light(hit, playerUuid);
         }
 
         @Override
@@ -766,10 +765,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                 }
             }
 
-            hit.forEach(Ghost::light);
-            if (!hit.isEmpty()) {
-                shooter.playSound(shooter, Sound.BLOCK_BELL_USE, 1f, 1f); //TODO add actual damage
-            }
+            hit.forEach((ghost, lightHit) -> ghost.light(lightHit, shooter.getUniqueId()));
         }
 
         // Where the cone catches the hitbox: the closest distance to it and how near the centre of the beam it gets
@@ -884,6 +880,9 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private record LightHit(double distance, double centeredness, int lightLevel) {
     }
 
+    private record LightHitRecord(LightHit hit, UUID shooter) {
+    }
+
     private final class GhostVisibility {
 
         private static final int HIDE_AFTER_UNLIT_TICKS = 10;
@@ -894,7 +893,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         private static final PotionEffect GLOW = new PotionEffect(PotionEffectType.GLOWING, 3, 0, true, true, false);
 
         private final EventPlayer ghost;
-        private final AtomicReference<@Nullable LightHit> pendingLight = new AtomicReference<>(); // strongest light from any hunter
+        private final AtomicReference<@Nullable LightHitRecord> pendingLight = new AtomicReference<>(); // strongest light from any hunter
         @Getter
         private volatile RevealState state = RevealState.HIDDEN;
         private int unlitTicks = 0;
@@ -907,14 +906,16 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             this.ghost = ghost;
         }
 
-        public void light(LightHit hit) {
+        public void light(LightHit hit, UUID playerUuid) {
             if (stopping) return;
-            pendingLight.accumulateAndGet(hit, (current, next) -> current == null || isStronger(next, current) ? next : current);
+            LightHitRecord entry = new LightHitRecord(hit, playerUuid);
+            pendingLight.accumulateAndGet(entry, (current, next) -> current == null || isStronger(next.hit(), current.hit()) ? next : current);
         }
 
         public void tick() {
             if (stopping) return;
-            LightHit hit = pendingLight.getAndSet(null);
+            LightHitRecord hitRecord = pendingLight.getAndSet(null);
+            LightHit hit = hitRecord == null ? null : hitRecord.hit();
             RevealState previous = state;
             if (hit != null) {
                 unlitTicks = 0;
@@ -928,8 +929,9 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                     ? ", not lit"
                     : String.format(", distance: %.2f, centeredness: %.2f, light level: %d", hit.distance(), hit.centeredness(), hit.lightLevel())));
 
-            RevealState current = state;
+            final RevealState current = state;
             ghost.operatePlayer(player -> {
+                 // ghost.tickDamage(hitRecord.shooter());
                 if (stopping) return; // Released while this was queued
                 if (current == RevealState.EXPOSED) {
                     player.removePotionEffect(PotionEffectType.INVISIBILITY);
@@ -939,7 +941,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                                 Particle.DUST_PILLAR,
                                 playerLocation,
                                 10,
-                                BlockType.WHITE_CONCRETE.createBlockData()
+                                BlockType.RED_CONCRETE.createBlockData()
                         );
                     }
                 } else {
