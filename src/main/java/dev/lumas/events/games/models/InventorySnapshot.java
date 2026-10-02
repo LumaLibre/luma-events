@@ -3,11 +3,11 @@ package dev.lumas.events.games.models;
 import dev.lumas.events.utility.Executors;
 import lombok.Getter;
 import me.danjono.inventoryrollback.data.LogType;
+import me.danjono.inventoryrollback.inventory.SaveInventory;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
-import me.danjono.inventoryrollback.inventory.SaveInventory;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -41,10 +41,12 @@ public class InventorySnapshot {
     }
 
     public void restore(Player player) {
-        Executors.runSync(player, () -> {
-            player.getInventory().clear();
-            player.getInventory().setContents(contents);
-        });
+        Runnable runnable = () -> player.getInventory().setContents(contents);
+        if (Bukkit.isOwnedByCurrentRegion(player)) {
+            runnable.run();
+        } else {
+            Executors.runSync(player, runnable);
+        }
     }
 
     public CompletableFuture<Boolean> backup() {

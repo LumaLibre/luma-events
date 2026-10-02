@@ -1,11 +1,11 @@
 package dev.lumas.events.games.interfaces;
 
+import dev.lumas.core.util.Logging;
 import dev.lumas.events.games.InventorySnapshotManager;
 import dev.lumas.events.games.events.MinigameInventoryRestoringQuitListener;
 import dev.lumas.events.games.models.InventorySnapshot;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
-import dev.lumas.lumacore.utility.Logging;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
@@ -73,11 +73,8 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
     @Override
     public void onPostStop() {
         for (EventPlayer participant : this.participants) {
-            Player player = participant.getPlayer();
-            if (player == null) {
-                continue;
-            }
-            Executors.runSync(participant, () -> {
+            participant.operatePlayer(player -> {
+                player.getInventory().clear();
                 InventorySnapshot snapshot = InventorySnapshotManager.INSTANCE.getSnapshotByOwner(participant.getUuid());
                 if (snapshot != null) {
                     snapshot.restore(player);
