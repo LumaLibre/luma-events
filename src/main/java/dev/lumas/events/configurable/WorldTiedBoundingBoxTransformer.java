@@ -8,7 +8,7 @@ import lombok.NonNull;
 import org.bukkit.Location;
 import org.bukkit.World;
 
-public class BoundingBoxTransformer extends BidirectionalTransformer<String, WorldTiedBoundingBox> {
+public class WorldTiedBoundingBoxTransformer extends BidirectionalTransformer<String, WorldTiedBoundingBox> {
 
     private static final LocationTransformer LOCATIONS = new LocationTransformer();
 
