@@ -6,6 +6,7 @@ import dev.lumas.events.configurable.sectors.Manor2Definition;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.models.MinigameRole;
 import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
+import dev.lumas.events.games.interfaces.packet.PacketGlow;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
@@ -108,6 +109,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private final LocalizedFakeBlockCache blockCache = new LocalizedFakeBlockCache(32);
     private final LatencyTracker latency = new LatencyTracker(this::onlineParticipants);
     private final ConcurrentHashMap<UUID, Recorder> recorders = new ConcurrentHashMap<>();
+    private final PacketGlow packetGlow = PacketGlow.newInstance();
     private CountdownBossBar timer;
 
     public Manor2(Manor2Definition definition) {
@@ -154,16 +156,14 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             );
         }
         showParticipantsToEachOther();
-        Bukkit.getRegionScheduler().runAtFixedRate(
-                EventMain.getInstance(),
-                huntersStartLocations.getFirst(),
-                scheduledTask -> {
-                    if (stopping) {
-                        scheduledTask.cancel();
-                        return;
-                    }
-                    blockCache.showSync();
-                }, 1L, 1L);
+        packetGlow.start();
+        Executors.repeatingSync(huntersStartLocations.getFirst(), 1L, task -> {
+            if (stopping) {
+                task.cancel();
+                return;
+            }
+            blockCache.showSync();
+        });
 
         timer = CountdownBossBar.builder()
                 .title("<white><b>Time Remaining: %ss")
@@ -190,24 +190,6 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     }
 
     @Override
-    protected boolean handleParticipantJoin(EventPlayer player) {
-        this.latency.start(); // No-op if already started
-        player.teleportAsync(lobbyLocation);
-        return super.handleParticipantJoin(player);
-    }
-
-    @Override
-    public boolean removeParticipant(EventPlayer player, boolean doTeleport) {
-        if (player.getPlayer() != null && this.timer != null) {
-            this.timer.getBossBar().removeViewer(player.getPlayer());
-        }
-        if (roleMap.get(player.getUuid()) instanceof Ghost ghost) {
-            ghost.visibility.stop();
-        }
-        return super.removeParticipant(player, doTeleport);
-    }
-
-    @Override
     protected void onRunnable(long timeLeft) {
         if (this.stopping) return;
         if (timeLeft <= TimeUnit.SECONDS.toMillis(END_DELAY_SECONDS)) {
@@ -226,6 +208,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     protected void handleStop() {
         if (timer != null) timer.stop(false);
 
+        packetGlow.stop();
+
         Executors.sync(huntersStartLocations.getFirst(), blockCache::shutdown);
 
         List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
@@ -235,6 +219,24 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
                 .join();
 
+    }
+
+    @Override
+    protected boolean handleParticipantJoin(EventPlayer player) {
+        this.latency.start(); // No-op if already started
+        player.teleportAsync(lobbyLocation);
+        return super.handleParticipantJoin(player);
+    }
+
+    @Override
+    public boolean removeParticipant(EventPlayer player, boolean doTeleport) {
+        if (player.getPlayer() != null && this.timer != null) {
+            this.timer.getBossBar().removeViewer(player.getPlayer());
+        }
+        if (roleMap.get(player.getUuid()) instanceof Ghost ghost) {
+            ghost.visibility.stop();
+        }
+        return super.removeParticipant(player, doTeleport);
     }
 
     @EventHandler
@@ -301,6 +303,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                 }
                 player.clearActivePotionEffects();
                 GlowColorManager.getInstance().update(player);
+                packetGlow.removeTarget(player);
+                packetGlow.removeViewer(player);
                 completed.complete(null);
             });
             return completed;
@@ -322,7 +326,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             super(eventPlayer);
             this.visibility = new GhostVisibility(eventPlayer);
             eventPlayer.operatePlayer(player -> {
-                GlowColorManager.getInstance().setTransientColor(player, NamedTextColor.GRAY);
+                GlowColorManager.getInstance().setTransientColor(player, NamedTextColor.DARK_GRAY);
+                packetGlow.addViewer(player);
             });
         }
 
@@ -480,13 +485,16 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         protected GhostHunter(EventPlayer eventPlayer) {
             super(eventPlayer);
             this.flashlight = new Flashlight(eventPlayer.getPlayer());
+            eventPlayer.operatePlayer(player -> {
+                GlowColorManager.getInstance().setTransientColor(player, NamedTextColor.WHITE);
+                packetGlow.addTarget(player);
+            });
         }
 
         @Override
         public void tick() {
             eventPlayer.operatePlayer(player -> {
                 flashlight.tick();
-
             });
         }
 
@@ -514,6 +522,11 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         protected Spectator(EventPlayer eventPlayer) {
             super(eventPlayer);
+            eventPlayer.operatePlayer(player -> {
+                GlowColorManager.getInstance().update(player);
+                packetGlow.removeTarget(player);
+                packetGlow.addViewer(player);
+            });
         }
 
         @Override
@@ -886,8 +899,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private final class GhostVisibility {
 
         private static final int HIDE_AFTER_UNLIT_TICKS = 10;
-        private static final double EXPOSED_MIN_CENTEREDNESS = 0.6;
-        private static final double SILHOUETTE_MIN_CENTEREDNESS = 0.1;
+        private static final double EXPOSED_MIN_CENTEREDNESS = 0.75;
+        private static final double SILHOUETTE_MIN_CENTEREDNESS = 0.5;
         private static final int EXPOSED_MIN_LIGHT_LEVEL = 7;
         private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 3, 0, true, true, false);
         private static final PotionEffect GLOW = new PotionEffect(PotionEffectType.GLOWING, 3, 0, true, true, false);
@@ -937,12 +950,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                     player.removePotionEffect(PotionEffectType.INVISIBILITY);
                     if (changed) {
                         Location playerLocation = player.getLocation();
-                        playerLocation.getWorld().spawnParticle(
-                                Particle.DUST_PILLAR,
-                                playerLocation,
-                                10,
-                                BlockType.RED_CONCRETE.createBlockData()
-                        );
+                        playerLocation.getWorld().spawnParticle(Particle.DUST_PILLAR, playerLocation, 10, BlockType.RED_CONCRETE.createBlockData());
                     }
                 } else {
                     player.addPotionEffect(INVISIBILITY);
@@ -952,14 +960,14 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                     player.addPotionEffect(GLOW);
                     Location playerLocation = player.getLocation();
                     playerLocation.getWorld().spawnParticle(
-                            Particle.DUST,
-                            playerLocation.clone().add(
-                                    ThreadLocalRandom.current().nextDouble(-0.5, 0.5),
-                                    ThreadLocalRandom.current().nextDouble(0, 2),
-                                    ThreadLocalRandom.current().nextDouble(-0.5, 0.5)
-                            ),
-                            1,
-                            new Particle.DustOptions(Color.GRAY, 1f)
+                        Particle.DUST,
+                        playerLocation.clone().add(
+                            ThreadLocalRandom.current().nextDouble(-0.5, 0.5),
+                            ThreadLocalRandom.current().nextDouble(0, 2),
+                            ThreadLocalRandom.current().nextDouble(-0.5, 0.5)
+                        ),
+                        1,
+                        new Particle.DustOptions(Color.GRAY, 1f)
                     );
                 } else {
                     player.removePotionEffect(PotionEffectType.GLOWING);
