@@ -12,7 +12,7 @@ import org.bukkit.Sound;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
-public class SoundSerializer implements ObjectSerializer<SoundDefinition> {
+public class SoundDefinitionSerializer implements ObjectSerializer<SoundDefinition> {
     @Override
     public boolean supports(Class<? super SoundDefinition> type) {
         return SoundDefinition.class.isAssignableFrom(type);

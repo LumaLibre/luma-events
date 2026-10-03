@@ -1,6 +1,7 @@
 package dev.lumas.events.utility.latency.tracing;
 
 import dev.lumas.events.configurable.sectors.tracing.BeamConfig;
+import dev.lumas.events.configurable.sectors.tracing.ConeConfig;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.latency.LatencyHandler;
 import dev.lumas.events.utility.latency.hitbox.Trail;
@@ -20,6 +21,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -27,6 +29,8 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class Tracing {
+
+    private static final double[] BODY_SAMPLE_FRACTIONS = {0.2, 0.5, 0.8};
 
     private final Supplier<Collection<LivingEntity>> targetSupplier;
 
@@ -37,19 +41,6 @@ public class Tracing {
         this.targetSupplier = targetSupplier;
         this.recorder = recorder;
         this.latency = latency;
-    }
-
-    // Where this entity was at <at>, or null if nothing has been recorded
-    // for it and we are on the wrong thread to look its hitbox up live
-    @Nullable
-    private Target targetAt(LivingEntity entity, long at, double expandBy) {
-        Trail trail = recorder.getEntityTrail(entity.getUniqueId());
-        TrailSnapshot snapshot = trail == null ? null : trail.at(at);
-        if (snapshot != null) return Target.ofHumanoid(entity, expandBy, snapshot);
-
-        return Bukkit.isOwnedByCurrentRegion(entity)
-                ? Target.ofHumanoid(entity, expandBy)
-                : null;
     }
 
     public CompletableFuture<Collection<BeamTraceResult>> traceBeam(Player shooter, Predicate<LivingEntity> filter, BeamConfig beamConfig) {
@@ -73,6 +64,101 @@ public class Tracing {
                 beamLength,
                 beamConfig)
         );
+    }
+
+    public Collection<ConeTraceResult> traceCone(Player shooter, Predicate<LivingEntity> filter, double coneDegrees,
+                                                 Comparator<ConeTraceResult> comparator, ConeConfig beamConfig) {
+        Location muzzle = shooter.getEyeLocation();
+        Vector direction = muzzle.getDirection().normalize();
+        double range = Math.max(0.5, beamConfig.getRange());
+
+        double halfAngle = Math.toRadians(Math.max(1.0, coneDegrees) / 2.0);
+        double tanHalfAngle = Math.tan(halfAngle);
+        double cosHalfAngle = Math.cos(halfAngle);
+        Vector apex = muzzle.toVector();
+
+        List<ConeTraceResult> output = new ArrayList<>();
+        for (Target target : targetSupplier.get().stream()
+                .filter(filter)
+                .filter(target -> !target.equals(shooter))
+                .map(target -> targetAt(target, latency.timeOf(shooter), 0))
+                .toList()
+        ) {
+            BoundingBox hitbox = target.hitbox();
+            Collection<ConeTraceResult> matchingTraces = coneHit(apex, direction, range, tanHalfAngle, cosHalfAngle, hitbox, target.entity());
+            if (matchingTraces.isEmpty()) {
+                continue;
+            }
+            // Occlusion has to be checked towards the target, not down the middle of the cone
+            Vector toTarget = hitbox.getCenter().subtract(apex);
+            double length = toTarget.length();
+            if (length > 1.0E-4 && !hasClearShot(muzzle, toTarget.multiply(1.0 / length), length, beamConfig)) {
+                continue;
+            }
+            matchingTraces.stream()
+                    .max(comparator)
+                    .ifPresent(output::add);
+        }
+        return output;
+    }
+
+    private static Collection<ConeTraceResult> coneHit(Vector apex, Vector axis, double range, double tanHalfAngle, double cosHalfAngle,
+                                                       BoundingBox hitbox, LivingEntity target) {
+        double height = hitbox.getHeight();
+        double lookForRadius = Math.max(Math.max(hitbox.getWidthX(), hitbox.getWidthZ()) / 2.0, height / 6.0);
+        double lookForRadiusSquared = lookForRadius * lookForRadius;
+        // Nothing beyond this can reach the cone
+        double maxReach = range + (height / 2.0) + lookForRadius;
+        if (apex.distanceSquared(hitbox.getCenter()) > maxReach * maxReach) return List.of();
+        ;
+
+        List<ConeTraceResult> matches = new ArrayList<>();
+        for (double fraction : BODY_SAMPLE_FRACTIONS) {
+            Vector delta = new Vector(
+                    hitbox.getCenterX(),
+                    (hitbox.getMinY() + (height * fraction)),
+                    hitbox.getCenterZ()
+            ).subtract(apex);
+
+            double distanceSquared = delta.lengthSquared();
+            if (distanceSquared <= lookForRadiusSquared) {
+                return List.of(new ConeTraceResult(target, 0, 0)); // muzzle is inside target
+            }
+            double alongAxis = axis.dot(delta);
+            if (alongAxis < 0 || alongAxis - lookForRadius > range) {
+                continue;
+            }
+
+            Vector projectedAxis = axis.clone().multiply(alongAxis);
+            Vector remainder = delta.clone().subtract(projectedAxis); // Orthogonal to axis vector
+            double maxAllowedRemainderLength = (alongAxis * tanHalfAngle) + (lookForRadius / cosHalfAngle);
+
+            // The cone widens with distance, and a sphere of <radius> widens what counts as touching it
+            double remainderLengthSquared = remainder.lengthSquared();
+            if (remainderLengthSquared > maxAllowedRemainderLength * maxAllowedRemainderLength) {
+                continue;
+            }
+
+            double toSurface = Math.max(0, Math.sqrt(distanceSquared) - lookForRadius);
+
+            if (toSurface <= range) {
+                matches.add(new ConeTraceResult(target, alongAxis, Math.sqrt(remainderLengthSquared)));
+            }
+        }
+        return matches;
+    }
+
+    // Where this entity was at <at>, or null if nothing has been recorded
+    // for it and we are on the wrong thread to look its hitbox up live
+    @Nullable
+    private Target targetAt(LivingEntity entity, long at, double expandBy) {
+        Trail trail = recorder.getEntityTrail(entity.getUniqueId());
+        TrailSnapshot snapshot = trail == null ? null : trail.at(at);
+        if (snapshot != null) return Target.ofHumanoid(entity, expandBy, snapshot);
+
+        return Bukkit.isOwnedByCurrentRegion(entity)
+                ? Target.ofHumanoid(entity, expandBy)
+                : null;
     }
 
     private Collection<BeamTraceResult> toBeamResult(Collection<Target> targets, Location eye, Vector direction, double beamLength, BeamConfig config) {
@@ -182,4 +268,31 @@ public class Tracing {
         return hit == null ? -1 : hit.getHitPosition().distance(origin);
     }
 
+    // Cheap-ish line of sight check to make sure shots don't travel through walls
+    private static boolean hasClearShot(Location from, Vector direction, double distance, ConeConfig coneConfig) {
+        World world = from.getWorld();
+        Vector origin = from.toVector();
+        int lastX = Integer.MIN_VALUE;
+        int lastY = Integer.MIN_VALUE;
+        int lastZ = Integer.MIN_VALUE;
+
+        for (double travelled = coneConfig.getTraceStep(); travelled < distance; travelled += coneConfig.getTraceStep()) {
+            int blockX = (int) Math.floor(from.getX() + (direction.getX() * travelled));
+            int blockY = (int) Math.floor(from.getY() + (direction.getY() * travelled));
+            int blockZ = (int) Math.floor(from.getZ() + (direction.getZ() * travelled));
+
+            if (blockX == lastX && blockY == lastY && blockZ == lastZ) continue; // Same block as the last step
+            lastX = blockX;
+            lastY = blockY;
+            lastZ = blockZ;
+
+            if (!Bukkit.isOwnedByCurrentRegion(world, blockX >> 4, blockZ >> 4)) {
+                return true;
+            }
+            if (solidHitDistance(world.getBlockAt(blockX, blockY, blockZ), origin, direction, distance) >= 0) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

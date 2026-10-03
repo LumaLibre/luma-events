@@ -7,6 +7,7 @@ import dev.lumas.events.configurable.serializers.ColorSerializer;
 import dev.lumas.events.configurable.serializers.DustOptionsSerializer;
 import dev.lumas.events.configurable.serializers.KeyedSerializer;
 import dev.lumas.events.configurable.serializers.ParticleDefinitionSerializer;
+import dev.lumas.events.configurable.serializers.SoundDefinitionSerializer;
 import dev.lumas.events.configurable.serializers.VectorSerializer;
 import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.serdes.standard.StandardSerdes;
@@ -40,13 +41,14 @@ public class ConfigManager {
                 registry.register(new LocationTransformer());
                 registry.register(new WorldTiedBoundingBoxTransformer());
                 registry.register(new MaterialCount.Transformer());
-                
+
                 registry.register(new BlockDataSerializer());
                 registry.register(new BoundingBoxSerializer());
                 registry.register(new ColorSerializer());
                 registry.register(new DustOptionsSerializer());
                 registry.register(new KeyedSerializer<>(Particle.class, Registry.PARTICLE_TYPE));
                 registry.register(new ParticleDefinitionSerializer());
+                registry.register(new SoundDefinitionSerializer());
                 registry.register(new VectorSerializer());
             });
             it.saveDefaults();
