@@ -6,6 +6,7 @@ import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.latency.tracing.ProximityTraceResult;
 import dev.lumas.glowapi.model.GlowColorManager;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.Collection;
@@ -66,12 +67,13 @@ public class GhostHunter extends Manor2Role {
     private double hauntCloseness(Player player) {
         Collection<ProximityTraceResult> result = manor2.getTracing().traceProximity(
                 player,
-                Ghost.class::isInstance,
+                participant -> manor2.getRoleMap().as(participant.getUniqueId(), Ghost.class) != null,
                 HAUNT_RADIUS
         );
         double closestProximity = result.stream().map(ProximityTraceResult::distance)
-                .max(Double::compare)
+                .min(Double::compare)
                 .orElse(HAUNT_RADIUS);
+        Bukkit.broadcastMessage(String.valueOf(closestProximity));
         return 1 - (closestProximity / HAUNT_RADIUS);
     }
 }

@@ -130,7 +130,6 @@ public class Tracing {
         // Nothing beyond this can reach the cone
         double maxReach = range + (height / 2.0) + lookForRadius;
         if (apex.distanceSquared(hitbox.getCenter()) > maxReach * maxReach) return List.of();
-        ;
 
         List<ConeTraceResult> matches = new ArrayList<>();
         for (double fraction : BODY_SAMPLE_FRACTIONS) {
