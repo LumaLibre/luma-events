@@ -9,7 +9,6 @@ import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import io.papermc.paper.datacomponent.item.UseEffects;
 import lombok.Getter;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -138,6 +137,7 @@ public class Flashlight {
             return 0;
         }
         if (flickerTicksRemaining > 0) {
+            flickerTicksRemaining--;
             return flickerOff ? 0 : Math.max(base - FLICKER_DIMMING, MIN_ILLUMINANCE);
         }
         if (ghostCloseness <= 0 || Math.random() >= ghostCloseness * MAX_FLICKER_START_CHANCE) {
