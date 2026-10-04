@@ -100,11 +100,6 @@ public class Flashlight {
                 this::compareConeTraceResults,
                 coneConfig
         );
-        results.forEach(result ->
-                Bukkit.broadcastMessage("Hit: r=%f, z=%f, centerdness=%f, maxDeg=%f"
-                        .formatted(result.r(), result.z(), LightHit.centeredness(result, coneConfig.getConeDegrees()), coneConfig.getConeDegrees())
-                )
-        );
         results.stream()
                 .map(traceResult -> LightHit.of(traceResult, illuminance, coneConfig.getConeDegrees()))
                 .forEach(lightHit -> {
