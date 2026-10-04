@@ -15,21 +15,29 @@ import dev.lumas.events.utility.clientside.LocalizedFakeBlockCache;
 import dev.lumas.events.utility.latency.LatencyTracker;
 import dev.lumas.glowapi.model.GlowColorManager;
 import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.DeathProtection;
+import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import io.papermc.paper.datacomponent.item.UseEffects;
+import io.papermc.paper.entity.LookAnchor;
+import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
+import org.bukkit.EntityEffect;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockType;
@@ -37,10 +45,12 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
 import org.bukkit.block.data.type.Light;
 import org.bukkit.block.data.type.Slab;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Trident;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
@@ -65,6 +75,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
@@ -90,6 +102,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private static final int TELEPORTS_PER_TICK = 5;
     private static final long END_DELAY_SECONDS = 10;
     private static final int TRAIL_HISTORY_TICKS = 20;
+    private static final double HAUNT_RADIUS = 10.0;
     // Mitality's secret
     private static final double[] BODY_SAMPLE_FRACTIONS = {0.2, 0.5, 0.8};
     private static final double BEAM_STEP = 0.5;
@@ -110,6 +123,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private final LatencyTracker latency = new LatencyTracker(this::onlineParticipants);
     private final ConcurrentHashMap<UUID, Recorder> recorders = new ConcurrentHashMap<>();
     private final PacketGlow packetGlow = PacketGlow.newInstance();
+    private final GhostAttacks ghostAttacks = new GhostAttacks();
     private CountdownBossBar timer;
 
     public Manor2(Manor2Definition definition) {
@@ -196,6 +210,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             this.stop();
         }
         tickRecorders();
+        ghostAttacks.tick();
         for (Manor2Role role : roleMap) {
             role.tick();
             role.operatePlayer(player -> {
@@ -209,6 +224,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         if (timer != null) timer.stop(false);
 
         packetGlow.stop();
+        ghostAttacks.stop();
 
         Executors.sync(huntersStartLocations.getFirst(), blockCache::shutdown);
 
@@ -236,14 +252,32 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         if (roleMap.get(player.getUuid()) instanceof Ghost ghost) {
             ghost.visibility.stop();
         }
+        ghostAttacks.abort(player.getUuid());
         return super.removeParticipant(player, doTeleport);
     }
 
     @EventHandler
     public void onTridentThrow(PlayerLaunchProjectileEvent event) {
+        this.ensureNotIllegal();
         if (!(event.getProjectile() instanceof Trident)) return;
         if (!Flashlight.isFlashlight(event.getItemStack())) return;
         event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onGhostAttack(PrePlayerAttackEntityEvent event) {
+        this.ensureNotIllegal();
+        if (ghostAttacks.handleAttack(event.getPlayer(), event.getAttacked())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onSwapHands(PlayerSwapHandItemsEvent event) {
+        this.ensureNotIllegal();
+        if (ghostAttacks.handleSwapHands(event.getPlayer())) {
+            event.setCancelled(true);
+        }
     }
 
 
@@ -302,6 +336,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                     }
                 }
                 player.clearActivePotionEffects();
+                player.setFreezeTicks(0);
+                GhostAttacks.NiceRestraint.release(player); // In case a grab never got to free them
                 GlowColorManager.getInstance().update(player);
                 packetGlow.removeTarget(player);
                 packetGlow.removeViewer(player);
@@ -319,8 +355,12 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
     private class Ghost extends Manor2Role {
 
+        private static final int WHIRL_INTERVAL_TICKS = 80;
+        private static final float WHIRL_VOLUME = 0.6f;
+
         private final GhostVisibility visibility;
         private int revealedTime = 0;
+        private int ticksUntilWhirl = 0;
 
         protected Ghost(EventPlayer eventPlayer) {
             super(eventPlayer);
@@ -359,13 +399,23 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         public void tick() {
             visibility.tick();
+            whirl();
 
             if (visibility.getState().isRevealed()) revealedTime++;
             else revealedTime = 0; // <- TODO: intended?
         }
 
+        private void whirl() {
+            if (--ticksUntilWhirl > 0 || !participants.contains(eventPlayer)) return;
+            ticksUntilWhirl = WHIRL_INTERVAL_TICKS;
+
+            float pitch = 0.8f + (ThreadLocalRandom.current().nextFloat() * 0.4f);
+            operatePlayer(player -> player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BREEZE_WHIRL, SoundCategory.HOSTILE, WHIRL_VOLUME, pitch));
+        }
+
         public void light(LightHit hit, UUID playerUuid) {
             visibility.light(hit, playerUuid);
+            ghostAttacks.onLit(this, hit, playerUuid);
         }
 
         @Override
@@ -373,6 +423,16 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             visibility.stop();
             return super.retire();
         }
+    }
+
+    private double hauntCloseness(Player player) {
+        Vector center = player.getBoundingBox().getCenter();
+        double closest = HAUNT_RADIUS;
+        for (Target ghost : targetsOf(System.nanoTime(), role -> role instanceof Ghost && participants.contains(role.getEventPlayer()))) {
+            if (ghost.entity() == player || !ghost.entity().getWorld().equals(player.getWorld())) continue;
+            closest = Math.min(closest, ghost.hitbox().getCenter().distance(center));
+        }
+        return 1 - (closest / HAUNT_RADIUS);
     }
 
     private List<Target> targetsOf(long atTimestamp, Predicate<Manor2Role> rolePredicate) {
@@ -478,6 +538,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
     private class GhostHunter extends Manor2Role {
 
+        private static final int FROST_PER_TICK = 4;
+
         private int ghostConsumedTime = 0;
 
         private Flashlight flashlight;
@@ -494,13 +556,24 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         @Override
         public void tick() {
             eventPlayer.operatePlayer(player -> {
-                flashlight.tick();
+                double ghostCloseness = hauntCloseness(player);
+                flashlight.tick(ghostCloseness);
+                freeze(player, ghostCloseness);
             });
+        }
+
+        private void freeze(Player player, double ghostCloseness) {
+            int target = (int) Math.round((player.getMaxFreezeTicks() - 1) * ghostCloseness);
+            int current = player.getFreezeTicks();
+            if (current < target) {
+                player.setFreezeTicks(Math.min(target, current + FROST_PER_TICK));
+            }
         }
 
         @Override
         public void die() {
-
+            retire(); // TODO: extract parts of this
+            roleMap.swapRole(this, () -> new Spectator(eventPlayer));
         }
 
         @Override
@@ -549,8 +622,10 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         private static final int MIN_ILLUMINANCE = 7;
         private static final int MAX_ILLUMINANCE = 12;
-        private static final float FLICKER_START = 25f;
-        private static final float HEAVY_FLICKER_START = 10f;
+        private static final double MAX_FLICKER_START_CHANCE = 0.15;
+        private static final int MAX_FLICKER_EXTRA_TICKS = 5;
+        private static final double MAX_BLACKOUT_CHANCE = 0.6;
+        private static final int FLICKER_DIMMING = 3;
         private static final float MAX_BATTERY_CHARGE = 100f;
         private static final float BATTERY_DRAIN_PER_TICK = 100f / (20f * 40f);
         private static final float BATTERY_SELF_CHARGE_PER_TICK = 100f / (20f * 20f);
@@ -575,7 +650,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             this.player = player;
         }
 
-        public void tick() {
+        public void tick(double ghostCloseness) {
             if (!isInUse()) {
                 batteryCharge = Math.clamp(batteryCharge + BATTERY_SELF_CHARGE_PER_TICK, 0f, 100f);
                 updateItem();
@@ -595,7 +670,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                 return;
             }
 
-            int illuminance = getFlickeringIlluminance();
+            int illuminance = getIlluminance(ghostCloseness);
             if (illuminance <= 0) {
                 return;
             }
@@ -619,40 +694,23 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             return MIN_ILLUMINANCE + (int) Math.round((MAX_ILLUMINANCE - MIN_ILLUMINANCE) * brightness);
         }
 
-        private int getFlickeringIlluminance() {
+        private int getIlluminance(double ghostCloseness) {
             int base = getBaseIlluminance();
             if (base <= 0) return 0;
 
-            float chargePercent = batteryCharge / MAX_BATTERY_CHARGE * 100f;
-            if (chargePercent > FLICKER_START) {
-                flickerTicksRemaining = 0;
+            if (flickerTicksRemaining > 0) {
+                flickerTicksRemaining--;
+                return flickerOff ? 0 : Math.max(base - FLICKER_DIMMING, MIN_ILLUMINANCE);
+            }
+
+            if (ghostCloseness <= 0 || Math.random() >= ghostCloseness * MAX_FLICKER_START_CHANCE) {
                 flickerOff = false;
                 return base;
             }
 
-            if (flickerTicksRemaining > 0) {
-                flickerTicksRemaining--;
-                if (flickerOff) return 0;
-                return Math.max(base - 3, MIN_ILLUMINANCE);
-            }
-
-            double severity = 1.0 - chargePercent / FLICKER_START;
-            double startChance = 0.01 + severity * 0.1;
-
-            if (Math.random() < startChance) {
-                flickerTicksRemaining = 1 + (int) Math.round(severity * 5);
-
-                if (chargePercent <= HEAVY_FLICKER_START) {
-                    flickerOff = Math.random() < 0.6;
-                } else {
-                    flickerOff = Math.random() < 0.2;
-                }
-
-                if (flickerOff) return 0;
-                return Math.max(base - 2, MIN_ILLUMINANCE);
-            }
-
-            return base;
+            flickerTicksRemaining = (int) Math.round(ghostCloseness * MAX_FLICKER_EXTRA_TICKS);
+            flickerOff = Math.random() < ghostCloseness * MAX_BLACKOUT_CHANCE;
+            return flickerOff ? 0 : Math.max(base - FLICKER_DIMMING, MIN_ILLUMINANCE);
         }
 
         private void illuminate(int illuminance) {
@@ -914,9 +972,14 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         private final Set<UUID> hiddenFrom = ConcurrentHashMap.newKeySet();
         private final Object vanishLock = new Object(); // TODO: probably a better way to do this, i didnt want to deal with the race conditions - Jsinco
         private volatile boolean stopping = false;
+        private final AtomicInteger forcedExposedTicks = new AtomicInteger();
 
         private GhostVisibility(EventPlayer ghost) {
             this.ghost = ghost;
+        }
+
+        public void exposeFor(int ticks) {
+            forcedExposedTicks.accumulateAndGet(ticks, Math::max);
         }
 
         public void light(LightHit hit, UUID playerUuid) {
@@ -936,11 +999,15 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             } else if (++unlitTicks >= HIDE_AFTER_UNLIT_TICKS) {
                 state = RevealState.HIDDEN;
             }
+            if (forcedExposedTicks.getAndUpdate(ticks -> Math.max(0, ticks - 1)) > 0) {
+                unlitTicks = 0;
+                state = RevealState.EXPOSED;
+            }
             boolean changed = state != previous;
 
-            Bukkit.broadcastMessage("Ghost visibility tick (" + ghost.getName() + "): " + state + ", unlitTicks: " + unlitTicks + (hit == null
-                    ? ", not lit"
-                    : String.format(", distance: %.2f, centeredness: %.2f, light level: %d", hit.distance(), hit.centeredness(), hit.lightLevel())));
+//            Bukkit.broadcastMessage("Ghost visibility tick (" + ghost.getName() + "): " + state + ", unlitTicks: " + unlitTicks + (hit == null
+//                    ? ", not lit"
+//                    : String.format(", distance: %.2f, centeredness: %.2f, light level: %d", hit.distance(), hit.centeredness(), hit.lightLevel())));
 
             final RevealState current = state;
             ghost.operatePlayer(player -> {
@@ -1043,6 +1110,271 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         private void showTo(Player viewer, Player self) {
             viewer.showPlayer(EventMain.getInstance(), self);
             hiddenFrom.remove(viewer.getUniqueId());
+        }
+    }
+
+
+    // Basic idea:
+    // - hold both the hunter and ghost in place for 2-3s
+    // - allow other hunters to 'free' the attacked player by fighting off the ghost
+    // - either the guardian animation or totem animation for jumpscaring
+    // - allow the ghost to cancel the attack if they're taking too much damage
+    private final class GhostAttacks {
+
+        private static final int GRAB_TICKS = 50;
+        private static final int STAGGER_TILL_BREAK = 150;
+        private static final double MIN_STAGGER_CENTEREDNESS = 0.5;
+        private static final int HEARTBEAT_INTERVAL_TICKS = 12;
+        private static final int KILLED_COOLDOWN_TICKS = 100;
+        private static final int BROKEN_COOLDOWN_TICKS = 200;
+        private static final int LET_GO_COOLDOWN_TICKS = 100;
+        private static final int BROKEN_EXPOSE_TICKS = 60;
+        private static final int LET_GO_EXPOSE_TICKS = 20;
+        private static final int VICTIM_GRACE_TICKS = 60;
+        private static final double BROKEN_KNOCKBACK = 1.2;
+        private static final String GHOST_FACE_TAG = "ghost_face";
+
+        private final Map<UUID, Grab> grabMap = new ConcurrentHashMap<>();
+        private final Map<UUID, Long> cooldown = new ConcurrentHashMap<>();
+        private volatile long currentTick = 0;
+
+        public boolean handleAttack(Player attacker, Entity attacked) {
+            Ghost ghost = roleMap.as(attacker.getUniqueId(), Ghost.class);
+            if (ghost == null || !(attacked instanceof Player victimPlayer)) return false;
+            GhostHunter victim = roleMap.as(victimPlayer.getUniqueId(), GhostHunter.class);
+            if (victim == null) return false;
+
+            tryGrab(ghost, attacker, victim, victimPlayer);
+            return true;
+        }
+
+        public boolean handleSwapHands(Player player) {
+            Grab grab = grabMap.get(player.getUniqueId());
+            if (grab == null) return false;
+
+            if (grab.ghost.getUuid().equals(player.getUniqueId())) {
+                grab.backout();
+            }
+            return true;
+        }
+
+        public void onLit(Ghost ghost, LightHit hit, UUID shooter) {
+            Grab grab = grabMap.get(ghost.getUuid());
+            if (grab != null && grab.ghost == ghost) {
+                grab.light(hit, shooter);
+            }
+        }
+
+        public void tick() {
+            currentTick++;
+            for (Grab grab : Set.copyOf(grabMap.values())) {
+                grab.tick();
+            }
+        }
+
+        public void abort(UUID player) {
+            Grab grab = grabMap.get(player);
+            if (grab != null) {
+                grab.abort();
+            }
+        }
+
+        public void stop() {
+            Set.copyOf(grabMap.values()).forEach(Grab::abort);
+        }
+
+        private synchronized void tryGrab(Ghost ghost, Player ghostPlayer, GhostHunter victim, Player victimPlayer) {
+            if (stopping || !isAvailable(ghost) || !isAvailable(victim)) return;
+
+            Grab grab = new Grab(ghost, victim, ghostPlayer.getEyeLocation(), victimPlayer.getLocation());
+            grabMap.put(ghost.getUuid(), grab);
+            grabMap.put(victim.getUuid(), grab);
+            grab.begin(ghostPlayer);
+        }
+
+        private boolean isAvailable(Manor2Role role) {
+            return participants.contains(role.getEventPlayer())
+                    && !grabMap.containsKey(role.getUuid())
+                    && cooldown.getOrDefault(role.getUuid(), 0L) <= currentTick;
+        }
+
+        private void cooldown(Manor2Role role, int ticks) {
+            cooldown.merge(role.getUuid(), currentTick + ticks, Math::max);
+        }
+
+        private final class Grab {
+
+            private final Ghost ghost;
+            private final GhostHunter victim;
+            private final Location ghostEyes;
+            private final Location victimLocation;
+            private final AtomicInteger stagger = new AtomicInteger();
+            private final AtomicBoolean ended = new AtomicBoolean();
+            private int ticksLeft = GRAB_TICKS; // not making this volatile because only touched by `tick()`
+
+            private Grab(Ghost ghost, GhostHunter victim, Location ghostEyes, Location victimLocation) {
+                this.ghost = ghost;
+                this.victim = victim;
+                this.ghostEyes = ghostEyes;
+                this.victimLocation = victimLocation;
+            }
+
+            private void begin(Player ghostPlayer) {
+                NiceRestraint.apply(ghostPlayer);
+                ghost.visibility.exposeFor(2);
+                victim.operatePlayer(victimPlayer -> {
+                    if (ended.get()) return;
+                    NiceRestraint.apply(victimPlayer);
+                    playEffects(victimPlayer, ghostPlayer);
+
+                    victimPlayer.getWorld().playSound(victimPlayer.getLocation(), Sound.ENTITY_WARDEN_SONIC_CHARGE, SoundCategory.HOSTILE, 1.5f, 1f);
+                });
+            }
+
+            @SuppressWarnings("UnstableApiUsage")
+            private void tick() {
+                if (ended.get()) return;
+                if (ghost.getEventPlayer().getPlayer() == null || victim.getEventPlayer().getPlayer() == null
+                        || !participants.contains(ghost.getEventPlayer()) || !participants.contains(victim.getEventPlayer())) {
+                    abort();
+                    return;
+                }
+                if (stagger.get() >= STAGGER_TILL_BREAK) {
+                    breakFree();
+                    return;
+                }
+                if (--ticksLeft <= 0) {
+                    kill();
+                    return;
+                }
+
+                ghost.visibility.exposeFor(2);
+
+                boolean heartbeat = ticksLeft % HEARTBEAT_INTERVAL_TICKS == 0;
+                victim.operatePlayer(player -> {
+                    if (ended.get()) return;
+                    player.lookAt(ghostEyes, LookAnchor.EYES);
+                    player.setFreezeTicks(player.getMaxFreezeTicks() - 1);
+                    if (heartbeat) {
+                        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WARDEN_HEARTBEAT, SoundCategory.HOSTILE, 1.5f, 1f);
+                    }
+                });
+            }
+
+            private void light(LightHit hit, UUID shooter) {
+                // ignoring the victim's light
+                if (shooter.equals(victim.getUuid()) || hit.centeredness() < MIN_STAGGER_CENTEREDNESS) {
+                    return;
+                }
+                stagger.addAndGet(Math.max(0, hit.lightLevel()));
+            }
+
+            private void kill() {
+                if (!finish()) {
+                    return;
+                }
+                cooldown(ghost, KILLED_COOLDOWN_TICKS);
+                victim.operatePlayer(player -> {
+                    player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, SoundCategory.HOSTILE, 1.5f, 1f);
+                    player.sendHurtAnimation(0);
+                });
+                victim.die();
+            }
+
+            private void breakFree() {
+                if (!finish()) {
+                    return;
+                }
+                cooldown(ghost, BROKEN_COOLDOWN_TICKS);
+                cooldown(victim, VICTIM_GRACE_TICKS);
+                ghost.visibility.exposeFor(BROKEN_EXPOSE_TICKS);
+                ghost.operatePlayer(player -> {
+                    Vector away = player.getLocation().toVector().subtract(victimLocation.toVector()).setY(0);
+                    if (away.lengthSquared() < 1.0E-4) away = new Vector(1, 0, 0);
+                    player.setVelocity(away.normalize().multiply(BROKEN_KNOCKBACK).setY(0.4));
+                    player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GHAST_SCREAM, SoundCategory.HOSTILE, 1.5f, 0.6f);
+                });
+            }
+
+            private void backout() {
+                if (!finish()) {
+                    return;
+                }
+                cooldown(ghost, LET_GO_COOLDOWN_TICKS);
+                cooldown(victim, VICTIM_GRACE_TICKS);
+                ghost.visibility.exposeFor(LET_GO_EXPOSE_TICKS);
+            }
+
+            private void abort() {
+                finish();
+            }
+
+            private boolean finish() {
+                if (!ended.compareAndSet(false, true)) return false;
+                grabMap.remove(ghost.getUuid(), this);
+                grabMap.remove(victim.getUuid(), this);
+                ghost.operatePlayer(NiceRestraint::release);
+                victim.operatePlayer(NiceRestraint::release);
+                return true;
+            }
+
+            private void playEffects(Player victimPlayer, Player ghostPlayer) { // TODO: Looking for a better way to do this?
+                ItemStack face = ItemStack.of(Material.PLAYER_HEAD);
+                face.setData(DataComponentTypes.PROFILE, ResolvableProfile.resolvableProfile(ghostPlayer.getPlayerProfile()));
+                face.setData(DataComponentTypes.DEATH_PROTECTION, DeathProtection.deathProtection(List.of()));
+                face.editPersistentDataContainer(pdc -> pdc.set(TAGGED, PersistentDataType.STRING, GHOST_FACE_TAG)); // retire() cleans it up if all else fails
+
+                ItemStack offhand = victimPlayer.getInventory().getItemInOffHand();
+                victimPlayer.getInventory().setItemInOffHand(face);
+                victimPlayer.updateInventory(); // TODO
+                Executors.delayedSync(victimPlayer, 1, () -> {
+                    victimPlayer.playEffect(EntityEffect.PROTECTED_FROM_DEATH);
+                    Executors.delayedSync(victimPlayer, 1, () -> {
+                        ItemStack held = victimPlayer.getInventory().getItemInOffHand();
+                        String tag = held.getPersistentDataContainer().get(TAGGED, PersistentDataType.STRING);
+                        if (GHOST_FACE_TAG.equals(tag)) {
+                            victimPlayer.getInventory().setItemInOffHand(offhand);
+                        }
+                    });
+                });
+            }
+        }
+
+        /**
+         * A restraint that is 'nice' to clients compared to other methods such as cancelling
+         * the player move event.
+         */
+        private static final class NiceRestraint {
+
+            private static final NamespacedKey KEY = new NamespacedKey(EventMain.getInstance(), "manor2/restraint");
+            private static final AttributeModifier STOPPED = new AttributeModifier(KEY, -1, AttributeModifier.Operation.MULTIPLY_SCALAR_1); // x0, whatever else applies
+            private static final AttributeModifier UNMOVABLE = new AttributeModifier(KEY, 1, AttributeModifier.Operation.ADD_NUMBER);
+            private static final Map<Attribute, AttributeModifier> MODIFIERS = Map.of(
+                    Attribute.MOVEMENT_SPEED, STOPPED,
+                    Attribute.SNEAKING_SPEED, STOPPED,
+                    Attribute.JUMP_STRENGTH, STOPPED,
+                    Attribute.KNOCKBACK_RESISTANCE, UNMOVABLE,
+                    Attribute.EXPLOSION_KNOCKBACK_RESISTANCE, UNMOVABLE
+            );
+
+            private static void apply(Player player) {
+                MODIFIERS.forEach((attribute, modifier) -> {
+                    AttributeInstance instance = player.getAttribute(attribute);
+                    if (instance == null || instance.getModifier(KEY) != null) return;
+                    instance.addTransientModifier(modifier);
+                });
+                player.setSprinting(false);
+                player.setVelocity(new Vector());
+            }
+
+            private static void release(Player player) {
+                for (Attribute attribute : MODIFIERS.keySet()) {
+                    AttributeInstance instance = player.getAttribute(attribute);
+                    if (instance != null) {
+                        instance.removeModifier(KEY);
+                    }
+                }
+            }
         }
     }
 }
