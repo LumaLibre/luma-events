@@ -6,9 +6,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.entity.Player;
 
 import java.util.Comparator;
 import java.util.List;
@@ -28,7 +25,7 @@ public interface ScoreRecordDisplay {
                 .filter(entry -> entry.getValue() > 15D)
                 .sorted(Comparator.comparingDouble(Map.Entry::getValue))
                 .map(Map.Entry::getKey)
-                .map(ScoreRecordDisplay::name)
+                .map(Util::displayName)
                 .toList();
         if (!participantNames.isEmpty()) {
             return participantNames.stream()
@@ -39,18 +36,9 @@ public interface ScoreRecordDisplay {
                     .stream()
                     .sorted(Comparator.comparingDouble(Map.Entry::getValue))
                     .map(Map.Entry::getKey)
-                    .map(ScoreRecordDisplay::name)
+                    .map(Util::displayName)
                     .collect(Component.toComponent(Component.text(", ").color(NamedTextColor.GRAY)));
         }
-    }
-
-    private static Component name(UUID uuid) {
-        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
-        if (offlinePlayer instanceof Player player) {
-            return player.displayName();
-        }
-        String possibleName = offlinePlayer.getName();
-        return Component.text(possibleName == null ? "null" : possibleName);
     }
 
     record GhostKilled(UUID ghost) implements ScoreRecordDisplay {
@@ -62,7 +50,7 @@ public interface ScoreRecordDisplay {
 
             return Optional.of(
                     MiniMessage.miniMessage().deserialize(serialized,
-                            Placeholder.component("ghost", name(ghost)),
+                            Placeholder.component("ghost", Util.displayName(ghost)),
                             Placeholder.component("participants", participantsDisplay(participants))
                     )
             );
@@ -78,7 +66,7 @@ public interface ScoreRecordDisplay {
 
             return Optional.of(
                     MiniMessage.miniMessage().deserialize(serialized,
-                            Placeholder.component("hunter", name(hunter)),
+                            Placeholder.component("hunter", Util.displayName(hunter)),
                             Placeholder.component("participants", participantsDisplay(participants))
                     )
             );

@@ -119,7 +119,7 @@ public final class Grab {
         });
         victim.die();
         manor2.getScoreManager().registerScore(
-                new ScoreRecord(Map.of(ghost.getUuid(), 100D), new ScoreRecordDisplay.HunterKilled(victim.getUuid()))
+                new ScoreRecord(Map.of(ghost.getUuid(), 100D), manor2.getDefinition().getGhostKillScore(), new ScoreRecordDisplay.HunterKilled(victim.getUuid()))
         );
     }
 

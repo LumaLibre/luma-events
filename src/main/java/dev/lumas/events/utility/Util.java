@@ -15,6 +15,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.command.CommandSender;
@@ -139,19 +140,19 @@ public final class Util {
     public static boolean hasPersistentKey(PersistentDataHolder holder, String strKey) {
         return holder.getPersistentDataContainer().has(new NamespacedKey(EventMain.getInstance(), strKey));
     }
-    
+
     public static boolean hasPersistentKey(ItemStack item, String strKey) {
         return hasPersistentKey(item, new NamespacedKey(EventMain.getInstance(), strKey));
     }
-    
+
     public static boolean hasPersistentKey(ItemStack item, String strKey, PersistentDataType<?, ?> dataType) {
         return hasPersistentKey(item, new NamespacedKey(EventMain.getInstance(), strKey), dataType);
     }
-    
+
     public static boolean hasPersistentKey(ItemStack item, NamespacedKey key) {
         return item.hasItemMeta() && item.getItemMeta().getPersistentDataContainer().has(key);
     }
-    
+
     public static boolean hasPersistentKey(ItemStack item, NamespacedKey key, PersistentDataType<?, ?> dataType) {
         return item.hasItemMeta() && item.getItemMeta().getPersistentDataContainer().has(key, dataType);
     }
@@ -388,8 +389,6 @@ public final class Util {
     }
 
 
-
-
     public static void sleepThread(long millis) {
         if (Bukkit.isPrimaryThread()) {
             throw new IllegalStateException("Cannot sleep on the main thread!");
@@ -477,6 +476,15 @@ public final class Util {
             }
         }
         return false;
+    }
+
+    public static Component displayName(UUID uuid) {
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
+        if (offlinePlayer instanceof Player player) {
+            return player.displayName();
+        }
+        String possibleName = offlinePlayer.getName();
+        return Component.text(possibleName == null ? "null" : possibleName);
     }
 
     public static String paleSideColor(String s) {

@@ -25,6 +25,8 @@ import dev.lumas.events.utility.latency.tracing.Tracing;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.LivingEntity;
@@ -89,6 +91,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private final GhostAttacks ghostAttacks = new GhostAttacks(this);
     @Getter
     private final ScoreManager scoreManager = new ScoreManager(this);
+
     private CountdownBossBar timer;
 
     public Manor2(Manor2Definition definition) {
@@ -166,11 +169,19 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             });
         }
         if (roleMap.getMatching(Ghost.class).isEmpty()) {
-            // Hunters won
+            audience.sendMessage(
+                    MiniMessage.miniMessage().deserialize(
+                            definition.getMessages().getGameOver(),
+                            Placeholder.parsed("winner", definition.getMessages().getHunters())
+                    ));
             this.stop();
         }
         if (roleMap.getMatching(GhostHunter.class).isEmpty()) {
-            // Ghosts won
+            audience.sendMessage(
+                    MiniMessage.miniMessage().deserialize(
+                            definition.getMessages().getGameOver(),
+                            Placeholder.parsed("winner", definition.getMessages().getGhosts())
+                    ));
             this.stop();
         }
     }
@@ -183,6 +194,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         packetGlow.stop();
         ghostAttacks.stop();
+        scoreManager.showScores();
 
         Executors.sync(definition.getHunterStartLocations().getFirst(), blockCache::shutdown);
 

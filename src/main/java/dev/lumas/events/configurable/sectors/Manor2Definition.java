@@ -21,6 +21,8 @@ public class Manor2Definition extends OkaeriConfig {
     private int ghostRevealTime = 100;
     @Comment("The time until a hunter is killed by being consumed by ghost (ticks)")
     private int hunterDeathTime = 50;
+    private int ghostKillScore = 50;
+    private int hunterKillScore = 150;
     private LagCompensationSettings lagCompensation = new LagCompensationSettings();
     private MessagesDefinition messages;
 
@@ -46,5 +48,18 @@ public class Manor2Definition extends OkaeriConfig {
                         <hunter> got haunted to death by <participants>
                         """
         );
+
+        private String scoreBoardBorder = """
+                <#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     "
+                """;
+        private String scoreRecord = """
+                <green><gold><position></gold> is <red><scorer></red> with <gold><points> points</gold>!
+                """;
+        private String gameOver = """
+                <yellow>Game Over
+                <gold> <winner> has won!"
+                """;
+        private String hunters = "<gold>Hunters";
+        private String ghosts = "<gradient:white:gray>Ghosts";
     }
 }
