@@ -4,6 +4,8 @@ import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
+import dev.lumas.events.games.logic.manor2.score.ScoreRecord;
+import dev.lumas.events.games.logic.manor2.score.ScoreRecordDisplay;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import lombok.Getter;
@@ -18,12 +20,14 @@ import org.bukkit.potion.PotionEffectType;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public final class GhostVisibility {
 
@@ -37,7 +41,7 @@ public final class GhostVisibility {
 
     private final Manor2 manor2;
     private final EventPlayer ghost;
-    private final AtomicReference<@Nullable LightHitRecord> pendingLight = new AtomicReference<>(); // strongest light from any hunter
+    private final AtomicReference<@Nullable LightHit> pendingLight = new AtomicReference<>(); // strongest light from any hunter
     @Getter
     private volatile RevealState state = RevealState.HIDDEN;
     private int unlitTicks = 0;
@@ -46,22 +50,24 @@ public final class GhostVisibility {
     private final Object vanishLock = new Object(); // TODO: probably a better way to do this, i didnt want to deal with the race conditions - Jsinco
     private volatile boolean stopping = false;
     private final AtomicInteger forcedExposedTicks = new AtomicInteger();
+    private final Map<UUID, Integer> shooterTicks = new ConcurrentHashMap<>();
 
     public GhostVisibility(Manor2 manor2, EventPlayer ghost) {
         this.manor2 = manor2;
         this.ghost = ghost;
     }
 
-    public void light(LightHit hit, UUID playerUuid) {
+    public void light(LightHit hit, UUID shooter) {
         if (stopping) return;
-        LightHitRecord entry = new LightHitRecord(hit, playerUuid);
-        pendingLight.accumulateAndGet(entry, (current, next) -> current == null || isStronger(next.hit(), current.hit()) ? next : current);
+        if (stateOf(hit) == RevealState.EXPOSED) {
+            shooterTicks.merge(shooter, 1, Integer::sum);
+        }
+        pendingLight.accumulateAndGet(hit, (current, next) -> current == null || isStronger(next, current) ? next : current);
     }
 
     public void tick() {
         if (stopping) return;
-        LightHitRecord hitRecord = pendingLight.getAndSet(null);
-        LightHit hit = hitRecord == null ? null : hitRecord.hit();
+        LightHit hit = pendingLight.getAndSet(null);
         RevealState previous = state;
         if (hit != null) {
             unlitTicks = 0;
@@ -81,6 +87,23 @@ public final class GhostVisibility {
                     : String.format(", distance: %.2f, centeredness: %.2f, light level: %d", hit.distance(), hit.centeredness(), hit.lightLevel())));
         }
         final RevealState current = state;
+        if (state == RevealState.HIDDEN) {
+            shooterTicks.clear();
+        } else if (state == RevealState.EXPOSED &&
+                manor2.getDefinition().getGhostRevealTime() <= shooterTicks.entrySet().stream()
+                        .map(Map.Entry::getValue)
+                        .reduce(0, Integer::sum) &&
+                manor2.getRoleMap().as(ghost.getUuid(), Ghost.class) instanceof Ghost ghostGhost
+        ) {
+            manor2.getScoreManager().registerScore(new ScoreRecord(
+                    shooterTicks.entrySet().stream()
+                            .map(entry -> Map.entry(entry.getKey(), 100D * (double) entry.getValue() / manor2.getDefinition().getGhostRevealTime()))
+                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
+                    manor2.getDefinition().getHunterKillScore(),
+                    new ScoreRecordDisplay.GhostKilled(ghostGhost.getUuid())
+            ));
+            ghostGhost.die();
+        }
         ghost.operatePlayer(player -> {
             // ghost.tickDamage(hitRecord.shooter());
             if (stopping) return; // Released while this was queued

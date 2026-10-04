@@ -40,7 +40,8 @@ public class Ghost extends Manor2Role {
 
     @Override
     public void die() {
-
+        retire(manor2); // TODO: extract parts of this
+        manor2.getRoleMap().swapRole(this, () -> new Spectator(manor2, eventPlayer));
     }
 
     private void showRevealedResult() {

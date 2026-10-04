@@ -38,20 +38,15 @@ public class Manor2Definition extends OkaeriConfig {
     public static class MessagesDefinition extends OkaeriConfig {
 
         private List<String> ghostKilledMessages = List.of(
-                """
-                        <ghost> got blinded to death by <participants>
-                        """
+                "<gray><white><ghost></white> got blinded to death by <red><participants></red>",
+                "<gray><white><ghost></white> got their sheet stolen by <red><participants></red> (death)"
         );
 
         private List<String> hunterKilledMessages = List.of(
-                """
-                        <hunter> got haunted to death by <participants>
-                        """
+                "<gray><red><hunter></red> got haunted to death by <white><participants></white>"
         );
 
-        private String scoreBoardBorder = """
-                <#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     "
-                """;
+        private String scoreBoardBorder = "<#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     ";
         private String scoreRecord = """
                 <green><gold><position></gold> is <red><scorer></red> with <gold><points> points</gold>!
                 """;
