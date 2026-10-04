@@ -12,6 +12,7 @@ import dev.lumas.events.games.logic.manor2.light.Flashlight;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
+import dev.lumas.events.games.logic.manor2.score.ScoreManager;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
@@ -64,9 +65,6 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private static final int TELEPORTS_PER_TICK = 5;
     private static final long END_DELAY_SECONDS = 10;
     public static final int TRAIL_HISTORY_TICKS = 20;
-    // Mitality's secret
-    private static final long MAX_REWIND_NANOS = TimeUnit.MILLISECONDS.toNanos((TRAIL_HISTORY_TICKS - 4) * 50L);
-    // End of mitality's secret
     public static final NamespacedKey ITEM_TAG = Preconditions.checkNotNull(
             NamespacedKey.fromString("manor2/item", EventMain.getInstance())
     );
@@ -89,6 +87,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private final Tracing tracing;
     @Getter
     private final GhostAttacks ghostAttacks = new GhostAttacks(this);
+    @Getter
+    private final ScoreManager scoreManager = new ScoreManager(this);
     private CountdownBossBar timer;
 
     public Manor2(Manor2Definition definition) {
@@ -164,6 +164,14 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             role.operatePlayer(player -> {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION, 20, 0, false, false, false));
             });
+        }
+        if (roleMap.getMatching(Ghost.class).isEmpty()) {
+            // Hunters won
+            this.stop();
+        }
+        if (roleMap.getMatching(GhostHunter.class).isEmpty()) {
+            // Ghosts won
+            this.stop();
         }
     }
 

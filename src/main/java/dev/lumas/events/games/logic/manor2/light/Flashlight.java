@@ -220,6 +220,7 @@ public class Flashlight {
         item.setData(DataComponentTypes.CUSTOM_NAME, Util.color("<gold><bold>Flashlight"));
         item.setData(DataComponentTypes.TOOLTIP_DISPLAY, TooltipDisplay.tooltipDisplay()
                 .addHiddenComponents(DataComponentTypes.ATTRIBUTE_MODIFIERS)
+                .addHiddenComponents(DataComponentTypes.DAMAGE)
                 .build());
         item.editPersistentDataContainer(pdc -> {
             pdc.set(Manor2.ITEM_TAG, PersistentDataType.STRING, "flashlight");
