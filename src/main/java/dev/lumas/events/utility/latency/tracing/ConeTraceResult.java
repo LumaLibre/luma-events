@@ -9,7 +9,7 @@ import org.bukkit.entity.LivingEntity;
  *
  * @param target the targeted entity
  * @param z      the distance between target and player in z axis
- * @param radius the distance between target and player in radius axis
+ * @param r      the distance between target and player in radius axis
  */
-public record ConeTraceResult(LivingEntity target, double z, double radius) {
+public record ConeTraceResult(LivingEntity target, double z, double r) {
 }

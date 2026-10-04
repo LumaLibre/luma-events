@@ -28,6 +28,6 @@ public class Manor2Definition extends OkaeriConfig {
 
         private boolean enabled = true;
         private int interpolationMillis = 120;
-        private int maxRewindMillis = 300;
+        private int maxRewindNano = 300;
     }
 }

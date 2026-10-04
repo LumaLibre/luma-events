@@ -17,7 +17,7 @@ public class BoundingBoxSerializer implements ObjectSerializer<BoundingBox> {
 
     @Override
     public boolean supports(Class<? super BoundingBox> type) {
-        return BoundingBox.class.isAssignableFrom(type);
+        return BoundingBox.class == type;
     }
 
     @Override

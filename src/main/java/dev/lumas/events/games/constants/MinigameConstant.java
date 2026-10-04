@@ -12,7 +12,7 @@ import dev.lumas.events.games.logic.Bomberman;
 import dev.lumas.events.games.logic.FreezeTag;
 import dev.lumas.events.games.logic.Incursion;
 import dev.lumas.events.games.logic.Manor;
-import dev.lumas.events.games.logic.Manor2;
+import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.MineBattle;
 import dev.lumas.events.games.logic.Paintball2_1;
 import dev.lumas.events.games.logic.PanelParty;

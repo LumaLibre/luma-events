@@ -66,13 +66,13 @@ public class Tracing {
         );
     }
 
-    public Collection<ConeTraceResult> traceCone(Player shooter, Predicate<LivingEntity> filter, double coneDegrees,
-                                                 Comparator<ConeTraceResult> comparator, ConeConfig beamConfig) {
+    public Collection<ConeTraceResult> traceCone(Player shooter, Predicate<LivingEntity> filter,
+                                                 Comparator<ConeTraceResult> comparator, ConeConfig coneConfig) {
         Location muzzle = shooter.getEyeLocation();
         Vector direction = muzzle.getDirection().normalize();
-        double range = Math.max(0.5, beamConfig.getRange());
+        double range = Math.max(0.5, coneConfig.getRange());
 
-        double halfAngle = Math.toRadians(Math.max(1.0, coneDegrees) / 2.0);
+        double halfAngle = Math.toRadians(Math.max(1.0, coneConfig.getConeDegrees()) / 2.0);
         double tanHalfAngle = Math.tan(halfAngle);
         double cosHalfAngle = Math.cos(halfAngle);
         Vector apex = muzzle.toVector();
@@ -92,12 +92,32 @@ public class Tracing {
             // Occlusion has to be checked towards the target, not down the middle of the cone
             Vector toTarget = hitbox.getCenter().subtract(apex);
             double length = toTarget.length();
-            if (length > 1.0E-4 && !hasClearShot(muzzle, toTarget.multiply(1.0 / length), length, beamConfig)) {
+            if (length > 1.0E-4 && !hasClearShot(muzzle, toTarget.multiply(1.0 / length), length, coneConfig)) {
                 continue;
             }
             matchingTraces.stream()
                     .max(comparator)
                     .ifPresent(output::add);
+        }
+        return output;
+    }
+
+    public Collection<ProximityTraceResult> traceProximity(Player actor, Predicate<LivingEntity> filter, double maxProximity) {
+        Vector center = actor.getBoundingBox().getCenter();
+        double maxProximitySquared = maxProximity * maxProximity;
+        List<ProximityTraceResult> output = new ArrayList<>();
+        World targetWorld = actor.getWorld();
+        for (Target target : targetSupplier.get().stream()
+                .filter(filter)
+                .filter(target -> !target.equals(actor))
+                .map(target -> targetAt(target, latency.timeOf(actor), 0))
+                .toList()
+        ) {
+            double proximitySquared = target.hitbox().getCenter().distanceSquared(center);
+            if (targetWorld != target.entity().getWorld() || proximitySquared > maxProximitySquared) {
+                continue;
+            }
+            output.add(new ProximityTraceResult(target.entity(), Math.sqrt(proximitySquared)));
         }
         return output;
     }
@@ -295,4 +315,5 @@ public class Tracing {
         }
         return true;
     }
+
 }

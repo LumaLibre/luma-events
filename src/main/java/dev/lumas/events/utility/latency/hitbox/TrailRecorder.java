@@ -26,7 +26,7 @@ public class TrailRecorder {
         this.participantsSupplier = participantsSupplier;
     }
 
-    private void tick() {
+    public void tick() {
         Set<UUID> live = new HashSet<>();
 
         for (LivingEntity entity : participantsSupplier.get()) {
