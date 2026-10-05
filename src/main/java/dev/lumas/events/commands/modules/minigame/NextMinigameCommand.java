@@ -7,7 +7,7 @@ import dev.lumas.events.EventMain;
 import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
 import dev.lumas.events.configurable.Config;
-import dev.lumas.events.configurable.PersistentStates;
+import dev.lumas.events.configurable.GlobalStates;
 import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.utility.Util;
@@ -29,14 +29,14 @@ import java.util.concurrent.TimeUnit;
 public class NextMinigameCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
-        Config cfg = EventMain.getOkaeriConfig();
+        Config cfg = EventMain.getConfiguration();
 
         if (!cfg.isAutomaticMinigames()) {
             Util.sendMsg(commandSender, "No minigames are currently scheduled.");
             return true;
         }
 
-        PersistentStates persistentStates = EventMain.getPersistentStates();
+        GlobalStates persistentStates = EventMain.getPersistentStates();
 
         long timeSinceLast = System.currentTimeMillis() - persistentStates.getLastGameLaunchTime();
         long remaining = Math.max(0, cfg.getAutomaticMinigameCooldown() - timeSinceLast);

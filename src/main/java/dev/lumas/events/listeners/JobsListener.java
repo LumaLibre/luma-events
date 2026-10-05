@@ -32,7 +32,7 @@ public class JobsListener implements Listener {
             return;
         }
 
-        Config cfg = EventMain.getOkaeriConfig();
+        Config cfg = EventMain.getConfiguration();
 
         int bound = jobName.equalsIgnoreCase(LUMBERJACK) && isInTreeFeller(event.getPlayer().getPlayer())
                 ? jobConstant.getBound() * 3

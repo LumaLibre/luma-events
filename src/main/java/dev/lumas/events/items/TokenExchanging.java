@@ -35,7 +35,7 @@ public class TokenExchanging {
         if (amount < 1) {
             return;
         }
-        final int finalAmount = (int) Math.ceil(EventMain.getOkaeriConfig().getTokenMultiplier() * amount);
+        final int finalAmount = (int) Math.ceil(EventMain.getConfiguration().getTokenMultiplier() * amount);
 
         ItemStack itemStack = LocalCustomItemManager.getCustomItemStack(type.tokenClass);
         if (itemStack == null) {

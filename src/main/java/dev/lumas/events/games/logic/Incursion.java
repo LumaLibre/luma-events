@@ -5,7 +5,7 @@ import com.destroystokyo.paper.entity.ai.GoalKey;
 import com.destroystokyo.paper.entity.ai.VanillaGoal;
 import com.destroystokyo.paper.event.player.PlayerArmorChangeEvent;
 import dev.lumas.events.EventMain;
-import dev.lumas.events.configurable.sectors.IncursionDefinition;
+import dev.lumas.events.configurable.sectors.game.IncursionDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.Scorer;

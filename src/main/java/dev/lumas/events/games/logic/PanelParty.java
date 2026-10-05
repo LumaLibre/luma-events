@@ -2,7 +2,7 @@ package dev.lumas.events.games.logic;
 
 import com.google.common.base.Preconditions;
 import dev.lumas.events.EventMain;
-import dev.lumas.events.configurable.sectors.PanelPartyMinigameDefinition;
+import dev.lumas.events.configurable.sectors.game.PanelPartyMinigameDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.exceptions.MinigameException;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;

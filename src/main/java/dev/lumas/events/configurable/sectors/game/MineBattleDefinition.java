@@ -1,23 +1,26 @@
-package dev.lumas.events.configurable.sectors;
+package dev.lumas.events.configurable.sectors.game;
 
-import eu.okaeri.configs.OkaeriConfig;
+import dev.lumas.events.annotation.MapTied;
 import lombok.Getter;
 import org.bukkit.Location;
+import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 import java.util.Map;
 
 @Getter
-public class MineBattleDefinition extends OkaeriConfig {
+@ConfigSerializable
+public class MineBattleDefinition {
 
     private long timeLimitSeconds = 360;
     private long heartbeatTicks = 5;
-    private long maxDistanceLOS = 10;
-    private long minDistanceLOS = 2;
+    private long maxDistanceLos = 10;
+    private long minDistanceLos = 2;
 
     private boolean doPeriodicReveal = false;
     private boolean useWorldBorder = false;
 
     private Location lobbyLocation;
+    @MapTied
     private Location arenaOrigin;
 
     private int arenaHeight = 32;

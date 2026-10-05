@@ -5,7 +5,7 @@ import dev.lumas.core.annotation.PlaceholderMeta;
 import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.Config;
-import dev.lumas.events.configurable.PersistentStates;
+import dev.lumas.events.configurable.GlobalStates;
 import dev.lumas.events.placeholders.PlaceholderManager;
 import dev.lumas.events.placeholders.PlaceholderModule;
 import org.bukkit.OfflinePlayer;
@@ -23,13 +23,13 @@ public class MinigameNextPlaceholder implements PlaceholderModule {
     @Nullable
     @Override
     public String onRequest(EventMain eventMain, @Nullable OfflinePlayer offlinePlayer, List<String> list) {
-        Config cfg = EventMain.getOkaeriConfig();
+        Config cfg = EventMain.getConfiguration();
 
         if (!cfg.isAutomaticMinigames()) {
             return "∞m";
         }
 
-        PersistentStates persistentStates = EventMain.getPersistentStates();
+        GlobalStates persistentStates = EventMain.getPersistentStates();
 
         long timeSinceLast = System.currentTimeMillis() - persistentStates.getLastGameLaunchTime();
         long remaining = Math.max(0, cfg.getAutomaticMinigameCooldown() - timeSinceLast);

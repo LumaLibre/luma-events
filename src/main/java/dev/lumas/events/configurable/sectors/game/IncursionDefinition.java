@@ -1,10 +1,11 @@
-package dev.lumas.events.configurable.sectors;
+package dev.lumas.events.configurable.sectors.game;
 
+import dev.lumas.events.annotation.MapTied;
+import dev.lumas.events.configurable.ToggleableDefinition;
+import dev.lumas.events.configurable.sectors.region.Region;
 import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.BlockFaces;
 import dev.lumas.events.utility.Util;
-import eu.okaeri.configs.OkaeriConfig;
-import eu.okaeri.configs.annotation.Comment;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,19 +14,24 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.block.BlockFace;
+import org.spongepowered.configurate.objectmapping.ConfigSerializable;
+import org.spongepowered.configurate.objectmapping.meta.Comment;
 
 import java.util.List;
 
 @Getter
 @Setter
-public class IncursionDefinition extends OkaeriConfig implements ToggleableDefinition {
+@ConfigSerializable
+public class IncursionDefinition implements ToggleableDefinition {
 
+    @MapTied
     @Comment("Whether this map may be picked when Incursion starts (disabled maps are skipped)")
     private boolean enabled = true;
 
     @Comment("Where participants wait before the game starts and are sent once it has concluded")
     private Location lobbyLocation;
 
+    @MapTied
     @Comment("Bounding box of the entire map, used to tell whether something happens inside this game")
     private Region bounds = new Region();
 
@@ -74,6 +80,7 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Comment("Our equivalent of a sidearm (pufferfish)")
     private SpitterSettings spitter = new SpitterSettings();
 
+    @MapTied
     @Comment("Floor positions orbs float above (in world,x,y,z form)")
     private List<Location> orbSpawns = List.of();
 
@@ -83,6 +90,7 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Comment("The grenades orbs hand out (eggs)")
     private GrenadeSettings grenade = new GrenadeSettings();
 
+    @MapTied
     @Comment("Rooms a miniboss is spawned in and locked inside of (world,x,y,z/world,x,y,z)")
     private List<WorldTiedBoundingBox> bossRooms = List.of();
 
@@ -92,8 +100,10 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Getter
     @Setter
     @NoArgsConstructor
-    public static class ImbalanceCompensationSettings extends OkaeriConfig {
+    @ConfigSerializable
+    public static class ImbalanceCompensationSettings {
 
+        @MapTied
         @Comment("Whether the team with more players is slowed down while it outnumbers the other one")
         private boolean enabled = true;
 
@@ -110,15 +120,13 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Getter
     @Setter
     @NoArgsConstructor
-    public static class TeamBalancingSettings extends OkaeriConfig {
+    @ConfigSerializable
+    public static class TeamBalancingSettings {
 
         @Comment("Whether both sides should have a somewhat similar average ping")
         private boolean byPing = true;
 
-        @Comment({
-                "How far a player may drift from their place in the draft order",
-                "(higher = more randomness, lower = more balance)"
-        })
+        @Comment("How far a player may drift from their place in the draft order\n(higher = more randomness, lower = more balance)")
         private int jitterMillis = 25;
 
         @Comment("Sides whose totals are this close count as level, so the next pick is random")
@@ -128,13 +136,11 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Getter
     @Setter
     @NoArgsConstructor
-    public static class LagCompensationSettings extends OkaeriConfig {
+    @ConfigSerializable
+    public static class LagCompensationSettings {
 
-        @Comment({
-                "Whether the hitscan weapons (overwatch, blunderhorn) and the spitter's stream are",
-                "judged against where their targets were when the shooter used the weapon",
-                "(Unstable eggs are always real time, so they can be dodged)"
-        })
+        @MapTied
+        @Comment("Whether the hitscan weapons (overwatch, blunderhorn) and the spitter's stream are\njudged against where their targets were when the shooter used the weapon\n(Unstable eggs are always real time, so they can be dodged)")
         private boolean enabled = true;
 
         @Comment("How far past the shooter's ping shots are rewound (to cover render delay)")
@@ -147,7 +153,8 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Getter
     @Setter
     @NoArgsConstructor
-    public static class SniperSettings extends OkaeriConfig {
+    @ConfigSerializable
+    public static class SniperSettings {
 
         @Comment("How long the shot has to be charged before releasing fires it")
         private int chargeTicks = 16;
@@ -174,7 +181,8 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Getter
     @Setter
     @NoArgsConstructor
-    public static class ShotgunSettings extends OkaeriConfig {
+    @ConfigSerializable
+    public static class ShotgunSettings {
 
         @Comment("Cooldown between shots")
         private int cooldownTicks = 30;
@@ -188,10 +196,7 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
         @Comment("True damage dealt at point blank range")
         private double damage = 25.0;
 
-        @Comment({
-                "How much of the damage is lost at maximum range",
-                "0 = full damage everywhere, 1 = nothing at the edge"
-        })
+        @Comment("How much of the damage is lost at maximum range\n0 = full damage everywhere, 1 = nothing at the edge")
         private double damageFalloff = 0.85;
 
         @Comment("How hard hits shove players away from the shooter")
@@ -201,7 +206,8 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Getter
     @Setter
     @NoArgsConstructor
-    public static class SpitterSettings extends OkaeriConfig {
+    @ConfigSerializable
+    public static class SpitterSettings {
 
         @Comment("Cooldown between shots")
         private int cooldownTicks = 15;
@@ -224,10 +230,7 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
         @Comment("True damage dealt to the first player the stream hits")
         private double damage = 6.5;
 
-        @Comment({
-                "How much of the damage is lost at maximum range",
-                "0 = full damage everywhere, 1 = nothing at the edge"
-        })
+        @Comment("How much of the damage is lost at maximum range\n0 = full damage everywhere, 1 = nothing at the edge")
         private double damageFalloff = 0.25;
 
         @Comment("How hard hits shove players along the stream's path")
@@ -240,7 +243,8 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Getter
     @Setter
     @NoArgsConstructor
-    public static class GrenadeSettings extends OkaeriConfig {
+    @ConfigSerializable
+    public static class GrenadeSettings {
 
         @Comment("True damage dealt at the centre of the blast")
         private double damage = 25.0;
@@ -248,10 +252,7 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
         @Comment("How far the blast reaches")
         private double radius = 4.5;
 
-        @Comment({
-                "How much of the damage is lost at the edge of the blast",
-                "0 = full damage everywhere, 1 = nothing at the edge"
-        })
+        @Comment("How much of the damage is lost at the edge of the blast\n0 = full damage everywhere, 1 = nothing at the edge")
         private double damageFalloff = 0.85;
 
         @Comment("How hard the blast shoves players away from it")
@@ -276,7 +277,8 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Getter
     @Setter
     @NoArgsConstructor
-    public static class MinibossSettings extends OkaeriConfig {
+    @ConfigSerializable
+    public static class MinibossSettings {
 
         @Comment("Which mob guards every boss room: DROWNED (trident), PARCHED (bow) or WITCH (potions)")
         private MinibossType type = MinibossType.DROWNED;
@@ -303,16 +305,19 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Getter
     @Setter
     @NoArgsConstructor
-    public static class TeamDefinition extends OkaeriConfig {
+    @ConfigSerializable
+    public static class TeamDefinition {
 
         private String name = "Team";
 
         @Comment("A NamedTextColor (e.g. red, green, blue, ...)")
         private String color = "white";
 
+        @MapTied
         @Comment("Flat rectangle the team spawns across, so players don't stack inside each other")
         private SpawnArea spawnArea = new SpawnArea();
 
+        @MapTied
         @Comment("The hole enemies score in by jumping into it")
         private Region hole = new Region();
 
@@ -336,7 +341,8 @@ public class IncursionDefinition extends OkaeriConfig implements ToggleableDefin
     @Setter
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class SpawnArea extends OkaeriConfig {
+    @ConfigSerializable
+    public static class SpawnArea {
 
         private Location corner1;
         private Location corner2;

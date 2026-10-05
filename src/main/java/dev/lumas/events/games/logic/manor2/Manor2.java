@@ -3,7 +3,7 @@ package dev.lumas.events.games.logic.manor2;
 import com.destroystokyo.paper.event.player.PlayerLaunchProjectileEvent;
 import com.google.common.base.Preconditions;
 import dev.lumas.events.EventMain;
-import dev.lumas.events.configurable.sectors.Manor2Definition;
+import dev.lumas.events.configurable.sectors.game.Manor2Definition;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
 import dev.lumas.events.games.interfaces.packet.PacketGlow;
@@ -48,6 +48,28 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public final class Manor2 extends InventoryUnifiedMinigame {
+    private static final String[] SPLASH = {
+            "Are you afraid of ghosts?",
+            "Boooooooooooo!!!!",
+            "Ghost Busters!",
+            "Who you gonna call?",
+            "House of Dracula!",
+            "Trick or treat?",
+            "Here's Johny!!!",
+            "Put these foolish ambitions to rest",
+            "Wazzzuup!",
+            "Did you pray enough?",
+            "It's alive! It's alive!",
+            "Be afraid. Be very afraid",
+            "What is the color of night?",
+            "This is not a dream!",
+            "Someone must extinguish thy flame.",
+            "Don't cross the streams!!!!"
+    };
+    private static final String GAME_OVER = """
+            <yellow>Game Over
+            <gold> <winner> has won!
+            """;
     private static final long TICK_INTERVAL = 1L;
     private static final int TELEPORTS_PER_TICK = 5;
     private static final long END_DELAY_SECONDS = 10;
@@ -82,7 +104,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private CountdownBossBar timer;
 
     public Manor2(Manor2Definition definition) {
-        super("Manor 2", Util.getRandom(definition.getMessages().getSplash()), definition.getDuration(), TICK_INTERVAL, true, true, false, false);
+        super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, false, false);
         this.definition = definition;
         this.lagCompensation = definition.getLagCompensation();
         this.latencyHandler = new LatencyHandler(latency, lagCompensation.isEnabled(), lagCompensation.getMaxRewindNano(), lagCompensation.getInterpolationMillis());
@@ -109,11 +131,11 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             List<Location> teleportTargets;
             if (ghostsToSpecify-- > 0) {
                 role = new Ghost(this, participants.get(i));
-                scoreboard.registerTeam(role.getUuid(), Team.GHOSTS);
+                scoreboard.registerTeam(role.getUuid(), ManorTeam.GHOSTS);
                 teleportTargets = definition.getGhostStartLocations();
             } else {
                 role = new GhostHunter(this, participants.get(i));
-                scoreboard.registerTeam(role.getUuid(), Team.HUNTERS);
+                scoreboard.registerTeam(role.getUuid(), ManorTeam.HUNTERS);
                 teleportTargets = definition.getHunterStartLocations();
             }
             roleMap.put(role);
@@ -160,16 +182,16 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         if (roleMap.getMatching(Ghost.class).isEmpty()) {
             audience.sendMessage(
                     MiniMessage.miniMessage().deserialize(
-                            definition.getMessages().getGameOver(),
-                            Placeholder.component("winner", Team.HUNTERS.displayName(definition.getMessages()))
+                            GAME_OVER,
+                            Placeholder.component("winner", ManorTeam.HUNTERS.displayName())
                     ));
             this.stop();
         }
         if (roleMap.getMatching(GhostHunter.class).isEmpty()) {
             audience.sendMessage(
                     MiniMessage.miniMessage().deserialize(
-                            definition.getMessages().getGameOver(),
-                            Placeholder.component("winner", Team.GHOSTS.displayName(definition.getMessages()))
+                            GAME_OVER,
+                            Placeholder.component("winner", ManorTeam.GHOSTS.displayName())
                     ));
             this.stop();
         }

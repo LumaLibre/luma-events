@@ -10,7 +10,6 @@ import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.TokenPayout;
 import dev.lumas.events.utility.Util;
-import eu.okaeri.configs.OkaeriConfig;
 import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NullMarked;
@@ -66,7 +65,7 @@ public class MinigameStartCommand implements CommandModule {
             }
         }
 
-        OkaeriConfig definition;
+        Object definition;
         if (strings.length >= 3 && !RANDOM_MAP_ALIASES.contains(strings[2].toLowerCase(Locale.ROOT))) {
             definition = resolveDefinition(minigame, strings[2]);
             if (definition == null) {
@@ -129,9 +128,9 @@ public class MinigameStartCommand implements CommandModule {
         List<String> suggestions = new ArrayList<>();
         suggestions.add(RANDOM_MAP);
         if (minigame == null) return suggestions;
-        Map<String, OkaeriConfig> enabled = minigame.getEnabledDefinitions();
+        Map<String, Object> enabled = minigame.getEnabledDefinitions();
         enabled.keySet().stream().sorted().forEach(suggestions::add);
-        minigame.<OkaeriConfig>getDefinitions().keySet().stream()
+        minigame.getDefinitions().keySet().stream()
                 .filter(name -> !enabled.containsKey(name))
                 .sorted()
                 .forEach(suggestions::add);
@@ -139,11 +138,11 @@ public class MinigameStartCommand implements CommandModule {
     }
 
     @Nullable
-    private static OkaeriConfig resolveDefinition(MinigameConstant minigame, String name) {
-        Map<String, OkaeriConfig> definitions = minigame.getDefinitions();
-        OkaeriConfig exact = definitions.get(name);
+    private static Object resolveDefinition(MinigameConstant minigame, String name) {
+        Map<String, Object> definitions = minigame.getDefinitions();
+        Object exact = definitions.get(name);
         if (exact != null) return exact;
-        for (Map.Entry<String, OkaeriConfig> entry : definitions.entrySet()) {
+        for (Map.Entry<String, Object> entry : definitions.entrySet()) {
             if (entry.getKey().equalsIgnoreCase(name)) {
                 return entry.getValue();
             }

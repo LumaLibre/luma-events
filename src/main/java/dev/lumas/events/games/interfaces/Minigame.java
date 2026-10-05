@@ -326,7 +326,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
     @Nullable
     public Location getGameDropOffLocation() {
-        return EventMain.getOkaeriConfig().getGameDropOffLocation();
+        return EventMain.getConfiguration().getGameDropOffLocation();
     }
 
     public void sendAudienceMessage(String m) {

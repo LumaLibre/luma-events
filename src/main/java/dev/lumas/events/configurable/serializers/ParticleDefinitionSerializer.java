@@ -1,66 +1,64 @@
 package dev.lumas.events.configurable.serializers;
 
 import dev.lumas.events.utility.effects.ParticleDefinition;
-import eu.okaeri.configs.schema.GenericsDeclaration;
-import eu.okaeri.configs.serdes.DeserializationData;
-import eu.okaeri.configs.serdes.ObjectSerializer;
-import eu.okaeri.configs.serdes.SerializationData;
 import org.bukkit.Particle;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.util.BoundingBox;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.serialize.SerializationException;
+import org.spongepowered.configurate.serialize.TypeSerializer;
+
+import java.lang.reflect.Type;
 
 @NullMarked
-public class ParticleDefinitionSerializer implements ObjectSerializer<ParticleDefinition> {
-    @Override
-    public boolean supports(Class<? super ParticleDefinition> type) {
-        return ParticleDefinition.class.isAssignableFrom(type);
-    }
+public class ParticleDefinitionSerializer implements TypeSerializer<ParticleDefinition> {
 
     @Override
-    public void serialize(ParticleDefinition object, SerializationData data, GenericsDeclaration generics) {
-        data.add("particle", object.particleKey());
-        if (object.spawnProbability() != 100d) {
-            data.add("probability", object.spawnProbability());
-        }
-        if (object.spawnArea() != null) {
-            data.add("spawning-area", object.spawnArea());
-        }
-        if (object.count() != 1) {
-            data.add("count", object.count());
-        }
-        switch (object.options()) {
-            case Particle.DustOptions dustOptions -> data.add("dust-options", dustOptions);
-            case BlockData blockData -> data.add("block-data", blockData);
-            case null, default -> {
-            }
-        }
-
-    }
-
-    @Override
-    public ParticleDefinition deserialize(DeserializationData data, GenericsDeclaration generics) {
-        Particle particle = data.get("particle", Particle.class);
+    public ParticleDefinition deserialize(Type type, ConfigurationNode node) throws SerializationException {
+        Particle particle = node.node("particle").get(Particle.class);
         if (particle == null) {
-            throw new IllegalArgumentException("Expected particle type for particle definition");
+            throw new SerializationException("Expected particle type for particle definition");
         }
-        Double probability = data.get("probability", Double.class);
-        BoundingBox spawningArea = data.get("spawning-area", BoundingBox.class);
-        Integer count = data.get("count", Integer.class);
         Object options;
-        if (data.containsKey("dust-options")) {
-            options = data.get("dust-options", Particle.DustOptions.class);
-        } else if (data.containsKey("block-data")) {
-            options = data.get("block-data", BlockData.class);
+        if (!node.node("dust-options").virtual()) {
+            options = node.node("dust-options").get(Particle.DustOptions.class);
+        } else if (!node.node("block-data").virtual()) {
+            options = node.node("block-data").get(BlockData.class);
         } else {
             options = null;
         }
         return new ParticleDefinition(
                 particle,
-                probability == null ? 100d : probability,
-                count == null ? 1 : count,
-                spawningArea,
+                node.node("probability").getDouble(100d),
+                node.node("count").getInt(1),
+                node.node("spawning-area").get(BoundingBox.class),
                 options
         );
+    }
+
+    @Override
+    public void serialize(Type type, @Nullable ParticleDefinition obj, ConfigurationNode node) throws SerializationException {
+        if (obj == null) {
+            node.raw(null);
+            return;
+        }
+        node.node("particle").set(Particle.class, obj.particleKey());
+        if (obj.spawnProbability() != 100d) {
+            node.node("probability").set(obj.spawnProbability());
+        }
+        if (obj.spawnArea() != null) {
+            node.node("spawning-area").set(BoundingBox.class, obj.spawnArea());
+        }
+        if (obj.count() != 1) {
+            node.node("count").set(obj.count());
+        }
+        switch (obj.options()) {
+            case Particle.DustOptions dustOptions -> node.node("dust-options").set(Particle.DustOptions.class, dustOptions);
+            case BlockData blockData -> node.node("block-data").set(BlockData.class, blockData);
+            case null, default -> {
+            }
+        }
     }
 }

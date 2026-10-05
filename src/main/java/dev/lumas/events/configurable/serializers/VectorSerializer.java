@@ -1,45 +1,42 @@
 package dev.lumas.events.configurable.serializers;
 
-import eu.okaeri.configs.schema.GenericsDeclaration;
-import eu.okaeri.configs.serdes.DeserializationData;
-import eu.okaeri.configs.serdes.ObjectSerializer;
-import eu.okaeri.configs.serdes.SerializationData;
 import org.bukkit.util.Vector;
 import org.jspecify.annotations.NullMarked;
+import org.spongepowered.configurate.serialize.ScalarSerializer;
+import org.spongepowered.configurate.serialize.SerializationException;
 
+import java.lang.reflect.Type;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @NullMarked
-public class VectorSerializer implements ObjectSerializer<Vector> {
+public class VectorSerializer extends ScalarSerializer<Vector> {
 
     private static final Pattern VECTOR_RE = Pattern.compile("([^,]+),([^,]+),([^,]+)");
 
-    @Override
-    public boolean supports(Class<? super Vector> type) {
-        return Vector.class.isAssignableFrom(type);
+    public VectorSerializer() {
+        super(Vector.class);
     }
 
     @Override
-    public void serialize(Vector object, SerializationData data, GenericsDeclaration generics) {
-        data.setValue("%f,%f,%f".formatted(
-                object.getX(), object.getY(), object.getZ()
-        ));
-    }
-
-    @Override
-    public Vector deserialize(DeserializationData data, GenericsDeclaration generics) {
-        String string = data.getValue(String.class);
-        if (string == null) {
-            throw new IllegalArgumentException("Expected a string for vector format");
-        }
-        Matcher matcher = VECTOR_RE.matcher(string);
+    public Vector deserialize(Type type, Object obj) throws SerializationException {
+        Matcher matcher = VECTOR_RE.matcher(obj.toString());
         if (!matcher.matches()) {
-            throw new IllegalArgumentException("Invalid vector format, expected 'z,y,z' where n is any number");
+            throw new SerializationException("Invalid vector format, expected 'x,y,z' where n is any number");
         }
-        double x = Double.parseDouble(matcher.group(1));
-        double y = Double.parseDouble(matcher.group(2));
-        double z = Double.parseDouble(matcher.group(3));
-        return new Vector(x, y, z);
+        try {
+            double x = Double.parseDouble(matcher.group(1));
+            double y = Double.parseDouble(matcher.group(2));
+            double z = Double.parseDouble(matcher.group(3));
+            return new Vector(x, y, z);
+        } catch (NumberFormatException e) {
+            throw new SerializationException("Invalid vector format, expected 'x,y,z' where n is any number");
+        }
+    }
+
+    @Override
+    protected Object serialize(Vector item, Predicate<Class<?>> typeSupported) {
+        return "%f,%f,%f".formatted(item.getX(), item.getY(), item.getZ());
     }
 }

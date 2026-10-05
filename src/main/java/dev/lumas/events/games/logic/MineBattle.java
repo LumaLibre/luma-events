@@ -12,7 +12,8 @@ import com.sk89q.worldedit.regions.CuboidRegion;
 import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldedit.world.World;
 import dev.lumas.events.EventMain;
-import dev.lumas.events.configurable.sectors.MineBattleDefinition;
+import dev.lumas.events.annotation.Depend;
+import dev.lumas.events.configurable.sectors.game.MineBattleDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.TokenFormula;
@@ -90,6 +91,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 
+@Depend("WorldEdit")
 public final class MineBattle extends InventoryUnifiedMinigame {
 
     // Reveal for 3s at half-time, 5s at 3/4, 10s at 7/8 and permanently at 15/16
@@ -165,8 +167,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         super("MineBattle", "Break ores, gear up, and fight!", Util.secsToMillis(def.getTimeLimitSeconds()), def.getHeartbeatTicks(), true, true, false, false);
         this.timeLimitMillis = Util.secsToMillis(def.getTimeLimitSeconds());
         this.gameEndsAtMillis = System.currentTimeMillis() + Util.secsToMillis(def.getTimeLimitSeconds());
-        this.maxDistanceLOSsquared = def.getMaxDistanceLOS() * def.getMaxDistanceLOS();
-        this.minDistanceLOSsquared = def.getMinDistanceLOS() * def.getMinDistanceLOS();
+        this.maxDistanceLOSsquared = def.getMaxDistanceLos() * def.getMaxDistanceLos();
+        this.minDistanceLOSsquared = def.getMinDistanceLos() * def.getMinDistanceLos();
         this.doPeriodicReveal = def.isDoPeriodicReveal();
         this.useWorldBorder = def.isUseWorldBorder();
         this.lobbyLocation = def.getLobbyLocation();

@@ -1,8 +1,8 @@
-package dev.lumas.events.configurable.sectors;
+package dev.lumas.events.configurable.sectors.game.towers;
 
 import dev.lumas.events.configurable.MaterialCount;
-import eu.okaeri.configs.OkaeriConfig;
 import org.bukkit.Material;
+import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -11,9 +11,10 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import static dev.lumas.events.configurable.MaterialCount.of;
-import static dev.lumas.events.configurable.sectors.TowersItems.Entry.with;
+import static dev.lumas.events.configurable.sectors.game.towers.TowersItems.Entry.with;
 
-public class TowersItems extends OkaeriConfig {
+@ConfigSerializable
+public class TowersItems {
 
     private Map<String, List<MaterialCount>> materialPackages = Map.ofEntries(
             with("tnt", of(Material.TNT, 3), of(Material.REDSTONE_TORCH)),

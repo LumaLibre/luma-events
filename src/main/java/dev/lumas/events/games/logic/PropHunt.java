@@ -3,7 +3,7 @@ package dev.lumas.events.games.logic;
 import com.google.common.base.Preconditions;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.annotation.Depend;
-import dev.lumas.events.configurable.sectors.ManorMinigameDefinition;
+import dev.lumas.events.configurable.sectors.game.ManorMinigameDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.models.CountdownBossBar;

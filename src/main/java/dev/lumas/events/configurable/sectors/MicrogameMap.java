@@ -1,12 +1,15 @@
 package dev.lumas.events.configurable.sectors;
 
-import eu.okaeri.configs.OkaeriConfig;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 @Getter
+@NoArgsConstructor
 @AllArgsConstructor
-public class MicrogameMap extends OkaeriConfig {
+@ConfigSerializable
+public class MicrogameMap {
 
     private String structureName;
     private int padding;

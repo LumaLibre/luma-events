@@ -3,7 +3,7 @@ package dev.lumas.events;
 import dev.lumas.core.manager.Modules;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.ConfigManager;
-import dev.lumas.events.configurable.PersistentStates;
+import dev.lumas.events.configurable.GlobalStates;
 import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.models.CountdownBossBar;
@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 public final class EventMain extends JavaPlugin {
 
     private static EventMain instance;
-    private static ConfigManager okaeriConfigManager;
+    private static ConfigManager configManager;
     private static Modules moduleManager;
     @Getter
     private static boolean withMcMMO = false;
@@ -38,7 +38,7 @@ public final class EventMain extends JavaPlugin {
     public void onEnable() {
         instance = this;
 
-        okaeriConfigManager = new ConfigManager();
+        configManager = new ConfigManager();
         moduleManager = new Modules(this);
 
         moduleManager.register();
@@ -90,11 +90,15 @@ public final class EventMain extends JavaPlugin {
         return instance;
     }
 
-    public static Config getOkaeriConfig() {
-        return okaeriConfigManager.getConfig();
+    public static ConfigManager getConfigManager() {
+        return configManager;
     }
 
-    public static PersistentStates getPersistentStates() {
-        return okaeriConfigManager.getPersistentStates();
+    public static Config getConfiguration() {
+        return configManager.getConfig();
+    }
+
+    public static GlobalStates getPersistentStates() {
+        return configManager.getPersistentStates();
     }
 }

@@ -1,12 +1,13 @@
-package dev.lumas.events.configurable.sectors;
+package dev.lumas.events.configurable.sectors.region;
 
 import dev.lumas.events.model.WorldTiedBoundingBox;
-import eu.okaeri.configs.OkaeriConfig;
 import lombok.Getter;
 import org.bukkit.Location;
+import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 @Getter
-public class Region extends OkaeriConfig {
+@ConfigSerializable
+public class Region {
     private Location loc1;
     private Location loc2;
 

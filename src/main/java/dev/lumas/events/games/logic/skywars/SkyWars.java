@@ -2,7 +2,7 @@ package dev.lumas.events.games.logic.skywars;
 
 import com.google.common.base.Preconditions;
 import dev.lumas.core.util.PluginContextLogger;
-import dev.lumas.events.configurable.sectors.skywars.SkyWarsDefinition;
+import dev.lumas.events.configurable.sectors.game.skywars.SkyWarsDefinition;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
 import dev.lumas.events.games.interfaces.structures.GenericStructure;

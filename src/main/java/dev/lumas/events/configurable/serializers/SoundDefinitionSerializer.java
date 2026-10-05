@@ -1,51 +1,47 @@
 package dev.lumas.events.configurable.serializers;
 
 import dev.lumas.events.utility.effects.SoundDefinition;
-import eu.okaeri.configs.schema.GenericsDeclaration;
-import eu.okaeri.configs.serdes.DeserializationData;
-import eu.okaeri.configs.serdes.ObjectSerializer;
-import eu.okaeri.configs.serdes.SerializationData;
 import net.kyori.adventure.key.Key;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.jspecify.annotations.NullMarked;
+import org.spongepowered.configurate.serialize.ScalarSerializer;
+import org.spongepowered.configurate.serialize.SerializationException;
+
+import java.lang.reflect.Type;
+import java.util.function.Predicate;
 
 @NullMarked
-public class SoundDefinitionSerializer implements ObjectSerializer<SoundDefinition> {
-    @Override
-    public boolean supports(Class<? super SoundDefinition> type) {
-        return SoundDefinition.class.isAssignableFrom(type);
+public class SoundDefinitionSerializer extends ScalarSerializer<SoundDefinition> {
+
+    public SoundDefinitionSerializer() {
+        super(SoundDefinition.class);
     }
 
     @Override
-    public void serialize(SoundDefinition object, SerializationData data, GenericsDeclaration generics) {
-        Key key = object.sound().key();
-        if (object.seed() != null) {
-            data.setValue("%s;%f;%f;%d"
-                    .formatted(key.asMinimalString(), object.volume(), object.pitch(), object.seed())
-            );
-            return;
-        }
-        data.setValue("%s;%f;%f"
-                .formatted(key.asMinimalString(), object.volume(), object.pitch())
-        );
-    }
-
-    @Override
-    public SoundDefinition deserialize(DeserializationData data, GenericsDeclaration generics) {
-        String string = data.getValue(String.class);
-        if (string == null) {
-            throw new IllegalArgumentException("Expected a present value for sound definition");
-        }
-        String[] split = string.split(";");
+    public SoundDefinition deserialize(Type type, Object obj) throws SerializationException {
+        String[] split = obj.toString().split(";");
         NamespacedKey soundKey = NamespacedKey.fromString(split[0]);
         if (soundKey == null || !(Registry.SOUNDS.get(soundKey) instanceof Sound sound)) {
-            throw new IllegalArgumentException("Invalid namespaced key for sound definition");
+            throw new SerializationException("Invalid namespaced key for sound definition");
         }
-        float volume = split.length > 1 ? Float.parseFloat(split[1]) : 15f;
-        float pitch = split.length > 2 ? Float.parseFloat(split[2]) : 1f;
-        Long seed = split.length > 3 ? Long.parseLong(split[3]) : null;
-        return new SoundDefinition(sound, volume, pitch, seed);
+        try {
+            float volume = split.length > 1 ? Float.parseFloat(split[1]) : 15f;
+            float pitch = split.length > 2 ? Float.parseFloat(split[2]) : 1f;
+            Long seed = split.length > 3 ? Long.parseLong(split[3]) : null;
+            return new SoundDefinition(sound, volume, pitch, seed);
+        } catch (NumberFormatException e) {
+            throw new SerializationException("Invalid sound definition: " + obj);
+        }
+    }
+
+    @Override
+    protected Object serialize(SoundDefinition item, Predicate<Class<?>> typeSupported) {
+        Key key = item.sound().key();
+        if (item.seed() != null) {
+            return "%s;%f;%f;%d".formatted(key.asMinimalString(), item.volume(), item.pitch(), item.seed());
+        }
+        return "%s;%f;%f".formatted(key.asMinimalString(), item.volume(), item.pitch());
     }
 }

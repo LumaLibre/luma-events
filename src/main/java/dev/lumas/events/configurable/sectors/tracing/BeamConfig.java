@@ -2,14 +2,15 @@ package dev.lumas.events.configurable.sectors.tracing;
 
 import dev.lumas.events.utility.effects.ParticleDefinition;
 import dev.lumas.events.utility.effects.SoundDefinition;
-import eu.okaeri.configs.OkaeriConfig;
-import eu.okaeri.configs.annotation.Comment;
 import lombok.Getter;
+import org.spongepowered.configurate.objectmapping.ConfigSerializable;
+import org.spongepowered.configurate.objectmapping.meta.Comment;
 
 import java.util.List;
 
 @Getter
-public class BeamConfig extends OkaeriConfig {
+@ConfigSerializable
+public class BeamConfig {
 
     @Comment("Beam range")
     private double range = 75.0;

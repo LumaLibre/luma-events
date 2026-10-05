@@ -2,8 +2,7 @@ package dev.lumas.events.games;
 
 import dev.lumas.events.EventMain;
 import dev.lumas.events.annotation.Depend;
-import dev.lumas.events.configurable.Config;
-import dev.lumas.events.configurable.PersistentStates;
+import dev.lumas.events.configurable.GlobalStates;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.exceptions.GameAlreadyStartedException;
 import dev.lumas.events.games.exceptions.NoAvailableMinigames;
@@ -14,7 +13,6 @@ import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Externals;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
-import eu.okaeri.configs.OkaeriConfig;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -33,9 +31,6 @@ public final class MinigameManager extends AsynchronousRunnable {
 
     private static MinigameManager instance;
 
-    private final Config cfg = EventMain.getOkaeriConfig();
-    private final PersistentStates persistentStates = EventMain.getPersistentStates();
-
 
     @NotNull
     @Getter
@@ -43,18 +38,18 @@ public final class MinigameManager extends AsynchronousRunnable {
 
 
     public boolean newMinigame(MinigameConstant game, boolean force, int seconds) throws GameAlreadyStartedException {
-        OkaeriConfig definition = game.randomEnabledDefinition();
+        Object definition = game.randomEnabledDefinition();
         if (definition == null) {
             throw new NoAvailableMinigames("Cannot start " + game.getDisplayName() + ": every one of its maps is disabled!");
         }
         return this.newMinigame(game, definition, force, seconds);
     }
 
-    public boolean newMinigame(MinigameConstant game, OkaeriConfig definition, boolean force, int seconds) throws GameAlreadyStartedException {
+    public boolean newMinigame(MinigameConstant game, Object definition, boolean force, int seconds) throws GameAlreadyStartedException {
         return this.newMinigame(game, definition, force, seconds, TokenPayout.NORMAL);
     }
 
-    public boolean newMinigame(MinigameConstant game, OkaeriConfig definition, boolean force, int seconds, TokenPayout tokenPayout) throws GameAlreadyStartedException {
+    public boolean newMinigame(MinigameConstant game, Object definition, boolean force, int seconds, TokenPayout tokenPayout) throws GameAlreadyStartedException {
         if (this.current.isActive()) {
             if (!force) {
                 throw new GameAlreadyStartedException("Minigame: " + this.current.getName() + " is already active!");
@@ -112,7 +107,7 @@ public final class MinigameManager extends AsynchronousRunnable {
 
     public boolean newMinigame(boolean force, int seconds) throws GameAlreadyStartedException {
         // Random minigame selection
-        List<MinigameConstant> minigames = cfg.getEnabledAutomaticMinigames();
+        List<MinigameConstant> minigames = EventMain.getConfiguration().getEnabledAutomaticMinigames();
         if (minigames.isEmpty()) {
             throw new NoAvailableMinigames("Cannot start random minigame: No available minigames configured!");
         }
@@ -133,11 +128,11 @@ public final class MinigameManager extends AsynchronousRunnable {
         }
     }
 
-    public boolean tryNewMinigameSafely(MinigameConstant game, OkaeriConfig definition, boolean ignoreCooldown, int seconds) {
+    public boolean tryNewMinigameSafely(MinigameConstant game, Object definition, boolean ignoreCooldown, int seconds) {
         return this.tryNewMinigameSafely(game, definition, ignoreCooldown, seconds, TokenPayout.NORMAL);
     }
 
-    public boolean tryNewMinigameSafely(MinigameConstant game, OkaeriConfig definition, boolean ignoreCooldown, int seconds, TokenPayout tokenPayout) {
+    public boolean tryNewMinigameSafely(MinigameConstant game, Object definition, boolean ignoreCooldown, int seconds, TokenPayout tokenPayout) {
         if (!this.canSafelyStartMinigame(ignoreCooldown)) {
             return false;
         }
@@ -184,18 +179,18 @@ public final class MinigameManager extends AsynchronousRunnable {
 
         // We can't start another minigame if the cooldown hasn't passed!
         long currentTime = System.currentTimeMillis();
-        long lastMinigameTime = this.persistentStates.getLastGameLaunchTime();
+        long lastMinigameTime = EventMain.getPersistentStates().getLastGameLaunchTime();
 
 
-        return (currentTime - lastMinigameTime) >= this.cfg.getAutomaticMinigameCooldown();
+        return (currentTime - lastMinigameTime) >= EventMain.getConfiguration().getAutomaticMinigameCooldown();
     }
 
     @Nullable
     public MinigameConstant getNextAutomaticMinigame() {
-        List<MinigameConstant> availableMinigames = cfg.getEnabledAutomaticMinigames();
+        List<MinigameConstant> availableMinigames = EventMain.getConfiguration().getEnabledAutomaticMinigames();
         if (availableMinigames.isEmpty()) return null;
 
-        int lastIndex = availableMinigames.indexOf(this.persistentStates.getLastMinigame());
+        int lastIndex = availableMinigames.indexOf(EventMain.getPersistentStates().getLastMinigame());
         if (lastIndex == -1) lastIndex = 0;
 
         return availableMinigames.get((lastIndex + 1) % availableMinigames.size());
@@ -203,7 +198,7 @@ public final class MinigameManager extends AsynchronousRunnable {
 
     @Override
     public void accept(ScheduledTask task) {
-        if (!cfg.isAutomaticMinigames() || !this.canSafelyStartMinigame(false)) {
+        if (!EventMain.getConfiguration().isAutomaticMinigames() || !this.canSafelyStartMinigame(false)) {
             return;
         }
 
@@ -213,9 +208,10 @@ public final class MinigameManager extends AsynchronousRunnable {
             throw new NoAvailableMinigames("Cannot start automatic minigame: No available minigames configured!");
         }
 
-        this.persistentStates.setLastGameLaunchTime(System.currentTimeMillis());
-        this.persistentStates.setLastMinigame(nextMinigame);
-        this.persistentStates.save();
+        GlobalStates persistentStates = EventMain.getPersistentStates();
+        persistentStates.setLastGameLaunchTime(System.currentTimeMillis());
+        persistentStates.setLastMinigame(nextMinigame);
+        EventMain.getConfigManager().savePersistentStates();
         this.newMinigame(nextMinigame, false);
     }
 

@@ -1,7 +1,7 @@
 package dev.lumas.events.games.logic;
 
 import dev.lumas.events.annotation.Depend;
-import dev.lumas.events.configurable.sectors.TheNabbitsMinigameDefinition;
+import dev.lumas.events.configurable.sectors.game.TheNabbitsMinigameDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.models.CountdownBossBar;

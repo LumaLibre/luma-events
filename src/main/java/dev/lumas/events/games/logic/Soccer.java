@@ -4,7 +4,7 @@ import com.destroystokyo.paper.event.entity.EntityKnockbackByEntityEvent;
 import com.google.common.base.Preconditions;
 import dev.lumas.core.util.ContextLogger;
 import dev.lumas.events.EventMain;
-import dev.lumas.events.configurable.sectors.SulfurSoccerDefinition;
+import dev.lumas.events.configurable.sectors.game.SulfurSoccerDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.Scorer;

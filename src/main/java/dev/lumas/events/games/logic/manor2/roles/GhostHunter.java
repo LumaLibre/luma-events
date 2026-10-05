@@ -1,16 +1,12 @@
 package dev.lumas.events.games.logic.manor2.roles;
 
 import dev.lumas.events.games.logic.manor2.Manor2;
-import dev.lumas.events.games.logic.manor2.Team;
+import dev.lumas.events.games.logic.manor2.ManorTeam;
 import dev.lumas.events.games.logic.manor2.light.Flashlight;
 import dev.lumas.events.model.EventPlayer;
-import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.latency.tracing.ProximityTraceResult;
 import dev.lumas.glowapi.model.GlowColorManager;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import net.kyori.adventure.title.Title;
 import org.bukkit.entity.Player;
 
 import java.util.Collection;
@@ -55,13 +51,7 @@ public class GhostHunter extends Manor2Role {
         CompletableFuture<Void> completableFuture = new CompletableFuture<>();
         eventPlayer.operatePlayer(player -> {
             player.getInventory().setItem(0, flashlight.createItem());
-            player.showTitle(Title.title(
-                    MiniMessage.miniMessage().deserialize(
-                            manor2.getDefinition().getMessages().getTeamAssignmentShowMessage(),
-                            Placeholder.component("team", Team.HUNTERS.displayName(manor2.getDefinition().getMessages()))
-                    ),
-                    Util.color(manor2.getDefinition().getMessages().getHunterDescription())
-            ));
+            player.showTitle(ManorTeam.HUNTERS.assignmentTitle());
             completableFuture.complete(null);
         });
         return completableFuture;

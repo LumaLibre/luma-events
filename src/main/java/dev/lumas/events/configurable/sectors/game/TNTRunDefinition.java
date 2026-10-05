@@ -1,16 +1,19 @@
-package dev.lumas.events.configurable.sectors;
+package dev.lumas.events.configurable.sectors.game;
 
-import eu.okaeri.configs.OkaeriConfig;
+import dev.lumas.events.annotation.MapTied;
 import lombok.Getter;
 import org.bukkit.Location;
+import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Getter
-public class TNTRunDefinition extends OkaeriConfig {
+@ConfigSerializable
+public class TNTRunDefinition {
 
     private Location lobbyLocation;
+    @MapTied
     private Location arenaOrigin;
 
     private int decayDelayTicks = 20;
@@ -28,6 +31,7 @@ public class TNTRunDefinition extends OkaeriConfig {
     private double bigUpdraftY = 1.6;
     private int updraftCooldownTicks = 20;
 
+    @MapTied
     private String mapSchematic = "tntrun.schem";
 
     private static Map<String, Integer> defaultPowerupWeights() {

@@ -2,17 +2,17 @@ package dev.lumas.events.configurable.serializers;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.ImmutableBiMap;
-import eu.okaeri.configs.schema.GenericsDeclaration;
-import eu.okaeri.configs.serdes.DeserializationData;
-import eu.okaeri.configs.serdes.ObjectSerializer;
-import eu.okaeri.configs.serdes.SerializationData;
 import org.bukkit.Color;
 import org.jspecify.annotations.NullMarked;
+import org.spongepowered.configurate.serialize.ScalarSerializer;
+import org.spongepowered.configurate.serialize.SerializationException;
 
+import java.lang.reflect.Type;
 import java.util.Locale;
+import java.util.function.Predicate;
 
 @NullMarked
-public class ColorSerializer implements ObjectSerializer<Color> {
+public class ColorSerializer extends ScalarSerializer<Color> {
 
     private static final BiMap<String, Integer> PREDEFINED_COLORS = ImmutableBiMap.<String, Integer>builder()
             .put("black", 0x00000)
@@ -33,32 +33,30 @@ public class ColorSerializer implements ObjectSerializer<Color> {
             .put("white", 0xFFFFFF)
             .build();
 
-
-    @Override
-    public boolean supports(Class<? super Color> type) {
-        return Color.class.isAssignableFrom(type);
+    public ColorSerializer() {
+        super(Color.class);
     }
 
     @Override
-    public void serialize(Color object, SerializationData data, GenericsDeclaration generics) {
-        int rgb = object.asRGB();
-        if (PREDEFINED_COLORS.inverse().get(rgb) instanceof String string) {
-            data.setValue(string);
-            return;
-        }
-        data.setValue(Integer.toString(rgb, 16));
-    }
-
-    @Override
-    public Color deserialize(DeserializationData data, GenericsDeclaration generics) {
-        String string = data.getValue(String.class);
-        if (string == null) {
-            throw new IllegalArgumentException("Expected a present value for color definition");
-        }
+    public Color deserialize(Type type, Object obj) throws SerializationException {
+        String string = obj.toString();
         Integer rgb = PREDEFINED_COLORS.get(string.toLowerCase(Locale.ROOT));
         if (rgb != null) {
             return Color.fromRGB(rgb);
         }
-        return Color.fromRGB(Integer.parseInt(string, 16) & 0xFFFFFF);
+        try {
+            return Color.fromRGB(Integer.parseInt(string, 16) & 0xFFFFFF);
+        } catch (NumberFormatException e) {
+            throw new SerializationException("Invalid color definition: " + string);
+        }
+    }
+
+    @Override
+    protected Object serialize(Color item, Predicate<Class<?>> typeSupported) {
+        int rgb = item.asRGB();
+        if (PREDEFINED_COLORS.inverse().get(rgb) instanceof String string) {
+            return string;
+        }
+        return Integer.toString(rgb, 16);
     }
 }

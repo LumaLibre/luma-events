@@ -17,7 +17,6 @@ repositories {
     mavenCentral()
     maven("https://maven.canvasmc.io/releases/")
     maven("https://repo.papermc.io/repository/maven-public/")
-    maven("https://storehouse.okaeri.eu/repository/maven-public/")
     maven("https://repo.jsinco.dev/releases")
     maven("https://jitpack.io")
     maven("https://repo.extendedclip.com/content/repositories/placeholderapi/")
@@ -54,8 +53,8 @@ dependencies {
 
     implementation("dev.thorinwasher.schem:schem-reader:1.0.0")
 
-    implementation("eu.okaeri:okaeri-configs-yaml-bukkit:5.0.5")
-    implementation("eu.okaeri:okaeri-configs-serdes-bukkit:5.0.5")
+    // paper includes configurate and configurate does not get updated that often
+    compileOnly("org.spongepowered:configurate-yaml:4.2.0")
 
     implementation(platform("com.intellectualsites.bom:bom-newest:1.55")) // Ref: https://github.com/IntellectualSites/bom
     compileOnly("com.fastasyncworldedit:FastAsyncWorldEdit-Core")
@@ -82,7 +81,6 @@ tasks {
     shadowJar {
         val pack = "dev.lumas.events.lib"
 
-        relocate("eu.okaeri", "$pack.okaeri")
         relocate("dev.thorinwasher.schem", "$pack.schem")
         exclude("kotlin/**", "net/kyori/**", "org/joml/**")
         //minimize()

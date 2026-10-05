@@ -1,20 +1,27 @@
-package dev.lumas.events.configurable.sectors;
+package dev.lumas.events.configurable.sectors.game;
 
-import eu.okaeri.configs.OkaeriConfig;
+import dev.lumas.events.annotation.MapTied;
+import dev.lumas.events.configurable.sectors.region.Region;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Color;
 import org.bukkit.Location;
+import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 @Getter
 @Setter
-public class FreezeTagDefinition extends OkaeriConfig {
+@ConfigSerializable
+public class FreezeTagDefinition {
 
     private Location lobbyLocation;
+    @MapTied
     private Location team1SpawnLocation; // TODO: Move this into TeamConfig
+    @MapTied
     private Location team2SpawnLocation; // TODO: Move this into TeamConfig
+    @MapTied
     private Region region = new Region();
     private TeamConfig team1 = new TeamConfig("Scarlet", "red");
     private TeamConfig team2 = new TeamConfig("Ivory", "white");
@@ -32,8 +39,10 @@ public class FreezeTagDefinition extends OkaeriConfig {
 
     @Getter
     @Setter
+    @NoArgsConstructor
     @AllArgsConstructor
-    public static class TeamConfig extends OkaeriConfig {
+    @ConfigSerializable
+    public static class TeamConfig {
 
         private String name;
         private String color;

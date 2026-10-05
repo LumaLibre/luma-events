@@ -32,7 +32,7 @@ public class CommandManager extends AbstractCommandManager<EventMain, CommandMod
             return false;
         }
 
-        Location loc = EventMain.getOkaeriConfig().getEventSpawnLocation();
+        Location loc = EventMain.getConfiguration().getEventSpawnLocation();
 
         if (loc != null) {
             Executors.teleportSafely(player, loc.toCenterLocation());

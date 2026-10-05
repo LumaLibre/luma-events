@@ -1,7 +1,7 @@
 package dev.lumas.events.games.logic;
 
 import dev.lumas.events.EventMain;
-import dev.lumas.events.configurable.sectors.BoatRace2Definition;
+import dev.lumas.events.configurable.sectors.game.BoatRace2Definition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.models.CountdownBossBar;

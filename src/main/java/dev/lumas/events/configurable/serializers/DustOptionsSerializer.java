@@ -1,33 +1,34 @@
 package dev.lumas.events.configurable.serializers;
 
-import eu.okaeri.configs.schema.GenericsDeclaration;
-import eu.okaeri.configs.serdes.DeserializationData;
-import eu.okaeri.configs.serdes.ObjectSerializer;
-import eu.okaeri.configs.serdes.SerializationData;
 import org.bukkit.Color;
 import org.bukkit.Particle;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.serialize.SerializationException;
+import org.spongepowered.configurate.serialize.TypeSerializer;
+
+import java.lang.reflect.Type;
 
 @NullMarked
-public class DustOptionsSerializer implements ObjectSerializer<Particle.DustOptions> {
-    @Override
-    public boolean supports(Class<? super Particle.DustOptions> type) {
-        return Particle.DustOptions.class.isAssignableFrom(type);
-    }
+public class DustOptionsSerializer implements TypeSerializer<Particle.DustOptions> {
 
     @Override
-    public void serialize(Particle.DustOptions object, SerializationData data, GenericsDeclaration generics) {
-        data.add("color", object.getColor());
-        data.add("size", object.getSize());
-    }
-
-    @Override
-    public Particle.DustOptions deserialize(DeserializationData data, GenericsDeclaration generics) {
-        Color color = data.get("color", Color.class);
+    public Particle.DustOptions deserialize(Type type, ConfigurationNode node) throws SerializationException {
+        Color color = node.node("color").get(Color.class);
         if (color == null) {
-            throw new IllegalArgumentException("Expected color to be specified for dust options definition");
+            throw new SerializationException("Expected color to be specified for dust options definition");
         }
-        Float size = data.get("size", Float.class);
-        return new Particle.DustOptions(color, size == null ? 1f : size);
+        return new Particle.DustOptions(color, node.node("size").getFloat(1f));
+    }
+
+    @Override
+    public void serialize(Type type, Particle.@Nullable DustOptions obj, ConfigurationNode node) throws SerializationException {
+        if (obj == null) {
+            node.raw(null);
+            return;
+        }
+        node.node("color").set(Color.class, obj.getColor());
+        node.node("size").set(obj.getSize());
     }
 }

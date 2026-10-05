@@ -29,7 +29,7 @@ public class MinigameTeleportAwayListener implements Listener {
         EventPlayer eventPlayer = EventPlayerManager.getByUUIDOrNull(uuid);
 
         if (eventPlayer != null && eventPlayer.wasDisconnectedFromMinigame()) {
-            Location loc = EventMain.getOkaeriConfig().getGameDropOffLocation();
+            Location loc = EventMain.getConfiguration().getGameDropOffLocation();
             if (loc != null) {
                 event.setSpawnLocation(loc);
             }

@@ -35,7 +35,7 @@ public final class TownJoinListener implements Listener {
 
     @EventHandler
     public void onTownJoin(TownAddResidentEvent event) {
-        if (!EventMain.getOkaeriConfig().isTownTokenInvitePayouts()) {
+        if (!EventMain.getConfiguration().isTownTokenInvitePayouts()) {
             return;
         }
 

@@ -1,8 +1,8 @@
 package dev.lumas.events.games.logic.skywars;
 
-import dev.lumas.events.configurable.sectors.skywars.SkyWarsLoot;
-import dev.lumas.events.configurable.sectors.skywars.SkyWarsLoot.LootPackage;
-import dev.lumas.events.configurable.sectors.skywars.SkyWarsLoot.LootPool;
+import dev.lumas.events.configurable.sectors.game.skywars.SkyWarsLoot;
+import dev.lumas.events.configurable.sectors.game.skywars.SkyWarsLoot.LootPackage;
+import dev.lumas.events.configurable.sectors.game.skywars.SkyWarsLoot.LootPool;
 import dev.lumas.events.games.interfaces.structures.GenericStructure;
 import dev.lumas.events.utility.Executors;
 import org.bukkit.Location;

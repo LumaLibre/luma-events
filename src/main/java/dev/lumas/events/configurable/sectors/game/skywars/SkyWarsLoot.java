@@ -1,10 +1,11 @@
-package dev.lumas.events.configurable.sectors.skywars;
+package dev.lumas.events.configurable.sectors.game.skywars;
 
 import dev.lumas.events.configurable.MaterialCount;
-import eu.okaeri.configs.OkaeriConfig;
-import eu.okaeri.configs.annotation.Comment;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.bukkit.Material;
+import org.spongepowered.configurate.objectmapping.ConfigSerializable;
+import org.spongepowered.configurate.objectmapping.meta.Comment;
 
 import java.util.List;
 import java.util.Map;
@@ -12,9 +13,9 @@ import java.util.Map;
 import static dev.lumas.events.configurable.MaterialCount.of;
 import static java.util.Map.entry;
 
-// TODO: move to a new file? // move each game to it's own file?
 @Getter
-public class SkyWarsLoot extends OkaeriConfig {
+@ConfigSerializable
+public class SkyWarsLoot {
 
     @Comment("Copper chests. Basic gear; every chest guarantees building blocks and a weapon.")
     private LootPool common = new LootPool(
@@ -154,7 +155,9 @@ public class SkyWarsLoot extends OkaeriConfig {
     );
 
     @Getter
-    public static class LootPool extends OkaeriConfig {
+    @NoArgsConstructor
+    @ConfigSerializable
+    public static class LootPool {
 
         @Comment("Points a player earns for being the first to open one of these chests")
         private int points;
@@ -175,7 +178,9 @@ public class SkyWarsLoot extends OkaeriConfig {
     }
 
     @Getter
-    public static class LootPackage extends OkaeriConfig {
+    @NoArgsConstructor
+    @ConfigSerializable
+    public static class LootPackage {
 
         private int weight;
         private List<MaterialCount> items;

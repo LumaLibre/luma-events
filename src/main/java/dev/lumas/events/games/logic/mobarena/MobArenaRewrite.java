@@ -2,7 +2,7 @@ package dev.lumas.events.games.logic.mobarena;
 
 import com.google.common.base.Preconditions;
 import dev.lumas.events.EventMain;
-import dev.lumas.events.configurable.sectors.MobArenaDefinition;
+import dev.lumas.events.configurable.sectors.game.MobArenaDefinition;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.interfaces.models.MinigameRole;
 import dev.lumas.events.games.interfaces.models.MinigameRoleMap;

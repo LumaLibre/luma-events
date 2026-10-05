@@ -39,7 +39,7 @@ public class MinigameExitPreventionListener implements Listener {
     public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
         minigame.ensureNotIllegal();
 
-        if (EventMain.getOkaeriConfig().getCommandWhitelist()
+        if (EventMain.getConfiguration().getCommandWhitelist()
                 .contains(event.getMessage().split(" ")[0].substring(1).toLowerCase())) return;
 
         Player player = event.getPlayer();

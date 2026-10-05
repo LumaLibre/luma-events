@@ -1,29 +1,31 @@
 package dev.lumas.events.configurable.serializers;
 
-import eu.okaeri.configs.schema.GenericsDeclaration;
-import eu.okaeri.configs.serdes.DeserializationData;
-import eu.okaeri.configs.serdes.ObjectSerializer;
-import eu.okaeri.configs.serdes.SerializationData;
 import org.bukkit.NamespacedKey;
 import org.jspecify.annotations.NullMarked;
+import org.spongepowered.configurate.serialize.ScalarSerializer;
+import org.spongepowered.configurate.serialize.SerializationException;
+
+import java.lang.reflect.Type;
+import java.util.function.Predicate;
 
 @NullMarked
-public class NamespacedKeySerializer implements ObjectSerializer<NamespacedKey> {
-    @Override
-    public boolean supports(Class<? super NamespacedKey> type) {
-        return NamespacedKey.class.isAssignableFrom(type);
+public class NamespacedKeySerializer extends ScalarSerializer<NamespacedKey> {
+
+    public NamespacedKeySerializer() {
+        super(NamespacedKey.class);
     }
 
     @Override
-    public void serialize(NamespacedKey object, SerializationData data, GenericsDeclaration generics) {
-        data.setValue(object.asMinimalString());
-    }
-
-    @Override
-    public NamespacedKey deserialize(DeserializationData data, GenericsDeclaration generics) {
-        if (data.getValue(String.class) instanceof String string) {
-            return NamespacedKey.fromString(string);
+    public NamespacedKey deserialize(Type type, Object obj) throws SerializationException {
+        NamespacedKey key = NamespacedKey.fromString(obj.toString());
+        if (key == null) {
+            throw new SerializationException("Invalid namespaced key: " + obj);
         }
-        throw new IllegalArgumentException("Undefined element for namespaced key");
+        return key;
+    }
+
+    @Override
+    protected Object serialize(NamespacedKey item, Predicate<Class<?>> typeSupported) {
+        return item.asMinimalString();
     }
 }

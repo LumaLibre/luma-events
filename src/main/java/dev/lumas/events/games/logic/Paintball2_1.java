@@ -1,8 +1,8 @@
 package dev.lumas.events.games.logic;
 
 import dev.lumas.events.EventMain;
-import dev.lumas.events.configurable.sectors.Paintball2_1Definition;
-import dev.lumas.events.configurable.sectors.Paintball2_1Definition.TeamBedPart;
+import dev.lumas.events.configurable.sectors.game.Paintball2_1Definition;
+import dev.lumas.events.configurable.sectors.game.Paintball2_1Definition.TeamBedPart;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.Scorer;

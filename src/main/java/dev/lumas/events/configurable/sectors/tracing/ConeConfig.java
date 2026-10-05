@@ -1,12 +1,13 @@
 package dev.lumas.events.configurable.sectors.tracing;
 
-import eu.okaeri.configs.OkaeriConfig;
 import lombok.Getter;
 import lombok.Setter;
+import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 @Getter
 @Setter
-public class ConeConfig extends OkaeriConfig {
+@ConfigSerializable
+public class ConeConfig {
 
     private double range = 7.5;
 

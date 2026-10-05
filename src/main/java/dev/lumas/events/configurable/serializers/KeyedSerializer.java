@@ -1,39 +1,42 @@
 package dev.lumas.events.configurable.serializers;
 
-import eu.okaeri.configs.schema.GenericsDeclaration;
-import eu.okaeri.configs.serdes.DeserializationData;
-import eu.okaeri.configs.serdes.ObjectSerializer;
-import eu.okaeri.configs.serdes.SerializationData;
 import org.bukkit.Keyed;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.jspecify.annotations.NullMarked;
+import org.spongepowered.configurate.serialize.ScalarSerializer;
+import org.spongepowered.configurate.serialize.SerializationException;
+
+import java.lang.reflect.Type;
+import java.util.function.Predicate;
 
 @NullMarked
-public record KeyedSerializer<T extends Keyed>(Class<T> tClass,
-                                               Registry<T> backing) implements ObjectSerializer<T> {
-    @Override
-    public boolean supports(Class<? super T> type) {
-        return tClass.isAssignableFrom(type);
+public class KeyedSerializer<T extends Keyed> extends ScalarSerializer<T> {
+
+    private final Registry<T> backing;
+
+    public KeyedSerializer(Class<T> type, Registry<T> backing) {
+        super(type);
+        this.backing = backing;
     }
 
     @Override
-    public void serialize(T object, SerializationData data, GenericsDeclaration generics) {
-        data.setValue(object.getKey());
-    }
-
-    @Override
-    public T deserialize(DeserializationData data, GenericsDeclaration generics) {
-        NamespacedKey key = data.getValue(NamespacedKey.class);
+    public T deserialize(Type type, Object obj) throws SerializationException {
+        NamespacedKey key = NamespacedKey.fromString(obj.toString());
         if (key == null) {
-            throw new IllegalArgumentException("Expected a namespaced key");
+            throw new SerializationException("Expected a namespaced key");
         }
         T t = backing.get(key);
         if (t == null) {
-            throw new IllegalArgumentException("Could not find keyed registry value '%s'"
+            throw new SerializationException("Could not find keyed registry value '%s'"
                     .formatted(key.asMinimalString())
             );
         }
         return t;
+    }
+
+    @Override
+    protected Object serialize(T item, Predicate<Class<?>> typeSupported) {
+        return item.getKey().asString();
     }
 }

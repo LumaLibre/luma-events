@@ -1,6 +1,5 @@
 package dev.lumas.events.games.logic.manor2;
 
-import dev.lumas.events.configurable.sectors.Manor2Definition;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
@@ -24,11 +23,26 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ManorScoreboard extends Scoreboard<EventPlayer> {
 
+    private static final List<String> GHOST_KILLED_MESSAGES = List.of(
+            "<gray><white><ghost></white> got blinded to death by <red><participants></red>",
+            "<gray><white><ghost></white> got their sheet stolen by <red><participants></red> (death)"
+    );
+    private static final List<String> HUNTER_KILLED_MESSAGES = List.of(
+            "<gray><red><hunter></red> got haunted to death by <white><participants></white>"
+    );
+    private static final List<String> ARTIFACT_FOUND_MESSAGES = List.of(
+            "<gray><red><participants></red> found a completely worthless artifact",
+            "<gray><red><participants></red> found a dusty relic"
+    );
+    private static final String SCOREBOARD_BORDER = "<#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     ";
+    private static final String SCORE_RECORD = """
+            <green><gold>#<position></gold> is <red><scorer></red> with <gold><points> points</gold>! (<manorTeam>)
+            """;
     private static final int TOP_SCORERS = 5;
     private static final double NAMED_PARTICIPANT_MIN_PERCENTAGE = 15D;
 
     private final Manor2 ctx;
-    private final Map<UUID, Team> scorerTeams = new ConcurrentHashMap<>();
+    private final Map<UUID, ManorTeam> scorerTeams = new ConcurrentHashMap<>();
 
     public ManorScoreboard(Manor2 ctx) {
         this.ctx = ctx;
@@ -40,7 +54,7 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
         shooterTicks.forEach((shooter, ticks) -> attribution.put(shooter, 100D * ticks / revealTime));
 
         award(attribution, ctx.getDefinition().getHunterKillScore());
-        announce(messages().getGhostKilledMessages(),
+        announce(GHOST_KILLED_MESSAGES,
                 Placeholder.component("ghost", Util.displayName(ghost.getUuid())),
                 Placeholder.component("participants", participantsDisplay(attribution))
         );
@@ -50,7 +64,7 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
         Map<UUID, Double> attribution = Map.of(ghost.getUuid(), 100D);
 
         award(attribution, ctx.getDefinition().getGhostKillScore());
-        announce(messages().getHunterKilledMessages(),
+        announce(HUNTER_KILLED_MESSAGES,
                 Placeholder.component("hunter", Util.displayName(hunter.getUuid())),
                 Placeholder.component("participants", participantsDisplay(attribution))
         );
@@ -60,15 +74,14 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
         Map<UUID, Double> attribution = Map.of(eventPlayer.getUuid(), 100D);
 
         award(attribution, ctx.getDefinition().getArtifactFoundScore());
-        announce(messages().getArtifactFoundMessages(),
+        announce(ARTIFACT_FOUND_MESSAGES,
                 Placeholder.component("participants", participantsDisplay(attribution))
         );
     }
 
     @Override
     public void showScores(Audience audience) {
-        String scorerLine = messages().getScoreRecord();
-        Component border = Util.color(messages().getScoreBoardBorder() + "\n");
+        Component border = Util.color(SCOREBOARD_BORDER + "\n");
 
         audience.sendMessage(border);
         int position = 1;
@@ -76,13 +89,13 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
             if (position > TOP_SCORERS) {
                 break;
             }
-            audience.sendMessage(MiniMessage.miniMessage().deserialize(scorerLine,
+            audience.sendMessage(MiniMessage.miniMessage().deserialize(SCORE_RECORD,
                     Formatter.number("position", position++),
                     Placeholder.component("scorer", Util.displayName(entry.getKey().getUuid())),
                     Formatter.number("points", entry.getValue()),
-                    Placeholder.component("team", scorerTeams
-                            .getOrDefault(entry.getKey().getUuid(), Team.UNDEFINED)
-                            .displayName(ctx.getDefinition().getMessages())
+                    Placeholder.component("manorTeam", scorerTeams
+                            .getOrDefault(entry.getKey().getUuid(), ManorTeam.UNDEFINED)
+                            .displayName()
                     )
             ));
         }
@@ -95,10 +108,10 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
      * It's necessary to keep track of this, as roles get changed when the player dies
      *
      * @param playerUuid the scorer
-     * @param team       the team of the scorer
+     * @param manorTeam       the manorTeam of the scorer
      */
-    public void registerTeam(UUID playerUuid, Team team) {
-        scorerTeams.put(playerUuid, team);
+    public void registerTeam(UUID playerUuid, ManorTeam manorTeam) {
+        scorerTeams.put(playerUuid, manorTeam);
     }
 
     private void award(Map<UUID, Double> attribution, int sharedScore) {
@@ -111,10 +124,6 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
 
     private void announce(List<String> messages, TagResolver... resolvers) {
         ctx.getAudience().sendMessage(MiniMessage.miniMessage().deserialize(Util.PREFIX + Util.getRandom(messages), resolvers));
-    }
-
-    private Manor2Definition.MessagesDefinition messages() {
-        return ctx.getDefinition().getMessages();
     }
 
     private static Component participantsDisplay(Map<UUID, Double> attribution) {
