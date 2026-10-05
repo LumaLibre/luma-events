@@ -159,6 +159,37 @@ public final class Executors {
         }
     }
 
+    /**
+     * Runs a task synchronously and returns a CompletableFuture that completes when the task is done.
+     * @param entity the entity to run the task on
+     * @param runnable the task to run
+     * @return a CompletableFuture that completes when the task is done
+     */
+    public static CompletableFuture<Void> runSyncFuture(Entity entity, Runnable runnable) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        Runnable task = () -> {
+            try {
+                runnable.run();
+                future.complete(null);
+            } catch (Throwable t) {
+                future.completeExceptionally(t);
+                throw t;
+            }
+        };
+
+        if (Bukkit.isOwnedByCurrentRegion(entity)) {
+            task.run();
+            return future;
+        }
+
+        ScheduledTask scheduled = entity.getScheduler().run(instance, t -> task.run(), () -> future.complete(null));
+        if (scheduled == null) {
+            instance.getLogger().warning("Dropped a task for retired entity " + entity.getUniqueId());
+            future.complete(null);
+        }
+        return future;
+    }
+
     public static CompletableFuture<Boolean> teleportSafely(Entity entity, @Nullable Location location, @Nullable String site) {
         if (location == null) {
             return CompletableFuture.completedFuture(false);

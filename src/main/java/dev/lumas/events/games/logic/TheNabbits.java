@@ -1,5 +1,6 @@
 package dev.lumas.events.games.logic;
 
+import dev.lumas.events.annotation.Depend;
 import dev.lumas.events.configurable.sectors.TheNabbitsMinigameDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
@@ -38,6 +39,7 @@ import org.bukkit.util.Vector;
 import java.util.List;
 import java.util.Objects;
 
+@Depend("LibsDisguises")
 public final class TheNabbits extends InventoryUnifiedMinigame {
 
     private static final int TICK_INTERVAL = 20; // 20t = 1s

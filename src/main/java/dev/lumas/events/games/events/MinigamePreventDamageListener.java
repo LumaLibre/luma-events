@@ -7,6 +7,11 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 
+/**
+ * @deprecated No good reason for this to still exists. All minigames now use a 'lobby' which can manage
+ * player's damaging each other externally.
+ */
+@Deprecated
 public class MinigamePreventDamageListener implements Listener {
 
     private final Minigame minigame;

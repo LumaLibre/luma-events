@@ -33,8 +33,8 @@ public abstract class MinigameRole implements Scorer {
         return eventPlayer.teleportAsync(location);
     }
 
-    public void operatePlayer(Consumer<Player> consumer) {
-        eventPlayer.operatePlayer(consumer);
+    public CompletableFuture<Void> operatePlayer(Consumer<Player> consumer) {
+        return eventPlayer.operatePlayer(consumer);
     }
 
 }

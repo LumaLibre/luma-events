@@ -8,6 +8,7 @@ import dev.lumas.events.configurable.sectors.Manor2Definition;
 import dev.lumas.events.configurable.sectors.ManorMinigameDefinition;
 import dev.lumas.events.configurable.sectors.MineBattleDefinition;
 import dev.lumas.events.configurable.sectors.MinigameDefinition;
+import dev.lumas.events.configurable.sectors.MobArenaDefinition;
 import dev.lumas.events.configurable.sectors.Paintball2_1Definition;
 import dev.lumas.events.configurable.sectors.PanelPartyMinigameDefinition;
 import dev.lumas.events.configurable.sectors.SulfurSoccerDefinition;
@@ -64,6 +65,11 @@ public class Config extends OkaeriConfig {
     );
 
     // halloween 2026
+
+    @Comment("Minigame definition for 'Mob Arena'")
+    private Map<String, MobArenaDefinition> mobArenaMaps = Map.of(
+            "default", new MobArenaDefinition()
+    );
 
     private Map<String, SkyWarsDefinition> skyWarsMaps = Map.of(
             "default", new SkyWarsDefinition()

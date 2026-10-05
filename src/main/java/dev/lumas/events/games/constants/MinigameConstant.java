@@ -12,17 +12,18 @@ import dev.lumas.events.games.logic.Bomberman;
 import dev.lumas.events.games.logic.FreezeTag;
 import dev.lumas.events.games.logic.Incursion;
 import dev.lumas.events.games.logic.Manor;
-import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.MineBattle;
 import dev.lumas.events.games.logic.Paintball2_1;
 import dev.lumas.events.games.logic.PanelParty;
 import dev.lumas.events.games.logic.PropHunt;
-import dev.lumas.events.games.logic.SkyWars;
 import dev.lumas.events.games.logic.Soccer;
 import dev.lumas.events.games.logic.TNTRun;
 import dev.lumas.events.games.logic.TNTTag;
 import dev.lumas.events.games.logic.TheNabbits;
 import dev.lumas.events.games.logic.Towers;
+import dev.lumas.events.games.logic.manor2.Manor2;
+import dev.lumas.events.games.logic.mobarena.MobArenaRewrite;
+import dev.lumas.events.games.logic.skywars.SkyWars;
 import dev.lumas.events.utility.Util;
 import eu.okaeri.configs.OkaeriConfig;
 import lombok.Getter;
@@ -50,7 +51,9 @@ public enum MinigameConstant {
     INCURSION(Incursion::new, "Incursion", "incursion"),
     BOMBERMAN((config) -> new Bomberman((BombermanDefinition) config), "Bomberman", "bomberman", "bomber_man"),
     SKYWARS(SkyWars::new, "SkyWars", "skywars"),
-    MANOR_2(Manor2::new, "Manor 2", "manor2");
+    MANOR_2(Manor2::new, "Manor 2", "manor2"),
+    MOB_ARENA(MobArenaRewrite::new, "Mob Arena", "mob_arena")
+    ;
 
     private final MinigameSupplier<?> supplier;
     private final String displayName;
@@ -83,6 +86,7 @@ public enum MinigameConstant {
             case BOMBERMAN -> (Map<String, T>) cfg.getBombermanMaps();
             case SKYWARS -> (Map<String, T>) cfg.getSkyWarsMaps();
             case MANOR_2 -> (Map<String, T>) cfg.getManor2Maps();
+            case MOB_ARENA -> (Map<String, T>) cfg.getMobArenaMaps();
         };
     }
 

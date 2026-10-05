@@ -76,6 +76,14 @@ public class Scoreboard<T extends Scorer> {
         return messages;
     }
 
+    public void showScores(Audience audience) {
+        audience.sendMessage(Util.color(BORDER));
+        for (Component message : this.scoreboardMessage()) {
+            audience.sendMessage(message);
+        }
+        audience.sendMessage(Util.color(BORDER));
+    }
+
     public void handleGameEnd(Audience audience, Runnable callback) {
         Map<T, Integer> top = this.sortedScores();
         if (top == null) {
@@ -83,18 +91,13 @@ public class Scoreboard<T extends Scorer> {
             return;
         }
         T topScorer = top.keySet().stream().findFirst().orElse(null);
-        List<Component> messages = this.scoreboardMessage();
 
         audience.showTitle(Util.title(
             "<yellow>Game Over",
             "<gold>" + (topScorer != null ? topScorer.getName() : "Unknown") + " has won!"
         ));
 
-        audience.sendMessage(Util.color(BORDER));
-        for (Component message : messages) {
-            audience.sendMessage(message);
-        }
-        audience.sendMessage(Util.color(BORDER));
+        showScores(audience);
 
         if (callback != null) {
             try {

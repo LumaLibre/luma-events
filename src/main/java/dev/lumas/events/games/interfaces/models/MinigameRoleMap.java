@@ -3,6 +3,8 @@ package dev.lumas.events.games.interfaces.models;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -52,6 +54,15 @@ public class MinigameRoleMap<T extends MinigameRole> extends ConcurrentHashMap<U
             return type.cast(player);
         }
         return null;
+    }
+
+    public boolean is(UUID uuid, Class<? extends T> type) {
+        T player = this.get(uuid);
+        return type.isInstance(player);
+    }
+
+    public boolean is(Entity entity, Class<? extends T> type) {
+        return entity instanceof Player && this.is(entity.getUniqueId(), type);
     }
 
     public <K extends T> List<K> predicate(Class<K> type, Predicate<K> predicate) {

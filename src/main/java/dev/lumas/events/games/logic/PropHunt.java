@@ -2,6 +2,7 @@ package dev.lumas.events.games.logic;
 
 import com.google.common.base.Preconditions;
 import dev.lumas.events.EventMain;
+import dev.lumas.events.annotation.Depend;
 import dev.lumas.events.configurable.sectors.ManorMinigameDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
@@ -56,6 +57,7 @@ import java.util.function.Supplier;
 //  - better cues for seekers (some particles also when not locked in place? Cues on distance to the nearest hidden player?)
 //  - debug
 //  - Player's blockInteractionRange attribute should be 0 so they can't interact with the map
+@Depend("LibsDisguises")
 public final class PropHunt extends InventoryUnifiedMinigame {
 
     private static final long STANDARD_DURATION = 300000; // in milliseconds

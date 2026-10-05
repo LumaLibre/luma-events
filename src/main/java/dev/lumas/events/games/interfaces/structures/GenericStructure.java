@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -182,23 +183,28 @@ public class GenericStructure extends Structure {
 
     // Reads only the in-memory schematic (no world access), so this is safe to call from any thread
     public List<Location> findBlocks(Predicate<BlockData> filter) {
+        return new ArrayList<>(findBlockData(filter).keySet());
+    }
+
+    // Like findBlocks, but keeps each match's block data. In schematic order.
+    public Map<Location, BlockData> findBlockData(Predicate<BlockData> filter) {
         Vector3i size = schematic.size(transformation);
         Vector3i offset = new Vector3i(size.x() / 2, 0, size.z() / 2);
         World world = origin.getWorld();
-        List<Location> found = new ArrayList<>();
+        Map<Location, BlockData> found = new LinkedHashMap<>();
         schematic.apply(transformation, (vector3i, blockData) -> {
             if (!filter.test(blockData)) return;
             Vector3i relative = new Vector3i(vector3i).sub(offset);
-            found.add(new Location(world, origin.getBlockX() + relative.x, origin.getBlockY() + relative.y, origin.getBlockZ() + relative.z));
+            found.put(new Location(world, origin.getBlockX() + relative.x, origin.getBlockY() + relative.y, origin.getBlockZ() + relative.z), blockData);
         });
         return found;
     }
 
-    public CompletableFuture<List<Location>> findBlocksAsync(Predicate<BlockData> filter) {
-        CompletableFuture<List<Location>> future = new CompletableFuture<>();
+    public CompletableFuture<Map<Location, BlockData>> findBlockDataAsync(Predicate<BlockData> filter) {
+        CompletableFuture<Map<Location, BlockData>> future = new CompletableFuture<>();
         Executors.runAsync(() -> {
             try {
-                future.complete(findBlocks(filter));
+                future.complete(findBlockData(filter));
             } catch (Throwable t) {
                 future.completeExceptionally(t);
             }

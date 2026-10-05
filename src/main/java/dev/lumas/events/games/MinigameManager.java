@@ -1,6 +1,7 @@
 package dev.lumas.events.games;
 
 import dev.lumas.events.EventMain;
+import dev.lumas.events.annotation.Depend;
 import dev.lumas.events.configurable.Config;
 import dev.lumas.events.configurable.PersistentStates;
 import dev.lumas.events.games.constants.MinigameConstant;
@@ -10,6 +11,7 @@ import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.interfaces.TokenPayout;
 import dev.lumas.events.games.logic.NonActiveMinigame;
 import dev.lumas.events.utility.Executors;
+import dev.lumas.events.utility.Externals;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import eu.okaeri.configs.OkaeriConfig;
@@ -68,14 +70,22 @@ public final class MinigameManager extends AsynchronousRunnable {
                 () -> player.playSound(player.getLocation(), Sound.ENTITY_EVOKER_PREPARE_WOLOLO, 1f, 0.75f)));
 
         try {
-            this.current = game.instantiate(definition);
+            Minigame minigame = game.instantiate(definition);
+            Depend depend = minigame.getClass().getAnnotation(Depend.class);
+            if (depend != null) {
+                for (String plugin : depend.value()) {
+                    if (!Externals.pluginExists(plugin)) {
+                        throw new NoAvailableMinigames("Cannot start " + game.getDisplayName() + ": it depends on the plugin '" + plugin + "' which is not installed!");
+                    }
+                }
+            }
+            this.current = minigame;
             this.current.setTokenPayout(tokenPayout);
             if (!tokenPayout.isNormal()) {
                 EventMain.getInstance().getLogger().info(game.getDisplayName() + " was started with a token payout of " + tokenPayout);
             }
         } catch (Throwable throwable) {
             throwable.printStackTrace();
-            // FIXME
             HandlerList.unregisterAll(this.current);
             this.current = new NonActiveMinigame();
             return false;

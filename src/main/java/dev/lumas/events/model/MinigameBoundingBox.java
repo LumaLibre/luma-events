@@ -22,4 +22,11 @@ public interface MinigameBoundingBox {
     Location getCenterLocation();
 
     void operate(Consumer<Block> consumer);
+
+    default WorldTiedBoundingBox worldTied() {
+        if (this instanceof WorldTiedBoundingBox wtb) {
+            return wtb;
+        }
+        throw new IllegalStateException("Cannot convert to WorldTiedBoundingBox");
+    }
 }

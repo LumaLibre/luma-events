@@ -10,6 +10,7 @@ import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.MinigameBoundingBox;
 import dev.lumas.events.utility.Executors;
+import dev.lumas.events.utility.Externals;
 import dev.lumas.events.utility.JoinTrace;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
@@ -26,6 +27,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Registry;
 import org.bukkit.Sound;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
@@ -45,15 +47,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Setter
 public abstract class Minigame extends AsynchronousRunnable implements Listener {
 
-    private static final boolean HIDDEN_ARMOR_AVAILABLE;
-    static {
-        boolean available = false;
-        try {
-            Class.forName("me.kteq.hiddenarmor.HiddenArmorAPI");
-            available = true;
-        } catch (ClassNotFoundException ignored) {}
-        HIDDEN_ARMOR_AVAILABLE = available;
-    }
+    private static final boolean HIDDEN_ARMOR_AVAILABLE = Externals.pluginExists("HiddenArmor");
 
     protected static final Random RANDOM = Util.RANDOM;
 
@@ -173,7 +167,11 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         if (!this.active || this.stopping) {
             return false;
         }
-        this.stopping = true;
+        this.cancel(); // halt tasks first
+        unregisterEvents(this); // choosing to unregister listeners before doing shutdown logic
+        extraListeners.stream()
+            .filter(Objects::nonNull)
+            .forEach(this::unregisterEvents);
 
         if (this.inventoryTampering != null) {
             unregisterEvents(this.inventoryTampering);
@@ -181,6 +179,8 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         if (this.preventDamage != null) {
             unregisterEvents(this.preventDamage);
         }
+
+        this.stopping = true;
 
         try {
             this.handleStop();
@@ -199,12 +199,6 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
                 participant.operatePlayer(HiddenArmorAPI::clearForceShow);
             }
         }
-
-        unregisterEvents(this);
-        extraListeners.stream()
-                .filter(Objects::nonNull)
-                .forEach(this::unregisterEvents);
-        this.cancel();
 
         this.active = false;
         this.open = false; // Should be false by now anyway :P
@@ -299,6 +293,15 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
     public void ensureNotIllegal() {
         if (!this.isActive()) {
             throw new GameComponentIllegallyActive("Minigame is not active");
+        }
+    }
+
+    public void ensureTickThread(Entity entity) {
+        if (entity == null) {
+            throw new IllegalArgumentException("Entity cannot be null");
+        }
+        if (Bukkit.isOwnedByCurrentRegion(entity)) {
+            throw new IllegalStateException("Bad thread for " + entity);
         }
     }
 

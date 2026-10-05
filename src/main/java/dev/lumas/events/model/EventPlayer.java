@@ -120,22 +120,12 @@ public class EventPlayer implements Serializable, Scorer {
         return Bukkit.getPlayer(this.uuid);
     }
 
-    public void operatePlayer(Consumer<Player> consumer) {
+    public CompletableFuture<Void> operatePlayer(Consumer<Player> consumer) {
         Player player = this.getPlayer();
-        if (player != null) {
-            Executors.runSync(player, () -> consumer.accept(player));
+        if (player == null) {
+            return CompletableFuture.completedFuture(null);
         }
-    }
-
-    public void operatePlayerSafely(Consumer<Player> consumer) {
-        Player player = this.getPlayer();
-        if (player != null) {
-            if (!Bukkit.isOwnedByCurrentRegion(player)) {
-                Executors.runSync(player, () -> consumer.accept(player));
-            } else {
-                consumer.accept(player);
-            }
-        }
+        return Executors.runSyncFuture(player, () -> consumer.accept(player));
     }
 
     public void addBossBar(BossBar bossBar) {
