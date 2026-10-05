@@ -30,6 +30,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class Flashlight {
 
@@ -45,6 +47,9 @@ public class Flashlight {
     private static final int LIGHT_BLOCK_LIFETIME = 4;
     private static final int FLASHLIGHT_DISTANCE = 8;
     private static final double LIGHT_SAMPLE_STEP = 0.25;
+    private static final int DUST_SPAWNS_PER_TICK = 3;
+    private static final double DUST_PITCH_MAX_VALUE = 70;
+    private static final int DUST_PITCH_DOWN_LOOK_RADIUS = 1;
     private static final BlockFace[] LIGHT_FALLBACK_FACES = {
             BlockFace.UP, BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.DOWN
     };
@@ -107,6 +112,40 @@ public class Flashlight {
                     }
                 });
         illuminate(illuminance);
+        placeDust();
+    }
+
+    private void placeDust() {
+        Location playerLocation = player.getEyeLocation();
+        if (playerLocation.getPitch() < -DUST_PITCH_MAX_VALUE) {
+            return;
+        }
+        Vector direction = playerLocation.getDirection();
+        Random random = ThreadLocalRandom.current();
+
+        for (int i = 0; i < DUST_SPAWNS_PER_TICK; i++) {
+            Location lookAt;
+            if (direction.equals(new Vector(0, -1, 0))) {
+                lookAt = playerLocation.clone()
+                        .add(random.nextInt(-DUST_PITCH_DOWN_LOOK_RADIUS, DUST_PITCH_DOWN_LOOK_RADIUS + 1),
+                                0,
+                                random.nextInt(-DUST_PITCH_DOWN_LOOK_RADIUS, DUST_PITCH_DOWN_LOOK_RADIUS + 1)
+                        );
+            } else {
+                lookAt = playerLocation.clone().add(direction.clone().rotateAroundY(random.nextDouble(
+                                -Math.toRadians(coneConfig.getConeDegrees()), Math.toRadians(coneConfig.getConeDegrees())
+                        )).multiply(random.nextDouble((double) FLASHLIGHT_DISTANCE / 2, FLASHLIGHT_DISTANCE))
+                );
+            }
+            Block spot = lookAt.getBlock();
+            int dy = 1;
+            while (!spot.getRelative(0, -dy, 0).isSolid()) {
+                dy++;
+            }
+            final int dyFinal = dy;
+            manor2.getDefinition().getFlashlightGroundParticles()
+                    .forEach(particleDefinition -> particleDefinition.showAt(spot.getRelative(0, -dyFinal, 0).getLocation()));
+        }
     }
 
     private int compareConeTraceResults(ConeTraceResult coneTraceResult1, ConeTraceResult coneTraceResult2) {
@@ -180,15 +219,6 @@ public class Flashlight {
                 light.setLevel(lightLevel);
                 light.setWaterlogged(spot.getType() == Material.WATER);
             });
-            if (lightLevel > 0) {
-                int dy = 1;
-                while (!spot.getRelative(0, -dy, 0).isSolid()) {
-                    dy++;
-                }
-                final int dyFinal = dy;
-                manor2.getDefinition().getFlashlightGroundParticles()
-                        .forEach(particleDefinition -> particleDefinition.showAt(spot.getRelative(0, -dyFinal, 0).getLocation()));
-            }
             manor2.getBlockCache().setBlock(spot.getLocation(), blockData, LIGHT_BLOCK_LIFETIME);
         });
     }
