@@ -1,9 +1,13 @@
 package dev.lumas.events.configurable.sectors;
 
+import dev.lumas.events.utility.effects.ParticleDefinition;
 import eu.okaeri.configs.OkaeriConfig;
 import eu.okaeri.configs.annotation.Comment;
 import lombok.Getter;
+import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.util.BoundingBox;
 
 import java.util.List;
 
@@ -25,6 +29,15 @@ public class Manor2Definition extends OkaeriConfig {
     private int hunterKillScore = 150;
     private LagCompensationSettings lagCompensation = new LagCompensationSettings();
     private MessagesDefinition messages;
+    private List<ParticleDefinition> flashlightGroundParticles = List.of(
+            new ParticleDefinition(
+                    Particle.DUST,
+                    15,
+                    10,
+                    new BoundingBox(0, 0, 0, 1, 1, 1),
+                    new Particle.DustOptions(Color.GRAY, 2f)
+            )
+    );
 
     @Getter
     public static class LagCompensationSettings extends OkaeriConfig {

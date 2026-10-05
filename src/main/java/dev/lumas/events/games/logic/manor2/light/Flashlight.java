@@ -180,6 +180,15 @@ public class Flashlight {
                 light.setLevel(lightLevel);
                 light.setWaterlogged(spot.getType() == Material.WATER);
             });
+            if (lightLevel > 0) {
+                int dy = 1;
+                while (!spot.getRelative(0, -dy, 0).isSolid()) {
+                    dy++;
+                }
+                final int dyFinal = dy;
+                manor2.getDefinition().getFlashlightGroundParticles()
+                        .forEach(particleDefinition -> particleDefinition.showAt(spot.getRelative(0, -dyFinal, 0).getLocation()));
+            }
             manor2.getBlockCache().setBlock(spot.getLocation(), blockData, LIGHT_BLOCK_LIFETIME);
         });
     }

@@ -6,6 +6,7 @@ import dev.lumas.events.configurable.serializers.BoundingBoxSerializer;
 import dev.lumas.events.configurable.serializers.ColorSerializer;
 import dev.lumas.events.configurable.serializers.DustOptionsSerializer;
 import dev.lumas.events.configurable.serializers.KeyedSerializer;
+import dev.lumas.events.configurable.serializers.NamespacedKeySerializer;
 import dev.lumas.events.configurable.serializers.ParticleDefinitionSerializer;
 import dev.lumas.events.configurable.serializers.SoundDefinitionSerializer;
 import dev.lumas.events.configurable.serializers.VectorSerializer;
@@ -47,6 +48,7 @@ public class ConfigManager {
                 registry.register(new ColorSerializer());
                 registry.register(new DustOptionsSerializer());
                 registry.register(new KeyedSerializer<>(Particle.class, Registry.PARTICLE_TYPE));
+                registry.register(new NamespacedKeySerializer());
                 registry.register(new ParticleDefinitionSerializer());
                 registry.register(new SoundDefinitionSerializer());
                 registry.register(new VectorSerializer());
