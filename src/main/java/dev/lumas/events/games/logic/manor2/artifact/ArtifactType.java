@@ -2,6 +2,7 @@ package dev.lumas.events.games.logic.manor2.artifact;
 
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.utility.Util;
+import eu.okaeri.configs.OkaeriConfig;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.ItemLore;
 import org.bukkit.inventory.ItemStack;
@@ -10,7 +11,7 @@ import org.bukkit.persistence.PersistentDataType;
 
 import java.util.List;
 
-public final class ArtifactType {
+public final class ArtifactType extends OkaeriConfig {
 
     private ItemType itemType;
     private String displayName;

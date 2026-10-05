@@ -1,5 +1,6 @@
 package dev.lumas.events.games.logic.manor2.light;
 
+import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.tracing.ConeConfig;
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
@@ -9,6 +10,7 @@ import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import io.papermc.paper.datacomponent.item.UseEffects;
 import lombok.Getter;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -22,15 +24,18 @@ import org.bukkit.block.data.type.Slab;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.util.BlockVector;
 import org.bukkit.util.Vector;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Flashlight {
@@ -47,9 +52,13 @@ public class Flashlight {
     private static final int LIGHT_BLOCK_LIFETIME = 4;
     private static final int FLASHLIGHT_DISTANCE = 8;
     private static final double LIGHT_SAMPLE_STEP = 0.25;
-    private static final int DUST_SPAWNS_PER_TICK = 3;
+
+    private static final int DUST_SPAWNS_PER_TICK = 1;
     private static final double DUST_PITCH_MAX_VALUE = 70;
     private static final int DUST_PITCH_DOWN_LOOK_RADIUS = 1;
+
+    private static final double ARTIFACT_SAMPLE_STEP = 0.25;
+
     private static final BlockFace[] LIGHT_FALLBACK_FACES = {
             BlockFace.UP, BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.DOWN
     };
@@ -112,10 +121,11 @@ public class Flashlight {
                     }
                 });
         illuminate(illuminance);
-        placeEntities();
+        showDust();
+        revealArtifacts();
     }
 
-    private void placeEntities() {
+    private void showDust() {
         Location playerLocation = player.getEyeLocation();
         if (playerLocation.getPitch() < -DUST_PITCH_MAX_VALUE) {
             return;
@@ -137,15 +147,46 @@ public class Flashlight {
                         )).multiply(random.nextDouble((double) FLASHLIGHT_DISTANCE / 2, FLASHLIGHT_DISTANCE))
                 );
             }
-            Block spot = lookAt.getBlock();
-            int dy = 1;
-            while (!spot.getRelative(0, -dy, 0).isSolid()) {
-                dy++;
-            }
-            final int dyFinal = dy;
             manor2.getDefinition().getFlashlightGroundParticles()
-                    .forEach(particleDefinition -> particleDefinition.showAt(spot.getRelative(0, -dyFinal, 0).getLocation()));
+                    .forEach(particleDefinition -> particleDefinition.showAt(findGroundSupported(lookAt)));
         }
+    }
+
+    private Location findGroundSupported(Location location) {
+        Block spot = location.getBlock();
+        int dy = 1;
+        while (!spot.getRelative(0, -dy, 0).isSolid()) {
+            dy++;
+        }
+        final int dyFinal = dy;
+        return spot.getRelative(0, -dyFinal + 1, 0).getLocation();
+    }
+
+    private void revealArtifacts() {
+        Location playerLocation = player.getEyeLocation();
+        if (playerLocation.getPitch() < -DUST_PITCH_MAX_VALUE) {
+            return;
+        }
+        if (playerLocation.getPitch() > DUST_PITCH_MAX_VALUE) {
+            return;
+        }
+        Vector direction = playerLocation.getDirection();
+        Vector yAxis = new Vector(0, 1, 0);
+        Vector xzPlaneNormalized = direction.clone().subtract(yAxis.clone().multiply(direction.dot(yAxis))).normalize();
+        Vector orthogonal = yAxis.clone().crossProduct(xzPlaneNormalized);
+        Set<BlockVector> vectors = new HashSet<>();
+        for (double x = 1; x < FLASHLIGHT_DISTANCE / ARTIFACT_SAMPLE_STEP + 1; x++) {
+            for (double z = -FLASHLIGHT_DISTANCE / ARTIFACT_SAMPLE_STEP; z < FLASHLIGHT_DISTANCE / ARTIFACT_SAMPLE_STEP + 1; z++) {
+                if (z != 0 && x / z > Math.tan(Math.toRadians(coneConfig.getConeDegrees()))) {
+                    continue;
+                }
+                vectors.add(xzPlaneNormalized.clone().multiply(x).add(orthogonal.clone().multiply(z)).toBlockVector());
+            }
+        }
+        Bukkit.getRegionScheduler().run(EventMain.getInstance(), playerLocation, ignored -> vectors.stream()
+                .map(vector -> new Location(playerLocation.getWorld(), vector.getBlockX(), vector.getBlockY(), vector.getBlockZ()))
+                .map(this::findGroundSupported)
+                .forEach(manor2.getArtifactManager()::reveal));
     }
 
     private int compareConeTraceResults(ConeTraceResult coneTraceResult1, ConeTraceResult coneTraceResult2) {
