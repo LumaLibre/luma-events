@@ -4,8 +4,6 @@ import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.light.LightHit;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
-import dev.lumas.events.games.logic.manor2.score.ScoreRecord;
-import dev.lumas.events.games.logic.manor2.score.ScoreRecordDisplay;
 import dev.lumas.events.utility.Executors;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.DeathProtection;
@@ -23,7 +21,6 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -118,9 +115,7 @@ public final class Grab {
             player.sendHurtAnimation(0);
         });
         victim.die();
-        manor2.getScoreManager().registerScore(
-                new ScoreRecord(Map.of(ghost.getUuid(), 100D), manor2.getDefinition().getGhostKillScore(), new ScoreRecordDisplay.HunterKilled(victim.getUuid()))
-        );
+        manor2.getScoreboard().hunterKilled(victim, ghost);
     }
 
     private void breakFree(Manor2 manor2) {

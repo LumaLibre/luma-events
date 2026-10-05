@@ -18,16 +18,16 @@ public final class GhostAttacks {
     private final Map<UUID, Grab> grabMap = new ConcurrentHashMap<>();
     private final Map<UUID, Long> cooldown = new ConcurrentHashMap<>();
     private volatile long currentTick = 0;
-    private final Manor2 manor2;
+    private final Manor2 ctx;
 
-    public GhostAttacks(Manor2 manor2) {
-        this.manor2 = manor2;
+    public GhostAttacks(Manor2 ctx) {
+        this.ctx = ctx;
     }
 
     public boolean handleAttack(Player attacker, Entity attacked) {
-        Ghost ghost = manor2.getRoleMap().as(attacker.getUniqueId(), Ghost.class);
+        Ghost ghost = ctx.getRoleMap().as(attacker.getUniqueId(), Ghost.class);
         if (ghost == null || !(attacked instanceof Player victimPlayer)) return false;
-        GhostHunter victim = manor2.getRoleMap().as(victimPlayer.getUniqueId(), GhostHunter.class);
+        GhostHunter victim = ctx.getRoleMap().as(victimPlayer.getUniqueId(), GhostHunter.class);
         if (victim == null) return false;
 
         tryGrab(ghost, attacker, victim, victimPlayer);
@@ -39,7 +39,7 @@ public final class GhostAttacks {
         if (grab == null) return false;
 
         if (grab.getGhost().getUuid().equals(player.getUniqueId())) {
-            grab.backout(manor2);
+            grab.backout(ctx);
         }
         return true;
     }
@@ -54,23 +54,23 @@ public final class GhostAttacks {
     public void tick() {
         currentTick++;
         for (Grab grab : Set.copyOf(grabMap.values())) {
-            grab.tick(manor2);
+            grab.tick(ctx);
         }
     }
 
     public void abort(UUID player) {
         Grab grab = grabMap.get(player);
         if (grab != null) {
-            grab.abort(manor2);
+            grab.abort(ctx);
         }
     }
 
     public void stop() {
-        Set.copyOf(grabMap.values()).forEach(grab -> grab.abort(manor2));
+        Set.copyOf(grabMap.values()).forEach(grab -> grab.abort(ctx));
     }
 
     private synchronized void tryGrab(Ghost ghost, Player ghostPlayer, GhostHunter victim, Player victimPlayer) {
-        if (manor2.isStopping() || !isAvailable(ghost) || !isAvailable(victim)) return;
+        if (ctx.isStopping() || !isAvailable(ghost) || !isAvailable(victim)) return;
 
         Grab grab = new Grab(ghost, victim, ghostPlayer.getEyeLocation(), victimPlayer.getLocation());
         grabMap.put(ghost.getUuid(), grab);
@@ -79,7 +79,7 @@ public final class GhostAttacks {
     }
 
     private boolean isAvailable(Manor2Role role) {
-        return manor2.getParticipants().contains(role.getEventPlayer())
+        return ctx.getParticipants().contains(role.getEventPlayer())
                 && !grabMap.containsKey(role.getUuid())
                 && cooldown.getOrDefault(role.getUuid(), 0L) <= currentTick;
     }

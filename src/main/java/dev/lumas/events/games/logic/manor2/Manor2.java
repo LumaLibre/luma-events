@@ -12,7 +12,7 @@ import dev.lumas.events.games.logic.manor2.light.Flashlight;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
-import dev.lumas.events.games.logic.manor2.score.ScoreManager;
+import dev.lumas.events.games.logic.manor2.score.ManorScoreboard;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
@@ -90,7 +90,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     @Getter
     private final GhostAttacks ghostAttacks = new GhostAttacks(this);
     @Getter
-    private final ScoreManager scoreManager = new ScoreManager(this);
+    private final ManorScoreboard scoreboard = new ManorScoreboard(this);
 
     private CountdownBossBar timer;
 
@@ -194,7 +194,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         packetGlow.stop();
         ghostAttacks.stop();
-        scoreManager.showScores();
+        scoreboard.showScores(audience);
 
         Executors.sync(definition.getHunterStartLocations().getFirst(), blockCache::shutdown);
 

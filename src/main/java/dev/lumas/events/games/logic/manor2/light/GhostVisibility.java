@@ -4,8 +4,6 @@ import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
-import dev.lumas.events.games.logic.manor2.score.ScoreRecord;
-import dev.lumas.events.games.logic.manor2.score.ScoreRecordDisplay;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import lombok.Getter;
@@ -27,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 public final class GhostVisibility {
 
@@ -95,13 +92,7 @@ public final class GhostVisibility {
                         .reduce(0, Integer::sum) &&
                 manor2.getRoleMap().as(ghost.getUuid(), Ghost.class) instanceof Ghost ghostGhost
         ) {
-            manor2.getScoreManager().registerScore(new ScoreRecord(
-                    shooterTicks.entrySet().stream()
-                            .map(entry -> Map.entry(entry.getKey(), 100D * (double) entry.getValue() / manor2.getDefinition().getGhostRevealTime()))
-                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
-                    manor2.getDefinition().getHunterKillScore(),
-                    new ScoreRecordDisplay.GhostKilled(ghostGhost.getUuid())
-            ));
+            manor2.getScoreboard().ghostKilled(ghostGhost, shooterTicks);
             ghostGhost.die();
         }
         ghost.operatePlayer(player -> {
