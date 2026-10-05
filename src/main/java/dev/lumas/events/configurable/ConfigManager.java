@@ -16,6 +16,7 @@ import eu.okaeri.configs.yaml.bukkit.YamlBukkitConfigurer;
 import lombok.Getter;
 import org.bukkit.Particle;
 import org.bukkit.Registry;
+import org.bukkit.inventory.ItemType;
 
 import java.nio.file.Path;
 
@@ -48,6 +49,7 @@ public class ConfigManager {
                 registry.register(new ColorSerializer());
                 registry.register(new DustOptionsSerializer());
                 registry.register(new KeyedSerializer<>(Particle.class, Registry.PARTICLE_TYPE));
+                registry.register(new KeyedSerializer<>(ItemType.class, Registry.ITEM));
                 registry.register(new NamespacedKeySerializer());
                 registry.register(new ParticleDefinitionSerializer());
                 registry.register(new SoundDefinitionSerializer());

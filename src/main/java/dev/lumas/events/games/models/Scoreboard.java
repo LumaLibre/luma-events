@@ -45,15 +45,15 @@ public class Scoreboard<T extends Scorer> {
     @Nullable
     public T getTopScorer() {
         return scores.entrySet().stream()
-            .max(Map.Entry.comparingByValue())
-            .map(Map.Entry::getKey)
-            .orElse(null);
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null);
     }
 
     public LinkedHashMap<T, Integer> sortedScores() {
         return scores.entrySet().stream()
-            .sorted(Map.Entry.<T, Integer>comparingByValue().reversed())
-            .collect(LinkedHashMap::new, (map, entry) -> map.put(entry.getKey(), entry.getValue()), LinkedHashMap::putAll);
+                .sorted(Map.Entry.<T, Integer>comparingByValue().reversed())
+                .collect(LinkedHashMap::new, (map, entry) -> map.put(entry.getKey(), entry.getValue()), LinkedHashMap::putAll);
     }
 
     public List<Component> scoreboardMessage() {
@@ -93,8 +93,8 @@ public class Scoreboard<T extends Scorer> {
         T topScorer = top.keySet().stream().findFirst().orElse(null);
 
         audience.showTitle(Util.title(
-            "<yellow>Game Over",
-            "<gold>" + (topScorer != null ? topScorer.getName() : "Unknown") + " has won!"
+                "<yellow>Game Over",
+                "<gold>" + (topScorer != null ? topScorer.getName() : "Unknown") + " has won!"
         ));
 
         showScores(audience);

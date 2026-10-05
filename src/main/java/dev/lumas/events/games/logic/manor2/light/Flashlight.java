@@ -112,10 +112,10 @@ public class Flashlight {
                     }
                 });
         illuminate(illuminance);
-        placeDust();
+        placeEntities();
     }
 
-    private void placeDust() {
+    private void placeEntities() {
         Location playerLocation = player.getEyeLocation();
         if (playerLocation.getPitch() < -DUST_PITCH_MAX_VALUE) {
             return;

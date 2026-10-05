@@ -7,12 +7,13 @@ import dev.lumas.events.configurable.sectors.Manor2Definition;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
 import dev.lumas.events.games.interfaces.packet.PacketGlow;
+import dev.lumas.events.games.logic.manor2.artifact.ArtifactEntity;
+import dev.lumas.events.games.logic.manor2.artifact.ArtifactManager;
 import dev.lumas.events.games.logic.manor2.attack.GhostAttacks;
 import dev.lumas.events.games.logic.manor2.light.Flashlight;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
-import dev.lumas.events.games.logic.manor2.score.ManorScoreboard;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
@@ -33,6 +34,7 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Trident;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -46,23 +48,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public final class Manor2 extends InventoryUnifiedMinigame {
-    private static final String[] SPLASH = {
-            "Are you afraid of ghosts?",
-            "Boooooooooooo!!!!",
-            "Ghost Busters!",
-            "Who you gonna call?",
-            "House of Dracula!",
-            "Trick or treat?",
-            "Here's Johny!!!",
-            "Put these foolish ambitions to rest",
-            "Wazzzuup!",
-            "Did you pray enough?",
-            "It's alive! It's alive!",
-            "Be afraid. Be very afraid",
-            "What is the color of night?",
-            "This is not a dream!",
-            "Someone must extinguish thy flame."
-    };
     private static final long TICK_INTERVAL = 1L;
     private static final int TELEPORTS_PER_TICK = 5;
     private static final long END_DELAY_SECONDS = 10;
@@ -91,11 +76,13 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private final GhostAttacks ghostAttacks = new GhostAttacks(this);
     @Getter
     private final ManorScoreboard scoreboard = new ManorScoreboard(this);
+    @Getter
+    private final ArtifactManager artifactManager = new ArtifactManager(this);
 
     private CountdownBossBar timer;
 
     public Manor2(Manor2Definition definition) {
-        super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, false, false);
+        super("Manor 2", Util.getRandom(definition.getMessages().getSplash()), definition.getDuration(), TICK_INTERVAL, true, true, false, false);
         this.definition = definition;
         this.lagCompensation = definition.getLagCompensation();
         this.latencyHandler = new LatencyHandler(latency, lagCompensation.isEnabled(), lagCompensation.getMaxRewindNano(), lagCompensation.getInterpolationMillis());
@@ -122,9 +109,11 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             List<Location> teleportTargets;
             if (ghostsToSpecify-- > 0) {
                 role = new Ghost(this, participants.get(i));
+                scoreboard.registerTeam(role.getUuid(), Team.GHOSTS);
                 teleportTargets = definition.getGhostStartLocations();
             } else {
                 role = new GhostHunter(this, participants.get(i));
+                scoreboard.registerTeam(role.getUuid(), Team.HUNTERS);
                 teleportTargets = definition.getHunterStartLocations();
             }
             roleMap.put(role);
@@ -172,7 +161,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             audience.sendMessage(
                     MiniMessage.miniMessage().deserialize(
                             definition.getMessages().getGameOver(),
-                            Placeholder.parsed("winner", definition.getMessages().getHunters())
+                            Placeholder.component("winner", Team.HUNTERS.displayName(definition.getMessages()))
                     ));
             this.stop();
         }
@@ -180,7 +169,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             audience.sendMessage(
                     MiniMessage.miniMessage().deserialize(
                             definition.getMessages().getGameOver(),
-                            Placeholder.parsed("winner", definition.getMessages().getGhosts())
+                            Placeholder.component("winner", Team.GHOSTS.displayName(definition.getMessages()))
                     ));
             this.stop();
         }
@@ -249,6 +238,19 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         }
     }
 
+    @EventHandler
+    public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
+        this.ensureNotIllegal();
+        if (roleMap.as(event.getPlayer().getUniqueId(), GhostHunter.class) instanceof GhostHunter ghostHunter) {
+            ArtifactEntity.fromEntity(event.getRightClicked())
+                    .ifPresent(item -> {
+                        event.getPlayer().getInventory().addItem(item);
+                        artifactManager.pickup(event.getRightClicked().getLocation());
+                        scoreboard.artifactFound(ghostHunter, item.effectiveName());
+                    });
+        }
+        event.setCancelled(true);
+    }
 
     private void showParticipantsToEachOther() {
         List<Player> players = onlineParticipants();

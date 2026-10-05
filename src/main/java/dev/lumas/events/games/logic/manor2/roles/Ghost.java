@@ -2,12 +2,17 @@ package dev.lumas.events.games.logic.manor2.roles;
 
 import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.manor2.Manor2;
+import dev.lumas.events.games.logic.manor2.Team;
 import dev.lumas.events.games.logic.manor2.light.GhostVisibility;
 import dev.lumas.events.games.logic.manor2.light.LightHit;
 import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.utility.Util;
 import dev.lumas.glowapi.model.GlowColorManager;
 import lombok.Getter;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.attribute.Attribute;
@@ -60,6 +65,13 @@ public class Ghost extends Manor2Role {
     public CompletableFuture<Void> initiatePlay() {
         CompletableFuture<Void> future = new CompletableFuture<>();
         eventPlayer.operatePlayer(player -> {
+            player.showTitle(Title.title(
+                    MiniMessage.miniMessage().deserialize(
+                            manor2.getDefinition().getMessages().getTeamAssignmentShowMessage(),
+                            Placeholder.component("team", Team.GHOSTS.displayName(manor2.getDefinition().getMessages()))
+                    ),
+                    Util.color(manor2.getDefinition().getMessages().getGhostDescription())
+            ));
             future.complete(null);
         });
         return future;
