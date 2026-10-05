@@ -30,11 +30,12 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Trident;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -99,13 +100,14 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     @Getter
     private final ManorScoreboard scoreboard = new ManorScoreboard(this);
     @Getter
-    private final ArtifactManager artifactManager = new ArtifactManager(this);
+    private final ArtifactManager artifactManager;
 
     private CountdownBossBar timer;
 
     public Manor2(Manor2Definition definition) {
         super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, false, false);
         this.definition = definition;
+        this.artifactManager = new ArtifactManager(this);
         this.lagCompensation = definition.getLagCompensation();
         this.latencyHandler = new LatencyHandler(latency, lagCompensation.isEnabled(), lagCompensation.getMaxRewindNano(), lagCompensation.getInterpolationMillis());
         this.recorder = new TrailRecorder(TRAIL_HISTORY_TICKS, this::involvedEntities);
@@ -173,6 +175,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         }
         recorder.tick();
         ghostAttacks.tick();
+        artifactManager.tick();
         for (Manor2Role role : roleMap) {
             role.tick();
             role.operatePlayer(player -> {
@@ -261,14 +264,42 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     }
 
     @EventHandler
-    public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
+    public void onPlayerInteractEntity(PlayerInteractAtEntityEvent event) {
         this.ensureNotIllegal();
         if (roleMap.as(event.getPlayer().getUniqueId(), GhostHunter.class) instanceof GhostHunter ghostHunter) {
             ArtifactEntity.fromEntity(event.getRightClicked())
                     .ifPresent(item -> {
-                        event.getPlayer().getInventory().addItem(item);
-                        artifactManager.pickup(event.getRightClicked().getLocation());
-                        scoreboard.artifactFound(ghostHunter, item.effectiveName());
+                        if (artifactManager.pickup(event.getRightClicked().getLocation())) {
+                            event.getPlayer().getInventory().addItem(item);
+                            scoreboard.artifactFound(ghostHunter, item.effectiveName());
+                        } else {
+                            event.getRightClicked().getLocation()
+                                    .getNearbyEntities(1, 1, 1)
+                                    .stream()
+                                    .filter(ArtifactEntity::isArtifact)
+                                    .forEach(Entity::remove);
+                        }
+                    });
+        }
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onPlayerInteractEntity(PrePlayerAttackEntityEvent event) {
+        this.ensureNotIllegal();
+        if (roleMap.as(event.getPlayer().getUniqueId(), GhostHunter.class) instanceof GhostHunter ghostHunter) {
+            ArtifactEntity.fromEntity(event.getAttacked())
+                    .ifPresent(item -> {
+                        if (artifactManager.pickup(event.getAttacked().getLocation())) {
+                            event.getPlayer().getInventory().addItem(item);
+                            scoreboard.artifactFound(ghostHunter, item.effectiveName());
+                        } else {
+                            event.getAttacked().getLocation()
+                                    .getNearbyEntities(1, 1, 1)
+                                    .stream()
+                                    .filter(ArtifactEntity::isArtifact)
+                                    .forEach(Entity::remove);
+                        }
                     });
         }
         event.setCancelled(true);

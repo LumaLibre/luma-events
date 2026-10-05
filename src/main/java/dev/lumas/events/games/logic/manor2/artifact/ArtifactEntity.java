@@ -9,35 +9,60 @@ import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.util.Transformation;
+import org.joml.AxisAngle4d;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadLocalRandom;
 
-public record ArtifactEntity(Interaction interaction, ItemDisplay itemDisplay, long spawnTimestamp) {
+public record ArtifactEntity(Interaction interaction, ItemDisplay itemDisplay, long spawnTimestamp,
+                             float startRotationRadians) {
 
     private static final float INTERACTION_HITBOX = 1f;
+    private static final int ROTATION_INTERVAL_TICKS = 40;
     private static final NamespacedKey ENTITY_TAG = NamespacedKey.fromString("manor2/entity", EventMain.getInstance());
     private static final NamespacedKey LINKED_ENTITY = NamespacedKey.fromString("manor2/entity_link", EventMain.getInstance());
     private static final String ARTIFACT_ID = "artifact";
+    private static final int ARTIFACT_SHOW_DURATION = 20 * 10;
 
-    public boolean isDead() {
-        return interaction.isDead() || itemDisplay.isDead();
+    public CompletableFuture<Boolean> ensureValid(long time) {
+        CompletableFuture<Boolean> validFuture = new CompletableFuture<>();
+        interaction.getScheduler().run(EventMain.getInstance(), ignored -> {
+            if (interaction.isDead() || itemDisplay.isDead() || spawnTimestamp() + ARTIFACT_SHOW_DURATION < time) {
+                interaction.remove();
+                itemDisplay.remove();
+                validFuture.complete(false);
+            } else {
+                validFuture.complete(true);
+            }
+        }, () -> validFuture.complete(false));
+        return validFuture;
     }
 
+
     public void remove() {
-        interaction.remove();
-        itemDisplay.remove();
+        interaction.getScheduler().run(EventMain.getInstance(), ignored -> {
+            interaction.remove();
+            itemDisplay.remove();
+        }, null);
     }
 
     public ArtifactEntity withTimeStamp(long newTimestamp) {
-        return new ArtifactEntity(interaction, itemDisplay, newTimestamp);
+        return new ArtifactEntity(interaction, itemDisplay, newTimestamp, startRotationRadians);
     }
 
     public static ArtifactEntity spawn(Location location, ArtifactType artifactType, long spawnTimestamp) {
+        float startRotationRadians = ThreadLocalRandom.current().nextFloat((float) (2 * Math.PI));
         ItemDisplay itemDisplay = location.getWorld().spawn(location, ItemDisplay.class, itemDisplayPreSpawn -> {
             itemDisplayPreSpawn.setItemStack(artifactType.toItem());
             itemDisplayPreSpawn.setPersistent(false);
             itemDisplayPreSpawn.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.GROUND);
+            itemDisplayPreSpawn.setGlowing(true);
+            Transformation transformation = itemDisplayPreSpawn.getTransformation();
+            transformation.getLeftRotation().set(new AxisAngle4d(startRotationRadians, 0, 1, 0));
+            itemDisplayPreSpawn.setTransformation(transformation);
         });
         Interaction interaction = location.getWorld().spawn(location, Interaction.class, interactionPreSpawn -> {
             interactionPreSpawn.setPersistent(false);
@@ -46,7 +71,11 @@ public record ArtifactEntity(Interaction interaction, ItemDisplay itemDisplay, l
             interactionPreSpawn.getPersistentDataContainer().set(ENTITY_TAG, PersistentDataType.STRING, ARTIFACT_ID);
             interactionPreSpawn.getPersistentDataContainer().set(LINKED_ENTITY, PersistentDataType.STRING, itemDisplay.getUniqueId().toString());
         });
-        return new ArtifactEntity(interaction, itemDisplay, spawnTimestamp);
+        return new ArtifactEntity(interaction, itemDisplay, spawnTimestamp, startRotationRadians);
+    }
+
+    public static boolean isArtifact(Entity entity) {
+        return ARTIFACT_ID.equalsIgnoreCase(entity.getPersistentDataContainer().get(ENTITY_TAG, PersistentDataType.STRING));
     }
 
     public static Optional<ItemStack> fromEntity(Entity entity) {
@@ -60,5 +89,14 @@ public record ArtifactEntity(Interaction interaction, ItemDisplay itemDisplay, l
             return Optional.empty();
         }
         return Optional.of(itemDisplay.getItemStack());
+    }
+
+    public void rotate(long time) {
+        float rotation = (float) (Math.PI * 2 * (time % ROTATION_INTERVAL_TICKS)) / ROTATION_INTERVAL_TICKS;
+        itemDisplay.getScheduler().run(EventMain.getInstance(), ignored -> {
+            Transformation transformation = itemDisplay.getTransformation();
+            transformation.getLeftRotation().set(new AxisAngle4d(startRotationRadians + rotation, 0, 1, 0));
+            itemDisplay.setTransformation(transformation);
+        }, null);
     }
 }

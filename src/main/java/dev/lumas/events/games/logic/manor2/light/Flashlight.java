@@ -72,6 +72,7 @@ public class Flashlight {
     @Getter
     private boolean active = false;
 
+    private int clock;
     private int flickerTicksRemaining = 0;
     private boolean flickerOff = false;
     private final ConeConfig coneConfig = new ConeConfig();
@@ -123,6 +124,7 @@ public class Flashlight {
         illuminate(illuminance);
         showDust();
         revealArtifacts();
+        clock++;
     }
 
     private void showDust() {
@@ -175,16 +177,19 @@ public class Flashlight {
         Vector xzPlaneNormalized = direction.clone().subtract(yAxis.clone().multiply(direction.dot(yAxis))).normalize();
         Vector orthogonal = yAxis.clone().crossProduct(xzPlaneNormalized);
         Set<BlockVector> vectors = new HashSet<>();
-        for (double x = 1; x < FLASHLIGHT_DISTANCE / ARTIFACT_SAMPLE_STEP + 1; x++) {
-            for (double z = -FLASHLIGHT_DISTANCE / ARTIFACT_SAMPLE_STEP; z < FLASHLIGHT_DISTANCE / ARTIFACT_SAMPLE_STEP + 1; z++) {
-                if (z != 0 && x / z > Math.tan(Math.toRadians(coneConfig.getConeDegrees()))) {
-                    continue;
-                }
-                vectors.add(xzPlaneNormalized.clone().multiply(x).add(orthogonal.clone().multiply(z)).toBlockVector());
+        // Felt like it looked up blocks too much
+        int x = clock % (int) (FLASHLIGHT_DISTANCE / ARTIFACT_SAMPLE_STEP + 1);
+        for (double z = -FLASHLIGHT_DISTANCE / ARTIFACT_SAMPLE_STEP; z < FLASHLIGHT_DISTANCE / ARTIFACT_SAMPLE_STEP + 1; z++) {
+            if (z != 0 && x / z > Math.tan(Math.toRadians(coneConfig.getConeDegrees()))) {
+                continue;
             }
+            vectors.add(xzPlaneNormalized.clone().multiply(x * ARTIFACT_SAMPLE_STEP)
+                    .add(orthogonal.clone().multiply(z * ARTIFACT_SAMPLE_STEP))
+                    .toBlockVector()
+            );
         }
         Bukkit.getRegionScheduler().run(EventMain.getInstance(), playerLocation, ignored -> vectors.stream()
-                .map(vector -> new Location(playerLocation.getWorld(), vector.getBlockX(), vector.getBlockY(), vector.getBlockZ()))
+                .map(vector -> playerLocation.clone().add(vector))
                 .map(this::findGroundSupported)
                 .forEach(manor2.getArtifactManager()::reveal));
     }
