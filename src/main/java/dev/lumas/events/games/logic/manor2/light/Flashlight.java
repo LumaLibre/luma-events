@@ -1,6 +1,5 @@
 package dev.lumas.events.games.logic.manor2.light;
 
-import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.tracing.ConeConfig;
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
@@ -10,7 +9,6 @@ import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import io.papermc.paper.datacomponent.item.UseEffects;
 import lombok.Getter;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -24,18 +22,15 @@ import org.bukkit.block.data.type.Slab;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.util.BlockVector;
 import org.bukkit.util.Vector;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Flashlight {
@@ -50,14 +45,12 @@ public class Flashlight {
     private static final float BATTERY_DRAIN_PER_TICK = 100f / (20f * 40f);
     private static final float BATTERY_SELF_CHARGE_PER_TICK = 100f / (20f * 20f);
     private static final int LIGHT_BLOCK_LIFETIME = 4;
-    private static final int FLASHLIGHT_DISTANCE = 8;
+    public static final int FLASHLIGHT_DISTANCE = 8;
     private static final double LIGHT_SAMPLE_STEP = 0.25;
 
     private static final int DUST_SPAWNS_PER_TICK = 1;
     private static final double DUST_PITCH_MAX_VALUE = 70;
     private static final int DUST_PITCH_DOWN_LOOK_RADIUS = 1;
-
-    private static final double ARTIFACT_SAMPLE_STEP = 0.25;
 
     private static final BlockFace[] LIGHT_FALLBACK_FACES = {
             BlockFace.UP, BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.DOWN
@@ -127,6 +120,10 @@ public class Flashlight {
         clock++;
     }
 
+    private void revealArtifacts() {
+        manor2.getArtifactManager().tryReveal(player.getEyeLocation(), coneConfig.getConeDegrees(), FLASHLIGHT_DISTANCE);
+    }
+
     private void showDust() {
         Location playerLocation = player.getEyeLocation();
         if (playerLocation.getPitch() < -DUST_PITCH_MAX_VALUE) {
@@ -162,36 +159,6 @@ public class Flashlight {
         }
         final int dyFinal = dy;
         return spot.getRelative(0, -dyFinal + 1, 0).getLocation();
-    }
-
-    private void revealArtifacts() {
-        Location playerLocation = player.getEyeLocation();
-        if (playerLocation.getPitch() < -DUST_PITCH_MAX_VALUE) {
-            return;
-        }
-        if (playerLocation.getPitch() > DUST_PITCH_MAX_VALUE) {
-            return;
-        }
-        Vector direction = playerLocation.getDirection();
-        Vector yAxis = new Vector(0, 1, 0);
-        Vector xzPlaneNormalized = direction.clone().subtract(yAxis.clone().multiply(direction.dot(yAxis))).normalize();
-        Vector orthogonal = yAxis.clone().crossProduct(xzPlaneNormalized);
-        Set<BlockVector> vectors = new HashSet<>();
-        // Felt like it looked up blocks too much
-        int x = clock % (int) (FLASHLIGHT_DISTANCE / ARTIFACT_SAMPLE_STEP + 1);
-        for (double z = -FLASHLIGHT_DISTANCE / ARTIFACT_SAMPLE_STEP; z < FLASHLIGHT_DISTANCE / ARTIFACT_SAMPLE_STEP + 1; z++) {
-            if (z != 0 && x / z > Math.tan(Math.toRadians(coneConfig.getConeDegrees()))) {
-                continue;
-            }
-            vectors.add(xzPlaneNormalized.clone().multiply(x * ARTIFACT_SAMPLE_STEP)
-                    .add(orthogonal.clone().multiply(z * ARTIFACT_SAMPLE_STEP))
-                    .toBlockVector()
-            );
-        }
-        Bukkit.getRegionScheduler().run(EventMain.getInstance(), playerLocation, ignored -> vectors.stream()
-                .map(vector -> playerLocation.clone().add(vector))
-                .map(this::findGroundSupported)
-                .forEach(manor2.getArtifactManager()::reveal));
     }
 
     private int compareConeTraceResults(ConeTraceResult coneTraceResult1, ConeTraceResult coneTraceResult2) {

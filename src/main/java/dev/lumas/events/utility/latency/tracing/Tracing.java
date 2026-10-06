@@ -92,7 +92,7 @@ public class Tracing {
             // Occlusion has to be checked towards the target, not down the middle of the cone
             Vector toTarget = hitbox.getCenter().subtract(apex);
             double length = toTarget.length();
-            if (length > 1.0E-4 && !hasClearShot(muzzle, toTarget.multiply(1.0 / length), length, coneConfig)) {
+            if (length > 1.0E-4 && !hasClearShot(muzzle, toTarget.multiply(1.0 / length), length, coneConfig.getTraceStep())) {
                 continue;
             }
             matchingTraces.stream()
@@ -288,14 +288,14 @@ public class Tracing {
     }
 
     // Cheap-ish line of sight check to make sure shots don't travel through walls
-    private static boolean hasClearShot(Location from, Vector direction, double distance, ConeConfig coneConfig) {
+    public static boolean hasClearShot(Location from, Vector direction, double distance, double traceStep) {
         World world = from.getWorld();
         Vector origin = from.toVector();
         int lastX = Integer.MIN_VALUE;
         int lastY = Integer.MIN_VALUE;
         int lastZ = Integer.MIN_VALUE;
 
-        for (double travelled = coneConfig.getTraceStep(); travelled < distance; travelled += coneConfig.getTraceStep()) {
+        for (double travelled = traceStep; travelled < distance; travelled += traceStep) {
             int blockX = (int) Math.floor(from.getX() + (direction.getX() * travelled));
             int blockY = (int) Math.floor(from.getY() + (direction.getY() * travelled));
             int blockZ = (int) Math.floor(from.getZ() + (direction.getZ() * travelled));

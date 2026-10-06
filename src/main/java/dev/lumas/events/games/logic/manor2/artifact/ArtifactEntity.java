@@ -4,11 +4,14 @@ import dev.lumas.events.EventMain;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Tag;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Transformation;
 import org.joml.AxisAngle4d;
 
@@ -54,8 +57,9 @@ public record ArtifactEntity(Interaction interaction, ItemDisplay itemDisplay, l
     }
 
     public static ArtifactEntity spawn(Location location, ArtifactType artifactType, long spawnTimestamp) {
+        Location spawnLocation = location.clone().add(0, 0.125, 0);
         float startRotationRadians = ThreadLocalRandom.current().nextFloat((float) (2 * Math.PI));
-        ItemDisplay itemDisplay = location.getWorld().spawn(location, ItemDisplay.class, itemDisplayPreSpawn -> {
+        ItemDisplay itemDisplay = spawnLocation.getWorld().spawn(spawnLocation, ItemDisplay.class, itemDisplayPreSpawn -> {
             itemDisplayPreSpawn.setItemStack(artifactType.toItem());
             itemDisplayPreSpawn.setPersistent(false);
             itemDisplayPreSpawn.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.GROUND);
@@ -64,7 +68,7 @@ public record ArtifactEntity(Interaction interaction, ItemDisplay itemDisplay, l
             transformation.getLeftRotation().set(new AxisAngle4d(startRotationRadians, 0, 1, 0));
             itemDisplayPreSpawn.setTransformation(transformation);
         });
-        Interaction interaction = location.getWorld().spawn(location, Interaction.class, interactionPreSpawn -> {
+        Interaction interaction = spawnLocation.getWorld().spawn(spawnLocation, Interaction.class, interactionPreSpawn -> {
             interactionPreSpawn.setPersistent(false);
             interactionPreSpawn.setInteractionWidth(INTERACTION_HITBOX);
             interactionPreSpawn.setInteractionHeight(INTERACTION_HITBOX);
@@ -89,6 +93,17 @@ public record ArtifactEntity(Interaction interaction, ItemDisplay itemDisplay, l
             return Optional.empty();
         }
         return Optional.of(itemDisplay.getItemStack());
+    }
+
+    public static boolean canBeContainedWithin(Block block) {
+        if (Tag.SLABS.isTagged(block.getType())) {
+            return false;
+        }
+        BoundingBox artifactBb = new BoundingBox(0.25, 0.125, 0.25, 0.75, 0.625, 0.75);
+        return block.getCollisionShape()
+                .getBoundingBoxes()
+                .stream()
+                .noneMatch(artifactBb::overlaps);
     }
 
     public void rotate(long time) {

@@ -1,8 +1,8 @@
 package dev.lumas.events.utility.clientside;
 
+import dev.lumas.events.utility.vector.Location3i;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 
@@ -118,14 +118,4 @@ public class LocalizedFakeBlockCache {
     private record CachedFakeBlock(BlockData blockData, long expired) {
     }
 
-    private record Location3i(World world, int x, int y, int z) {
-
-        public static Location3i from(Location location) {
-            return new Location3i(location.getWorld(), location.getBlockX(), location.getBlockY(), location.getBlockZ());
-        }
-
-        public Location toLocation() {
-            return new Location(world, x, y, z);
-        }
-    }
 }

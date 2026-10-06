@@ -36,7 +36,7 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
     );
     private static final String SCOREBOARD_BORDER = "<#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     ";
     private static final String SCORE_RECORD = """
-            <green><gold>#<position></gold> is <red><scorer></red> with <gold><points> points</gold>! (<manorTeam>)
+            <green><gold>#<position></gold> is <red><scorer></red> with <gold><points> points</gold>! (<team>)
             """;
     private static final int TOP_SCORERS = 5;
     private static final double NAMED_PARTICIPANT_MIN_PERCENTAGE = 15D;
@@ -93,7 +93,7 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
                     Formatter.number("position", position++),
                     Placeholder.component("scorer", Util.displayName(entry.getKey().getUuid())),
                     Formatter.number("points", entry.getValue()),
-                    Placeholder.component("manorTeam", scorerTeams
+                    Placeholder.component("team", scorerTeams
                             .getOrDefault(entry.getKey().getUuid(), ManorTeam.UNDEFINED)
                             .displayName()
                     )
@@ -108,7 +108,7 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
      * It's necessary to keep track of this, as roles get changed when the player dies
      *
      * @param playerUuid the scorer
-     * @param manorTeam       the manorTeam of the scorer
+     * @param manorTeam  the manorTeam of the scorer
      */
     public void registerTeam(UUID playerUuid, ManorTeam manorTeam) {
         scorerTeams.put(playerUuid, manorTeam);
