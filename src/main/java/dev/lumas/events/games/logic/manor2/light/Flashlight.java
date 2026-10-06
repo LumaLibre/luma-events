@@ -121,7 +121,7 @@ public class Flashlight {
     }
 
     private void revealArtifacts() {
-        manor2.getArtifactManager().tryReveal(player.getEyeLocation(), coneConfig.getConeDegrees(), FLASHLIGHT_DISTANCE);
+        manor2.getArtifactManager().tryReveal(player.getEyeLocation(), coneConfig.getConeDegrees(), FLASHLIGHT_DISTANCE, player);
     }
 
     private void showDust() {

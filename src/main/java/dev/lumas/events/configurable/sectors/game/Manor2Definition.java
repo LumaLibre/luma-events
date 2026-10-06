@@ -4,10 +4,12 @@ import dev.lumas.events.annotation.MapTied;
 import dev.lumas.events.configurable.sectors.region.Region;
 import dev.lumas.events.games.logic.manor2.artifact.ArtifactType;
 import dev.lumas.events.utility.effects.ParticleDefinition;
+import dev.lumas.events.utility.effects.SoundDefinition;
 import lombok.Getter;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.inventory.ItemType;
 import org.bukkit.util.BoundingBox;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
@@ -33,21 +35,35 @@ public class Manor2Definition {
     private int ghostRevealTime = 100;
     @Comment("The time until a hunter is killed by being consumed by ghost (ticks)")
     private int hunterDeathTime = 50;
+    @Comment("The score a ghost get when killing a hunter")
     private int ghostKillScore = 50;
+    @Comment("The score a hunter get when killing a ghost")
     private int hunterKillScore = 150;
-    private int artifactFoundScore = 50;
+    @Comment("The score a hunter get when finding an artifact")
+    private int artifactFoundScore = 25;
+    @Comment("The width of each region an artifact can spawn in")
     private double averageRegionWidth = 16;
-    private double regionHeight = 6;
     private LagCompensationSettings lagCompensation = new LagCompensationSettings();
     private List<ParticleDefinition> flashlightGroundParticles = List.of(
-        new ParticleDefinition(
-            Particle.DUST,
-            15,
-            10,
-            new BoundingBox(0, 0, 0, 1, 1, 1),
-            new Particle.DustOptions(Color.GRAY, 2f)
-        )
+            new ParticleDefinition(
+                    Particle.DUST,
+                    15,
+                    10,
+                    new BoundingBox(0, 0, 0, 1, 1, 1),
+                    new Particle.DustOptions(Color.GRAY, 2f)
+            )
     );
+
+    private List<SoundDefinition> artifactRevealSounds = List.of(
+            new SoundDefinition(Sound.AMBIENT_CAVE, 10, 1f, null)
+    );
+    private List<SoundDefinition> artifactPickupSounds = List.of(
+            new SoundDefinition(Sound.BLOCK_DECORATED_POT_INSERT_FAIL, 5, 1f, null)
+    );
+    private List<SoundDefinition> ghostRevealSounds = List.of(
+            new SoundDefinition(Sound.ENTITY_GHAST_AMBIENT, 10, 1f, null)
+    );
+
     private List<ArtifactType> artifacts = List.of(
             new ArtifactType(ItemType.GOLD_NUGGET, "<gold>Precious Gold", List.of("Worth it's weight? Yes", "Does it weigh much? No")),
             new ArtifactType(ItemType.ANVIL, "<gray>Heavy Anvil", List.of("Somehow you got the idea", "to carry this with you")),

@@ -7,6 +7,7 @@ import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.latency.tracing.Tracing;
 import dev.lumas.events.utility.vector.Location3i;
 import dev.lumas.events.utility.vector.Vector2i;
+import net.kyori.adventure.audience.Audience;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.util.Vector;
@@ -22,6 +23,8 @@ public class ArtifactManager {
     private static final int ARTIFACT_RESPAWN_DELAY = 40 * 20;
     private static final double ARTIFACT_TRACE_STEP = 0.5;
     private static final int MAX_REGION_FAILS = 20;
+    private static final String REVEAL_ARTIFACT_MESSAGE = "<gray>Click on the artifact to get it";
+    private static final double LIGHT_ANGLE_REVEAL_MULTIPLIER = 0.5;
 
     private long time = 0;
     private List<ArtifactRegion> spawningRegions = new ArrayList<>();
@@ -105,6 +108,8 @@ public class ArtifactManager {
         ArtifactEntity entity = placedArtifacts.remove(at);
         if (entity != null) {
             entity.remove();
+            Util.getRandom(manor2.getDefinition().getArtifactPickupSounds())
+                    .playAt(location);
         }
         for (ArtifactRegion region : occupiedRegions.keySet()) {
             if (region.boundingBox().contains(location)) {
@@ -116,10 +121,10 @@ public class ArtifactManager {
         return entity != null;
     }
 
-    public void tryReveal(Location eyeLocation, double coneDegrees, double maxSearch) {
+    public void tryReveal(Location eyeLocation, double coneDegrees, double maxSearch, Audience audience) {
         Location3i eye3i = Location3i.from(eyeLocation);
         Vector eyeDirection = eyeLocation.getDirection();
-        double minShading = Math.cos(Math.toRadians(coneDegrees));
+        double minShading = Math.cos(Math.toRadians(coneDegrees)) * LIGHT_ANGLE_REVEAL_MULTIPLIER;
         double maxSearchSquared = maxSearch * maxSearch;
         for (Map.Entry<Location3i, ArtifactType> entry : artifacts.entrySet()) {
             Location3i artifactPos3i = entry.getKey();
@@ -136,12 +141,15 @@ public class ArtifactManager {
                 continue;
             }
             if (!(placedArtifacts.get(artifactPos3i) instanceof ArtifactEntity entity)) {
-                Bukkit.broadcastMessage("Revealing artifact at %s".formatted(artifactPos3i));
+                audience.sendActionBar(
+                        Util.color(REVEAL_ARTIFACT_MESSAGE)
+                );
+                Util.getRandom(manor2.getDefinition().getArtifactRevealSounds())
+                        .playAt(artifactPos);
                 placedArtifacts.put(artifactPos3i, ArtifactEntity.spawn(artifactPos3i.toLocation().add(0.5, 0, 0.5), entry.getValue(), time));
             } else {
                 placedArtifacts.put(artifactPos3i, entity.withTimeStamp(time));
             }
-            return;
         }
     }
 }

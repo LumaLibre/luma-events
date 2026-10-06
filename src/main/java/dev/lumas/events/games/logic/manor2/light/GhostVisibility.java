@@ -6,6 +6,7 @@ import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
+import dev.lumas.events.utility.Util;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
@@ -66,12 +67,18 @@ public final class GhostVisibility {
         if (stopping) return;
         LightHit hit = pendingLight.getAndSet(null);
         RevealState previous = state;
+        RevealState newState = RevealState.HIDDEN;
         if (hit != null) {
             unlitTicks = 0;
-            state = stateOf(hit);
-        } else if (++unlitTicks >= HIDE_AFTER_UNLIT_TICKS) {
+            newState = stateOf(hit);
+        }
+        if (++unlitTicks < HIDE_AFTER_UNLIT_TICKS) {
+            state = newState == RevealState.EXPOSED ? RevealState.EXPOSED
+                    : previous.isRevealed() ? previous : newState;
+        } else {
             state = RevealState.HIDDEN;
         }
+
         if (forcedExposedTicks.getAndUpdate(ticks -> Math.max(0, ticks - 1)) > 0) {
             unlitTicks = 0;
             state = RevealState.EXPOSED;
@@ -103,6 +110,8 @@ public final class GhostVisibility {
                 if (changed) {
                     Location playerLocation = player.getLocation();
                     playerLocation.getWorld().spawnParticle(Particle.DUST_PILLAR, playerLocation, 10, BlockType.RED_CONCRETE.createBlockData());
+                    Util.getRandom(manor2.getDefinition().getGhostRevealSounds())
+                            .playAt(player);
                 }
             } else {
                 player.addPotionEffect(INVISIBILITY);
