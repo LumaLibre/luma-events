@@ -2,6 +2,8 @@ package dev.lumas.events.games.logic.manor2.artifact;
 
 import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.manor2.Manor2;
+import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
+import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.latency.tracing.Tracing;
@@ -10,12 +12,14 @@ import dev.lumas.events.utility.vector.Vector2i;
 import net.kyori.adventure.audience.Audience;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ArtifactManager {
@@ -23,6 +27,7 @@ public class ArtifactManager {
     private static final int ARTIFACT_RESPAWN_DELAY = 40 * 20;
     private static final double ARTIFACT_TRACE_STEP = 0.5;
     private static final int MAX_REGION_FAILS = 20;
+    private static final int MIN_RESPAWN_PLAYER_PROXIMITY = 10;
     private static final String REVEAL_ARTIFACT_MESSAGE = "<gray>Click on the artifact to get it";
     private static final double LIGHT_ANGLE_REVEAL_MULTIPLIER = 0.5;
 
@@ -51,6 +56,16 @@ public class ArtifactManager {
                 .forEach(spawningRegions::remove);
         for (ArtifactRegion spawningRegion : spawningRegions) {
             if (regionDelay.get(spawningRegion) instanceof Long aLong && aLong < time) {
+                continue;
+            }
+            WorldTiedBoundingBox expanded = (WorldTiedBoundingBox) spawningRegion.boundingBox().expand(MIN_RESPAWN_PLAYER_PROXIMITY);
+            if (manor2.getRoleMap().getMatching(GhostHunter.class).stream()
+                    .map(GhostHunter::getEventPlayer)
+                    .map(EventPlayer::getPlayer)
+                    .filter(Objects::nonNull)
+                    .map(Player::getLocation)
+                    .anyMatch(expanded::contains)
+            ) {
                 continue;
             }
             if (!occupiedRegions.containsKey(spawningRegion)) {
