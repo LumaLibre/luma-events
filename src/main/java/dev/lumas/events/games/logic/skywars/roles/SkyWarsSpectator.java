@@ -17,13 +17,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-public class Spectator extends SkyWarsRole {
+public class SkyWarsSpectator extends SkyWarsRole {
 
-    private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0, false, false, true);
+    private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 140, 0, false, false, true);
 
     private volatile boolean returning = false;
 
-    protected Spectator(SkyWars skyWars, EventPlayer eventPlayer, SkyWarsTeam team) {
+    protected SkyWarsSpectator(SkyWars skyWars, EventPlayer eventPlayer, SkyWarsTeam team) {
         super(skyWars, eventPlayer, team);
     }
 
@@ -74,6 +74,7 @@ public class Spectator extends SkyWarsRole {
             if (!ctx.getArena().contains(player.getLocation())) {
                 returnToArena(player);
             }
+            player.addPotionEffect(INVISIBILITY);
         });
     }
 

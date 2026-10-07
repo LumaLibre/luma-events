@@ -7,15 +7,17 @@ import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
 import dev.lumas.events.games.interfaces.structures.GenericStructure;
 import dev.lumas.events.games.logic.skywars.SkyWarsTeam.TeamColor;
-import dev.lumas.events.games.logic.skywars.roles.ActivePlayer;
+import dev.lumas.events.games.logic.skywars.roles.SkyWarsPlayer;
 import dev.lumas.events.games.logic.skywars.roles.SkyWarsRole;
-import dev.lumas.events.games.logic.skywars.roles.Spectator;
+import dev.lumas.events.games.logic.skywars.roles.SkyWarsSpectator;
+import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import lombok.Getter;
+import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.ChunkSnapshot;
 import org.bukkit.Location;
@@ -64,12 +66,13 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         "600,000 milliseconds long!"
     };
     private static final long DURATION = 600000;
-    private static final long END_DELAY_SECONDS = 10;
+    private static final long END_DELAY_SECONDS = 5;
     private static final long CLEANUP_TIMEOUT_SECONDS = 30;
-    private static final double THROWABLE_KNOCKBACK = 0.4;
+    private static final double THROWABLE_KNOCKBACK = 0.3;
     static final PluginContextLogger LOGGER = PluginContextLogger.getPluginLogger();
     private static final BlockData AIR = Material.AIR.createBlockData();
-    private static final Set<Material> MARKER_BLOCKS = Set.of(Material.TEST_BLOCK, Material.CHEST);
+    private static final Set<Material> MARKER_BLOCKS = Set.of(Material.TEST_BLOCK, Material.CHEST, Material.TRAPPED_CHEST);
+    private static final Material SPAWN_MARKER_BLOCK = Material.TEST_BLOCK;
 
     private final Location lobby;
     private final GenericStructure map;
@@ -83,16 +86,17 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     private final MinigameRoleMap<SkyWarsRole> roleMap = new MinigameRoleMap<>(SkyWarsRole::cleanup);
     private volatile @Nullable Component setupStatus;
     private final AtomicBoolean ended = new AtomicBoolean();
+    @Getter
     private final Scoreboard<SkyWarsRole> scoreboard = new Scoreboard<>();
 
     public SkyWars(SkyWarsDefinition def) {
         super("SkyWars", Util.getRandom(SPLASH), DURATION, 2, true, true, false, false);
         this.lobby = def.getLobby();
-        this.map = new GenericStructure(def.getOrigin(), def.getMap());
-        this.spawnPoints = map.findBlocks(data -> data.getMaterial() == Material.TEST_BLOCK).stream()
+        this.map = new GenericStructure(def.getOrigin(), def.getSchematic());
+        this.spawnPoints = map.findBlocks(data -> data.getMaterial() == SPAWN_MARKER_BLOCK).stream()
                 .map(location -> location.add(0.5, 0, 0.5))
                 .toList();
-        Preconditions.checkArgument(!spawnPoints.isEmpty(), "SkyWars map " + def.getMap() + " has no test blocks marking spawn points");
+        Preconditions.checkArgument(!spawnPoints.isEmpty(), "SkyWars map " + def.getSchematic() + " has no spawn market blocks (" + SPAWN_MARKER_BLOCK + ")");
         this.arena = def.getRegion().toWorldTiedBoundingBox();
         this.boundingBox = arena;
         this.islandRadius = def.getIslandRadius();
@@ -118,7 +122,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         }
         participant.teleportAsync(lobby);
         boolean removed = super.removeParticipant(participant, doTeleport);
-        this.checkForWinner();
+        this.finish();
         return removed;
     }
 
@@ -134,7 +138,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
                 .mapToObj(i -> new SkyWarsTeam(colors[i % colors.length], spawns.get(i)))
                 .toList();
         for (int i = 0; i < participants.size(); i++) {
-            roleMap.put(new ActivePlayer(this, participants.get(i), teams.get(i % teamCount)));
+            roleMap.put(new SkyWarsPlayer(this, participants.get(i), teams.get(i % teamCount)));
         }
 
         // teams that ended up a player short get their island's chests bumped up a tier
@@ -148,7 +152,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
 
         this.showSetupProgress("Pasting Arena", 0);
         CompletableFuture<Void> paste = map.pasteAsync(
-                (position, data) -> true,
+                (position, data) -> data != GenericStructure.AIR,
                 data -> MARKER_BLOCKS.contains(data.getMaterial()) ? AIR : data,
                 progress -> showSetupProgress("Pasting Arena", progress));
         CompletableFuture.allOf(lootChests.find(), paste)
@@ -192,35 +196,6 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         }
     }
 
-    private void showSetupProgress(String label, double progress) {
-        this.setupStatus = Util.color(Util.getTextColor() + label + ": " + (int) (progress * 100) + "%");
-    }
-
-    public void checkForWinner() {
-        if (!this.active || this.stopping || this.open) {
-            return;
-        } else if (aliveTeams().size() > 1 || !finish()) {
-            return;
-        }
-
-        Executors.runDelayedAsync(TimeUnit.SECONDS, END_DELAY_SECONDS, _ -> this.stop());
-    }
-
-    private boolean finish() {
-        if (!ended.compareAndSet(false, true)) {
-            return false;
-        }
-
-        Set<SkyWarsTeam> alive = aliveTeams();
-        SkyWarsTeam winner = alive.size() == 1 ? alive.iterator().next() : null;
-        scoreboard.handleGameEnd(this.audience, () -> sendAudienceMessage(winner == null
-                ? Component.text("No team won this time!")
-                : Component.empty()
-                        .append(winner.displayName().append(Component.text(" Team")))
-                        .append(Component.text(" won the game!"))));
-        return true;
-    }
-
     @Override
     protected void handleStop() {
         this.finish();
@@ -233,14 +208,13 @@ public final class SkyWars extends InventoryUnifiedMinigame {
                 cleanups.add(CompletableFuture.failedFuture(throwable));
             }
         }
-        for (EventPlayer participant : participants) {
-            participant.teleportAsync(lobby);
-        }
+
+        Executors.teleportGroupAsync(participants, lobby);
 
         CompletableFuture.allOf(cleanups.toArray(CompletableFuture[]::new))
                 .orTimeout(CLEANUP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .exceptionally(throwable -> {
-                    LOGGER.error("Not every SkyWars player finished cleaning up, removing the map anyway", throwable);
+                    LOGGER.error("Not every SkyWars player finished cleaning up", throwable);
                     return null;
                 })
                 .thenComposeAsync(v -> map.removeAsync(), Executors::runAsync)
@@ -249,6 +223,40 @@ public final class SkyWars extends InventoryUnifiedMinigame {
                     LOGGER.error("Failed to clean up the SkyWars arena", throwable);
                     return null;
                 });
+    }
+
+    public boolean finish() {
+        if (this.active || this.stopping || !ended.compareAndSet(false, true)) {
+            return false;
+        }
+
+        Set<SkyWarsTeam> alive = aliveTeams();
+
+        if (alive.size() > 1) {
+            return false;
+        }
+
+
+        SkyWarsTeam winner = alive.size() == 1 ? alive.iterator().next() : null;
+
+        CountdownBossBar.builder()
+            .title("<red><b>Game Over</b> <gray>| <gold>" + (winner == null ? "No team won" : winner.displayName() + " Team has won"))
+            .audience(this.audience)
+            .color(BossBar.Color.RED)
+            .seconds(END_DELAY_SECONDS)
+            .callback(this::stop)
+            .build()
+            .start();
+        scoreboard.handleGameEnd(this.audience, () -> sendAudienceMessage(winner == null
+            ? Component.text("No team won this time!")
+            : Component.empty()
+            .append(winner.displayName().append(Component.text(" Team")))
+            .append(Component.text(" has won!"))));
+        return true;
+    }
+
+    private void showSetupProgress(String label, double progress) {
+        this.setupStatus = Util.color(Util.getTextColor() + label + ": " + (int) (progress * 100) + "%");
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -279,8 +287,8 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         if (!(projectile instanceof Snowball || projectile instanceof Egg)) return;
         if (!(event.getHitEntity() instanceof Player victim) || !(projectile.getShooter() instanceof Player thrower)) return;
 
-        ActivePlayer target = roleMap.as(victim.getUniqueId(), ActivePlayer.class);
-        ActivePlayer attacker = roleMap.as(thrower.getUniqueId(), ActivePlayer.class);
+        SkyWarsPlayer target = roleMap.as(victim.getUniqueId(), SkyWarsPlayer.class);
+        SkyWarsPlayer attacker = roleMap.as(thrower.getUniqueId(), SkyWarsPlayer.class);
 
         if (target == null || attacker == null || target == attacker || !attacker.attack(target)) return;
 
@@ -310,20 +318,19 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInventoryOpen(InventoryOpenEvent event) {
         this.ensureNotIllegal();
-        ActivePlayer player = roleMap.as(event.getPlayer().getUniqueId(), ActivePlayer.class);
+        SkyWarsPlayer player = roleMap.as(event.getPlayer().getUniqueId(), SkyWarsPlayer.class);
         if (player == null) return;
 
         int points = lootChests.claim(event.getInventory());
         if (points > 0) {
             scoreboard.addScore(player, points);
-            player.getEventPlayer().sendActionBar("<gold>+" + points + (points == 1 ? " point" : " points"));
         }
     }
 
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
         this.ensureNotIllegal();
-        SkyWarsRole skyWarsPlayer = roleMap.as(event.getPlayer().getUniqueId(), Spectator.class);
+        SkyWarsRole skyWarsPlayer = roleMap.as(event.getPlayer().getUniqueId(), SkyWarsSpectator.class);
         if (skyWarsPlayer != null) {
             event.setCancelled(true);
         }
@@ -363,7 +370,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
                                 for (int z = Math.max(minZ, cz << 4); z <= Math.min(maxZ, (cz << 4) + 15); z++) {
                                     for (int y = minY; y <= maxY; y++) {
                                         if (!snapshot.getBlockType(x & 15, y, z & 15).isAir()) {
-                                            chunk.getBlock(x & 15, y, z & 15).setType(Material.AIR, false);
+                                            chunk.getBlock(x & 15, y, z & 15).setBlockData(GenericStructure.AIR, false);
                                         }
                                     }
                                 }
@@ -397,7 +404,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     }
 
     private Set<SkyWarsTeam> aliveTeams() {
-        return roleMap.getMatching(ActivePlayer.class).stream()
+        return roleMap.getMatching(SkyWarsPlayer.class).stream()
             .map(SkyWarsRole::getTeam)
             .collect(Collectors.toSet());
     }

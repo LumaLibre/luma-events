@@ -15,6 +15,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +27,7 @@ public final class ProtocolLibPacketGlow implements PacketGlow {
 
     private static final int SHARED_FLAGS_INDEX = 0;
     private static final byte GLOWING_FLAG = 0x40;
-    private static final WrappedDataWatcher.Serializer BYTE_SERIALIZER = WrappedDataWatcher.Registry.get(Byte.class);
+    private static final WrappedDataWatcher.Serializer BYTE_SERIALIZER = WrappedDataWatcher.Registry.get((Type) Byte.class);
 
     private final Set<UUID> viewers = ConcurrentHashMap.newKeySet();
     private final Map<Integer, Entity> targetsById = new ConcurrentHashMap<>();

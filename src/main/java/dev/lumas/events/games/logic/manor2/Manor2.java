@@ -116,7 +116,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
-
+        // TODO: Event tokens
     }
 
     @Override

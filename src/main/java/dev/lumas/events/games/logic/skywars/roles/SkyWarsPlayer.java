@@ -4,6 +4,7 @@ import dev.lumas.events.games.logic.skywars.SkyWars;
 import dev.lumas.events.games.logic.skywars.SkyWarsTeam;
 import dev.lumas.events.model.EventPlayer;
 import net.kyori.adventure.text.Component;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.ItemStack;
@@ -11,9 +12,9 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
 
-public class ActivePlayer extends SkyWarsRole {
+public class SkyWarsPlayer extends SkyWarsRole {
 
-    public ActivePlayer(SkyWars skyWars, EventPlayer eventPlayer, SkyWarsTeam team) {
+    public SkyWarsPlayer(SkyWars skyWars, EventPlayer eventPlayer, SkyWarsTeam team) {
         super(skyWars, eventPlayer, team);
     }
 
@@ -24,6 +25,13 @@ public class ActivePlayer extends SkyWarsRole {
             this.operatePlayer(player -> {
                 if (isCurrent()) {
                     player.getInventory().setHelmet(team.helmet());
+                }
+                player.setHealth(20);
+                player.setFoodLevel(20);
+                player.setSaturation(20);
+                player.setAllowFlight(false);
+                if (player.getGameMode() != GameMode.SURVIVAL) {
+                    player.setGameMode(GameMode.SURVIVAL);
                 }
             });
         });
@@ -55,6 +63,10 @@ public class ActivePlayer extends SkyWarsRole {
 
     @Override
     public void die(PlayerDeathEvent event, @Nullable SkyWarsRole killer) {
+        if (killer != null) {
+            ctx.getScoreboard().addScore(killer, 5);
+        }
+
         Player player = event.getPlayer();
         event.setCancelled(true);
         player.getWorld().strikeLightningEffect(player.getLocation());
@@ -65,11 +77,11 @@ public class ActivePlayer extends SkyWarsRole {
         player.getInventory().clear();
         normalize(player);
 
-        SkyWarsRole spectator = ctx.getRoleMap().swapRole(this, () -> new Spectator(ctx, this.eventPlayer, this.team));
+        SkyWarsRole spectator = ctx.getRoleMap().swapRole(this, () -> new SkyWarsSpectator(ctx, this.eventPlayer, this.team));
         spectator.play();
         Component deathMessage = event.deathMessage();
         ctx.sendAudienceMessage(deathMessage);
         event.deathMessage(null);
-        ctx.checkForWinner();
+        ctx.finish();
     }
 }

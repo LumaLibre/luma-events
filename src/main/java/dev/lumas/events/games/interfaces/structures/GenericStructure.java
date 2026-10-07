@@ -32,7 +32,7 @@ import java.util.function.UnaryOperator;
 @Getter
 public class GenericStructure extends Structure {
 
-    private static final BlockData AIR_BLOCK_DATA = Material.AIR.createBlockData();
+    public static final BlockData AIR = Material.AIR.createBlockData();
     Matrix3d transformation = new Matrix3d();
 
     private final Schematic schematic;
@@ -132,7 +132,7 @@ public class GenericStructure extends Structure {
         return applyByChunk((relative, blockData) -> {
             if (!preRemovePredicate.test(relative, blockData)) return;
             world.getBlockAt(origin.getBlockX() + relative.x, origin.getBlockY() + relative.y, origin.getBlockZ() + relative.z)
-                    .setBlockData(AIR_BLOCK_DATA, false);
+                    .setBlockData(AIR, false);
         }, progress -> {});
     }
 
@@ -230,7 +230,7 @@ public class GenericStructure extends Structure {
                 if (!preRemovePredicate.test(vector3i, blockData)) return;
                 Location location = new Location(world, origin.getX(), origin.getY(), origin.getZ()).add(vector3i.x, vector3i.y, vector3i.z);
 
-                location.getBlock().setBlockData(AIR_BLOCK_DATA);
+                location.getBlock().setBlockData(AIR);
             });
         });
     }

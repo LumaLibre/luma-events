@@ -13,12 +13,11 @@ public class SkyWarsDefinition {
 
     private Location lobby;
     @MapTied
-    private String map;
-    @MapTied
+    private String schematic;
     private Location origin;
     @MapTied
     @Comment("How far (horizontally) a chest can be from a spawn point and still count as that spawn's island")
-    private double islandRadius = 12;
+    private double islandRadius = 15;
     @MapTied
     private Region region = new Region();
     private SkyWarsLoot loot = new SkyWarsLoot();

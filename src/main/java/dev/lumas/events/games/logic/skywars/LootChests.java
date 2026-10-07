@@ -70,12 +70,12 @@ final class LootChests {
     }
 
     CompletableFuture<Void> find() {
-        return map.findBlockDataAsync(data -> poolFor(data.getMaterial()) != null || data.getMaterial() == Material.CHEST)
+        return map.findBlockDataAsync(data -> poolFor(data.getMaterial()) != null || data.getMaterial() == Material.CHEST || data.getMaterial() == Material.TRAPPED_CHEST)
                 .thenAccept(found -> {
                     List<Location> chests = new ArrayList<>();
                     Map<Location, BlockData> markers = new LinkedHashMap<>();
                     found.forEach((location, data) -> {
-                        if (data.getMaterial() == Material.CHEST) {
+                        if (data.getMaterial() == Material.CHEST || data.getMaterial() == Material.TRAPPED_CHEST) {
                             markers.put(location, data);
                         } else {
                             chests.add(location);
