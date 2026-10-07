@@ -1,0 +1,22 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+tab_width = 4
+ij_continuation_indent_size = 4
+
+[*.java]
+ij_java_continuation_indent_size = 4
+ij_java_use_relative_indents = false
+ij_java_method_call_chain_wrap = off
+ij_java_keep_line_breaks = true
+
+[*.{kt,kts}]
+ij_kotlin_continuation_indent_size = 4
+
+[*.{yml,yaml,json}]
+indent_size = 2
