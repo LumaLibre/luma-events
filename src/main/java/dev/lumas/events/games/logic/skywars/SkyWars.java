@@ -294,7 +294,9 @@ public final class SkyWars extends InventoryUnifiedMinigame {
 
         Vector from = projectile.getVelocity().multiply(-1);
         Executors.runSync(victim, () -> {
-            if (!victim.isValid() || victim.getNoDamageTicks() > victim.getMaximumNoDamageTicks() / 2) return;
+            if (!victim.isDead() || victim.getNoDamageTicks() > victim.getMaximumNoDamageTicks() / 2) {
+                return;
+            }
 
             victim.knockback(THROWABLE_KNOCKBACK, from.getX(), from.getZ());
             victim.playHurtAnimation((float) (Math.toDegrees(Math.atan2(from.getZ(), from.getX())) - victim.getYaw() - 90));

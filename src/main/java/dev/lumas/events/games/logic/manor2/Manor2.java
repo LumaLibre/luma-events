@@ -26,8 +26,6 @@ import dev.lumas.events.utility.latency.tracing.Tracing;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Entity;
@@ -37,8 +35,6 @@ import org.bukkit.entity.Trident;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -50,37 +46,32 @@ import java.util.concurrent.TimeUnit;
 
 public final class Manor2 extends InventoryUnifiedMinigame {
     private static final String[] SPLASH = {
-            "Are you afraid of ghosts?",
-            "Boooooooooooo!!!!",
-            "Ghost Busters!",
-            "Who you gonna call?",
-            "House of Dracula!",
-            "Trick or treat?",
-            "Here's Johny!!!",
-            "Put these foolish ambitions to rest",
-            "Wazzzuup!",
-            "Did you pray enough?",
-            "It's alive! It's alive!",
-            "Be afraid. Be very afraid",
-            "What is the color of night?",
-            "This is not a dream!",
-            "Someone must extinguish thy flame.",
-            "Don't cross the streams!!!!"
+        "Are you afraid of ghosts?",
+        "Boooooooooooo!!!!",
+        "Ghost Busters!",
+        "Who you gonna call?",
+        "House of Dracula!",
+        "Trick or treat?",
+        "Here's Johny!!!",
+        "Put these foolish ambitions to rest",
+        "Wazzzuup!",
+        "Did you pray enough?",
+        "It's alive! It's alive!",
+        "Be afraid. Be very afraid",
+        "What is the color of night?",
+        "This is not a dream!",
+        "Someone must extinguish thy flame.",
+        "Don't cross the streams!!!!"
     };
-    private static final String GAME_OVER = """
-            <yellow>Game Over
-            <gold> <winner> has won!
-            """;
     private static final long TICK_INTERVAL = 1L;
     private static final int TELEPORTS_PER_TICK = 5;
     private static final long END_DELAY_SECONDS = 10;
     public static final int TRAIL_HISTORY_TICKS = 20;
     public static final NamespacedKey ITEM_TAG = Preconditions.checkNotNull(
-            NamespacedKey.fromString("manor2/item", EventMain.getInstance())
+        NamespacedKey.fromString("manor2/item", EventMain.getInstance())
     );
     @Getter
     private final Manor2Definition definition;
-    private final Manor2Definition.LagCompensationSettings lagCompensation;
 
     @Getter
     private final MinigameRoleMap<Manor2Role> roleMap = new MinigameRoleMap<>();
@@ -108,7 +99,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, false, false);
         this.definition = definition;
         this.artifactManager = new ArtifactManager(this);
-        this.lagCompensation = definition.getLagCompensation();
+        Manor2Definition.LagCompensationSettings lagCompensation = definition.getLagCompensation();
         this.latencyHandler = new LatencyHandler(latency, lagCompensation.isEnabled(), lagCompensation.getMaxRewindNano(), lagCompensation.getInterpolationMillis());
         this.recorder = new TrailRecorder(TRAIL_HISTORY_TICKS, this::involvedEntities);
         this.tracing = new Tracing(this::involvedEntities, recorder, latencyHandler);
@@ -143,9 +134,9 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             roleMap.put(role);
             Location target = teleportTargets.get(i % teleportTargets.size());
             Executors.delayedSync(player, Math.floorDiv(i, TELEPORTS_PER_TICK) + 1, () -> {
-                        Executors.teleportSafely(player, target);
-                        role.initiatePlay();
-                    }
+                    Executors.teleportSafely(player, target);
+                    role.initiatePlay();
+                }
             );
         }
         showParticipantsToEachOther();
@@ -159,17 +150,16 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         });
 
         timer = CountdownBossBar.builder()
-                .title("<white><b>Time Remaining: %ss")
-                .color(BossBar.Color.WHITE)
-                .miliseconds(getDuration())
-                .audience(audience)
-                .build();
+            .title("<white><b>Time Remaining: %ss")
+            .color(BossBar.Color.WHITE)
+            .miliseconds(getDuration())
+            .audience(audience)
+            .build();
         timer.start();
     }
 
     @Override
     protected void onRunnable(long timeLeft) {
-        if (this.stopping) return;
         if (timeLeft <= TimeUnit.SECONDS.toMillis(END_DELAY_SECONDS)) {
             this.stop();
         }
@@ -179,23 +169,16 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         for (Manor2Role role : roleMap) {
             role.tick();
             role.operatePlayer(player -> {
-                player.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION, 20, 0, false, false, false));
+                if (player.getFoodLevel() < 20) {
+                    player.setFoodLevel(20);
+                }
             });
         }
-        if (roleMap.getMatching(Ghost.class).isEmpty()) {
-            audience.sendMessage(
-                    MiniMessage.miniMessage().deserialize(
-                            GAME_OVER,
-                            Placeholder.component("winner", ManorTeam.HUNTERS.displayName())
-                    ));
-            this.stop();
-        }
-        if (roleMap.getMatching(GhostHunter.class).isEmpty()) {
-            audience.sendMessage(
-                    MiniMessage.miniMessage().deserialize(
-                            GAME_OVER,
-                            Placeholder.component("winner", ManorTeam.GHOSTS.displayName())
-                    ));
+
+        boolean gameOver = roleMap.getMatching(Ghost.class).isEmpty() || roleMap.getMatching(GhostHunter.class).isEmpty();
+        ManorTeam winner = roleMap.getMatching(Ghost.class).isEmpty() ? ManorTeam.HUNTERS : ManorTeam.GHOSTS;
+        if (gameOver) {
+            sendAudienceTitle("<yellow>Game Over", "<gold>" + winner.displayName() + " has won!");
             this.stop();
         }
     }
@@ -217,7 +200,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             completableFutures.add(role.retire(this));
         }
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
-                .join();
+            .join();
 
     }
 
@@ -268,18 +251,18 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         this.ensureNotIllegal();
         if (roleMap.as(event.getPlayer().getUniqueId(), GhostHunter.class) instanceof GhostHunter ghostHunter) {
             ArtifactEntity.fromEntity(event.getRightClicked())
-                    .ifPresent(item -> {
-                        if (artifactManager.pickup(event.getRightClicked().getLocation())) {
-                            event.getPlayer().getInventory().addItem(item);
-                            scoreboard.artifactFound(ghostHunter, item.effectiveName());
-                        } else {
-                            event.getRightClicked().getLocation()
-                                    .getNearbyEntities(1, 1, 1)
-                                    .stream()
-                                    .filter(ArtifactEntity::isArtifact)
-                                    .forEach(Entity::remove);
-                        }
-                    });
+                .ifPresent(item -> {
+                    if (artifactManager.pickup(event.getRightClicked().getLocation())) {
+                        event.getPlayer().getInventory().addItem(item);
+                        scoreboard.artifactFound(ghostHunter, item.effectiveName());
+                    } else {
+                        event.getRightClicked().getLocation()
+                            .getNearbyEntities(1, 1, 1)
+                            .stream()
+                            .filter(ArtifactEntity::isArtifact)
+                            .forEach(Entity::remove);
+                    }
+                });
         }
         event.setCancelled(true);
     }
@@ -289,18 +272,18 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         this.ensureNotIllegal();
         if (roleMap.as(event.getPlayer().getUniqueId(), GhostHunter.class) instanceof GhostHunter ghostHunter) {
             ArtifactEntity.fromEntity(event.getAttacked())
-                    .ifPresent(item -> {
-                        if (artifactManager.pickup(event.getAttacked().getLocation())) {
-                            event.getPlayer().getInventory().addItem(item);
-                            scoreboard.artifactFound(ghostHunter, item.effectiveName());
-                        } else {
-                            event.getAttacked().getLocation()
-                                    .getNearbyEntities(1, 1, 1)
-                                    .stream()
-                                    .filter(ArtifactEntity::isArtifact)
-                                    .forEach(Entity::remove);
-                        }
-                    });
+                .ifPresent(item -> {
+                    if (artifactManager.pickup(event.getAttacked().getLocation())) {
+                        event.getPlayer().getInventory().addItem(item);
+                        scoreboard.artifactFound(ghostHunter, item.effectiveName());
+                    } else {
+                        event.getAttacked().getLocation()
+                            .getNearbyEntities(1, 1, 1)
+                            .stream()
+                            .filter(ArtifactEntity::isArtifact)
+                            .forEach(Entity::remove);
+                    }
+                });
         }
         event.setCancelled(true);
     }
@@ -327,9 +310,9 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
     public Collection<LivingEntity> involvedEntities() {
         return this.getParticipants().stream()
-                .map(EventPlayer::getPlayer)
-                .filter(Objects::nonNull)
-                .map(LivingEntity.class::cast)
-                .toList();
+            .map(EventPlayer::getPlayer)
+            .filter(Objects::nonNull)
+            .map(LivingEntity.class::cast)
+            .toList();
     }
 }

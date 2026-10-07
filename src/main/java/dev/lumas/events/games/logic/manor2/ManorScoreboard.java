@@ -34,7 +34,6 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
             "<gray><red><participants></red> found a completely worthless artifact",
             "<gray><red><participants></red> found a dusty relic"
     );
-    private static final String SCOREBOARD_BORDER = "<#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     ";
     private static final String SCORE_RECORD = """
             <green><gold>#<position></gold> is <red><scorer></red> with <gold><points> points</gold>! (<team>)
             """;
@@ -81,7 +80,7 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
 
     @Override
     public void showScores(Audience audience) {
-        Component border = Util.color(SCOREBOARD_BORDER + "\n");
+        Component border = Util.color(BORDER);
 
         audience.sendMessage(border);
         int position = 1;

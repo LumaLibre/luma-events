@@ -278,6 +278,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
     @Override
     public void accept(ScheduledTask task) {
+        if (this.stopping || !this.active) return;
         long timeLeft = this.duration - (System.currentTimeMillis() - this.startTime);
         if (timeLeft <= 0) {
             this.stop();

@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Scoreboard<T extends Scorer> {
 
-    private static final String BORDER = "<#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     ";
+    protected static final String BORDER = "<#eee1d5><st>                     <reset><#eee1d5>⋆⁺₊⋆ ★ ⋆⁺₊⋆<st>                     ";
     private static final String MESSAGE_FORMAT = "<green><gold>#%s</gold> is <red>%s</red> with <gold>%s points</gold>!";
 
     // Scored from async game ticks and from region-thread event handlers at the same time
