@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -19,15 +20,22 @@ import java.util.function.Supplier;
 public class MinigameRoleMap<T extends MinigameRole> extends ConcurrentHashMap<UUID, T> implements Iterable<T> {
 
     private final Consumer<T> cleanupConsumer;
+    private final Consumer<T> initiateConsumer;
 
     public MinigameRoleMap(Consumer<T> cleanupConsumer) {
+        this(cleanupConsumer, ignore -> {
+        });
+    }
+
+    public MinigameRoleMap(Consumer<T> cleanupConsumer, Consumer<T> initiateConsumer) {
         this.cleanupConsumer = cleanupConsumer;
+        this.initiateConsumer = initiateConsumer;
     }
 
     public MinigameRoleMap() {
-        this.cleanupConsumer = role -> {
+        this(ignored -> {
             // Default no-op cleanup
-        };
+        });
     }
 
     public T put(T value) {
@@ -36,9 +44,9 @@ public class MinigameRoleMap<T extends MinigameRole> extends ConcurrentHashMap<U
 
     public <S extends MinigameRole> List<S> getMatching(Class<S> type) {
         return this.values().stream()
-                .filter(type::isInstance)
-                .map(type::cast)
-                .toList();
+            .filter(type::isInstance)
+            .map(type::cast)
+            .toList();
     }
 
 //    public List<T> getMatching(Class<T>... types) {
@@ -67,10 +75,10 @@ public class MinigameRoleMap<T extends MinigameRole> extends ConcurrentHashMap<U
 
     public <K extends T> List<K> predicate(Class<K> type, Predicate<K> predicate) {
         return this.values().stream()
-                .filter(type::isInstance)
-                .map(type::cast)
-                .filter(predicate)
-                .toList();
+            .filter(type::isInstance)
+            .map(type::cast)
+            .filter(predicate)
+            .toList();
     }
 
     public <S extends MinigameRole> T swapRole(S rolePlayer, Supplier<T> newRoleSupplier) {
@@ -79,12 +87,14 @@ public class MinigameRoleMap<T extends MinigameRole> extends ConcurrentHashMap<U
 
     public T swapRole(EventPlayer eventPlayer, Supplier<T> newRoleSupplier) {
         T currentRole = this.get(eventPlayer.getUuid());
+        CompletableFuture<Void> oldAssignmentDone;
         if (currentRole != null) {
-            Executors.runSync(eventPlayer, () -> {
-                cleanupConsumer.accept(currentRole);
-            });
+            oldAssignmentDone = CompletableFuture.runAsync(() -> cleanupConsumer.accept(currentRole), Executors.executor(eventPlayer));
+        } else {
+            oldAssignmentDone = CompletableFuture.completedFuture(null);
         }
         T newRole = newRoleSupplier.get();
+        oldAssignmentDone.thenRunAsync(() -> initiateConsumer.accept(newRole), Executors.executor(eventPlayer));
         this.put(newRole.getEventPlayer().getUuid(), newRole);
         return newRole;
     }
@@ -93,24 +103,24 @@ public class MinigameRoleMap<T extends MinigameRole> extends ConcurrentHashMap<U
      * Ensures that there are at least {@code count} players of the specified {@code type}.
      * If there are not enough players of that type, it will promote players from the provided {@code fromTypes}.
      *
-     * @param type The type of player to ensure.
+     * @param type            The type of player to ensure.
      * @param newRoleConsumer A consumer that creates a new instance of the specified type.
-     * @param count The minimum number of players of the specified type.
-     * @param fromTypes The types of players to promote from.
+     * @param count           The minimum number of players of the specified type.
+     * @param fromTypes       The types of players to promote from.
      * @return true if the requirement was met or successfully promoted, false otherwise.
      */
     @SafeVarargs
     private <S extends MinigameRole> boolean ensureAtLeast(Class<T> type, NewRoleConsumer<T> newRoleConsumer, int count, Class<S>... fromTypes) {
         long currentCount = this.values().stream()
-                .filter(type::isInstance)
-                .count();
+            .filter(type::isInstance)
+            .count();
         if (currentCount >= count) {
             return true;
         }
         int difference = count - (int) currentCount;
         List<T> candidates = this.values().stream()
-                .filter(player -> Util.isAssignableFromAny(player.getClass(), fromTypes))
-                .toList();
+            .filter(player -> Util.isAssignableFromAny(player.getClass(), fromTypes))
+            .toList();
 
         if (candidates.size() < difference) {
             return false; // Not enough candidates to promote

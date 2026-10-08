@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -50,6 +51,43 @@ public final class Executors {
         return Bukkit.getAsyncScheduler().runNow(instance, t -> runnable.run());
     }
 
+    /**
+     * <b>Note that if the entity has been removed, it will execute instantly</b>
+     *
+     * @param role the role to execute in
+     * @return an executor that executes for this role
+     */
+    public static Executor executor(MinigameRole role) {
+        return executor(role.getEventPlayer());
+    }
+
+    /**
+     * <b>Note that if the entity has been removed, it will execute instantly</b>
+     *
+     * @param eventPlayer the eventPlayer to execute in
+     * @return an executor that executes for this eventPlayer
+     */
+    public static Executor executor(EventPlayer eventPlayer) {
+        return executor(eventPlayer.getPlayer());
+    }
+
+    /**
+     * <b>Note that if the entity has been removed, it will execute instantly</b>
+     *
+     * @param entity the entity to execute in, or null
+     * @return an executor that executes for this entity
+     */
+    public static Executor executor(@Nullable Entity entity) {
+        if (entity == null) {
+            return Runnable::run;
+        }
+        if (Bukkit.isOwnedByCurrentRegion(entity)) {
+            return Runnable::run;
+        }
+        return runnable -> entity.getScheduler().run(EventMain.getInstance(), ignored -> runnable.run(), runnable);
+    }
+
+
     // Synchronous
 
     @Nullable
@@ -73,7 +111,7 @@ public final class Executors {
     }
 
     public static ScheduledTask repeatingSync(Entity entity, long period, Consumer<ScheduledTask> consumer) {
-        return entity.getScheduler().runAtFixedRate(instance, consumer, null,1, period);
+        return entity.getScheduler().runAtFixedRate(instance, consumer, null, 1, period);
     }
 
     public static ScheduledTask repeatingSync(Location location, long period, Consumer<ScheduledTask> consumer) {
@@ -161,7 +199,8 @@ public final class Executors {
 
     /**
      * Runs a task synchronously and returns a CompletableFuture that completes when the task is done.
-     * @param entity the entity to run the task on
+     *
+     * @param entity   the entity to run the task on
      * @param runnable the task to run
      * @return a CompletableFuture that completes when the task is done
      */
@@ -218,17 +257,17 @@ public final class Executors {
 
     private static void scheduleTeleport(Entity entity, UUID uuid, Location location, long delay, CompletableFuture<Boolean> future) {
         boolean scheduled = entity.getScheduler().execute(
-                instance,
-                () -> {
-                    Entity target = entity instanceof Player ? Bukkit.getPlayer(uuid) : entity;
-                    if (target == null || !target.isValid()) {
-                        future.complete(false);
-                        return;
-                    }
-                    forward(report(uuid, target.teleportAsync(location)), future);
-                },
-                () -> future.complete(false),
-                delay
+            instance,
+            () -> {
+                Entity target = entity instanceof Player ? Bukkit.getPlayer(uuid) : entity;
+                if (target == null || !target.isValid()) {
+                    future.complete(false);
+                    return;
+                }
+                forward(report(uuid, target.teleportAsync(location)), future);
+            },
+            () -> future.complete(false),
+            delay
         );
 
         if (!scheduled) {
@@ -269,20 +308,20 @@ public final class Executors {
     }
 
     private static final Set<String> WRAPPER_CLASSES = Set.of(
-            Executors.class.getName(),
-            "dev.lumas.events.model.EventPlayer",
-            "dev.lumas.events.games.interfaces.models.MinigameRole"
+        Executors.class.getName(),
+        "dev.lumas.events.model.EventPlayer",
+        "dev.lumas.events.games.interfaces.models.MinigameRole"
     );
 
     private static String callerSite() {
         return StackWalker.getInstance()
-                .walk(frames -> frames
-                        .filter(frame -> !WRAPPER_CLASSES.contains(frame.getClassName()))
-                        .filter(frame -> frame.getClassName().startsWith("dev.lumas."))
-                        .findFirst()
-                        .map(frame -> frame.getClassName().substring(frame.getClassName().lastIndexOf('.') + 1)
-                                + "#" + frame.getMethodName() + ":" + frame.getLineNumber()))
-                .orElse("unknown");
+            .walk(frames -> frames
+                .filter(frame -> !WRAPPER_CLASSES.contains(frame.getClassName()))
+                .filter(frame -> frame.getClassName().startsWith("dev.lumas."))
+                .findFirst()
+                .map(frame -> frame.getClassName().substring(frame.getClassName().lastIndexOf('.') + 1)
+                    + "#" + frame.getMethodName() + ":" + frame.getLineNumber()))
+            .orElse("unknown");
     }
 
     private static CompletableFuture<Boolean> report(UUID uuid, CompletableFuture<Boolean> upstream) {

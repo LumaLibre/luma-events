@@ -1,6 +1,5 @@
 package dev.lumas.events.games.logic.manor2.roles;
 
-import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.ManorTeam;
 import dev.lumas.events.games.logic.manor2.light.GhostVisibility;
@@ -11,11 +10,9 @@ import lombok.Getter;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.entity.Player;
 
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Ghost extends Manor2Role {
@@ -25,7 +22,6 @@ public class Ghost extends Manor2Role {
 
     @Getter
     private final GhostVisibility visibility;
-    private int revealedTime = 0;
     private Manor2 manor2;
     private int ticksUntilWhirl = 0;
 
@@ -33,56 +29,34 @@ public class Ghost extends Manor2Role {
         super(eventPlayer);
         this.visibility = new GhostVisibility(manor2, eventPlayer);
         this.manor2 = manor2;
-        eventPlayer.operatePlayer(player -> {
-            GlowColorManager.getInstance().setTransientColor(player, NamedTextColor.DARK_GRAY);
-            manor2.getPacketGlow().addViewer(player);
-        });
     }
 
     @Override
     public void die() {
-        retire(manor2); // TODO: extract parts of this
         manor2.getRoleMap().swapRole(this, () -> new Spectator(manor2, eventPlayer));
     }
 
-    private void showRevealedResult() {
-        eventPlayer.operatePlayer(player -> {
-            AttributeInstance maxHealth = player.getAttribute(Attribute.MAX_HEALTH);
-            if (maxHealth != null) {
-                double newHealth = maxHealth.getValue() * (1 - (double) revealedTime / manor2.getDefinition().getGhostRevealTime());
-                player.setHealth(newHealth);
-            } else {
-                EventMain.getInstance().getLogger().warning("Player has no max health attribute - can not take damage");
-            }
-        });
+    @Override
+    public void initiatePlay() {
+        Player player = eventPlayer.getPlayer();
+        if (player == null) {
+            return;
+        }
+        player.showTitle(ManorTeam.GHOSTS.assignmentTitle());
+        GlowColorManager.getInstance().setTransientColor(player, NamedTextColor.DARK_GRAY);
+        manor2.getPacketGlow().addViewer(player);
     }
 
     @Override
-    public CompletableFuture<Void> initiatePlay() {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        eventPlayer.operatePlayer(player -> {
-            player.showTitle(ManorTeam.GHOSTS.assignmentTitle());
-            future.complete(null);
-        });
-        return future;
-    }
-
-    @Override
-    public CompletableFuture<Void> retire(Manor2 manor2) {
+    public void retire(Manor2 manor2) {
         visibility.stop();
-        return super.retire(manor2);
+        super.retire(manor2);
     }
 
     @Override
     public void tick() {
         visibility.tick();
         whirl();
-
-        if (visibility.getState().isRevealed()) {
-            revealedTime++;
-        } else {
-            revealedTime = 0; // <- TODO: intended?
-        }
     }
 
     public void light(LightHit hit, UUID playerUuid) {

@@ -74,7 +74,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private final Manor2Definition definition;
 
     @Getter
-    private final MinigameRoleMap<Manor2Role> roleMap = new MinigameRoleMap<>();
+    private final MinigameRoleMap<Manor2Role> roleMap = new MinigameRoleMap<>(role -> role.retire(this), Manor2Role::initiatePlay);
     @Getter
     private final LocalizedFakeBlockCache blockCache = new LocalizedFakeBlockCache(32);
     @Getter
@@ -177,8 +177,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         boolean gameOver = roleMap.getMatching(Ghost.class).isEmpty() || roleMap.getMatching(GhostHunter.class).isEmpty();
         ManorTeam winner = roleMap.getMatching(Ghost.class).isEmpty() ? ManorTeam.HUNTERS : ManorTeam.GHOSTS;
-        if (gameOver) {
-            sendAudienceTitle("<yellow>Game Over", "<gold>" + winner.displayName() + " has won!");
+        if (false && gameOver) {
+            sendGameOver(winner);
             this.stop();
         }
     }
@@ -197,7 +197,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
         for (Manor2Role role : roleMap) {
-            completableFutures.add(role.retire(this));
+            completableFutures.add(CompletableFuture.runAsync(() -> role.retire(this), Executors.executor(role)));
         }
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
             .join();
@@ -216,8 +216,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         if (player.getPlayer() != null && this.timer != null) {
             this.timer.getBossBar().removeViewer(player.getPlayer());
         }
-        if (roleMap.get(player.getUuid()) instanceof Manor2Role role) {
-            role.retire(this);
+        if (roleMap.remove(player.getUuid()) instanceof Manor2Role role) {
+            Executors.runSync(player, () -> role.retire(this));
         }
         return super.removeParticipant(player, doTeleport);
     }
@@ -286,6 +286,10 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                 });
         }
         event.setCancelled(true);
+    }
+
+    private void sendGameOver(ManorTeam winner) {
+        sendAudienceTitle("<yellow>Game Over", "<gold>" + winner.displayName() + " has won!");
     }
 
     private void showParticipantsToEachOther() {

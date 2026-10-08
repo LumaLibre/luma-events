@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ArtifactManager {
     private static final int ARTIFACT_SPAWN_DELAY = 30 * 20;
@@ -40,6 +41,7 @@ public class ArtifactManager {
     private final Map<Location3i, ArtifactType> artifacts = new ConcurrentHashMap<>();
     private final Map<Location3i, ArtifactEntity> placedArtifacts = new ConcurrentHashMap<>();
     private final Manor2 manor2;
+    private final AtomicInteger artifactPickedUpCount = new AtomicInteger(0);
 
     public ArtifactManager(Manor2 manor2) {
         this.manor2 = manor2;
@@ -51,20 +53,20 @@ public class ArtifactManager {
 
     public void tick() {
         regionFails.entrySet().stream()
-                .filter(entry -> entry.getValue() > MAX_REGION_FAILS)
-                .map(Map.Entry::getKey)
-                .forEach(spawningRegions::remove);
+            .filter(entry -> entry.getValue() > MAX_REGION_FAILS)
+            .map(Map.Entry::getKey)
+            .forEach(spawningRegions::remove);
         for (ArtifactRegion spawningRegion : spawningRegions) {
             if (regionDelay.get(spawningRegion) instanceof Long aLong && aLong < time) {
                 continue;
             }
             WorldTiedBoundingBox expanded = (WorldTiedBoundingBox) spawningRegion.boundingBox().expand(MIN_RESPAWN_PLAYER_PROXIMITY);
             if (manor2.getRoleMap().getMatching(GhostHunter.class).stream()
-                    .map(GhostHunter::getEventPlayer)
-                    .map(EventPlayer::getPlayer)
-                    .filter(Objects::nonNull)
-                    .map(Player::getLocation)
-                    .anyMatch(expanded::contains)
+                .map(GhostHunter::getEventPlayer)
+                .map(EventPlayer::getPlayer)
+                .filter(Objects::nonNull)
+                .map(Player::getLocation)
+                .anyMatch(expanded::contains)
             ) {
                 continue;
             }
@@ -73,16 +75,15 @@ public class ArtifactManager {
                 occupiedRegions.put(spawningRegion, finalTimeStamp);
                 Location3i pos = randomPos(spawningRegion);
                 artifacts.put(pos, Util.getRandom(artifactTypes));
-                Bukkit.broadcastMessage(pos.toString());
             }
         }
         for (Map.Entry<Location3i, ArtifactEntity> entityEntry : placedArtifacts.entrySet()) {
             entityEntry.getValue().ensureValid(time)
-                    .thenAccept(valid -> {
-                        if (!valid) {
-                            placedArtifacts.remove(entityEntry.getKey(), entityEntry.getValue());
-                        }
-                    });
+                .thenAccept(valid -> {
+                    if (!valid) {
+                        placedArtifacts.remove(entityEntry.getKey(), entityEntry.getValue());
+                    }
+                });
             entityEntry.getValue().rotate(time);
         }
         time++;
@@ -92,19 +93,17 @@ public class ArtifactManager {
         double xWidth = all.getWidthX();
         double zWidth = all.getWidthZ();
         double regionWidth = manor2.getDefinition().getAverageRegionWidth();
-        Bukkit.broadcastMessage("All = (%f, %f, %f)-(%f, %f, %f)".formatted(all.getMinX(), all.getMinY(), all.getMinZ(), all.getMaxX(), all.getMaxY(), all.getMaxZ()));
         List<ArtifactRegion> output = new ArrayList<>();
-        Bukkit.broadcastMessage("Regionwidth=%f".formatted(regionWidth));
         for (double x = 0; x < xWidth; x += regionWidth) {
             for (double z = 0; z < zWidth; z += regionWidth) {
                 output.addAll(ArtifactRegion.within(
-                        all.getWorld(),
-                        (int) Math.floor(x + all.getMinX()),
-                        (int) Math.floor(all.getMinY()),
-                        (int) Math.floor(z + all.getMinZ()),
-                        (int) Math.floor(Math.min(x + regionWidth + all.getMinX(), all.getMaxX())),
-                        (int) Math.floor(all.getMaxY()),
-                        (int) Math.floor(Math.min(z + regionWidth + all.getMinZ(), all.getMaxZ())))
+                    all.getWorld(),
+                    (int) Math.floor(x + all.getMinX()),
+                    (int) Math.floor(all.getMinY()),
+                    (int) Math.floor(z + all.getMinZ()),
+                    (int) Math.floor(Math.min(x + regionWidth + all.getMinX(), all.getMaxX())),
+                    (int) Math.floor(all.getMaxY()),
+                    (int) Math.floor(Math.min(z + regionWidth + all.getMinZ(), all.getMaxZ())))
                 );
             }
         }
@@ -124,7 +123,8 @@ public class ArtifactManager {
         if (entity != null) {
             entity.remove();
             Util.getRandom(manor2.getDefinition().getArtifactPickupSounds())
-                    .playAt(location);
+                .playAt(location);
+            artifactPickedUpCount.incrementAndGet();
         }
         for (ArtifactRegion region : occupiedRegions.keySet()) {
             if (region.boundingBox().contains(location)) {
@@ -151,20 +151,24 @@ public class ArtifactManager {
             double diffLengthSquared = diff.lengthSquared();
             Vector diffNormalized = diff.clone().normalize();
             if (diffNormalized.dot(eyeDirection) < minShading || maxSearchSquared < diffLengthSquared ||
-                    !Tracing.hasClearShot(eyeLocation, diffNormalized, Math.sqrt(diffLengthSquared), ARTIFACT_TRACE_STEP)
+                !Tracing.hasClearShot(eyeLocation, diffNormalized, Math.sqrt(diffLengthSquared), ARTIFACT_TRACE_STEP)
             ) {
                 continue;
             }
             if (!(placedArtifacts.get(artifactPos3i) instanceof ArtifactEntity entity)) {
                 audience.sendActionBar(
-                        Util.color(REVEAL_ARTIFACT_MESSAGE)
+                    Util.color(REVEAL_ARTIFACT_MESSAGE)
                 );
                 Util.getRandom(manor2.getDefinition().getArtifactRevealSounds())
-                        .playAt(artifactPos);
+                    .playAt(artifactPos);
                 placedArtifacts.put(artifactPos3i, ArtifactEntity.spawn(artifactPos3i.toLocation().add(0.5, 0, 0.5), entry.getValue(), time));
             } else {
                 placedArtifacts.put(artifactPos3i, entity.withTimeStamp(time));
             }
         }
+    }
+
+    public int artifactsPickedUp() {
+        return artifactPickedUpCount.get();
     }
 }

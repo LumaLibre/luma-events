@@ -10,7 +10,6 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 
 import java.util.Collection;
-import java.util.concurrent.CompletableFuture;
 
 public class GhostHunter extends Manor2Role {
 
@@ -25,10 +24,6 @@ public class GhostHunter extends Manor2Role {
         super(eventPlayer);
         this.manor2 = manor2;
         this.flashlight = new Flashlight(manor2, eventPlayer.getPlayer());
-        eventPlayer.operatePlayer(player -> {
-            GlowColorManager.getInstance().setTransientColor(player, NamedTextColor.WHITE);
-            manor2.getPacketGlow().addTarget(player);
-        });
     }
 
     @Override
@@ -42,19 +37,19 @@ public class GhostHunter extends Manor2Role {
 
     @Override
     public void die() {
-        retire(manor2); // TODO: extract parts of this
         manor2.getRoleMap().swapRole(this, () -> new Spectator(manor2, eventPlayer));
     }
 
     @Override
-    public CompletableFuture<Void> initiatePlay() {
-        CompletableFuture<Void> completableFuture = new CompletableFuture<>();
-        eventPlayer.operatePlayer(player -> {
-            player.getInventory().setItem(0, flashlight.createItem());
-            player.showTitle(ManorTeam.HUNTERS.assignmentTitle());
-            completableFuture.complete(null);
-        });
-        return completableFuture;
+    public void initiatePlay() {
+        Player player = eventPlayer.getPlayer();
+        if (player == null) {
+            return;
+        }
+        player.getInventory().setItem(0, flashlight.createItem());
+        player.showTitle(ManorTeam.HUNTERS.assignmentTitle());
+        GlowColorManager.getInstance().setTransientColor(player, NamedTextColor.WHITE);
+        manor2.getPacketGlow().addTarget(player);
     }
 
     private void freeze(Player player, double ghostCloseness) {
@@ -67,13 +62,13 @@ public class GhostHunter extends Manor2Role {
 
     private double hauntCloseness(Player player) {
         Collection<ProximityTraceResult> result = manor2.getTracing().traceProximity(
-                player,
-                participant -> manor2.getRoleMap().as(participant.getUniqueId(), Ghost.class) != null,
-                HAUNT_RADIUS
+            player,
+            participant -> manor2.getRoleMap().as(participant.getUniqueId(), Ghost.class) != null,
+            HAUNT_RADIUS
         );
         double closestProximity = result.stream().map(ProximityTraceResult::distance)
-                .min(Double::compare)
-                .orElse(HAUNT_RADIUS);
+            .min(Double::compare)
+            .orElse(HAUNT_RADIUS);
         return 1 - (closestProximity / HAUNT_RADIUS);
     }
 }
