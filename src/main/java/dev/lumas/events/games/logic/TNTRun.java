@@ -1,6 +1,5 @@
 package dev.lumas.events.games.logic;
 
-import dev.lumas.core.util.ContextLogger;
 import dev.lumas.core.util.Text;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.game.TNTRunDefinition;
@@ -22,13 +21,13 @@ import dev.lumas.events.utility.Util;
 import dev.lumas.lumacore.utility.Logging;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -67,8 +66,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class TNTRun extends InventoryUnifiedMinigame {
 
-    ContextLogger LOGGER = ContextLogger.getLogger(NamedTextColor.YELLOW, false);
-
     private static final BlockData AIR_BLOCK_DATA = Material.AIR.createBlockData();
     private static final NamespacedKey POWERUP_ID_KEY = new NamespacedKey(EventMain.getInstance(), "tnt-run-powerup");
     private static final double FOOTPRINT_MARGIN = 1.0e-2;
@@ -104,14 +101,14 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     private float powerupSpinAngle = 0f;
     private final Map<PowerupType, Integer> powerupWeights;
-    private final Map<UUID, String> powerupByEntity = new ConcurrentHashMap<>();
-    private final Map<UUID, ItemStack> powerupItemByEntity = new ConcurrentHashMap<>();
+    private final Map<ItemDisplay, PowerupType> powerupByEntity = new ConcurrentHashMap<>();
+    private final Map<ItemDisplay, ItemStack> powerupItemByEntity = new ConcurrentHashMap<>();
     private final Map<UUID, Long> updraftCooldownUntilTick = new ConcurrentHashMap<>();
     private final BlockAnimationPlatform tempPlatforms;
 
     public TNTRun(TNTRunDefinition def) {
         super("TNT Run", "Don't fall down!", 420000L, 1,
-                true, true, false, true);
+            true, true, false, true);
 
         this.decayDelayTicks = def.getDecayDelayTicks();
         this.lobbyLocation = def.getLobbyLocation();
@@ -131,14 +128,14 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         this.smallUpdraftY = def.getSmallUpdraftY();
         this.bigUpdraftY = def.getBigUpdraftY();
         this.tempPlatforms = BlockAnimationPlatform.builder()
-                .config(BlockAnimationPlatformConfig.defaultBedrock3x3(platformTicks, Math.min(40, platformTicks)))
-                .replacePredicate(block -> true) // replace all types of blocks
-                .viewersSupplier(() -> this.participants.stream()
-                        .map(EventPlayer::getPlayer)
-                        .filter(Objects::nonNull)
-                        .toList())
-                .isActiveSupplier(() -> this.decayArmed) // active condition
-                .build();
+            .config(BlockAnimationPlatformConfig.defaultBedrock3x3(platformTicks, Math.min(40, platformTicks)))
+            .replacePredicate(block -> true) // replace all types of blocks
+            .viewersSupplier(() -> this.participants.stream()
+                .map(EventPlayer::getPlayer)
+                .filter(Objects::nonNull)
+                .toList())
+            .isActiveSupplier(() -> this.decayArmed) // active condition
+            .build();
     }
 
     @Override
@@ -157,6 +154,11 @@ public final class TNTRun extends InventoryUnifiedMinigame {
             this.roleMap.put(role);
 
             eventPlayer.operatePlayer(LivingEntity::clearActivePotionEffects);
+            eventPlayer.operatePlayer(player -> powerupWeights
+                .keySet()
+                .stream()
+                .map(PowerupType::createPowerupItem)
+                .forEach(player.getInventory()::addItem));
         }
 
         worldEditStructure.pasteAsync().whenComplete((vo, thr) -> {
@@ -178,7 +180,9 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
         processDecayQueue();
         if (decayArmed && boundingBox != null && powerupByEntity.size() < powerupMaxAlive) {
-            for (int i = 0; i <= powerupSpawnAttempts; i++) trySpawnRandomPowerup();
+            for (int i = 0; i <= powerupSpawnAttempts; i++) {
+                trySpawnRandomPowerup();
+            }
         }
         spinPowerups();
 
@@ -222,18 +226,18 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
         this.scoreboard.handleGameEnd(this.audience, () -> {
             CountdownBossBar.builder()
-                    .audience(this.audience)
-                    .color(BossBar.Color.RED)
-                    .title("<red><b>Game Over")
-                    .seconds(10)
-                    .callback(() -> {
-                        this.participants.forEach(eventPlayer -> {
-                            eventPlayer.teleportAsync(this.getGameDropOffLocation());
-                            eventPlayer.sendMessage("This minigame has concluded.");
-                        });
-                    })
-                    .build()
-                    .start();
+                .audience(this.audience)
+                .color(BossBar.Color.RED)
+                .title("<red><b>Game Over")
+                .seconds(10)
+                .callback(() -> {
+                    this.participants.forEach(eventPlayer -> {
+                        eventPlayer.teleportAsync(this.getGameDropOffLocation());
+                        eventPlayer.sendMessage("This minigame has concluded.");
+                    });
+                })
+                .build()
+                .start();
         });
     }
 
@@ -257,32 +261,32 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         }
 
         this.countdownBossBar = CountdownBossBar.builder()
-                .audience(this.audience)
-                .title("<yellow><b>Starting in %ss</b>")
-                .color(BossBar.Color.YELLOW)
-                .seconds(10)
-                .callback(() -> {
-                    this.sendAudienceMessage("<green>TNT Run started!</green>");
-                    this.decayArmed = true;
-                    this.startGameTimerBossBar();
-                })
-                .build()
-                .start();
+            .audience(this.audience)
+            .title("<yellow><b>Starting in %ss</b>")
+            .color(BossBar.Color.YELLOW)
+            .seconds(10)
+            .callback(() -> {
+                this.sendAudienceMessage("<green>TNT Run started!</green>");
+                this.decayArmed = true;
+                this.startGameTimerBossBar();
+            })
+            .build()
+            .start();
     }
 
     private void startGameTimerBossBar() {
         this.gameTimerBossBar = CountdownBossBar.builder()
-                .title("<green>Time Left: %ss")
-                .color(BossBar.Color.GREEN)
-                // correct for the 10s at the start
-                .miliseconds(this.getDuration() - 10_000L)
-                .audience(this.audience)
-                .callback(() -> {
-                    this.sendAudienceMessage("<yellow>Time is up!</yellow>");
-                    this.stop();
-                })
-                .build()
-                .start();
+            .title("<green>Time Left: %ss")
+            .color(BossBar.Color.GREEN)
+            // correct for the 10s at the start
+            .miliseconds(this.getDuration() - 10_000L)
+            .audience(this.audience)
+            .callback(() -> {
+                this.sendAudienceMessage("<yellow>Time is up!</yellow>");
+                this.stop();
+            })
+            .build()
+            .start();
     }
 
     private void scheduleDecayUnderFootprint(Player player) {
@@ -298,14 +302,15 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         double minZ = bb.getMinZ() + FOOTPRINT_MARGIN;
         double maxZ = bb.getMaxZ() - FOOTPRINT_MARGIN;
 
-        int[] xs = { (int)Math.floor(minX), (int)Math.floor(maxX) };
-        int[] zs = { (int)Math.floor(minZ), (int)Math.floor(maxZ) };
+        int[] xs = {(int) Math.floor(minX), (int) Math.floor(maxX)};
+        int[] zs = {(int) Math.floor(minZ), (int) Math.floor(maxZ)};
 
-        for (int x : xs) for (int z : zs) {
-            Block b = w.getBlockAt(x, y, z);
-            if (!b.getType().hasGravity() || b.getType().isAir()) continue;
-            scheduleDecay(b);
-        }
+        for (int x : xs)
+            for (int z : zs) {
+                Block b = w.getBlockAt(x, y, z);
+                if (!b.getType().hasGravity() || b.getType().isAir()) continue;
+                scheduleDecay(b);
+            }
     }
 
     private void processDecayQueue() {
@@ -342,8 +347,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
 
     private void scheduleDecay(Block block) {
         decayQueue.putIfAbsent(
-                new BlockPos(block.getX(), block.getY(), block.getZ()),
-                tickCounter + decayDelayTicks
+            new BlockPos(block.getX(), block.getY(), block.getZ()),
+            tickCounter + decayDelayTicks
         );
     }
 
@@ -546,7 +551,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         final Component displayName;
 
 
-
         PowerupType(Material material, String displayName) {
             this.material = material;
             this.displayName = Text.mmNoItalic(displayName);
@@ -578,8 +582,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
             if (weights == null || weights.isEmpty()) return random();
 
             int totalWeight = Arrays.stream(values())
-                    .mapToInt(type -> Math.max(0, weights.getOrDefault(type, 0)))
-                    .sum();
+                .mapToInt(type -> Math.max(0, weights.getOrDefault(type, 0)))
+                .sum();
 
             if (totalWeight <= 0) return null; // all disabled
             int randInt = ThreadLocalRandom.current().nextInt(totalWeight);
@@ -606,26 +610,21 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         powerupSpinAngle += 0.12f;
         if (powerupSpinAngle > (float) (Math.PI * 2)) powerupSpinAngle -= (float) (Math.PI * 2);
 
-        for (UUID id : new ArrayList<>(powerupByEntity.keySet())) {
-            Entity e = w.getEntity(id);
-            if (!(e instanceof ItemDisplay d)) continue;
-            Executors.runSync(d, () -> {
-                Transformation t = d.getTransformation();
+        for (ItemDisplay entity : new ArrayList<>(powerupByEntity.keySet())) {
+            if (!(entity instanceof ItemDisplay itemDisplay)) continue;
+            Executors.runSync(itemDisplay, () -> {
+                Transformation t = itemDisplay.getTransformation();
                 t.getScale().set(0.67f, 0.67f, 0.67f);
                 t.getLeftRotation().set(new AxisAngle4f(powerupSpinAngle, 0f, 1f, 0f));
-                d.setTransformation(t);
+                itemDisplay.setTransformation(t);
             });
         }
     }
 
 
     private void despawnAllPowerups() {
-        if (arenaOrigin.getWorld() == null) return;
-        org.bukkit.World w = arenaOrigin.getWorld();
-
-        for (UUID id : new ArrayList<>(powerupByEntity.keySet())) {
-            Entity e = w.getEntity(id);
-            if (e != null) e.remove();
+        for (ItemDisplay itemDisplay : new ArrayList<>(powerupByEntity.keySet())) {
+            Executors.runSync(itemDisplay, itemDisplay::remove);
         }
         powerupByEntity.clear();
     }
@@ -633,34 +632,54 @@ public final class TNTRun extends InventoryUnifiedMinigame {
     private void trySpawnRandomPowerup() {
         org.bukkit.World w = arenaOrigin.getWorld();
         if (w == null || this.boundingBox == null ||
-                !(this.boundingBox instanceof WorldTiedBoundingBox box)) return;
+            !(this.boundingBox instanceof WorldTiedBoundingBox box)) {
+            return;
+        }
 
         Location randomLocation = box.getRandomLocation();
 
         Executors.runSync(randomLocation, () -> {
-            Block air = w.getBlockAt(randomLocation);
-            if (!air.getType().isAir()) return;
+            Block possibleAir = w.getBlockAt(randomLocation);
+            if (!canSpawnPowerupWithin(possibleAir)) {
+                return;
+            }
 
-            Block below = air.getRelative(BlockFace.DOWN);
-            Material base = below.getType();
-            if (base.isAir() || !base.hasGravity()) return;
+            Block below = possibleAir.getRelative(BlockFace.DOWN);
+            if (canSpawnPowerupWithin(below) || !below.getType().hasGravity()) {
+                return;
+            }
 
             if (isPowerupAlreadyAt(w, randomLocation.getBlockX(),
-                    randomLocation.getBlockY(), randomLocation.getBlockZ())) return;
+                randomLocation.getBlockY(), randomLocation.getBlockZ())) {
+                return;
+            }
 
             PowerupType type = PowerupType.weightedRandom(this.powerupWeights);
-            if (type == null) return; // all disabled
+            if (type == null) {
+                return; // all disabled
+            }
             spawnPowerupDisplay(w, randomLocation.getBlockX(),
-                    randomLocation.getBlockY(), randomLocation.getBlockZ(), type);
+                randomLocation.getBlockY(), randomLocation.getBlockZ(), type);
         });
+    }
+
+    private boolean canSpawnPowerupWithin(Block block) {
+        if (Tag.SLABS.isTagged(block.getType())) {
+            return false;
+        }
+        BoundingBox box = new BoundingBox(0.25, 0, 0.25, 0.75, 1, 0.75);
+        return block.getCollisionShape()
+            .getBoundingBoxes()
+            .stream()
+            .noneMatch(box::overlaps);
     }
 
     private boolean isPowerupAlreadyAt(org.bukkit.World w, int x, int y, int z) {
         Location center = new Location(w, x + 0.5, y + 0.5, z + 0.5);
-        for (UUID id : powerupByEntity.keySet()) {
-            Entity e = w.getEntity(id);
-            if (e == null) continue;
-            if (e.getLocation().distanceSquared(center) < 0.5 * 0.5) return true;
+        for (ItemDisplay itemDisplay : powerupByEntity.keySet()) {
+            if (itemDisplay.getLocation().distanceSquared(center) < 0.5 * 0.5) {
+                return true;
+            }
         }
         return false;
     }
@@ -669,8 +688,6 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         Location loc = new Location(w, x + 0.5, y + 0.75, z + 0.5);
         ItemStack reward = type.createPowerupItem();
 
-        LOGGER.debug("Spawning a " + type.displayName + " powerup at " + x + ", " + y + ", " + z + " in world " + w.getName());
-
         ItemDisplay display = w.spawn(loc, ItemDisplay.class, d -> {
             d.setItemStack(reward.clone());
             d.getPersistentDataContainer().set(POWERUP_ID_KEY, PersistentDataType.STRING, type.toString());
@@ -678,10 +695,11 @@ public final class TNTRun extends InventoryUnifiedMinigame {
             Transformation t = d.getTransformation();
             t.getScale().set(0.67f, 0.67f, 0.67f);
             d.setTransformation(t);
+            d.setPersistent(false);
         });
 
-        powerupByEntity.put(display.getUniqueId(), type.toString());
-        powerupItemByEntity.put(display.getUniqueId(), reward);
+        powerupByEntity.put(display, type);
+        powerupItemByEntity.put(display, reward);
     }
 
     private void tryPickupPowerup(Player player) {
@@ -691,7 +709,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         org.bukkit.World w = player.getWorld();
 
         Collection<Entity> nearby = w.getNearbyEntities(player.getBoundingBox().expand(0.5, 0.5, 0.5),
-                e -> e instanceof ItemDisplay && powerupByEntity.containsKey(e.getUniqueId()));
+            e -> e instanceof ItemDisplay && powerupByEntity.containsKey(e));
 
         if (nearby.isEmpty()) return;
 
@@ -704,9 +722,8 @@ public final class TNTRun extends InventoryUnifiedMinigame {
             PowerupType type = PowerupType.fromId(id);
             if (type == null) continue;
 
-            UUID entId = d.getUniqueId();
-            ItemStack reward = powerupItemByEntity.remove(entId);
-            powerupByEntity.remove(entId);
+            ItemStack reward = powerupItemByEntity.remove(d);
+            powerupByEntity.remove(d);
             d.remove();
 
             if (reward != null && !reward.getType().isAir()) {
@@ -787,6 +804,7 @@ public final class TNTRun extends InventoryUnifiedMinigame {
         public int chunkX() {
             return this.x >> 4;
         }
+
         public int chunkZ() {
             return this.z >> 4;
         }
