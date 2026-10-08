@@ -106,7 +106,7 @@ public class ArtifactManager {
     private double fillFactor() {
         try {
             ExpressionBuilder builder = new ExpressionBuilder(manor2.getDefinition().getRegionFillFactor());
-            builder.variable("hunters_count");
+            builder.variable("hunter_count");
             builder.function(new Function("max", 2) {
                 @Override
                 public double apply(double... doubles) {
@@ -125,7 +125,7 @@ public class ArtifactManager {
             if (!result.isValid()) {
                 if (!fillFactorFunctionIssueSent) {
                     fillFactorFunctionIssueSent = true;
-                    EventMain.getInstance().getLogger().warning("Manor2 fill factor is invalidly specified: %s".formatted(result.getErrors()));
+                    EventMain.getInstance().getLogger().warning("Manor2 region fill factor is invalidly specified: %s".formatted(result.getErrors()));
                 }
                 return 1D;
             }
@@ -133,7 +133,7 @@ public class ArtifactManager {
         } catch (IllegalArgumentException e) {
             if (!fillFactorFunctionIssueSent) {
                 fillFactorFunctionIssueSent = true;
-                EventMain.getInstance().getLogger().warning("Manor2 fill factor is invalidly specified: %s".formatted(e.getMessage()));
+                EventMain.getInstance().getLogger().warning("Manor2 region fill factor is invalidly specified: %s".formatted(e.getMessage()));
             }
             return 1D;
         }
