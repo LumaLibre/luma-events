@@ -52,6 +52,7 @@ dependencies {
     }
 
     implementation("dev.thorinwasher.schem:schem-reader:1.0.0")
+    implementation("net.objecthunter:exp4j:0.4.8")
 
     // paper includes configurate and configurate does not get updated that often
     compileOnly("org.spongepowered:configurate-yaml:4.2.0")
@@ -82,6 +83,7 @@ tasks {
         val pack = "dev.lumas.events.lib"
 
         relocate("dev.thorinwasher.schem", "$pack.schem")
+        relocate("net.objecthunter.exp4j", "$pack.exp4j")
         exclude("kotlin/**", "net/kyori/**", "org/joml/**")
         //minimize()
         archiveClassifier.set("")
@@ -98,11 +100,13 @@ tasks {
 
     processResources {
         outputs.upToDateWhen { false }
-        filter<ReplaceTokens>(mapOf(
-            "tokens" to mapOf("version" to project.version.toString()),
-            "beginToken" to "\${",
-            "endToken" to "}"
-        )).filteringCharset = "UTF-8"
+        filter<ReplaceTokens>(
+            mapOf(
+                "tokens" to mapOf("version" to project.version.toString()),
+                "beginToken" to "\${",
+                "endToken" to "}"
+            )
+        ).filteringCharset = "UTF-8"
     }
 }
 

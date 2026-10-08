@@ -10,6 +10,10 @@ import dev.lumas.events.utility.latency.tracing.Tracing;
 import dev.lumas.events.utility.vector.Location3i;
 import dev.lumas.events.utility.vector.Vector2i;
 import net.kyori.adventure.audience.Audience;
+import net.objecthunter.exp4j.Expression;
+import net.objecthunter.exp4j.ExpressionBuilder;
+import net.objecthunter.exp4j.ValidationResult;
+import net.objecthunter.exp4j.function.Function;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -17,11 +21,13 @@ import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class ArtifactManager {
     private static final int ARTIFACT_SPAWN_DELAY = 30 * 20;
@@ -33,15 +39,15 @@ public class ArtifactManager {
     private static final double LIGHT_ANGLE_REVEAL_MULTIPLIER = 0.5;
 
     private long time = 0;
-    private List<ArtifactRegion> spawningRegions = new ArrayList<>();
+    private final List<ArtifactRegion> spawningRegions = new ArrayList<>();
     private final List<ArtifactType> artifactTypes;
-    private final Map<ArtifactRegion, Integer> regionFails = new ConcurrentHashMap<>();
     private final Map<ArtifactRegion, Long> occupiedRegions = new ConcurrentHashMap<>();
     private final Map<ArtifactRegion, Long> regionDelay = new ConcurrentHashMap<>();
     private final Map<Location3i, ArtifactType> artifacts = new ConcurrentHashMap<>();
     private final Map<Location3i, ArtifactEntity> placedArtifacts = new ConcurrentHashMap<>();
     private final Manor2 manor2;
     private final AtomicInteger artifactPickedUpCount = new AtomicInteger(0);
+    private boolean fillFactorFunctionIssueSent = false;
 
     public ArtifactManager(Manor2 manor2) {
         this.manor2 = manor2;
@@ -52,30 +58,10 @@ public class ArtifactManager {
     }
 
     public void tick() {
-        regionFails.entrySet().stream()
-            .filter(entry -> entry.getValue() > MAX_REGION_FAILS)
-            .map(Map.Entry::getKey)
-            .forEach(spawningRegions::remove);
-        for (ArtifactRegion spawningRegion : spawningRegions) {
-            if (regionDelay.get(spawningRegion) instanceof Long aLong && aLong < time) {
-                continue;
-            }
-            WorldTiedBoundingBox expanded = (WorldTiedBoundingBox) spawningRegion.boundingBox().expand(MIN_RESPAWN_PLAYER_PROXIMITY);
-            if (manor2.getRoleMap().getMatching(GhostHunter.class).stream()
-                .map(GhostHunter::getEventPlayer)
-                .map(EventPlayer::getPlayer)
-                .filter(Objects::nonNull)
-                .map(Player::getLocation)
-                .anyMatch(expanded::contains)
-            ) {
-                continue;
-            }
-            if (!occupiedRegions.containsKey(spawningRegion)) {
-                final long finalTimeStamp = time + ARTIFACT_RESPAWN_DELAY;
-                occupiedRegions.put(spawningRegion, finalTimeStamp);
-                Location3i pos = randomPos(spawningRegion);
-                artifacts.put(pos, Util.getRandom(artifactTypes));
-            }
+        double fillFactor = fillFactor();
+        int remainingRegionsToPopulate = (int) (spawningRegions.size() * fillFactor - artifacts.size());
+        if (remainingRegionsToPopulate > 0) {
+            spawnInRegions(remainingRegionsToPopulate);
         }
         for (Map.Entry<Location3i, ArtifactEntity> entityEntry : placedArtifacts.entrySet()) {
             entityEntry.getValue().ensureValid(time)
@@ -87,6 +73,70 @@ public class ArtifactManager {
             entityEntry.getValue().rotate(time);
         }
         time++;
+    }
+
+    public void spawnInRegions(int remainingRegionsToPopulate) {
+        List<ArtifactRegion> regions = spawningRegions.stream()
+            .filter(spawningRegion -> !(regionDelay.get(spawningRegion) instanceof Long aLong) || aLong >= time)
+            .filter(this::noNearbyPlayer)
+            .filter(spawningRegion -> !occupiedRegions.containsKey(spawningRegion))
+            .collect(Collectors.toList());
+        Collections.shuffle(regions);
+        for (ArtifactRegion spawningRegion : regions) {
+            if (remainingRegionsToPopulate-- <= 0) {
+                return;
+            }
+            final long finalTimeStamp = time + ARTIFACT_RESPAWN_DELAY;
+            occupiedRegions.put(spawningRegion, finalTimeStamp);
+            Location3i pos = randomPos(spawningRegion);
+            artifacts.put(pos, Util.getRandom(artifactTypes));
+        }
+    }
+
+    private boolean noNearbyPlayer(ArtifactRegion spawningRegion) {
+        WorldTiedBoundingBox expanded = (WorldTiedBoundingBox) spawningRegion.boundingBox().expand(MIN_RESPAWN_PLAYER_PROXIMITY);
+        return manor2.getRoleMap().getMatching(GhostHunter.class).stream()
+            .map(GhostHunter::getEventPlayer)
+            .map(EventPlayer::getPlayer)
+            .filter(Objects::nonNull)
+            .map(Player::getLocation)
+            .anyMatch(expanded::contains);
+    }
+
+    private double fillFactor() {
+        try {
+            ExpressionBuilder builder = new ExpressionBuilder(manor2.getDefinition().getRegionFillFactor());
+            builder.variable("hunters_count");
+            builder.function(new Function("max", 2) {
+                @Override
+                public double apply(double... doubles) {
+                    return Math.max(doubles[0], doubles[1]);
+                }
+            });
+            builder.function(new Function("min", 2) {
+                @Override
+                public double apply(double... doubles) {
+                    return Math.min(doubles[0], doubles[1]);
+                }
+            });
+            Expression expression = builder.build();
+            expression.setVariable("hunter_count", manor2.getRoleMap().getMatching(GhostHunter.class).size());
+            ValidationResult result = expression.validate();
+            if (!result.isValid()) {
+                if (!fillFactorFunctionIssueSent) {
+                    fillFactorFunctionIssueSent = true;
+                    EventMain.getInstance().getLogger().warning("Manor2 fill factor is invalidly specified: %s".formatted(result.getErrors()));
+                }
+                return 1D;
+            }
+            return expression.evaluate();
+        } catch (IllegalArgumentException e) {
+            if (!fillFactorFunctionIssueSent) {
+                fillFactorFunctionIssueSent = true;
+                EventMain.getInstance().getLogger().warning("Manor2 fill factor is invalidly specified: %s".formatted(e.getMessage()));
+            }
+            return 1D;
+        }
     }
 
     private List<ArtifactRegion> compileRegions(WorldTiedBoundingBox all) {

@@ -36,13 +36,15 @@ public class Manor2Definition {
     @Comment("The time until a hunter is killed by being consumed by ghost (ticks)")
     private int hunterDeathTime = 50;
     @Comment("The score a ghost get when killing a hunter")
-    private int ghostKillScore = 50;
+    private int ghostKillScore = 75;
     @Comment("The score a hunter get when killing a ghost")
     private int hunterKillScore = 150;
     @Comment("The score a hunter get when finding an artifact")
-    private int artifactFoundScore = 25;
+    private int artifactFoundScore = 50;
     @Comment("The width of each region an artifact can spawn in")
     private double averageRegionWidth = 16;
+    @Comment("What fraction of artifact regions should be filled depending on hunter count")
+    private String regionFillFactor = "0.25 + min((hunter_count + 1) / 30, 0.75)";
     private LagCompensationSettings lagCompensation = new LagCompensationSettings();
     private List<ParticleDefinition> flashlightGroundParticles = List.of(
         new ParticleDefinition(
