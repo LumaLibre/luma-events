@@ -35,6 +35,7 @@ public abstract class Manor2Role extends MinigameRole {
         player.setFreezeTicks(0);
         manor2.getGhostAttacks().abort(player.getUniqueId());
         NiceRestraint.release(player); // In case a grab never got to free them
+        manor2.getRecorder().clearTrail(player);
     }
 
     public abstract void tick();

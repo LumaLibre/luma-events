@@ -1,6 +1,8 @@
 package dev.lumas.events.games.logic.manor2.artifact;
 
 import dev.lumas.events.model.WorldTiedBoundingBox;
+import dev.lumas.events.utility.Util;
+import dev.lumas.events.utility.vector.Location3i;
 import dev.lumas.events.utility.vector.Vector2i;
 import org.bukkit.World;
 
@@ -42,9 +44,9 @@ public record ArtifactRegion(Map<Vector2i, Integer> floorMap, WorldTiedBoundingB
             if (freeSpots.get(dy).size() < MIN_FLOOR_AREA) {
                 if (!floorMap.isEmpty()) {
                     int minValue = floorMap.values().stream().min(Integer::compareTo)
-                            .orElseThrow();
+                        .orElseThrow();
                     output.add(new ArtifactRegion(Map.copyOf(floorMap), new WorldTiedBoundingBox(
-                            world, x1, minValue, z1, x2, minValue + emptyHeight, z2
+                        world, x1, minValue, z1, x2, minValue + emptyHeight, z2
                     )));
                     floorMap.clear();
                     emptyHeight = 0;
@@ -57,11 +59,17 @@ public record ArtifactRegion(Map<Vector2i, Integer> floorMap, WorldTiedBoundingB
         }
         if (!floorMap.isEmpty()) {
             int minValue = floorMap.values().stream().min(Integer::compareTo)
-                    .orElseThrow();
+                .orElseThrow();
             output.add(new ArtifactRegion(Map.copyOf(floorMap), new WorldTiedBoundingBox(
-                    world, x1, minValue, z1, x2, minValue + emptyHeight, z2
+                world, x1, minValue, z1, x2, minValue + emptyHeight, z2
             )));
         }
         return output;
+    }
+
+    public Location3i randomPos() {
+        Vector2i xzPos = Util.getRandom(floorMap().keySet());
+        int yPos = floorMap().get(xzPos);
+        return new Location3i(boundingBox().getWorld(), xzPos.x(), yPos, xzPos.z());
     }
 }

@@ -13,7 +13,6 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +32,10 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
     private static final List<String> ARTIFACT_FOUND_MESSAGES = List.of(
         "<gray><red><participants></red> found a completely worthless artifact",
         "<gray><red><participants></red> found a dusty relic"
+    );
+    private static final List<String> PLAYER_ARTIFACT_FOUND_MESSAGES = List.of(
+        "<gray><red><participants></red> found an artifact in perfect condition",
+        "<gray><red><participants></red> found a nice looking family heirloom"
     );
     private static final String SCORE_RECORD = "<green><gold>#<position></gold> is <red><scorer></red> with <gold><points> points</gold>! (<team>)";
     private static final int TOP_SCORERS = 5;
@@ -67,11 +70,20 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
         );
     }
 
-    public void artifactFound(GhostHunter eventPlayer, @NotNull Component component) {
+    public void artifactFound(GhostHunter eventPlayer) {
         Map<UUID, Double> attribution = Map.of(eventPlayer.getUuid(), 100D);
 
         award(attribution, ctx.getDefinition().getArtifactFoundScore());
         announce(ARTIFACT_FOUND_MESSAGES,
+            Placeholder.component("participants", participantsDisplay(attribution))
+        );
+    }
+
+    public void playerArtifactFound(GhostHunter eventPlayer) {
+        Map<UUID, Double> attribution = Map.of(eventPlayer.getUuid(), 100D);
+
+        award(attribution, ctx.getDefinition().getArtifactFoundScore());
+        announce(PLAYER_ARTIFACT_FOUND_MESSAGES,
             Placeholder.component("participants", participantsDisplay(attribution))
         );
     }

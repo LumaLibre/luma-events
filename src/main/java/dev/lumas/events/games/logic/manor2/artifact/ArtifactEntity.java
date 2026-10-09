@@ -1,6 +1,7 @@
 package dev.lumas.events.games.logic.manor2.artifact;
 
 import dev.lumas.events.EventMain;
+import dev.lumas.events.games.logic.manor2.roles.Artifact;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -14,6 +15,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Transformation;
 import org.joml.AxisAngle4d;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -21,7 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 
 public record ArtifactEntity(Interaction interaction, ItemDisplay itemDisplay, long spawnTimestamp,
-                             float startRotationRadians) {
+                             float startRotationRadians, @Nullable Artifact boundRole) {
 
     private static final float INTERACTION_HITBOX = 1f;
     private static final int ROTATION_INTERVAL_TICKS = 40;
@@ -53,11 +55,13 @@ public record ArtifactEntity(Interaction interaction, ItemDisplay itemDisplay, l
     }
 
     public ArtifactEntity withTimeStamp(long newTimestamp) {
-        return new ArtifactEntity(interaction, itemDisplay, newTimestamp, startRotationRadians);
+        return new ArtifactEntity(interaction, itemDisplay, newTimestamp, startRotationRadians, boundRole);
     }
 
-    public static ArtifactEntity spawn(Location location, ArtifactType artifactType, long spawnTimestamp) {
+    public static ArtifactEntity spawn(Location location, ArtifactType artifactType, long spawnTimestamp, @Nullable Artifact boundRole) {
         Location spawnLocation = location.clone().add(0, 0.125, 0);
+        spawnLocation.setYaw(0);
+        spawnLocation.setPitch(0);
         float startRotationRadians = ThreadLocalRandom.current().nextFloat((float) (2 * Math.PI));
         ItemDisplay itemDisplay = spawnLocation.getWorld().spawn(spawnLocation, ItemDisplay.class, itemDisplayPreSpawn -> {
             itemDisplayPreSpawn.setItemStack(artifactType.toItem());
@@ -75,7 +79,7 @@ public record ArtifactEntity(Interaction interaction, ItemDisplay itemDisplay, l
             interactionPreSpawn.getPersistentDataContainer().set(ENTITY_TAG, PersistentDataType.STRING, ARTIFACT_ID);
             interactionPreSpawn.getPersistentDataContainer().set(LINKED_ENTITY, PersistentDataType.STRING, itemDisplay.getUniqueId().toString());
         });
-        return new ArtifactEntity(interaction, itemDisplay, spawnTimestamp, startRotationRadians);
+        return new ArtifactEntity(interaction, itemDisplay, spawnTimestamp, startRotationRadians, boundRole);
     }
 
     public static boolean isArtifact(Entity entity) {
@@ -87,8 +91,8 @@ public record ArtifactEntity(Interaction interaction, ItemDisplay itemDisplay, l
             return Optional.empty();
         }
         if (!ARTIFACT_ID.equalsIgnoreCase(interaction.getPersistentDataContainer().get(ENTITY_TAG, PersistentDataType.STRING)) ||
-                !(interaction.getPersistentDataContainer().get(LINKED_ENTITY, PersistentDataType.STRING) instanceof String string) ||
-                !(Bukkit.getEntity(UUID.fromString(string)) instanceof ItemDisplay itemDisplay)
+            !(interaction.getPersistentDataContainer().get(LINKED_ENTITY, PersistentDataType.STRING) instanceof String string) ||
+            !(Bukkit.getEntity(UUID.fromString(string)) instanceof ItemDisplay itemDisplay)
         ) {
             return Optional.empty();
         }
@@ -101,9 +105,9 @@ public record ArtifactEntity(Interaction interaction, ItemDisplay itemDisplay, l
         }
         BoundingBox artifactBb = new BoundingBox(0.25, 0.125, 0.25, 0.75, 0.625, 0.75);
         return block.getCollisionShape()
-                .getBoundingBoxes()
-                .stream()
-                .noneMatch(artifactBb::overlaps);
+            .getBoundingBoxes()
+            .stream()
+            .noneMatch(artifactBb::overlaps);
     }
 
     public void rotate(long time) {

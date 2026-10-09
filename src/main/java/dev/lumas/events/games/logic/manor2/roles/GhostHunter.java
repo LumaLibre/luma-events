@@ -38,7 +38,9 @@ public class GhostHunter extends Manor2Role {
 
     @Override
     public void die() {
-        manor2.getRoleMap().swapRole(this, () -> new Spectator(manor2, eventPlayer));
+        manor2.getRoleMap().swapRole(this, () ->
+            manor2.getDefinition().isArtifactPlay() ? new Artifact(manor2, eventPlayer) : new Spectator(manor2, eventPlayer)
+        );
     }
 
     @Override

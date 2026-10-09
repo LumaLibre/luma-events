@@ -40,9 +40,13 @@ public class Manor2Definition {
     @Comment("The score a hunter get when killing a ghost")
     private int hunterKillScore = 150;
     @Comment("The score a hunter get when finding an artifact")
-    private int artifactFoundScore = 50;
+    private int artifactFoundScore = 25;
+    @Comment("The score a hunter gets when finding a player artifact")
+    private int playerArtifactFoundScore = 75;
     @Comment("The width of each region an artifact can spawn in")
     private double averageRegionWidth = 16;
+    @Comment("Allow players to play as artifacts")
+    private boolean artifactPlay = true;
     @Comment("What fraction of artifact regions should be filled depending on hunter count")
     private String regionFillFactor = "0.25 + min((hunter_count + 1) / 30, 0.75)";
     private LagCompensationSettings lagCompensation = new LagCompensationSettings();
@@ -83,12 +87,22 @@ public class Manor2Definition {
         new ArtifactType(ItemType.ITEM_FRAME, "<red>Artifact Frame", List.of("You might not find anything to frame though")),
         new ArtifactType(ItemType.ACACIA_BUTTON, "<color:#FF9412>Door Knob", List.of("Hoarding again, eh?")),
         new ArtifactType(ItemType.ACACIA_SAPLING, "<green>Memorial Sapling", List.of("To plant in remembrance of all", "the dead hunters")),
-        new ArtifactType(ItemType.SUSPICIOUS_STEW, "<magenta>Putrid Dish", List.of("Smells and tastes horrible.", "Although tasting was never an option")),
+        new ArtifactType(ItemType.SUSPICIOUS_STEW, "<dark_purple>Putrid Dish", List.of("Smells and tastes horrible.", "Although tasting was never an option")),
         new ArtifactType(ItemType.DIRT, "<color:#FF9412>Normal Looking Dirt", List.of("You still don't know why you", "picked it up")),
         new ArtifactType(ItemType.APPLE, "<red>Perfect Apple", List.of("''One bite and all your dreams will come true.''", "Maybe it's better to leave it.")),
         new ArtifactType(ItemType.CLOCK, "<gold>Broken Clock", List.of("Seems to be moving though?")),
         new ArtifactType(ItemType.BAMBOO_BLOCK, "<color:#FF9412>Empty Cardboard Box", List.of("I've heard that cats like these")),
         new ArtifactType(ItemType.FISHING_ROD, "<blue>Fishing Rod", List.of("The line is a jumbled mess.", "Quite nice quality otherwise"))
+    );
+
+    private List<ArtifactType> playerArtifacts = List.of(
+        new ArtifactType(ItemType.NETHERITE_INGOT, "Mysterious Ingot", List.of("Someone might find this interesting")),
+        new ArtifactType(ItemType.BAMBOO, "World Tree Sapling", List.of("The world tree??", "Must be worth quite a lot")),
+        new ArtifactType(ItemType.GOLD_BLOCK, "<gold>Block Of Gold", List.of("Definitely worth its weight in gold")),
+        new ArtifactType(ItemType.FISHING_ROD, "<blue>Premium Fishing Rod", List.of("Could even catch the good old", "Loch Ness with it")),
+        new ArtifactType(ItemType.DIAMOND, "<aqua>Large Gem", List.of("To keep for your partner")),
+        new ArtifactType(ItemType.DIAMOND_HORSE_ARMOR, "<aqua>Decorated Horse Armor", List.of("It might too decorated to be practical",
+            "still impressive"))
     );
 
     @Getter

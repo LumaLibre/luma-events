@@ -25,7 +25,7 @@ public class Trail {
         this.written = index + 1;
     }
 
-    private void clear() {
+    void clear() {
         Arrays.fill(snapshots, null);
         this.written = 0;
     }

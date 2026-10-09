@@ -9,6 +9,7 @@ import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
 import dev.lumas.events.games.interfaces.packet.PacketGlow;
 import dev.lumas.events.games.logic.manor2.artifact.ArtifactEntity;
 import dev.lumas.events.games.logic.manor2.artifact.ArtifactManager;
+import dev.lumas.events.games.logic.manor2.artifact.ArtifactPickupResult;
 import dev.lumas.events.games.logic.manor2.attack.GhostAttacks;
 import dev.lumas.events.games.logic.manor2.light.Flashlight;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
@@ -82,7 +83,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private final LatencyTracker latency = new LatencyTracker(this::onlineParticipants);
     @Getter
     private final LatencyHandler latencyHandler;
-    private final TrailRecorder recorder;
+    @Getter
+    private final TrailRecorder recorder = new TrailRecorder(TRAIL_HISTORY_TICKS, RoleHitbox.hitboxProvider(roleMap), this::involvedEntities);
     @Getter
     private final PacketGlow packetGlow = PacketGlow.newInstance();
     @Getter
@@ -102,7 +104,6 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         this.artifactManager = new ArtifactManager(this);
         Manor2Definition.LagCompensationSettings lagCompensation = definition.getLagCompensation();
         this.latencyHandler = new LatencyHandler(latency, lagCompensation.isEnabled(), lagCompensation.getMaxRewindNano(), lagCompensation.getInterpolationMillis());
-        this.recorder = new TrailRecorder(TRAIL_HISTORY_TICKS, RoleHitbox.hitboxProvider(roleMap), this::involvedEntities);
         this.tracing = new Tracing(this::involvedEntities, recorder, latencyHandler);
     }
 
@@ -257,9 +258,14 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         if (roleMap.as(event.getPlayer().getUniqueId(), GhostHunter.class) instanceof GhostHunter ghostHunter) {
             ArtifactEntity.fromEntity(event.getRightClicked())
                 .ifPresent(item -> {
-                    if (artifactManager.pickup(event.getRightClicked().getLocation())) {
+                    ArtifactPickupResult result = artifactManager.pickup(event.getRightClicked().getLocation());
+                    if (result != ArtifactPickupResult.NOT_FOUND) {
                         event.getPlayer().getInventory().addItem(item);
-                        scoreboard.artifactFound(ghostHunter, item.effectiveName());
+                        if (result == ArtifactPickupResult.FOUND_PLAYER_ARTIFACT) {
+                            scoreboard.playerArtifactFound(ghostHunter);
+                        } else {
+                            scoreboard.artifactFound(ghostHunter);
+                        }
                     } else {
                         event.getRightClicked().getLocation()
                             .getNearbyEntities(1, 1, 1)
@@ -278,9 +284,14 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         if (roleMap.as(event.getPlayer().getUniqueId(), GhostHunter.class) instanceof GhostHunter ghostHunter) {
             ArtifactEntity.fromEntity(event.getAttacked())
                 .ifPresent(item -> {
-                    if (artifactManager.pickup(event.getAttacked().getLocation())) {
+                    ArtifactPickupResult result = artifactManager.pickup(event.getAttacked().getLocation());
+                    if (result != ArtifactPickupResult.NOT_FOUND) {
                         event.getPlayer().getInventory().addItem(item);
-                        scoreboard.artifactFound(ghostHunter, item.effectiveName());
+                        if (result == ArtifactPickupResult.FOUND_PLAYER_ARTIFACT) {
+                            scoreboard.playerArtifactFound(ghostHunter);
+                        } else {
+                            scoreboard.artifactFound(ghostHunter);
+                        }
                     } else {
                         event.getAttacked().getLocation()
                             .getNearbyEntities(1, 1, 1)

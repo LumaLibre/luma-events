@@ -88,6 +88,12 @@ public class TrailRecorder {
             new Target(entity, hitboxProvider.toHitbox(entity)) : null;
     }
 
+    public void clearTrail(LivingEntity entity) {
+        if (getEntityTrail(entity.getUniqueId()) instanceof Trail trail) {
+            trail.clear();
+        }
+    }
+
     private record EntityRecorder(LivingEntity entity, ScheduledTask task) {
     }
 }
