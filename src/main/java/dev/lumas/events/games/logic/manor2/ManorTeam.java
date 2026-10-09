@@ -9,6 +9,7 @@ import net.kyori.adventure.title.Title;
 public enum ManorTeam {
     GHOSTS("<gradient:white:gray>Ghosts", "<gray>Attack hunters, stay away from light"),
     HUNTERS("<gradient:gray:red>Hunters", "<gray>Use flashlight to reveal artifacts and ghosts"),
+    ARTIFACTS("<gradient:yellow:gold>Artifacts", "<gray>Hide from hunters in this region"),
     UNDEFINED("null", "");
 
     private static final String ASSIGNMENT_MESSAGE = "<gray>Team <team>";
@@ -27,8 +28,8 @@ public enum ManorTeam {
 
     public Title assignmentTitle() {
         return Title.title(
-                MiniMessage.miniMessage().deserialize(ASSIGNMENT_MESSAGE, Placeholder.component("team", displayName())),
-                Util.color(description)
+            MiniMessage.miniMessage().deserialize(ASSIGNMENT_MESSAGE, Placeholder.component("team", displayName())),
+            Util.color(description)
         );
     }
 }

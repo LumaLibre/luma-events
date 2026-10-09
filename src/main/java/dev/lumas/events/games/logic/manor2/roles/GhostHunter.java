@@ -5,6 +5,7 @@ import dev.lumas.events.games.logic.manor2.ManorTeam;
 import dev.lumas.events.games.logic.manor2.light.Flashlight;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.latency.tracing.ProximityTraceResult;
+import dev.lumas.events.utility.latency.tracing.TraceShooter;
 import dev.lumas.glowapi.model.GlowColorManager;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
@@ -62,7 +63,7 @@ public class GhostHunter extends Manor2Role {
 
     private double hauntCloseness(Player player) {
         Collection<ProximityTraceResult> result = manor2.getTracing().traceProximity(
-            player,
+            new TraceShooter.PlayerTraceShooter(player),
             participant -> manor2.getRoleMap().as(participant.getUniqueId(), Ghost.class) != null,
             HAUNT_RADIUS
         );

@@ -4,6 +4,7 @@ import dev.lumas.events.configurable.sectors.tracing.BeamConfig;
 import dev.lumas.events.configurable.sectors.tracing.ConeConfig;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.latency.LatencyHandler;
+import dev.lumas.events.utility.latency.hitbox.Hitbox;
 import dev.lumas.events.utility.latency.hitbox.Trail;
 import dev.lumas.events.utility.latency.hitbox.TrailRecorder;
 import dev.lumas.events.utility.latency.hitbox.TrailSnapshot;
@@ -13,7 +14,6 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
@@ -23,14 +23,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class Tracing {
-
-    private static final double[] BODY_SAMPLE_FRACTIONS = {0.2, 0.5, 0.8};
 
     private final Supplier<Collection<LivingEntity>> targetSupplier;
 
@@ -43,101 +40,113 @@ public class Tracing {
         this.latency = latency;
     }
 
-    public CompletableFuture<Collection<BeamTraceResult>> traceBeam(Player shooter, Predicate<LivingEntity> filter, BeamConfig beamConfig) {
-        long firedAt = latency.timeOf(shooter);
 
-        Location eye = shooter.getEyeLocation();
+    public CompletableFuture<Collection<BeamTraceResult>> traceBeam(TraceShooter shooter, Predicate<LivingEntity> filter, BeamConfig beamConfig) {
+        long firedAt = shooter.nanoTime(latency);
+        Location eye = shooter.shootPos();
         Vector direction = eye.getDirection().normalize();
 
         return advanceBeam(
-                eye,
-                direction,
-                0.0, beamConfig
+            eye,
+            direction,
+            0.0, beamConfig
         ).thenApply(beamLength -> toBeamResult(targetSupplier.get()
-                        .stream()
-                        .filter(filter)
-                        .filter(entity -> !shooter.equals(entity))
-                        .map(target -> targetAt(target, firedAt, beamConfig.getHitMargin()))
-                        .toList(),
-                eye,
-                direction,
-                beamLength,
-                beamConfig)
+                .stream()
+                .filter(filter)
+                .filter(entity -> !shooter.equals(entity))
+                .map(target -> targetAt(target, firedAt))
+                .toList(),
+            eye,
+            direction,
+            beamLength,
+            beamConfig)
         );
     }
 
-    public Collection<ConeTraceResult> traceCone(Player shooter, Predicate<LivingEntity> filter,
+    public Collection<ConeTraceResult> traceCone(TraceShooter shooter, Predicate<LivingEntity> filter,
                                                  Comparator<ConeTraceResult> comparator, ConeConfig coneConfig) {
-        Location muzzle = shooter.getEyeLocation();
+        Location muzzle = shooter.shootPos();
         Vector direction = muzzle.getDirection().normalize();
         double range = Math.max(0.5, coneConfig.getRange());
 
         double halfAngle = Math.toRadians(Math.max(1.0, coneConfig.getConeDegrees()) / 2.0);
         double tanHalfAngle = Math.tan(halfAngle);
         double cosHalfAngle = Math.cos(halfAngle);
+        long shootTime = shooter.nanoTime(latency);
         Vector apex = muzzle.toVector();
 
         List<ConeTraceResult> output = new ArrayList<>();
         for (Target target : targetSupplier.get().stream()
-                .filter(filter)
-                .filter(target -> !target.equals(shooter))
-                .map(target -> targetAt(target, latency.timeOf(shooter), 0))
-                .toList()
+            .filter(filter)
+            .filter(shooter::notShooter)
+            .map(target -> targetAt(target, shootTime))
+            .toList()
         ) {
-            BoundingBox hitbox = target.hitbox();
+            Hitbox hitbox = target.hitbox();
+            if (hitbox.shape().isEmpty()) {
+                continue;
+            }
+            BoundingBox boundingBox = hitbox.shape().getFirst().boundingBox();
             Collection<ConeTraceResult> matchingTraces = coneHit(apex, direction, range, tanHalfAngle, cosHalfAngle, hitbox, target.entity());
             if (matchingTraces.isEmpty()) {
                 continue;
             }
             // Occlusion has to be checked towards the target, not down the middle of the cone
-            Vector toTarget = hitbox.getCenter().subtract(apex);
+            Vector toTarget = boundingBox.getCenter().subtract(apex);
             double length = toTarget.length();
             if (length > 1.0E-4 && !hasClearShot(muzzle, toTarget.multiply(1.0 / length), length, coneConfig.getTraceStep())) {
                 continue;
             }
             matchingTraces.stream()
-                    .max(comparator)
-                    .ifPresent(output::add);
+                .max(comparator)
+                .ifPresent(output::add);
         }
         return output;
     }
 
-    public Collection<ProximityTraceResult> traceProximity(Player actor, Predicate<LivingEntity> filter, double maxProximity) {
-        Vector center = actor.getBoundingBox().getCenter();
+    public Collection<ProximityTraceResult> traceProximity(TraceShooter shooter, Predicate<LivingEntity> filter, double maxProximity) {
+        Vector center = shooter.shootPos().toVector();
         double maxProximitySquared = maxProximity * maxProximity;
         List<ProximityTraceResult> output = new ArrayList<>();
-        World targetWorld = actor.getWorld();
+        World targetWorld = shooter.shootPos().getWorld();
+        long shootTime = shooter.nanoTime(latency);
+
         for (Target target : targetSupplier.get().stream()
-                .filter(filter)
-                .filter(target -> !target.equals(actor))
-                .map(target -> targetAt(target, latency.timeOf(actor), 0))
-                .toList()
+            .filter(filter)
+            .filter(shooter::notShooter)
+            .map(target -> targetAt(target, shootTime))
+            .toList()
         ) {
-            double proximitySquared = target.hitbox().getCenter().distanceSquared(center);
-            if (targetWorld != target.entity().getWorld() || proximitySquared > maxProximitySquared) {
-                continue;
+            for (Vector sample : target.hitbox().sampleOffsets()) {
+                double proximitySquared = target.hitbox().wholeBounding().getCenter().clone()
+                    .add(sample)
+                    .distanceSquared(center);
+                if (targetWorld != target.entity().getWorld() || proximitySquared > maxProximitySquared) {
+                    continue;
+                }
+                output.add(new ProximityTraceResult(target.entity(), Math.sqrt(proximitySquared)));
             }
-            output.add(new ProximityTraceResult(target.entity(), Math.sqrt(proximitySquared)));
         }
         return output;
     }
 
     private static Collection<ConeTraceResult> coneHit(Vector apex, Vector axis, double range, double tanHalfAngle, double cosHalfAngle,
-                                                       BoundingBox hitbox, LivingEntity target) {
-        double height = hitbox.getHeight();
-        double lookForRadius = Math.max(Math.max(hitbox.getWidthX(), hitbox.getWidthZ()) / 2.0, height / 6.0);
+                                                       Hitbox hitbox, LivingEntity target) {
+        BoundingBox approximateBounding = hitbox.wholeBounding();
+        double lookForRadius = Math.max(approximateBounding.getHeight() / 2d, Math.max(approximateBounding.getWidthX(), approximateBounding.getWidthZ()) / 2d);
         double lookForRadiusSquared = lookForRadius * lookForRadius;
         // Nothing beyond this can reach the cone
-        double maxReach = range + (height / 2.0) + lookForRadius;
-        if (apex.distanceSquared(hitbox.getCenter()) > maxReach * maxReach) return List.of();
+        double maxReach = range + (approximateBounding.getHeight() / 2d) + lookForRadius;
+        Vector centerPos = approximateBounding.getCenter();
+        if (apex.distanceSquared(centerPos) > maxReach * maxReach) {
+            return List.of();
+        }
 
         List<ConeTraceResult> matches = new ArrayList<>();
-        for (double fraction : BODY_SAMPLE_FRACTIONS) {
-            Vector delta = new Vector(
-                    hitbox.getCenterX(),
-                    (hitbox.getMinY() + (height * fraction)),
-                    hitbox.getCenterZ()
-            ).subtract(apex);
+        for (Vector sampleOffset : hitbox.sampleOffsets()) {
+            Vector delta = centerPos.clone()
+                .add(sampleOffset)
+                .subtract(apex);
 
             double distanceSquared = delta.lengthSquared();
             if (distanceSquared <= lookForRadiusSquared) {
@@ -170,33 +179,38 @@ public class Tracing {
     // Where this entity was at <at>, or null if nothing has been recorded
     // for it and we are on the wrong thread to look its hitbox up live
     @Nullable
-    private Target targetAt(LivingEntity entity, long at, double expandBy) {
+    private Target targetAt(LivingEntity entity, long at) {
         Trail trail = recorder.getEntityTrail(entity.getUniqueId());
         TrailSnapshot snapshot = trail == null ? null : trail.at(at);
-        if (snapshot != null) return Target.ofHumanoid(entity, expandBy, snapshot);
-
-        return Bukkit.isOwnedByCurrentRegion(entity)
-                ? Target.ofHumanoid(entity, expandBy)
-                : null;
+        if (snapshot != null) {
+            return new Target(entity, snapshot.hitbox());
+        }
+        return recorder.targetNow(entity);
     }
 
     private Collection<BeamTraceResult> toBeamResult(Collection<Target> targets, Location eye, Vector direction, double beamLength, BeamConfig config) {
         List<BeamTraceResult> hits = new ArrayList<>();
 
         for (Target target : targets) {
-            BoundingBox hitbox = target.hitbox();
-            double maxReach = beamLength + hitbox.getHeight();
-            if (eye.toVector().distanceSquared(hitbox.getCenter()) > maxReach * maxReach) {
+            Hitbox hitbox = target.hitbox();
+            BoundingBox approximateBounding = hitbox.wholeBounding().clone().expand(config.getHitMargin());
+            double maxReach = beamLength + approximateBounding.getHeight();
+            if (eye.toVector().distanceSquared(approximateBounding.getCenter()) > maxReach * maxReach) {
                 continue;
             }
 
-            if (!beamTouches(hitbox, eye, direction, beamLength)) {
+            if (!beamTouches(
+                approximateBounding,
+                eye,
+                direction,
+                beamLength
+            )) {
                 continue;
             }
 
-            for (Map.Entry<String, BoundingBox> entry : target.parts().entrySet()) {
-                if (beamTouches(entry.getValue(), eye, direction, beamLength)) {
-                    hits.add(new BeamTraceResult(target.entity(), entry.getKey()));
+            for (Hitbox.Section section : hitbox.shape()) {
+                if (approximateBounding.equals(section.boundingBox()) || beamTouches(section.boundingBox(), eye, direction, beamLength)) {
+                    hits.add(new BeamTraceResult(target.entity(), section.part()));
                 }
             }
         }
@@ -232,8 +246,8 @@ public class Tracing {
                 double resumeAt = distance;
                 CompletableFuture<Double> future = new CompletableFuture<>();
                 Executors.sync(world, blockX >> 4, blockZ >> 4,
-                        () -> advanceBeam(eye, direction, resumeAt, beamConfig)
-                                .thenAccept(future::complete)
+                    () -> advanceBeam(eye, direction, resumeAt, beamConfig)
+                        .thenAccept(future::complete)
                 );
                 return future;
             }
@@ -245,16 +259,16 @@ public class Tracing {
             lastZ = blockZ;
 
             double stoppedAt = sameBlock
-                    ? -1
-                    : solidHitDistance(world.getBlockAt(blockX, blockY, blockZ), origin, direction, maxRange);
+                ? -1
+                : solidHitDistance(world.getBlockAt(blockX, blockY, blockZ), origin, direction, maxRange);
 
             if (stoppedAt >= 0) {
                 // Fences and walls collide above their own block
                 double impactAt = Math.max(stoppedAt, drawnTo);
                 Location impact = new Location(world,
-                        eye.getX() + (direction.getX() * impactAt),
-                        eye.getY() + (direction.getY() * impactAt),
-                        eye.getZ() + (direction.getZ() * impactAt));
+                    eye.getX() + (direction.getX() * impactAt),
+                    eye.getY() + (direction.getY() * impactAt),
+                    eye.getZ() + (direction.getZ() * impactAt));
 
                 beamConfig.getHitParticles().forEach(particle -> particle.showAt(impact));
                 beamConfig.getHitSounds().forEach(sound -> sound.playAt(impact));

@@ -1,8 +1,11 @@
 package dev.lumas.events.utility.latency.hitbox;
 
 import dev.lumas.events.utility.Executors;
+import dev.lumas.events.utility.latency.tracing.Target;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.util.BoundingBox;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -11,6 +14,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 @NullMarked
@@ -20,10 +24,12 @@ public class TrailRecorder {
     private final ConcurrentHashMap<UUID, EntityRecorder> recorders = new ConcurrentHashMap<>();
     private final int historyTicks;
     private final Supplier<Collection<LivingEntity>> participantsSupplier;
+    private final HitboxProvider hitboxProvider;
 
-    public TrailRecorder(int historyTicks, Supplier<Collection<LivingEntity>> participantsSupplier) {
+    public TrailRecorder(int historyTicks, HitboxProvider hitboxProvider, Supplier<Collection<LivingEntity>> participantsSupplier) {
         this.historyTicks = historyTicks;
         this.participantsSupplier = participantsSupplier;
+        this.hitboxProvider = hitboxProvider;
     }
 
     public void tick() {
@@ -43,6 +49,10 @@ public class TrailRecorder {
     }
 
     public void startRecording(LivingEntity entity) {
+        startRecording(entity, LivingEntity::getBoundingBox);
+    }
+
+    public void startRecording(LivingEntity entity, Function<LivingEntity, BoundingBox> boundingBoxProvider) {
         UUID uuid = entity.getUniqueId();
         EntityRecorder running = recorders.get(uuid);
         if (running != null && running.entity() == entity && !running.task().isCancelled()) return;
@@ -50,7 +60,7 @@ public class TrailRecorder {
         if (running != null) running.task().cancel();
 
         Trail trail = new Trail(historyTicks);
-        ScheduledTask task = Executors.repeatingSync(entity, 1L, _ -> trail.record(entity));
+        ScheduledTask task = Executors.repeatingSync(entity, 1L, _ -> trail.record(hitboxProvider.toHitbox(entity)));
         if (task == null) return; // Already gone, the next sweep can try again
 
         trails.put(uuid, trail);
@@ -65,6 +75,17 @@ public class TrailRecorder {
 
     public @Nullable Trail getEntityTrail(UUID uniqueId) {
         return trails.get(uniqueId);
+    }
+
+    /**
+     * Create a target for this entity for this moment of time. No latency compensation
+     *
+     * @param entity the entity to create a target from
+     * @return a target without latency compensation
+     */
+    public @Nullable Target targetNow(LivingEntity entity) {
+        return Bukkit.isOwnedByCurrentRegion(entity) ?
+            new Target(entity, hitboxProvider.toHitbox(entity)) : null;
     }
 
     private record EntityRecorder(LivingEntity entity, ScheduledTask task) {

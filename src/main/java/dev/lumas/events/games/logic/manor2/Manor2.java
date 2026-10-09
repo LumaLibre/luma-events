@@ -14,6 +14,7 @@ import dev.lumas.events.games.logic.manor2.light.Flashlight;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
+import dev.lumas.events.games.logic.manor2.roles.RoleHitbox;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
@@ -101,7 +102,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         this.artifactManager = new ArtifactManager(this);
         Manor2Definition.LagCompensationSettings lagCompensation = definition.getLagCompensation();
         this.latencyHandler = new LatencyHandler(latency, lagCompensation.isEnabled(), lagCompensation.getMaxRewindNano(), lagCompensation.getInterpolationMillis());
-        this.recorder = new TrailRecorder(TRAIL_HISTORY_TICKS, this::involvedEntities);
+        this.recorder = new TrailRecorder(TRAIL_HISTORY_TICKS, RoleHitbox.hitboxProvider(roleMap), this::involvedEntities);
         this.tracing = new Tracing(this::involvedEntities, recorder, latencyHandler);
     }
 
@@ -192,6 +193,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         packetGlow.stop();
         ghostAttacks.stop();
         scoreboard.showScores(audience);
+        recorder.stopRecording();
 
         Executors.sync(definition.getHunterStartLocations().getFirst(), blockCache::shutdown);
 
@@ -200,7 +202,10 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             completableFutures.add(CompletableFuture.runAsync(() -> role.retire(this), Executors.executor(role)));
         }
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
-            .join();
+            .exceptionally(exception -> {
+                exception.printStackTrace();
+                return null;
+            });
 
     }
 

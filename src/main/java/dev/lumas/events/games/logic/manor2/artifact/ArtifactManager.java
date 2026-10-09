@@ -1,15 +1,18 @@
 package dev.lumas.events.games.logic.manor2.artifact;
 
 import dev.lumas.events.EventMain;
+import dev.lumas.events.configurable.sectors.tracing.ConeConfig;
 import dev.lumas.events.games.logic.manor2.Manor2;
+import dev.lumas.events.games.logic.manor2.roles.Artifact;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Util;
+import dev.lumas.events.utility.latency.tracing.ConeTraceResult;
+import dev.lumas.events.utility.latency.tracing.TraceShooter;
 import dev.lumas.events.utility.latency.tracing.Tracing;
 import dev.lumas.events.utility.vector.Location3i;
 import dev.lumas.events.utility.vector.Vector2i;
-import net.kyori.adventure.audience.Audience;
 import net.objecthunter.exp4j.Expression;
 import net.objecthunter.exp4j.ExpressionBuilder;
 import net.objecthunter.exp4j.ValidationResult;
@@ -21,7 +24,9 @@ import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -36,7 +41,7 @@ public class ArtifactManager {
     private static final int MAX_REGION_FAILS = 20;
     private static final int MIN_RESPAWN_PLAYER_PROXIMITY = 10;
     private static final String REVEAL_ARTIFACT_MESSAGE = "<gray>Click on the artifact to get it";
-    private static final double LIGHT_ANGLE_REVEAL_MULTIPLIER = 0.5;
+    private static final double LIGHT_ANGLE_REVEAL_MULTIPLIER = 0.8;
 
     private long time = 0;
     private final List<ArtifactRegion> spawningRegions = new ArrayList<>();
@@ -186,27 +191,23 @@ public class ArtifactManager {
         return entity != null;
     }
 
-    public void tryReveal(Location eyeLocation, double coneDegrees, double maxSearch, Audience audience) {
+    public void tryReveal(Player hunter, double coneDegrees, double maxSearch) {
+        Location eyeLocation = hunter.getEyeLocation();
         Location3i eye3i = Location3i.from(eyeLocation);
         Vector eyeDirection = eyeLocation.getDirection();
-        double minShading = Math.cos(Math.toRadians(coneDegrees)) * LIGHT_ANGLE_REVEAL_MULTIPLIER;
+        double minShading = Math.cos(Math.toRadians(coneDegrees) / 2) * LIGHT_ANGLE_REVEAL_MULTIPLIER;
         double maxSearchSquared = maxSearch * maxSearch;
         for (Map.Entry<Location3i, ArtifactType> entry : artifacts.entrySet()) {
             Location3i artifactPos3i = entry.getKey();
             if (Math.abs(eye3i.x() - artifactPos3i.x()) + Math.abs(eye3i.y() - artifactPos3i.y()) + Math.abs(eye3i.z() - artifactPos3i.z()) > maxSearch + 1) {
                 continue;
             }
-            Location artifactPos = artifactPos3i.toLocation();
-            Vector diff = artifactPos.toVector().subtract(eyeLocation.toVector());
-            double diffLengthSquared = diff.lengthSquared();
-            Vector diffNormalized = diff.clone().normalize();
-            if (diffNormalized.dot(eyeDirection) < minShading || maxSearchSquared < diffLengthSquared ||
-                !Tracing.hasClearShot(eyeLocation, diffNormalized, Math.sqrt(diffLengthSquared), ARTIFACT_TRACE_STEP)
-            ) {
+            Location artifactPos = artifactPos3i.toLocation().toCenterLocation();
+            if (reveals(eyeLocation, eyeDirection, artifactPos, minShading, maxSearch, maxSearchSquared)) {
                 continue;
             }
             if (!(placedArtifacts.get(artifactPos3i) instanceof ArtifactEntity entity)) {
-                audience.sendActionBar(
+                hunter.sendActionBar(
                     Util.color(REVEAL_ARTIFACT_MESSAGE)
                 );
                 Util.getRandom(manor2.getDefinition().getArtifactRevealSounds())
@@ -216,6 +217,28 @@ public class ArtifactManager {
                 placedArtifacts.put(artifactPos3i, entity.withTimeStamp(time));
             }
         }
+        ConeConfig coneConfig = new ConeConfig();
+        coneConfig.setConeDegrees(coneDegrees);
+        coneConfig.setRange(maxSearch);
+        coneConfig.setTraceStep(ARTIFACT_TRACE_STEP);
+
+        Collection<ConeTraceResult> results = manor2.getTracing()
+            .traceCone(new TraceShooter.PlayerTraceShooter(hunter), entity -> manor2.getRoleMap()
+                    .is(entity.getUniqueId(), Artifact.class),
+                Comparator.comparingDouble(ConeTraceResult::r),
+                coneConfig
+            );
+    }
+
+    private boolean reveals(Location eyeLocation, Vector eyeDirection, Location artifactPos, double minShading, double maxSearch, double maxSearchSquared) {
+        if (Math.abs(eyeLocation.x() - artifactPos.x()) + Math.abs(eyeLocation.y() - artifactPos.y()) + Math.abs(eyeLocation.z() - artifactPos.z()) > maxSearch + 1) {
+            return false;
+        }
+        Vector diff = artifactPos.toVector().subtract(eyeLocation.toVector());
+        double diffLengthSquared = diff.lengthSquared();
+        Vector diffNormalized = diff.clone().normalize();
+        return !(diffNormalized.dot(eyeDirection) < minShading) && !(maxSearchSquared < diffLengthSquared) &&
+            Tracing.hasClearShot(eyeLocation, diffNormalized, Math.sqrt(diffLengthSquared), ARTIFACT_TRACE_STEP);
     }
 
     public int artifactsPickedUp() {

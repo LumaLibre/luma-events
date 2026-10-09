@@ -5,6 +5,7 @@ import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.latency.tracing.ConeTraceResult;
+import dev.lumas.events.utility.latency.tracing.TraceShooter;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import io.papermc.paper.datacomponent.item.UseEffects;
@@ -53,7 +54,7 @@ public class Flashlight {
     private static final int DUST_PITCH_DOWN_LOOK_RADIUS = 1;
 
     private static final BlockFace[] LIGHT_FALLBACK_FACES = {
-            BlockFace.UP, BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.DOWN
+        BlockFace.UP, BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.DOWN
     };
 
 
@@ -102,18 +103,18 @@ public class Flashlight {
         coneConfig.setRange(FLASHLIGHT_DISTANCE);
         coneConfig.setConeDegrees(Math.atan2((double) illuminance / 2, FLASHLIGHT_DISTANCE) * 180 / Math.PI);
         Collection<ConeTraceResult> results = manor2.getTracing().traceCone(
-                player,
-                livingEntity -> manor2.getRoleMap().as(livingEntity.getUniqueId(), Ghost.class) != null,
-                this::compareConeTraceResults,
-                coneConfig
+            new TraceShooter.PlayerTraceShooter(player),
+            livingEntity -> manor2.getRoleMap().as(livingEntity.getUniqueId(), Ghost.class) != null,
+            this::compareConeTraceResults,
+            coneConfig
         );
         results.stream()
-                .map(traceResult -> LightHit.of(traceResult, illuminance, coneConfig.getConeDegrees()))
-                .forEach(lightHit -> {
-                    if (manor2.getRoleMap().as(lightHit.target().getUniqueId(), Ghost.class) instanceof Ghost ghost) {
-                        ghost.light(lightHit, player.getUniqueId());
-                    }
-                });
+            .map(traceResult -> LightHit.of(traceResult, illuminance, coneConfig.getConeDegrees()))
+            .forEach(lightHit -> {
+                if (manor2.getRoleMap().as(lightHit.target().getUniqueId(), Ghost.class) instanceof Ghost ghost) {
+                    ghost.light(lightHit, player.getUniqueId());
+                }
+            });
         illuminate(illuminance);
         showDust();
         revealArtifacts();
@@ -121,7 +122,7 @@ public class Flashlight {
     }
 
     private void revealArtifacts() {
-        manor2.getArtifactManager().tryReveal(player.getEyeLocation(), coneConfig.getConeDegrees(), FLASHLIGHT_DISTANCE, player);
+        manor2.getArtifactManager().tryReveal(player, coneConfig.getConeDegrees(), FLASHLIGHT_DISTANCE);
     }
 
     private void showDust() {
@@ -136,18 +137,18 @@ public class Flashlight {
             Location lookAt;
             if (direction.equals(new Vector(0, -1, 0))) {
                 lookAt = playerLocation.clone()
-                        .add(random.nextInt(-DUST_PITCH_DOWN_LOOK_RADIUS, DUST_PITCH_DOWN_LOOK_RADIUS + 1),
-                                0,
-                                random.nextInt(-DUST_PITCH_DOWN_LOOK_RADIUS, DUST_PITCH_DOWN_LOOK_RADIUS + 1)
-                        );
+                    .add(random.nextInt(-DUST_PITCH_DOWN_LOOK_RADIUS, DUST_PITCH_DOWN_LOOK_RADIUS + 1),
+                        0,
+                        random.nextInt(-DUST_PITCH_DOWN_LOOK_RADIUS, DUST_PITCH_DOWN_LOOK_RADIUS + 1)
+                    );
             } else {
                 lookAt = playerLocation.clone().add(direction.clone().rotateAroundY(random.nextDouble(
-                                -Math.toRadians(coneConfig.getConeDegrees()), Math.toRadians(coneConfig.getConeDegrees())
-                        )).multiply(random.nextDouble((double) FLASHLIGHT_DISTANCE / 2, FLASHLIGHT_DISTANCE))
+                        -Math.toRadians(coneConfig.getConeDegrees()), Math.toRadians(coneConfig.getConeDegrees())
+                    )).multiply(random.nextDouble((double) FLASHLIGHT_DISTANCE / 2, FLASHLIGHT_DISTANCE))
                 );
             }
             manor2.getDefinition().getFlashlightGroundParticles()
-                    .forEach(particleDefinition -> particleDefinition.showAt(findGroundSupported(lookAt)));
+                .forEach(particleDefinition -> particleDefinition.showAt(findGroundSupported(lookAt)));
         }
     }
 
@@ -271,18 +272,18 @@ public class Flashlight {
         item.setData(DataComponentTypes.ITEM_MODEL, NamespacedKey.minecraft("spyglass"));
         item.setData(DataComponentTypes.CUSTOM_NAME, Util.color("<gold><bold>Flashlight"));
         item.setData(DataComponentTypes.TOOLTIP_DISPLAY, TooltipDisplay.tooltipDisplay()
-                .addHiddenComponents(DataComponentTypes.ATTRIBUTE_MODIFIERS)
-                .addHiddenComponents(DataComponentTypes.DAMAGE)
-                .build());
+            .addHiddenComponents(DataComponentTypes.ATTRIBUTE_MODIFIERS)
+            .addHiddenComponents(DataComponentTypes.DAMAGE)
+            .build());
         item.editPersistentDataContainer(pdc -> {
             pdc.set(Manor2.ITEM_TAG, PersistentDataType.STRING, "flashlight");
         });
         item.setData(DataComponentTypes.MAX_DAMAGE, 101);
         item.setData(DataComponentTypes.USE_EFFECTS, UseEffects.useEffects()
-                .canSprint(true)
-                .speedMultiplier(1.0f)
-                .interactVibrations(true)
-                .build());
+            .canSprint(true)
+            .speedMultiplier(1.0f)
+            .interactVibrations(true)
+            .build());
         item.setData(DataComponentTypes.DAMAGE, 101 - Math.round(batteryCharge));
         return item;
     }

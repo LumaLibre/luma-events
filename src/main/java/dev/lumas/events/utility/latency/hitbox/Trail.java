@@ -1,10 +1,12 @@
 package dev.lumas.events.utility.latency.hitbox;
 
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.util.BoundingBox;
+import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class Trail {
     private final int historyTicks;
@@ -16,10 +18,10 @@ public class Trail {
         this.snapshots = new TrailSnapshot[historyTicks];
     }
 
-    public void record(LivingEntity entity) {
+    public void record(Hitbox hitbox) {
         int index = this.written;
         snapshots[Math.floorMod(index, historyTicks)] =
-                new TrailSnapshot(System.nanoTime(), entity.getBoundingBox(), entity.getEyeHeight());
+            new TrailSnapshot(System.nanoTime(), hitbox);
         this.written = index + 1;
     }
 
@@ -50,17 +52,51 @@ public class Trail {
         if (span <= 0) return newer;
 
         double progress = Math.clamp((double) (when - older.takenAt()) / span, 0.0, 1.0);
-        BoundingBox from = older.hitbox();
-        BoundingBox to = newer.hitbox();
+        Hitbox from = older.hitbox();
+        Hitbox to = newer.hitbox();
 
-        return new TrailSnapshot(when, new BoundingBox(
-                lerp(from.getMinX(), to.getMinX(), progress),
-                lerp(from.getMinY(), to.getMinY(), progress),
-                lerp(from.getMinZ(), to.getMinZ(), progress),
-                lerp(from.getMaxX(), to.getMaxX(), progress),
-                lerp(from.getMaxY(), to.getMaxY(), progress),
-                lerp(from.getMaxZ(), to.getMaxZ(), progress)),
-                lerp(older.eyeHeight(), newer.eyeHeight(), progress));
+        if (from.shape().size() != to.shape().size() || to.sampleOffsets().length != from.sampleOffsets().length) {
+            return new TrailSnapshot(when, to);
+        }
+
+        List<Hitbox.Section> shape = new ArrayList<>();
+        for (int i = 0; i < from.shape().size(); i++) {
+            Hitbox.Section fromPart = from.shape().get(i);
+            Hitbox.Section toPart = from.shape().get(i);
+            // Edge case: Hitbox changed format, ignore previous format
+            if (fromPart.part() != toPart.part()) {
+                return new TrailSnapshot(when, to);
+            }
+            shape.add(
+                new Hitbox.Section(fromPart.part(), lerp(fromPart.boundingBox(), toPart.boundingBox(), progress))
+            );
+        }
+
+        Vector[] sampleOffsets = new Vector[to.sampleOffsets().length];
+        for (int i = 0; i < sampleOffsets.length; i++) {
+            sampleOffsets[i] = lerp(from.sampleOffsets()[i], to.sampleOffsets()[i], progress);
+        }
+
+        return new TrailSnapshot(when, new Hitbox(shape, lerp(from.wholeBounding(), to.wholeBounding(), progress), sampleOffsets));
+    }
+
+    private static BoundingBox lerp(BoundingBox from, BoundingBox to, double progress) {
+        return new BoundingBox(
+            lerp(from.getMinX(), to.getMinX(), progress),
+            lerp(from.getMinY(), to.getMinY(), progress),
+            lerp(from.getMinZ(), to.getMinZ(), progress),
+            lerp(from.getMaxX(), to.getMaxX(), progress),
+            lerp(from.getMaxY(), to.getMaxY(), progress),
+            lerp(from.getMaxZ(), to.getMaxZ(), progress)
+        );
+    }
+
+    private static Vector lerp(Vector from, Vector to, double progress) {
+        return new Vector(
+            lerp(from.getX(), to.getX(), progress),
+            lerp(from.getY(), to.getY(), progress),
+            lerp(from.getZ(), to.getZ(), progress)
+        );
     }
 
     private static double lerp(double from, double to, double progress) {
