@@ -70,10 +70,10 @@ public class Manor2Definition {
     );
 
     private List<SoundDefinition> artifactRevealSounds = List.of(
-        new SoundDefinition(Sound.AMBIENT_CAVE, 20, 1f, null)
+        new SoundDefinition(Sound.AMBIENT_CAVE, 0.5f, 1f, 0l)
     );
     private List<SoundDefinition> artifactPickupSounds = List.of(
-        new SoundDefinition(Sound.BLOCK_DECORATED_POT_INSERT_FAIL, 5, 1f, null)
+        new SoundDefinition(Sound.BLOCK_DECORATED_POT_INSERT_FAIL, 0.5f, 1f, null)
     );
     private List<SoundDefinition> ghostRevealSounds = List.of(
         new SoundDefinition(Sound.ENTITY_GHAST_AMBIENT, 20, 1f, null)

@@ -1,5 +1,7 @@
 package dev.lumas.events.games.logic.manor2.roles;
 
+import com.google.common.base.Preconditions;
+import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.artifact.ArtifactManager;
 import dev.lumas.events.games.logic.manor2.artifact.ArtifactRegion;
@@ -10,7 +12,11 @@ import dev.lumas.events.utility.Util;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.WorldBorder;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
 
 import java.time.Duration;
@@ -23,6 +29,9 @@ public class Artifact extends Manor2Role {
     private static final String WAITING_FOR_REGION_MESSAGE = "<gray>Waiting for a safe region...";
     private static final String ARTIFACT_MESSAGE_1 = "<red>Hide from hunters!";
     private static final String ARTIFACT_MESSAGE_2 = "<red>Your soul is bound to an artifact";
+    private static final NamespacedKey SCALE_CHANGE = Preconditions.checkNotNull(NamespacedKey.fromString(
+        "manor2/artifact_scale", EventMain.getInstance()
+    ));
 
     private static final int FREEZE_TICKS_INCREMENT = 5;
     private static final int FREEZE_TICKS_DECREEMENT = 10;
@@ -87,6 +96,12 @@ public class Artifact extends Manor2Role {
         if (player == null) {
             return;
         }
+        AttributeInstance scale = player.getAttribute(Attribute.SCALE);
+        if (scale != null) {
+            scale.addModifier(new AttributeModifier(
+                SCALE_CHANGE, 1d / player.getHeight() - 1, AttributeModifier.Operation.ADD_NUMBER
+            ));
+        }
         player.setInvisible(true);
     }
 
@@ -99,6 +114,10 @@ public class Artifact extends Manor2Role {
         NiceRestraint.release(player);
         player.setInvisible(false);
         player.setWorldBorder(null);
+        AttributeInstance scale = player.getAttribute(Attribute.SCALE);
+        if (scale != null) {
+            scale.removeModifier(SCALE_CHANGE);
+        }
         long delta = System.nanoTime() - started();
         if (delta > 0) {
             double minutes = 1e-9 * delta / 60;
