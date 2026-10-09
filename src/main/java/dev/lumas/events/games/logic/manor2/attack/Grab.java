@@ -62,8 +62,6 @@ public final class Grab {
             if (ended.get()) return;
             NiceRestraint.apply(victimPlayer);
             playEffects(victimPlayer, ghostPlayer);
-
-            victimPlayer.getWorld().playSound(victimPlayer.getLocation(), Sound.ENTITY_WARDEN_SONIC_CHARGE, SoundCategory.HOSTILE, 1.5f, 1f);
         });
     }
 
@@ -71,7 +69,7 @@ public final class Grab {
     public void tick(Manor2 manor2) {
         if (ended.get()) return;
         if (ghost.getEventPlayer().getPlayer() == null || victim.getEventPlayer().getPlayer() == null
-                || !manor2.getParticipants().contains(ghost.getEventPlayer()) || !manor2.getParticipants().contains(victim.getEventPlayer())) {
+            || !manor2.getParticipants().contains(ghost.getEventPlayer()) || !manor2.getParticipants().contains(victim.getEventPlayer())) {
             abort(manor2);
             return;
         }
@@ -92,7 +90,7 @@ public final class Grab {
             player.lookAt(ghostEyes, LookAnchor.EYES);
             player.setFreezeTicks(player.getMaxFreezeTicks() - 1);
             if (heartbeat) {
-                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WARDEN_HEARTBEAT, SoundCategory.HOSTILE, 1.5f, 1f);
+                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WARDEN_HEARTBEAT, SoundCategory.MASTER, 10f, 1f);
             }
         });
     }
@@ -111,7 +109,6 @@ public final class Grab {
         }
         manor2.getGhostAttacks().cooldown(ghost, KILLED_COOLDOWN_TICKS);
         victim.operatePlayer(player -> {
-            player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, SoundCategory.HOSTILE, 1.5f, 1f);
             player.sendHurtAnimation(0);
         });
         victim.die();
@@ -129,7 +126,7 @@ public final class Grab {
             Vector away = player.getLocation().toVector().subtract(victimLocation.toVector()).setY(0);
             if (away.lengthSquared() < 1.0E-4) away = new Vector(1, 0, 0);
             player.setVelocity(away.normalize().multiply(BROKEN_KNOCKBACK).setY(0.4));
-            player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GHAST_SCREAM, SoundCategory.HOSTILE, 1.5f, 0.6f);
+            player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GHAST_SCREAM, SoundCategory.MASTER, 10f, 0.6f);
         });
     }
 
@@ -166,6 +163,9 @@ public final class Grab {
         victimPlayer.updateInventory(); // TODO
         Executors.delayedSync(victimPlayer, 1, () -> {
             victimPlayer.playEffect(EntityEffect.PROTECTED_FROM_DEATH);
+            victimPlayer.stopAllSounds();
+            victimPlayer.getWorld().playSound(victimPlayer.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, SoundCategory.MASTER, 10f, 0.35f);
+            victimPlayer.getWorld().playSound(victimPlayer.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.MASTER, 10f, 0.5f);
             Executors.delayedSync(victimPlayer, 1, () -> {
                 ItemStack held = victimPlayer.getInventory().getItemInOffHand();
                 String tag = held.getPersistentDataContainer().get(Manor2.ITEM_TAG, PersistentDataType.STRING);
