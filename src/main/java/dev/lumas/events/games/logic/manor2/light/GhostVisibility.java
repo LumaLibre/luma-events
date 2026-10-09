@@ -1,5 +1,6 @@
 package dev.lumas.events.games.logic.manor2.light;
 
+import com.google.common.base.Preconditions;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
@@ -7,11 +8,14 @@ import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
-import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.BlockType;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
@@ -29,19 +33,22 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public final class GhostVisibility {
 
-    private static final boolean DEBUG = false;
     private static final int HIDE_AFTER_UNLIT_TICKS = 10;
+    private static final int MAX_LIT_TICKS = 20 * 15;
     private static final double EXPOSED_MIN_CENTEREDNESS = 0.75;
     private static final double SILHOUETTE_MIN_CENTEREDNESS = 0.5;
+    private static final int SILHOUETTE_MIN_LIGHT_LEVEL = 5;
     private static final int EXPOSED_MIN_LIGHT_LEVEL = 7;
     private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 3, 0, true, true, false);
     private static final PotionEffect GLOW = new PotionEffect(PotionEffectType.GLOWING, 3, 0, true, true, false);
+    private static final NamespacedKey GHOST_MOVEMENT_MODIFIER = Preconditions.checkNotNull(NamespacedKey.fromString("manor2/ghost_movement", EventMain.getInstance()));
 
     private final Manor2 manor2;
     private final EventPlayer ghost;
     private final AtomicReference<@Nullable LightHit> pendingLight = new AtomicReference<>(); // strongest light from any hunter
-    @Getter
-    private volatile RevealState state = RevealState.HIDDEN;
+    private volatile RevealState flashLight = RevealState.HIDDEN;
+    private volatile RevealState staticLight = RevealState.HIDDEN;
+    private int litTicks = 0;
     private int unlitTicks = 0;
 
     private final Set<UUID> hiddenFrom = ConcurrentHashMap.newKeySet();
@@ -66,75 +73,65 @@ public final class GhostVisibility {
     public void tick() {
         if (stopping) return;
         LightHit hit = pendingLight.getAndSet(null);
-        RevealState previous = state;
+        RevealState previous = flashLight;
         RevealState newState = RevealState.HIDDEN;
         if (hit != null) {
             unlitTicks = 0;
             newState = stateOf(hit);
         }
         if (++unlitTicks < HIDE_AFTER_UNLIT_TICKS) {
-            state = newState == RevealState.EXPOSED ? RevealState.EXPOSED
-                    : previous.isRevealed() ? previous : newState;
+            flashLight = newState == RevealState.EXPOSED ? RevealState.EXPOSED : previous.isRevealed() ? previous : newState;
         } else {
-            state = RevealState.HIDDEN;
+            flashLight = RevealState.HIDDEN;
         }
 
         if (forcedExposedTicks.getAndUpdate(ticks -> Math.max(0, ticks - 1)) > 0) {
             unlitTicks = 0;
-            state = RevealState.EXPOSED;
+            flashLight = RevealState.EXPOSED;
         }
-        boolean changed = state != previous;
+        boolean changed = flashLight != previous;
 
-        if (DEBUG) {
-            Bukkit.broadcastMessage("Ghost visibility tick (" + ghost.getName() + "): " + state + ", unlitTicks: " + unlitTicks + (hit == null
-                    ? ", not lit"
-                    : String.format(", distance: %.2f, centeredness: %.2f, light level: %d", hit.distance(), hit.centeredness(), hit.lightLevel())));
-        }
-        final RevealState current = state;
-        if (state == RevealState.HIDDEN) {
+        final RevealState current = flashLight;
+        if (flashLight == RevealState.HIDDEN) {
             shooterTicks.clear();
-        } else if (state == RevealState.EXPOSED &&
-                manor2.getDefinition().getGhostRevealTime() <= shooterTicks.entrySet().stream()
-                        .map(Map.Entry::getValue)
-                        .reduce(0, Integer::sum) &&
-                manor2.getRoleMap().as(ghost.getUuid(), Ghost.class) instanceof Ghost ghostGhost
-        ) {
+        } else if (flashLight == RevealState.EXPOSED && manor2.getDefinition().getGhostRevealTime() <= shootTicks() && manor2.getRoleMap().as(ghost.getUuid(), Ghost.class) instanceof Ghost ghostGhost) {
             manor2.getScoreboard().ghostKilled(ghostGhost, shooterTicks);
             ghostGhost.die();
         }
         ghost.operatePlayer(player -> {
-            // ghost.tickDamage(hitRecord.shooter());
             if (stopping) return; // Released while this was queued
-            if (current == RevealState.EXPOSED) {
+            this.staticLight = staticLight(player.getLocation());
+            RevealState toUse = staticLight.moreRevealed(current) ? staticLight : current;
+            if (toUse == RevealState.EXPOSED) {
+                litTicks = Math.min(litTicks + 1, MAX_LIT_TICKS);
                 player.removePotionEffect(PotionEffectType.INVISIBILITY);
                 if (changed) {
                     Location playerLocation = player.getLocation();
                     playerLocation.getWorld().spawnParticle(Particle.DUST_PILLAR, playerLocation, 10, BlockType.RED_CONCRETE.createBlockData());
-                    Util.getRandom(manor2.getDefinition().getGhostRevealSounds())
-                            .playAt(player);
+                    Util.getRandom(manor2.getDefinition().getGhostRevealSounds()).playAt(player);
                 }
             } else {
                 player.addPotionEffect(INVISIBILITY);
+                if (litTicks > 0) {
+                    litTicks--;
+                }
             }
-
-            if (current.isRevealed()) {
+            double litProgress = (double) litTicks / MAX_LIT_TICKS;
+            player.setFreezeTicks((int) (player.getMaxFreezeTicks() - litProgress * player.getMaxFreezeTicks()));
+            AttributeInstance instance = player.getAttribute(Attribute.MOVEMENT_SPEED);
+            if (instance != null) {
+                instance.removeModifier(GHOST_MOVEMENT_MODIFIER);
+                instance.addModifier(freezeCompensationModifier(player));
+            }
+            if (toUse.isRevealed()) {
                 player.addPotionEffect(GLOW);
                 Location playerLocation = player.getLocation();
-                playerLocation.getWorld().spawnParticle(
-                        Particle.DUST,
-                        playerLocation.clone().add(
-                                ThreadLocalRandom.current().nextDouble(-0.5, 0.5),
-                                ThreadLocalRandom.current().nextDouble(0, 2),
-                                ThreadLocalRandom.current().nextDouble(-0.5, 0.5)
-                        ),
-                        1,
-                        new Particle.DustOptions(Color.GRAY, 1f)
-                );
+                playerLocation.getWorld().spawnParticle(Particle.DUST, playerLocation.clone().add(ThreadLocalRandom.current().nextDouble(-0.5, 0.5), ThreadLocalRandom.current().nextDouble(0, 2), ThreadLocalRandom.current().nextDouble(-0.5, 0.5)), 1, new Particle.DustOptions(Color.GRAY, 1f));
             } else {
                 player.removePotionEffect(PotionEffectType.GLOWING);
             }
 
-            setVanished(player, current == RevealState.HIDDEN);
+            setVanished(player, toUse == RevealState.HIDDEN);
         });
     }
 
@@ -146,11 +143,13 @@ public final class GhostVisibility {
             toShow = List.copyOf(hiddenFrom);
         }
         pendingLight.set(null);
-        state = RevealState.EXPOSED;
+        flashLight = RevealState.EXPOSED;
 
         ghost.operatePlayer(player -> {
             player.removePotionEffect(PotionEffectType.INVISIBILITY);
             player.removePotionEffect(PotionEffectType.GLOWING);
+            player.getAttribute(Attribute.MOVEMENT_SPEED)
+                .removeModifier(GHOST_MOVEMENT_MODIFIER);
         });
 
         Player self = ghost.getPlayer();
@@ -168,6 +167,34 @@ public final class GhostVisibility {
 
     public void exposeFor(int ticks) {
         forcedExposedTicks.accumulateAndGet(ticks, Math::max);
+    }
+
+    public RevealState getState() {
+        RevealState staticLight = this.staticLight;
+        RevealState flashLight = this.flashLight;
+        return staticLight.moreRevealed(flashLight) ? staticLight : flashLight;
+    }
+
+    public int shootTicks() {
+        return shooterTicks.values().stream().reduce(0, Integer::sum);
+    }
+
+    private RevealState staticLight(Location location) {
+        int lightLevel = location.getBlock().getLightFromBlocks();
+        if (lightLevel > EXPOSED_MIN_LIGHT_LEVEL) {
+            return RevealState.EXPOSED;
+        }
+        if (lightLevel > SILHOUETTE_MIN_LIGHT_LEVEL) {
+            return RevealState.SILHOUETTE;
+        }
+        return RevealState.HIDDEN;
+    }
+
+    public static AttributeModifier freezeCompensationModifier(Player player) {
+        double freezeProgress = Math.min(1.0, (double) player.getFreezeTicks() / player.getMaxFreezeTicks());
+        double freezeMultiplier = 1.0 - (0.5 * freezeProgress);
+        double amount = (1.0 / freezeMultiplier) - 1.0;
+        return new AttributeModifier(GHOST_MOVEMENT_MODIFIER, amount, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
     }
 
     private static RevealState stateOf(LightHit hit) {

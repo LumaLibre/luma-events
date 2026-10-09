@@ -87,6 +87,10 @@ public final class Executors {
         return runnable -> entity.getScheduler().run(EventMain.getInstance(), ignored -> runnable.run(), runnable);
     }
 
+    public static Executor executor(Location location) {
+        return runnable -> Bukkit.getRegionScheduler().run(EventMain.getInstance(), location, ignored -> runnable.run());
+    }
+
 
     // Synchronous
 

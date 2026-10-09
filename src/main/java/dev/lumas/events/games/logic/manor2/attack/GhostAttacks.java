@@ -2,6 +2,7 @@ package dev.lumas.events.games.logic.manor2.attack;
 
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.light.LightHit;
+import dev.lumas.events.games.logic.manor2.light.RevealState;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
@@ -70,7 +71,9 @@ public final class GhostAttacks {
     }
 
     private synchronized void tryGrab(Ghost ghost, Player ghostPlayer, GhostHunter victim, Player victimPlayer) {
-        if (ctx.isStopping() || !isAvailable(ghost) || !isAvailable(victim)) return;
+        if (ctx.isStopping() || !isAvailable(ghost) || !isAvailable(victim) || ghost.getVisibility().getState() == RevealState.EXPOSED) {
+            return;
+        }
 
         Grab grab = new Grab(ghost, victim, ghostPlayer.getEyeLocation(), victimPlayer.getLocation());
         grabMap.put(ghost.getUuid(), grab);
@@ -80,8 +83,8 @@ public final class GhostAttacks {
 
     private boolean isAvailable(Manor2Role role) {
         return ctx.getParticipants().contains(role.getEventPlayer())
-                && !grabMap.containsKey(role.getUuid())
-                && cooldown.getOrDefault(role.getUuid(), 0L) <= currentTick;
+            && !grabMap.containsKey(role.getUuid())
+            && cooldown.getOrDefault(role.getUuid(), 0L) <= currentTick;
     }
 
     public void cooldown(Manor2Role role, int ticks) {

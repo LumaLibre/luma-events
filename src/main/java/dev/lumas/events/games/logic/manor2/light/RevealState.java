@@ -8,4 +8,11 @@ public enum RevealState {
     public boolean isRevealed() {
         return this != HIDDEN;
     }
+
+    public boolean moreRevealed(RevealState otherState) {
+        if (this == SILHOUETTE) {
+            return otherState != EXPOSED;
+        }
+        return this != HIDDEN;
+    }
 }

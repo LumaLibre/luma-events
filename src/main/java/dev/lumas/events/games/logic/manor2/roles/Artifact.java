@@ -13,6 +13,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.WorldBorder;
 import org.bukkit.entity.Player;
 
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Artifact extends Manor2Role {
@@ -59,7 +60,7 @@ public class Artifact extends Manor2Role {
                         player.showTitle(Title.title(Util.color(ARTIFACT_MESSAGE_1), Util.color(ARTIFACT_MESSAGE_2)));
                     });
                 }, () -> operatePlayer(player1 ->
-                    player1.showTitle(Title.title(Component.empty(), Util.color(WAITING_FOR_REGION_MESSAGE)))
+                    player1.showTitle(Title.title(Component.empty(), Util.color(WAITING_FOR_REGION_MESSAGE), Title.Times.times(Duration.ofSeconds(0), Duration.ofSeconds(1), Duration.ofSeconds(0))))
                 ));
         }
         operatePlayer(player1 -> {
@@ -99,8 +100,10 @@ public class Artifact extends Manor2Role {
         player.setInvisible(false);
         player.setWorldBorder(null);
         long delta = System.nanoTime() - started();
-        double minutes = 1e-9 * delta / 60;
-        manor2.getScoreboard().addScore(eventPlayer, (int) (minutes * manor2.getDefinition().getPlayerArtifactAliveMinuteScore()));
+        if (delta > 0) {
+            double minutes = 1e-9 * delta / 60;
+            manor2.getScoreboard().addScore(eventPlayer, (int) (minutes * manor2.getDefinition().getPlayerArtifactAliveMinuteScore()));
+        }
         super.retire(manor2);
     }
 
