@@ -115,7 +115,7 @@ public class ArtifactManager {
             .map(EventPlayer::getPlayer)
             .filter(Objects::nonNull)
             .map(Player::getLocation)
-            .anyMatch(expanded::contains);
+            .noneMatch(expanded::contains);
     }
 
     private double fillFactor() {
@@ -213,7 +213,7 @@ public class ArtifactManager {
             if (Math.abs(eye3i.x() - artifactPos3i.x()) + Math.abs(eye3i.y() - artifactPos3i.y()) + Math.abs(eye3i.z() - artifactPos3i.z()) > maxSearch + 1) {
                 continue;
             }
-            Location artifactPos = artifactPos3i.toLocation().toCenterLocation();
+            Location artifactPos = artifactPos3i.toLocation().add(0.5, 0, 0.5);
             if (!reveals(eyeLocation, eyeDirection, artifactPos, minShading, maxSearch, maxSearchSquared)) {
                 continue;
             }
@@ -232,7 +232,7 @@ public class ArtifactManager {
             );
         long atNano = manor2.getLatencyHandler().timeOf(hunter);
         for (ConeTraceResult result : results) {
-            if (!(manor2.getRoleMap().get(result.target().getUniqueId()) instanceof Artifact artifact) || artifact.revealReady() >= atNano) {
+            if (!(manor2.getRoleMap().get(result.target().getUniqueId()) instanceof Artifact artifact) || artifact.started() >= atNano) {
                 continue;
             }
             artifact.freeze();

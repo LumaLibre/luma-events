@@ -44,6 +44,8 @@ public class Manor2Definition {
     @Comment("The score a hunter gets when finding a player artifact")
     private int playerArtifactFoundScore = 75;
     @Comment("The width of each region an artifact can spawn in")
+    private int playerArtifactAliveMinuteScore = 75;
+    @Comment("The width of each region an artifact can spawn in")
     private double averageRegionWidth = 16;
     @Comment("Allow players to play as artifacts")
     private boolean artifactPlay = true;
@@ -97,11 +99,11 @@ public class Manor2Definition {
 
     private List<ArtifactType> playerArtifacts = List.of(
         new ArtifactType(ItemType.NETHERITE_INGOT, "Mysterious Ingot", List.of("Someone might find this interesting")),
-        new ArtifactType(ItemType.BAMBOO, "World Tree Sapling", List.of("The world tree??", "Must be worth quite a lot")),
+        new ArtifactType(ItemType.BAMBOO, "Holy Stick", List.of("Must be worth quite a lot")),
         new ArtifactType(ItemType.GOLD_BLOCK, "<gold>Block Of Gold", List.of("Definitely worth its weight in gold")),
         new ArtifactType(ItemType.FISHING_ROD, "<blue>Premium Fishing Rod", List.of("Could even catch the good old", "Loch Ness with it")),
         new ArtifactType(ItemType.DIAMOND, "<aqua>Large Gem", List.of("To keep for your partner")),
-        new ArtifactType(ItemType.DIAMOND_HORSE_ARMOR, "<aqua>Decorated Horse Armor", List.of("It might too decorated to be practical",
+        new ArtifactType(ItemType.DIAMOND_HORSE_ARMOR, "<aqua>Decorated Horse Armor", List.of("It might be too decorated to be practical",
             "still impressive"))
     );
 

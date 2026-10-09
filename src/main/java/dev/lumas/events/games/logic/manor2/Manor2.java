@@ -193,7 +193,6 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         packetGlow.stop();
         ghostAttacks.stop();
-        scoreboard.showScores(audience);
         recorder.stopRecording();
 
         Executors.sync(definition.getHunterStartLocations().getFirst(), blockCache::shutdown);
@@ -203,6 +202,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             completableFutures.add(CompletableFuture.runAsync(() -> role.retire(this), Executors.executor(role)));
         }
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
+            .thenRun(() -> scoreboard.showScores(audience))
             .exceptionally(exception -> {
                 exception.printStackTrace();
                 return null;
