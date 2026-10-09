@@ -30,11 +30,13 @@ import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
+import org.bukkit.damage.DamageType;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Trident;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 
@@ -226,6 +228,16 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             Executors.runSync(player, () -> role.retire(this));
         }
         return super.removeParticipant(player, doTeleport);
+    }
+
+    @EventHandler
+    public void onEntityDamageEvent(EntityDamageEvent event) {
+        this.ensureNotIllegal();
+        if (event.getDamageSource().getDamageType() == DamageType.FREEZE &&
+            roleMap.is(event.getEntity().getUniqueId(), Ghost.class)
+        ) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler

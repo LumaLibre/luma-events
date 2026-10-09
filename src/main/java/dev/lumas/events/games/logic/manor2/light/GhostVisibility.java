@@ -1,6 +1,5 @@
 package dev.lumas.events.games.logic.manor2.light;
 
-import com.google.common.base.Preconditions;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
@@ -15,7 +14,6 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
-import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.BlockType;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
@@ -41,7 +39,7 @@ public final class GhostVisibility {
     private static final int EXPOSED_MIN_LIGHT_LEVEL = 7;
     private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 3, 0, true, true, false);
     private static final PotionEffect GLOW = new PotionEffect(PotionEffectType.GLOWING, 3, 0, true, true, false);
-    private static final NamespacedKey GHOST_MOVEMENT_MODIFIER = Preconditions.checkNotNull(NamespacedKey.fromString("manor2/ghost_movement", EventMain.getInstance()));
+    private static final NamespacedKey SNOW_SPEED_MODIFIER_NAME = NamespacedKey.minecraft("powder_snow");
 
     private final Manor2 manor2;
     private final EventPlayer ghost;
@@ -118,10 +116,10 @@ public final class GhostVisibility {
             }
             double litProgress = (double) litTicks / MAX_LIT_TICKS;
             player.setFreezeTicks((int) (player.getMaxFreezeTicks() - litProgress * player.getMaxFreezeTicks()));
+            player.lockFreezeTicks(true);
             AttributeInstance instance = player.getAttribute(Attribute.MOVEMENT_SPEED);
             if (instance != null) {
-                instance.removeModifier(GHOST_MOVEMENT_MODIFIER);
-                instance.addModifier(freezeCompensationModifier(player));
+                instance.removeModifier(SNOW_SPEED_MODIFIER_NAME);
             }
             if (toUse.isRevealed()) {
                 player.addPotionEffect(GLOW);
@@ -148,8 +146,8 @@ public final class GhostVisibility {
         ghost.operatePlayer(player -> {
             player.removePotionEffect(PotionEffectType.INVISIBILITY);
             player.removePotionEffect(PotionEffectType.GLOWING);
-            player.getAttribute(Attribute.MOVEMENT_SPEED)
-                .removeModifier(GHOST_MOVEMENT_MODIFIER);
+            player.lockFreezeTicks(false);
+            player.setFreezeTicks(0);
         });
 
         Player self = ghost.getPlayer();
@@ -188,13 +186,6 @@ public final class GhostVisibility {
             return RevealState.SILHOUETTE;
         }
         return RevealState.HIDDEN;
-    }
-
-    public static AttributeModifier freezeCompensationModifier(Player player) {
-        double freezeProgress = Math.min(1.0, (double) player.getFreezeTicks() / player.getMaxFreezeTicks());
-        double freezeMultiplier = 1.0 - (0.5 * freezeProgress);
-        double amount = (1.0 / freezeMultiplier) - 1.0;
-        return new AttributeModifier(GHOST_MOVEMENT_MODIFIER, amount, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
     }
 
     private static RevealState stateOf(LightHit hit) {
