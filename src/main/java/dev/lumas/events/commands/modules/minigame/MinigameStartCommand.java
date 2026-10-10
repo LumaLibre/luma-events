@@ -23,11 +23,11 @@ import java.util.Set;
 
 @Register(Autowire.SUBCOMMAND)
 @CommandMeta(
-        name = "mgstart",
-        permission = "lumaevents.admin",
-        description = "Start a minigame",
-        parent = CommandManager.class,
-        usage = "/<command> mgstart <minigame> [countdown] [map] [tokens]"
+    name = "mgstart",
+    permission = "lumaevents.admin",
+    description = "Start a minigame",
+    parent = CommandManager.class,
+    usage = "/<command> mgstart <minigame> [countdown] [map] [tokens]"
 )
 @NullMarked
 public class MinigameStartCommand implements CommandModule {
@@ -85,8 +85,8 @@ public class MinigameStartCommand implements CommandModule {
             TokenPayout parsed = parseTokenPayout(strings[3]);
             if (parsed == null) {
                 Util.sendMsg(commandSender, "Invalid tokens value: " + strings[3]
-                        + " (use true, false, a multiplier between 0 and " + TokenPayout.format(MAX_TOKEN_MULTIPLIER)
-                        + ", or a flat payout like 10" + FLAT_SUFFIX + " up to " + TokenPayout.format(MAX_FLAT_TOKENS) + FLAT_SUFFIX + ")");
+                    + " (use true, false, a multiplier between 0 and " + TokenPayout.format(MAX_TOKEN_MULTIPLIER)
+                    + ", or a flat payout like 10" + FLAT_SUFFIX + " up to " + TokenPayout.format(MAX_FLAT_TOKENS) + FLAT_SUFFIX + ")");
                 return false;
             }
             tokenPayout = parsed;
@@ -114,14 +114,16 @@ public class MinigameStartCommand implements CommandModule {
     private static List<String> minigameSuggestions(String typed) {
         if (typed.isEmpty()) {
             return Arrays.stream(MinigameConstant.values())
-                    .map(minigame -> minigame.getAliases()[0])
-                    .sorted()
-                    .toList();
-        }
-        return Arrays.stream(MinigameConstant.values())
-                .flatMap(minigame -> Arrays.stream(minigame.getAliases()))
+                .map(minigame -> minigame.getAliases()[0])
+                .filter(string -> string.toLowerCase(Locale.ROOT).contains(typed.toLowerCase(Locale.ROOT)))
                 .sorted()
                 .toList();
+        }
+        return Arrays.stream(MinigameConstant.values())
+            .flatMap(minigame -> Arrays.stream(minigame.getAliases()))
+            .filter(string -> string.toLowerCase(Locale.ROOT).contains(typed.toLowerCase(Locale.ROOT)))
+            .sorted()
+            .toList();
     }
 
     private static List<String> mapSuggestions(@Nullable MinigameConstant minigame) {
@@ -131,9 +133,9 @@ public class MinigameStartCommand implements CommandModule {
         Map<String, Object> enabled = minigame.getEnabledDefinitions();
         enabled.keySet().stream().sorted().forEach(suggestions::add);
         minigame.getDefinitions().keySet().stream()
-                .filter(name -> !enabled.containsKey(name))
-                .sorted()
-                .forEach(suggestions::add);
+            .filter(name -> !enabled.containsKey(name))
+            .sorted()
+            .forEach(suggestions::add);
         return suggestions;
     }
 
@@ -173,14 +175,15 @@ public class MinigameStartCommand implements CommandModule {
     private static String describeStart(TokenPayout tokenPayout) {
         if (tokenPayout.isNormal()) return "Minigame started";
         if (tokenPayout.paysNothing()) return "Minigame started <yellow>without token payouts</yellow>";
-        if (tokenPayout.flat()) return "Minigame started paying every player a flat <yellow>" + tokenPayout.flatTokens() + "</yellow> tokens";
+        if (tokenPayout.flat())
+            return "Minigame started paying every player a flat <yellow>" + tokenPayout.flatTokens() + "</yellow> tokens";
         return "Minigame started with <yellow>" + TokenPayout.format(tokenPayout.amount()) + "x</yellow> token payouts";
     }
 
     private static List<String> matching(List<String> options, String typed) {
         String prefix = typed.toLowerCase(Locale.ROOT);
         return options.stream()
-                .filter(option -> option.toLowerCase(Locale.ROOT).startsWith(prefix))
-                .toList();
+            .filter(option -> option.toLowerCase(Locale.ROOT).startsWith(prefix))
+            .toList();
     }
 }

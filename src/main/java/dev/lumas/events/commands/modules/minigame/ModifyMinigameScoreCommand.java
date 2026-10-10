@@ -18,14 +18,16 @@ import org.jspecify.annotations.NullMarked;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Stream;
 
 @Register(Autowire.SUBCOMMAND)
 @CommandMeta(
-        name = "modifymgscore",
-        permission = "lumaevents.admin",
-        description = "Modify a player's minigame score",
-        parent = CommandManager.class,
-        usage = "/<command> modifymgscore <add|remove|set> <minigame> <player> <amount>"
+    name = "modifymgscore",
+    permission = "lumaevents.admin",
+    description = "Modify a player's minigame score",
+    parent = CommandManager.class,
+    usage = "/<command> modifymgscore <add|remove|set> <minigame> <player> <amount>"
 )
 @NullMarked
 public class ModifyMinigameScoreCommand implements CommandModule {
@@ -73,8 +75,12 @@ public class ModifyMinigameScoreCommand implements CommandModule {
     @Override
     public List<String> tabComplete(EventMain eventMain, CommandSender commandSender, String[] strings) {
         return switch (strings.length) {
-            case 1 -> List.of("add", "remove", "set");
-            case 2 -> Arrays.stream(MinigameConstant.values()).map(it -> it.name().toLowerCase()).toList();
+            case 1 -> Stream.of("add", "remove", "set")
+                .filter(string -> string.contains(strings[0].toLowerCase(Locale.ROOT)))
+                .toList();
+            case 2 -> Arrays.stream(MinigameConstant.values()).map(it -> it.name().toLowerCase())
+                .filter(string -> string.contains(strings[1].toLowerCase(Locale.ROOT)))
+                .toList();
             case 3 -> null;
             case 4 -> List.of("<amount>");
             default -> List.of();
