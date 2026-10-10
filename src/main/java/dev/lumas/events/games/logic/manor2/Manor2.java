@@ -165,6 +165,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     @Override
     protected void onRunnable(long timeLeft) {
         if (timeLeft <= TimeUnit.SECONDS.toMillis(END_DELAY_SECONDS)) {
+            sendAudienceTitle("<yellow>Game Over", "<gold>It's a tie!");
             this.stop();
         }
         recorder.tick();
@@ -233,9 +234,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     @EventHandler
     public void onEntityDamageEvent(EntityDamageEvent event) {
         this.ensureNotIllegal();
-        if (event.getDamageSource().getDamageType() == DamageType.FREEZE &&
-            roleMap.is(event.getEntity().getUniqueId(), Ghost.class)
-        ) {
+        if (event.getDamageSource().getDamageType() == DamageType.FREEZE) {
             event.setCancelled(true);
         }
     }

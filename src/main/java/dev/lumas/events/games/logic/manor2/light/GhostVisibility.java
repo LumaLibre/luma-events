@@ -32,11 +32,12 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class GhostVisibility {
 
     private static final int HIDE_AFTER_UNLIT_TICKS = 10;
-    private static final int MAX_LIT_TICKS = 20 * 15;
+    private static final int MAX_LIT_TICKS = 20 * 5;
     private static final double EXPOSED_MIN_CENTEREDNESS = 0.75;
     private static final double SILHOUETTE_MIN_CENTEREDNESS = 0.5;
     private static final int SILHOUETTE_MIN_LIGHT_LEVEL = 5;
     private static final int EXPOSED_MIN_LIGHT_LEVEL = 7;
+    private static final double MAX_REVEAL_DISTANCE_SQUARED = 20 * 20;
     private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 3, 0, true, true, false);
     private static final PotionEffect GLOW = new PotionEffect(PotionEffectType.GLOWING, 3, 0, true, true, false);
     private static final NamespacedKey SNOW_SPEED_MODIFIER_NAME = NamespacedKey.minecraft("powder_snow");
@@ -201,12 +202,15 @@ public final class GhostVisibility {
 
     private void setVanished(Player self, boolean vanished) {
         for (Manor2Role role : manor2.getRoleMap()) {
-            if (role instanceof Ghost) continue; // TODO: ghosts can always see each other?
+            if (role instanceof Ghost) continue;
             Player viewer = role.getEventPlayer().getPlayer();
             if (viewer == null || viewer == self) continue;
 
-            boolean hide = vanished && manor2.getParticipants().contains(role.getEventPlayer());
-            if (viewer.canSee(self) != hide) continue;
+            boolean hide = vanished && manor2.getParticipants().contains(role.getEventPlayer())
+                || viewer.getLocation().distanceSquared(self.getLocation()) > MAX_REVEAL_DISTANCE_SQUARED;
+            if (viewer.canSee(self) != hide) {
+                continue;
+            }
 
             role.operatePlayer(target -> {
                 if (hide) hideFrom(target, self);
