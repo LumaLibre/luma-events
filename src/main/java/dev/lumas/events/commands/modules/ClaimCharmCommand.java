@@ -30,6 +30,10 @@ import java.util.List;
 public class ClaimCharmCommand implements CommandModule {
     @Override
     public boolean execute(EventMain eventMain, CommandSender commandSender, String s, String[] strings) {
+        if (!EventMain.getConfiguration().isCharmClaimable()) {
+            Util.sendMsg(commandSender, "Event charms are not claimable at this time.");
+            return true;
+        }
         Player player = (Player) commandSender;
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
 

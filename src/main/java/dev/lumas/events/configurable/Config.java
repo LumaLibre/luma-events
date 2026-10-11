@@ -23,6 +23,8 @@ public class Config {
     @Comment("Enable or disable town token invite payouts")
     private boolean townTokenInvitePayouts = false;
 
+    private boolean charmClaimable = false;
+
     @Comment("Automatic minigame cooldown in milliseconds")
     private long automaticMinigameCooldown = 7200000L;
 

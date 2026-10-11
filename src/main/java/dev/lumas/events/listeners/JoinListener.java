@@ -2,6 +2,7 @@ package dev.lumas.events.listeners;
 
 import dev.lumas.core.annotation.Autowire;
 import dev.lumas.core.annotation.Register;
+import dev.lumas.events.EventMain;
 import dev.lumas.events.games.MinigameManager;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.models.CountdownBossBar;
@@ -21,7 +22,7 @@ public class JoinListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Minigame current = MinigameManager.getInstance().getCurrent();
         EventPlayer eventPlayer = EventPlayerManager.getByUUID(event.getPlayer().getUniqueId());
-        boolean claimableCharm = !eventPlayer.isClaimedCharm();
+        boolean claimableCharm = !eventPlayer.isClaimedCharm() && EventMain.getConfiguration().isCharmClaimable();
 
         if (claimableCharm && !eventPlayer.getScores().isEmpty()) {
             Executors.runDelayedAsync(TimeUnit.SECONDS, 3, (t) -> {

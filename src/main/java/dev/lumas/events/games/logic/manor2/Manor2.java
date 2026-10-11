@@ -182,7 +182,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         boolean gameOver = roleMap.getMatching(Ghost.class).isEmpty() || roleMap.getMatching(GhostHunter.class).isEmpty();
         ManorTeam winner = roleMap.getMatching(Ghost.class).isEmpty() ? ManorTeam.HUNTERS : ManorTeam.GHOSTS;
-        if (false && gameOver) {
+        if (gameOver) {
             sendGameOver(winner);
             this.stop();
         }
