@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -49,11 +48,11 @@ public class ArtifactManager {
     private final List<ArtifactRegion> spawningRegions = new ArrayList<>();
     private final List<ArtifactType> artifactTypes;
     private final List<ArtifactType> playerArtifactTypes;
-    private final Set<ArtifactRegion> usedRegions = ConcurrentHashMap.newKeySet();
     private final Map<ArtifactRegion, Long> occupiedRegions = new ConcurrentHashMap<>();
     private final Map<ArtifactRegion, Long> regionDelay = new ConcurrentHashMap<>();
     private final Map<Location3i, ArtifactType> artifacts = new ConcurrentHashMap<>();
     private final Map<Location3i, ArtifactEntity> placedArtifacts = new ConcurrentHashMap<>();
+    private final Map<Location3i, ArtifactRegion> pickedUpPos = new ConcurrentHashMap<>();
     private final Map<UUID, ArtifactType> playerArtifacts = new ConcurrentHashMap<>();
     private final Manor2 manor2;
     private final AtomicInteger artifactPickedUpCount = new AtomicInteger(0);
@@ -90,6 +89,10 @@ public class ArtifactManager {
         time++;
     }
 
+    public void stop() {
+        placedArtifacts.values().forEach(ArtifactEntity::remove);
+    }
+
     public void spawnInRegions(int remainingRegionsToPopulate) {
         List<ArtifactRegion> regions = spawningRegions.stream()
             .filter(spawningRegion -> !(regionDelay.get(spawningRegion) instanceof Long aLong) || aLong >= time)
@@ -107,6 +110,134 @@ public class ArtifactManager {
             artifacts.put(pos, Util.getRandom(artifactTypes));
         }
     }
+
+
+    public ArtifactPickupResult pickup(@NotNull Location location) {
+        Location3i at = Location3i.from(location);
+        artifacts.remove(at);
+        ArtifactEntity entity = placedArtifacts.remove(at);
+        if (entity == null) {
+            return ArtifactPickupResult.NOT_FOUND;
+        }
+
+        for (ArtifactRegion region : occupiedRegions.keySet()) {
+            if (region.boundingBox().contains(location)) {
+                occupiedRegions.remove(region);
+                regionDelay.put(region, time + ARTIFACT_SPAWN_DELAY);
+                pickedUpPos.put(at, region);
+                break;
+            }
+        }
+        entity.remove();
+        Util.getRandom(manor2.getDefinition().getArtifactPickupSounds())
+            .playAt(location);
+        artifactPickedUpCount.incrementAndGet();
+        if (entity.boundRole() != null) {
+            entity.boundRole().die();
+            playerArtifacts.remove(entity.boundRole().getUuid());
+            return ArtifactPickupResult.FOUND_PLAYER_ARTIFACT;
+        }
+        return ArtifactPickupResult.FOUND_NORMAL_ARTIFACT;
+    }
+
+    public void tryReveal(Player hunter, double coneDegrees, double maxSearch) {
+        Location eyeLocation = hunter.getEyeLocation();
+        Location3i eye3i = Location3i.from(eyeLocation);
+        Vector eyeDirection = eyeLocation.getDirection();
+        double minShading = Math.cos(Math.toRadians(coneDegrees) / 2) * LIGHT_ANGLE_REVEAL_MULTIPLIER;
+        double maxSearchSquared = maxSearch * maxSearch;
+        for (Map.Entry<Location3i, ArtifactType> entry : artifacts.entrySet()) {
+            Location3i artifactPos3i = entry.getKey();
+            if (Math.abs(eye3i.x() - artifactPos3i.x()) + Math.abs(eye3i.y() - artifactPos3i.y()) + Math.abs(eye3i.z() - artifactPos3i.z()) > maxSearch + 1) {
+                continue;
+            }
+            Location artifactPos = artifactPos3i.toLocation().add(0.5, 0, 0.5);
+            if (!reveals(eyeLocation, eyeDirection, artifactPos, minShading, maxSearch, maxSearchSquared)) {
+                continue;
+            }
+            reveal(artifactPos, hunter, entry.getValue(), null);
+        }
+        ConeConfig coneConfig = new ConeConfig();
+        coneConfig.setConeDegrees(coneDegrees);
+        coneConfig.setRange(maxSearch);
+        coneConfig.setTraceStep(ARTIFACT_TRACE_STEP);
+
+        Collection<ConeTraceResult> results = manor2.getTracing()
+            .traceCone(new TraceShooter.PlayerTraceShooter(hunter), entity -> manor2.getRoleMap()
+                    .is(entity.getUniqueId(), Artifact.class),
+                Comparator.comparingDouble(ConeTraceResult::r),
+                coneConfig
+            );
+        long atNano = manor2.getLatencyHandler().timeOf(hunter);
+        for (ConeTraceResult result : results) {
+            if (!(manor2.getRoleMap().get(result.target().getUniqueId()) instanceof Artifact artifact) || artifact.started() >= atNano) {
+                continue;
+            }
+            artifact.freeze();
+            reveal(result.target().getLocation(),
+                hunter,
+                playerArtifacts.computeIfAbsent(artifact.getUuid(), ignored -> Util.getRandom(playerArtifactTypes)),
+                artifact
+            );
+        }
+    }
+
+    public Optional<ArtifactSpawnInformation> allocateRegion() {
+        List<Map.Entry<Location3i, ArtifactRegion>> allowedRegions = pickedUpPos.entrySet().stream()
+            .filter(entry -> noNearbyPlayer(entry.getValue()))
+            .toList();
+        if (allowedRegions.isEmpty()) {
+            return Optional.empty();
+        }
+        Map.Entry<Location3i, ArtifactRegion> artifactRegion = Util.getRandom(allowedRegions);
+        for (Location3i placedArtifactPos : artifacts.keySet()) {
+            if (artifactRegion.getValue().boundingBox().contains(placedArtifactPos.toLocation())) {
+                artifacts.remove(placedArtifactPos);
+                ArtifactEntity entity = placedArtifacts.remove(placedArtifactPos);
+                if (entity != null) {
+                    entity.remove();
+                }
+                break;
+            }
+        }
+        occupiedRegions.put(artifactRegion.getValue(), time);
+        return Optional.of(new ArtifactSpawnInformation(artifactRegion.getValue(), artifactRegion.getKey()));
+    }
+
+    private void reveal(Location artifactPos, Player hunter, ArtifactType artifactType, @Nullable Artifact boundToRole) {
+        Location3i artifactPos3i = Location3i.from(artifactPos);
+        if (!(placedArtifacts.get(artifactPos3i) instanceof ArtifactEntity entity)) {
+            hunter.sendActionBar(
+                Util.color(REVEAL_ARTIFACT_MESSAGE)
+            );
+            Util.getRandom(manor2.getDefinition().getArtifactRevealSounds())
+                .playAt(artifactPos);
+            placedArtifacts.put(artifactPos3i, ArtifactEntity.spawn(artifactPos, artifactType, time, boundToRole, boundToRole != null));
+        } else {
+            placedArtifacts.put(artifactPos3i, entity.withTimeStamp(time));
+        }
+        for (ArtifactRegion region : occupiedRegions.keySet()) {
+            if (region.boundingBox().contains(artifactPos)) {
+                break;
+            }
+        }
+    }
+
+    private boolean reveals(Location eyeLocation, Vector eyeDirection, Location artifactPos, double minShading, double maxSearch, double maxSearchSquared) {
+        if (Math.abs(eyeLocation.x() - artifactPos.x()) + Math.abs(eyeLocation.y() - artifactPos.y()) + Math.abs(eyeLocation.z() - artifactPos.z()) > maxSearch + 1) {
+            return false;
+        }
+        Vector diff = artifactPos.toVector().subtract(eyeLocation.toVector());
+        double diffLengthSquared = diff.lengthSquared();
+        Vector diffNormalized = diff.clone().normalize();
+        return !(diffNormalized.dot(eyeDirection) < minShading) && !(maxSearchSquared < diffLengthSquared) &&
+            Tracing.hasClearShot(eyeLocation, diffNormalized, Math.sqrt(diffLengthSquared), ARTIFACT_TRACE_STEP);
+    }
+
+    public int artifactsPickedUp() {
+        return artifactPickedUpCount.get();
+    }
+
 
     private boolean noNearbyPlayer(ArtifactRegion spawningRegion) {
         WorldTiedBoundingBox expanded = (WorldTiedBoundingBox) spawningRegion.boundingBox().clone().expand(MIN_RESPAWN_PLAYER_PROXIMITY);
@@ -173,131 +304,5 @@ public class ArtifactManager {
             }
         }
         return output;
-    }
-
-    public ArtifactPickupResult pickup(@NotNull Location location) {
-        Location3i at = Location3i.from(location);
-        artifacts.remove(at);
-        ArtifactEntity entity = placedArtifacts.remove(at);
-        if (entity == null) {
-            return ArtifactPickupResult.NOT_FOUND;
-        }
-
-        for (ArtifactRegion region : occupiedRegions.keySet()) {
-            if (region.boundingBox().contains(location)) {
-                occupiedRegions.remove(region);
-                regionDelay.put(region, time + ARTIFACT_SPAWN_DELAY);
-                break;
-            }
-        }
-        entity.remove();
-        Util.getRandom(manor2.getDefinition().getArtifactPickupSounds())
-            .playAt(location);
-        artifactPickedUpCount.incrementAndGet();
-        if (entity.boundRole() != null) {
-            entity.boundRole().die();
-            playerArtifacts.remove(entity.boundRole().getUuid());
-            return ArtifactPickupResult.FOUND_PLAYER_ARTIFACT;
-        }
-        return ArtifactPickupResult.FOUND_NORMAL_ARTIFACT;
-    }
-
-    public void tryReveal(Player hunter, double coneDegrees, double maxSearch) {
-        Location eyeLocation = hunter.getEyeLocation();
-        Location3i eye3i = Location3i.from(eyeLocation);
-        Vector eyeDirection = eyeLocation.getDirection();
-        double minShading = Math.cos(Math.toRadians(coneDegrees) / 2) * LIGHT_ANGLE_REVEAL_MULTIPLIER;
-        double maxSearchSquared = maxSearch * maxSearch;
-        for (Map.Entry<Location3i, ArtifactType> entry : artifacts.entrySet()) {
-            Location3i artifactPos3i = entry.getKey();
-            if (Math.abs(eye3i.x() - artifactPos3i.x()) + Math.abs(eye3i.y() - artifactPos3i.y()) + Math.abs(eye3i.z() - artifactPos3i.z()) > maxSearch + 1) {
-                continue;
-            }
-            Location artifactPos = artifactPos3i.toLocation().add(0.5, 0, 0.5);
-            if (!reveals(eyeLocation, eyeDirection, artifactPos, minShading, maxSearch, maxSearchSquared)) {
-                continue;
-            }
-            reveal(artifactPos, hunter, entry.getValue(), null);
-        }
-        ConeConfig coneConfig = new ConeConfig();
-        coneConfig.setConeDegrees(coneDegrees);
-        coneConfig.setRange(maxSearch);
-        coneConfig.setTraceStep(ARTIFACT_TRACE_STEP);
-
-        Collection<ConeTraceResult> results = manor2.getTracing()
-            .traceCone(new TraceShooter.PlayerTraceShooter(hunter), entity -> manor2.getRoleMap()
-                    .is(entity.getUniqueId(), Artifact.class),
-                Comparator.comparingDouble(ConeTraceResult::r),
-                coneConfig
-            );
-        long atNano = manor2.getLatencyHandler().timeOf(hunter);
-        for (ConeTraceResult result : results) {
-            if (!(manor2.getRoleMap().get(result.target().getUniqueId()) instanceof Artifact artifact) || artifact.started() >= atNano) {
-                continue;
-            }
-            artifact.freeze();
-            reveal(result.target().getLocation(),
-                hunter,
-                playerArtifacts.computeIfAbsent(artifact.getUuid(), ignored -> Util.getRandom(playerArtifactTypes)),
-                artifact
-            );
-        }
-    }
-
-    public Optional<ArtifactRegion> allocateRegion() {
-        List<ArtifactRegion> allowedRegions = usedRegions.stream()
-            .filter(this::noNearbyPlayer)
-            .toList();
-        if (allowedRegions.isEmpty()) {
-            return Optional.empty();
-        }
-        ArtifactRegion artifactRegion = Util.getRandom(allowedRegions);
-        for (Location3i placedArtifactPos : artifacts.keySet()) {
-            if (artifactRegion.boundingBox().contains(placedArtifactPos.toLocation())) {
-                artifacts.remove(placedArtifactPos);
-                ArtifactEntity entity = placedArtifacts.remove(placedArtifactPos);
-                if (entity != null) {
-                    entity.remove();
-                }
-                break;
-            }
-        }
-        occupiedRegions.put(artifactRegion, time);
-        return Optional.of(artifactRegion);
-    }
-
-    private void reveal(Location artifactPos, Player hunter, ArtifactType artifactType, @Nullable Artifact boundToRole) {
-        Location3i artifactPos3i = Location3i.from(artifactPos);
-        if (!(placedArtifacts.get(artifactPos3i) instanceof ArtifactEntity entity)) {
-            hunter.sendActionBar(
-                Util.color(REVEAL_ARTIFACT_MESSAGE)
-            );
-            Util.getRandom(manor2.getDefinition().getArtifactRevealSounds())
-                .playAt(artifactPos);
-            placedArtifacts.put(artifactPos3i, ArtifactEntity.spawn(artifactPos, artifactType, time, boundToRole));
-        } else {
-            placedArtifacts.put(artifactPos3i, entity.withTimeStamp(time));
-        }
-        for (ArtifactRegion region : occupiedRegions.keySet()) {
-            if (region.boundingBox().contains(artifactPos)) {
-                usedRegions.add(region);
-                break;
-            }
-        }
-    }
-
-    private boolean reveals(Location eyeLocation, Vector eyeDirection, Location artifactPos, double minShading, double maxSearch, double maxSearchSquared) {
-        if (Math.abs(eyeLocation.x() - artifactPos.x()) + Math.abs(eyeLocation.y() - artifactPos.y()) + Math.abs(eyeLocation.z() - artifactPos.z()) > maxSearch + 1) {
-            return false;
-        }
-        Vector diff = artifactPos.toVector().subtract(eyeLocation.toVector());
-        double diffLengthSquared = diff.lengthSquared();
-        Vector diffNormalized = diff.clone().normalize();
-        return !(diffNormalized.dot(eyeDirection) < minShading) && !(maxSearchSquared < diffLengthSquared) &&
-            Tracing.hasClearShot(eyeLocation, diffNormalized, Math.sqrt(diffLengthSquared), ARTIFACT_TRACE_STEP);
-    }
-
-    public int artifactsPickedUp() {
-        return artifactPickedUpCount.get();
     }
 }

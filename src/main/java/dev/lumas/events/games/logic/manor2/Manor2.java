@@ -16,6 +16,7 @@ import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
 import dev.lumas.events.games.logic.manor2.roles.RoleHitbox;
+import dev.lumas.events.games.logic.manor2.roles.Spectator;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
@@ -28,6 +29,9 @@ import dev.lumas.events.utility.latency.tracing.Tracing;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.damage.DamageType;
@@ -38,6 +42,7 @@ import org.bukkit.entity.Trident;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 
 import java.util.ArrayList;
@@ -99,6 +104,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private final ArtifactManager artifactManager;
 
     private CountdownBossBar timer;
+    private Component gameOverSubtitle = Util.color("Game ended by force", Util.TEXT_COLOR);
+
 
     public Manor2(Manor2Definition definition) {
         super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, false, false);
@@ -165,7 +172,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     @Override
     protected void onRunnable(long timeLeft) {
         if (timeLeft <= TimeUnit.SECONDS.toMillis(END_DELAY_SECONDS)) {
-            sendAudienceTitle("<yellow>Game Over", "<gold>It's a tie!");
+            gameOverSubtitle = Util.color("<gold>It's a tie!", Util.TEXT_COLOR);
             this.stop();
         }
         recorder.tick();
@@ -183,7 +190,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         boolean gameOver = roleMap.getMatching(Ghost.class).isEmpty() || roleMap.getMatching(GhostHunter.class).isEmpty();
         ManorTeam winner = roleMap.getMatching(Ghost.class).isEmpty() ? ManorTeam.HUNTERS : ManorTeam.GHOSTS;
         if (gameOver) {
-            sendGameOver(winner);
+            gameOverSubtitle = Util.color("<gold> <winner> has won!", Util.TEXT_COLOR, Placeholder.component("winner", winner.displayName()));
             this.stop();
         }
     }
@@ -197,13 +204,15 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         packetGlow.stop();
         ghostAttacks.stop();
         recorder.stopRecording();
+        artifactManager.stop();
 
         Executors.sync(definition.getHunterStartLocations().getFirst(), blockCache::shutdown);
 
         List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
         for (Manor2Role role : roleMap) {
-            completableFutures.add(CompletableFuture.runAsync(() -> role.retire(this), Executors.executor(role)));
+            completableFutures.add(roleMap.retire(role));
         }
+        audience.showTitle(Title.title(Util.color("<yellow>Game Over", Util.TEXT_COLOR), gameOverSubtitle));
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
             .thenRun(() -> scoreboard.showScores(audience))
             .exceptionally(exception -> {
@@ -266,45 +275,38 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     @EventHandler
     public void onPlayerInteractEntity(PlayerInteractAtEntityEvent event) {
         this.ensureNotIllegal();
-        if (roleMap.as(event.getPlayer().getUniqueId(), GhostHunter.class) instanceof GhostHunter ghostHunter) {
-            ArtifactEntity.fromEntity(event.getRightClicked())
-                .ifPresent(item -> {
-                    ArtifactPickupResult result = artifactManager.pickup(event.getRightClicked().getLocation());
-                    if (result != ArtifactPickupResult.NOT_FOUND) {
-                        event.getPlayer().getInventory().addItem(item);
-                        if (result == ArtifactPickupResult.FOUND_PLAYER_ARTIFACT) {
-                            scoreboard.playerArtifactFound(ghostHunter);
-                        } else {
-                            scoreboard.artifactFound(ghostHunter);
-                        }
-                    } else {
-                        event.getRightClicked().getLocation()
-                            .getNearbyEntities(1, 1, 1)
-                            .stream()
-                            .filter(ArtifactEntity::isArtifact)
-                            .forEach(Entity::remove);
-                    }
-                });
-        }
-        event.setCancelled(true);
+        tryPickupArtifact(event.getPlayer(), event.getRightClicked());
     }
 
     @EventHandler
-    public void onPlayerInteractEntity(PrePlayerAttackEntityEvent event) {
+    public void onPlayerAttackEntity(PrePlayerAttackEntityEvent event) {
         this.ensureNotIllegal();
-        if (roleMap.as(event.getPlayer().getUniqueId(), GhostHunter.class) instanceof GhostHunter ghostHunter) {
-            ArtifactEntity.fromEntity(event.getAttacked())
+        tryPickupArtifact(event.getPlayer(), event.getAttacked());
+    }
+
+    @EventHandler
+    public void onItemConsume(PlayerItemConsumeEvent event) {
+        this.ensureNotIllegal();
+        event.setCancelled(true);
+        if (roleMap.get(event.getPlayer().getUniqueId()) instanceof Spectator spectator) {
+            spectator.onUseItem(event.getItem());
+        }
+    }
+
+    private void tryPickupArtifact(Player player, Entity entity) {
+        if (roleMap.as(player.getUniqueId(), GhostHunter.class) instanceof GhostHunter ghostHunter) {
+            ArtifactEntity.fromEntity(entity)
                 .ifPresent(item -> {
-                    ArtifactPickupResult result = artifactManager.pickup(event.getAttacked().getLocation());
+                    ArtifactPickupResult result = artifactManager.pickup(entity.getLocation());
                     if (result != ArtifactPickupResult.NOT_FOUND) {
-                        event.getPlayer().getInventory().addItem(item);
+                        player.getInventory().addItem(item);
                         if (result == ArtifactPickupResult.FOUND_PLAYER_ARTIFACT) {
                             scoreboard.playerArtifactFound(ghostHunter);
                         } else {
                             scoreboard.artifactFound(ghostHunter);
                         }
                     } else {
-                        event.getAttacked().getLocation()
+                        entity.getLocation()
                             .getNearbyEntities(1, 1, 1)
                             .stream()
                             .filter(ArtifactEntity::isArtifact)
@@ -312,11 +314,6 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                     }
                 });
         }
-        event.setCancelled(true);
-    }
-
-    private void sendGameOver(ManorTeam winner) {
-        sendAudienceTitle("<yellow>Game Over", "<gold>" + winner.displayName() + " has won!");
     }
 
     private void showParticipantsToEachOther() {

@@ -6,6 +6,8 @@ import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.artifact.ArtifactManager;
 import dev.lumas.events.games.logic.manor2.artifact.ArtifactRegion;
 import dev.lumas.events.games.logic.manor2.attack.NiceRestraint;
+import dev.lumas.events.games.logic.manor2.light.Visibility;
+import dev.lumas.events.games.logic.manor2.roles.predicate.IsRolePredicate;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
@@ -39,11 +41,13 @@ public class Artifact extends Manor2Role {
     private ArtifactRegion region = null;
     private Manor2 manor2;
     private AtomicLong revealReadyTime = new AtomicLong(Long.MAX_VALUE);
+    private final Visibility visibility;
     private volatile boolean frozen = false;
 
     protected Artifact(Manor2 manor2, EventPlayer eventPlayer) {
         super(eventPlayer);
         this.manor2 = manor2;
+        this.visibility = new Visibility(manor2, eventPlayer);
     }
 
     @Override
@@ -54,12 +58,12 @@ public class Artifact extends Manor2Role {
         if (region == null) {
             ArtifactManager manager = manor2.getArtifactManager();
             manager.allocateRegion()
-                .ifPresentOrElse(region -> {
-                    this.region = region;
+                .ifPresentOrElse(regionInfo -> {
+                    this.region = regionInfo.region();
                     WorldBorder worldBorder = Bukkit.createWorldBorder();
                     worldBorder.setCenter(region.boundingBox().getCenterLocation());
                     worldBorder.setSize(region.boundingBox().getWidthX());
-                    Executors.teleportSafely(player, region.randomPos().toLocation())
+                    Executors.teleportSafely(player, regionInfo.position().toLocation().add(0.5, 0, 0.5))
                         .thenAcceptAsync(_ -> {
                             manor2.getRecorder().clearTrail(player);
                             revealReadyTime.set(System.nanoTime());
@@ -74,6 +78,7 @@ public class Artifact extends Manor2Role {
         }
         operatePlayer(player1 -> {
             int previous = player1.getFreezeTicks();
+            visibility.setVanished(new IsRolePredicate(GhostHunter.class));
             if (frozen) {
                 player1.setFreezeTicks(Math.min(previous + FREEZE_TICKS_INCREMENT, player.getMaxFreezeTicks()));
             } else {
@@ -97,12 +102,12 @@ public class Artifact extends Manor2Role {
             return;
         }
         AttributeInstance scale = player.getAttribute(Attribute.SCALE);
+        player.setInvisible(true);
         if (scale != null) {
             scale.addModifier(new AttributeModifier(
                 SCALE_CHANGE, 1d / player.getHeight() - 1, AttributeModifier.Operation.ADD_NUMBER
             ));
         }
-        //player.setInvisible(true); TODO: use bukkit vanish apis #setInvisible does not work on players
     }
 
     @Override
@@ -111,8 +116,9 @@ public class Artifact extends Manor2Role {
         if (player == null) {
             return;
         }
+        player.setInvisible(false);
+        visibility.stop();
         NiceRestraint.release(player);
-        //player.setInvisible(false);
         player.setWorldBorder(null);
         AttributeInstance scale = player.getAttribute(Attribute.SCALE);
         if (scale != null) {
@@ -142,5 +148,4 @@ public class Artifact extends Manor2Role {
         this.frozen = false;
         eventPlayer.operatePlayer(NiceRestraint::release);
     }
-
 }

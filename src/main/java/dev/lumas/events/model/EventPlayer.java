@@ -81,7 +81,7 @@ public class EventPlayer implements Serializable, Scorer {
         if (player == null) {
             return;
         }
-        player.sendMessage(m.colorIfAbsent(TextColor.fromHexString(Util.TEXT_COLOR)));
+        player.sendMessage(m.colorIfAbsent(Util.TEXT_COLOR));
     }
 
     public void sendActionBar(String m) {

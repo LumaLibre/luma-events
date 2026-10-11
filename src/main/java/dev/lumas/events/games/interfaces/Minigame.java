@@ -13,6 +13,7 @@ import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Externals;
 import dev.lumas.events.utility.JoinTrace;
 import dev.lumas.events.utility.Util;
+import dev.lumas.events.utility.effects.SoundDefinition;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
@@ -21,7 +22,7 @@ import me.kteq.hiddenarmor.HiddenArmorAPI;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -136,8 +137,8 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             }
             // TODO: remove this:
             extraListeners.stream()
-                    .filter(Objects::nonNull)
-                    .forEach(this::unregisterEvents);
+                .filter(Objects::nonNull)
+                .forEach(this::unregisterEvents);
             Util.broadcast("Not enough players joined to start " + this.name, MINIGAME_PARTICIPANT_PERM);
             return false;
         }
@@ -158,12 +159,15 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
         registerEvents(this);
         this.audience = Audience.audience(participants.stream()
-                .map(EventPlayer::getPlayer).filter(Objects::nonNull).toList());
+            .map(EventPlayer::getPlayer).filter(Objects::nonNull).toList());
         this.startTime = System.currentTimeMillis();
         extraListeners.stream()
-                .filter(Objects::nonNull)
-                .forEach(this::registerEvents);
+            .filter(Objects::nonNull)
+            .forEach(this::registerEvents);
 
+        if (EventMain.getConfiguration().getMinigameStart() instanceof SoundDefinition definition) {
+            definition.playFor(audience);
+        }
         unsafe(this::handleStart);
         if (async) {
             this.repeatingAsync(0, this.tickInterval);
@@ -193,6 +197,9 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         this.stopping = true;
 
         try {
+            if (EventMain.getConfiguration().getMinigameStop() instanceof SoundDefinition definition) {
+                definition.playFor(audience);
+            }
             this.handleStop();
         } catch (Throwable throwable) {
             throwable.printStackTrace();
@@ -253,15 +260,15 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
                     return;
                 }
                 EventMain.getInstance().getLogger().warning("Join teleport failed for " + player.getUuid()
-                        + " (success=" + success + ", ex=" + throwable + "), removing them from " + this.name);
+                    + " (success=" + success + ", ex=" + throwable + "), removing them from " + this.name);
                 this.removeParticipant(player, false);
                 player.sendMessage("<red>Could not move you into the minigame, so you were removed from it.");
             });
         }
 
         player.sendTitle( // TODO: coloring
-                "<yellow>" + this.name,
-                "<red>" + this.description
+            "<yellow>" + this.name,
+            "<red>" + this.description
         );
         return true;
     }
@@ -285,7 +292,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             });
         }
         this.audience = Audience.audience(participants.stream()
-                .map(EventPlayer::getPlayer).filter(Objects::nonNull).toList());
+            .map(EventPlayer::getPlayer).filter(Objects::nonNull).toList());
         return true;
     }
 
@@ -294,18 +301,18 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         if (!tokenPayout.isNormal()) Util.broadcast(describePayout(tokenPayout), MINIGAME_PARTICIPANT_PERM);
 
         Collection<? extends Player> players = Bukkit.getOnlinePlayers()
-                .stream()
-                .filter(player -> player.hasPermission(MINIGAME_PARTICIPANT_PERM))
-                .toList();
+            .stream()
+            .filter(player -> player.hasPermission(MINIGAME_PARTICIPANT_PERM))
+            .toList();
 
         this.queueBossbar = CountdownBossBar.builder()
-                .title("<b><gradient:#3F255E:#9f2e51:#611e4e:#331D4D><b>" + name + " Starting in</b><gray>:</gray> <b>%ss</b></gradient>")
-                .seconds(seconds)
-                .color(BossBar.Color.RED)
-                .callback(this::start)
-                .audience(Audience.audience(players))
-                .build()
-                .start();
+            .title("<b><gradient:#3F255E:#9f2e51:#611e4e:#331D4D><b>" + name + " Starting in</b><gray>:</gray> <b>%ss</b></gradient>")
+            .seconds(seconds)
+            .color(BossBar.Color.RED)
+            .callback(this::start)
+            .audience(Audience.audience(players))
+            .build()
+            .start();
         // newMinigame runs on the async scheduler, so read each player's location on the region that owns them
         players.forEach(player -> Executors.runSync(player,
             () -> player.playSound(player.getLocation(), Sound.ENTITY_EVOKER_PREPARE_WOLOLO, 1f, 0.75f)));
@@ -369,28 +376,28 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         if (this.audience == null) {
             return;
         }
-        this.audience.sendMessage(Util.color(Util.PREFIX + m, TextColor.fromHexString(Util.TEXT_COLOR)));
+        this.audience.sendMessage(Util.color(Util.PREFIX + m, Util.TEXT_COLOR));
     }
 
     public void sendAudienceMessage(Component m) {
         if (this.audience == null) {
             return;
         }
-        this.audience.sendMessage(Util.color(Util.PREFIX).append(m).colorIfAbsent(TextColor.fromHexString(Util.TEXT_COLOR)));
+        this.audience.sendMessage(Util.color(Util.PREFIX).append(m).colorIfAbsent(Util.TEXT_COLOR));
     }
 
-    public void sendAudienceTitle(String title, String subtitle) {
+    public void sendAudienceTitle(String title, String subtitle, TagResolver... tagResolvers) {
         if (this.audience == null) {
             return;
         }
-        this.audience.showTitle(Util.title(Util.getTextColor() + title, Util.getTextColor() + subtitle));
+        this.audience.showTitle(Util.title(title, subtitle, Util.TEXT_COLOR, tagResolvers));
     }
 
     public void sendAudienceTitle(String title, String subtitle, Title.Times times) {
         if (this.audience == null) {
             return;
         }
-        this.audience.showTitle(Util.title(Util.getTextColor() + title, Util.getTextColor() + subtitle, times));
+        this.audience.showTitle(Util.title(title, subtitle, times, Util.TEXT_COLOR));
     }
 
     public void playAudienceSound(Sound sound, float volume, float pitch) {
@@ -413,9 +420,9 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
     protected boolean isParticipant(Player player) {
         return this.participants.stream()
-                .map(EventPlayer::getUuid)
-                .filter(Objects::nonNull)
-                .anyMatch(uuid -> uuid.equals(player.getUniqueId()));
+            .map(EventPlayer::getUuid)
+            .filter(Objects::nonNull)
+            .anyMatch(uuid -> uuid.equals(player.getUniqueId()));
     }
 
     protected boolean isInBoundingBox(EventPlayer... players) {
@@ -465,6 +472,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
     protected abstract void handleStart();
 
     protected abstract void onRunnable(long timeLeft);
+
     // Minigame stops, returns true if successful
     protected abstract void handleStop();
 
