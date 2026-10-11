@@ -83,7 +83,7 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
         award(attribution, ctx.getDefinition().getArtifactFoundScore());
         if (eventPlayer.getEventPlayer().getPlayer() instanceof Player player) {
             player.sendMessage(Util.color(
-                Util.getRandom(ARTIFACT_FOUND_MESSAGES),
+                Util.PREFIX + Util.getRandom(ARTIFACT_FOUND_MESSAGES),
                 Util.TEXT_COLOR
             ));
         }
