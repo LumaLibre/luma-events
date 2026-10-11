@@ -13,6 +13,7 @@ import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Externals;
 import dev.lumas.events.utility.JoinTrace;
 import dev.lumas.events.utility.Util;
+import dev.lumas.events.utility.effects.SoundDefinition;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
@@ -164,6 +165,9 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             .filter(Objects::nonNull)
             .forEach(this::registerEvents);
 
+        if (EventMain.getConfiguration().getMinigameStart() instanceof SoundDefinition definition) {
+            definition.playFor(audience);
+        }
         unsafe(this::handleStart);
         if (async) {
             this.repeatingAsync(0, this.tickInterval);
@@ -193,6 +197,9 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         this.stopping = true;
 
         try {
+            if (EventMain.getConfiguration().getMinigameStop() instanceof SoundDefinition definition) {
+                definition.playFor(audience);
+            }
             this.handleStop();
         } catch (Throwable throwable) {
             throwable.printStackTrace();

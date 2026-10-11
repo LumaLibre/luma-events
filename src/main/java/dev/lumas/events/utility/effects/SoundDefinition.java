@@ -1,6 +1,7 @@
 package dev.lumas.events.utility.effects;
 
 
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.sound.Sound;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
@@ -12,9 +13,9 @@ public record SoundDefinition(Sound.Type sound, float volume, float pitch, @Null
 
     public Sound toSound() {
         Sound.Builder builder = Sound.sound()
-                .type(sound)
-                .volume(volume)
-                .pitch(pitch);
+            .type(sound)
+            .volume(volume)
+            .pitch(pitch);
         if (seed != null) {
             builder.seed(seed);
         }
@@ -27,5 +28,9 @@ public record SoundDefinition(Sound.Type sound, float volume, float pitch, @Null
 
     public void playAt(Entity entity) {
         entity.getWorld().playSound(toSound(), entity);
+    }
+
+    public void playFor(Audience audience) {
+        audience.playSound(toSound());
     }
 }
