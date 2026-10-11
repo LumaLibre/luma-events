@@ -271,12 +271,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             event.setCancelled(true);
         }
     }
-
-    @EventHandler
-    public void onPlayerInteract() {
-
-    }
-
+    
     @EventHandler
     public void onPlayerInteractEntity(PlayerInteractAtEntityEvent event) {
         this.ensureNotIllegal();
