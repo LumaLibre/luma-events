@@ -6,6 +6,7 @@ import dev.lumas.events.games.logic.manor2.attack.NiceRestraint;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Util;
 import dev.lumas.glowapi.model.GlowColorManager;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -22,6 +23,10 @@ public abstract class Manor2Role extends MinigameRole {
         if (player == null) {
             return;
         }
+
+        if (player.getGameMode() != GameMode.SURVIVAL) {
+            player.setGameMode(GameMode.SURVIVAL);
+        }
         Inventory inventory = player.getInventory();
         for (int i = 0; i < inventory.getSize(); i++) {
             if (inventory.getItem(i) instanceof ItemStack itemStack && Util.hasPersistentKey(itemStack, Manor2.ITEM_TAG)) {
@@ -36,7 +41,6 @@ public abstract class Manor2Role extends MinigameRole {
         manor2.getGhostAttacks().abort(player.getUniqueId());
         NiceRestraint.release(player); // In case a grab never got to free them
         manor2.getRecorder().clearTrail(player);
-        player.setInvisible(false);
     }
 
     public abstract void tick();

@@ -6,6 +6,7 @@ import dev.lumas.events.utility.Util;
 import dev.lumas.glowapi.model.GlowColorManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 
 public class Spectator extends Manor2Role {
@@ -31,15 +32,13 @@ public class Spectator extends Manor2Role {
 
     @Override
     public void initiatePlay() {
-        Player player = eventPlayer.getPlayer();
-        if (player == null) {
-            return;
-        }
-        GlowColorManager.getInstance().update(player);
-        manor2.getPacketGlow().removeTarget(player);
-        manor2.getPacketGlow().addViewer(player);
-        player.setInvisible(true);
-        player.showTitle(Title.title(Component.empty(), Util.color(SPECTATOR_INIT_MESSAGE)));
+        operatePlayer(player -> {
+            GlowColorManager.getInstance().update(player);
+            manor2.getPacketGlow().removeTarget(player);
+            manor2.getPacketGlow().addViewer(player);
+            player.showTitle(Title.title(Component.empty(), Util.color(SPECTATOR_INIT_MESSAGE)));
+            player.setGameMode(GameMode.SPECTATOR);
+        });
     }
 
     @Override
@@ -48,7 +47,7 @@ public class Spectator extends Manor2Role {
         if (player == null) {
             return;
         }
-        player.setInvisible(false);
+        player.setGameMode(GameMode.SURVIVAL);
         super.retire(manor2);
     }
 }

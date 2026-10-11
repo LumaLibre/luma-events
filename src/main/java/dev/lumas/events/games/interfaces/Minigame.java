@@ -24,6 +24,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Registry;
 import org.bukkit.Sound;
@@ -142,10 +143,17 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         }
         this.onPreStart();
 
-        if (HIDDEN_ARMOR_AVAILABLE) {
-            for (EventPlayer participant : this.participants) {
-                participant.operatePlayer(HiddenArmorAPI::forceShow);
-            }
+        for (EventPlayer participant : this.participants) {
+            participant.minigameDirty(true);
+            participant.operatePlayer(player -> {
+                if (player.getGameMode() != GameMode.SURVIVAL) {
+                    player.setGameMode(GameMode.SURVIVAL);
+                }
+
+                if (HIDDEN_ARMOR_AVAILABLE) {
+                    HiddenArmorAPI.forceShow(player);
+                }
+            });
         }
 
         registerEvents(this);
@@ -196,10 +204,16 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             throwable.printStackTrace();
         }
 
-        if (HIDDEN_ARMOR_AVAILABLE) {
-            for (EventPlayer participant : this.participants) {
-                participant.operatePlayer(HiddenArmorAPI::clearForceShow);
-            }
+        for (EventPlayer participant : this.participants) {
+            participant.operatePlayer(player -> {
+                if (player.getGameMode() != GameMode.SURVIVAL) {
+                    player.setGameMode(GameMode.SURVIVAL);
+                }
+                if (HIDDEN_ARMOR_AVAILABLE) {
+                    HiddenArmorAPI.clearForceShow(player);
+                }
+            });
+            participant.minigameDirty(false);
         }
 
         this.active = false;
@@ -254,7 +268,15 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
     public boolean removeParticipant(EventPlayer player, boolean doTeleport) {
         this.participants.remove(player);
-        if (HIDDEN_ARMOR_AVAILABLE) player.operatePlayer(HiddenArmorAPI::clearForceShow);
+        player.operatePlayer(bukkitPlayer -> {
+            if (bukkitPlayer.getGameMode() != GameMode.SURVIVAL) {
+                bukkitPlayer.setGameMode(GameMode.SURVIVAL);
+            }
+            if (HIDDEN_ARMOR_AVAILABLE) {
+                player.operatePlayer(HiddenArmorAPI::clearForceShow);
+            }
+        });
+        player.minigameDirty(false);
         Location loc = this.getGameDropOffLocation();
         if (loc != null && doTeleport) {
             player.operatePlayer(bukkitPlayer -> {

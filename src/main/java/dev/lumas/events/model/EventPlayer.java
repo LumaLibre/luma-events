@@ -42,7 +42,7 @@ public class EventPlayer implements Serializable, Scorer {
     private boolean claimedCharm;
     private long secondsPlayed;
     private boolean townInviteRewardClaimed;
-    private boolean disconnectedFromMinigame;
+    private boolean minigameDirty;
 
 
     // Initial creation
@@ -56,12 +56,12 @@ public class EventPlayer implements Serializable, Scorer {
         );
     }
 
-    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores, boolean claimedCharm, long secondsPlayed, boolean disconnectedFromMinigame) {
+    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores, boolean claimedCharm, long secondsPlayed, boolean minigameDirty) {
         this.uuid = uuid;
         this.scores = scores;
         this.claimedCharm = claimedCharm;
         this.secondsPlayed = secondsPlayed;
-        this.disconnectedFromMinigame = disconnectedFromMinigame;
+        this.minigameDirty = minigameDirty;
     }
 
     public void sendMessage(String m) {
@@ -217,16 +217,24 @@ public class EventPlayer implements Serializable, Scorer {
     }
 
 
+    public synchronized boolean minigameDirty() {
+        return this.minigameDirty;
+    }
+
+    public synchronized void minigameDirty(boolean dirty) {
+        this.minigameDirty = dirty;
+    }
+
     // TODO: collapse these methods
     public synchronized void disconnectedFromMinigame() {
-        this.disconnectedFromMinigame = true;
+        this.minigameDirty = true;
     }
 
     public synchronized boolean wasDisconnectedFromMinigame() {
-        return this.disconnectedFromMinigame;
+        return this.minigameDirty;
     }
 
     public synchronized void resetDisconnectedFromMinigame() {
-        this.disconnectedFromMinigame = false;
+        this.minigameDirty = false;
     }
 }

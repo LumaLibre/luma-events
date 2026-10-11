@@ -102,7 +102,7 @@ public class Artifact extends Manor2Role {
                 SCALE_CHANGE, 1d / player.getHeight() - 1, AttributeModifier.Operation.ADD_NUMBER
             ));
         }
-        player.setInvisible(true);
+        //player.setInvisible(true); TODO: use bukkit vanish apis #setInvisible does not work on players
     }
 
     @Override
@@ -112,7 +112,7 @@ public class Artifact extends Manor2Role {
             return;
         }
         NiceRestraint.release(player);
-        player.setInvisible(false);
+        //player.setInvisible(false);
         player.setWorldBorder(null);
         AttributeInstance scale = player.getAttribute(Attribute.SCALE);
         if (scale != null) {
