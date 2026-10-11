@@ -4,17 +4,23 @@ import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.vector.Location3i;
 import dev.lumas.events.utility.vector.Vector2i;
+import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public record ArtifactRegion(Map<Vector2i, Integer> floorMap, WorldTiedBoundingBox boundingBox) {
 
     private static final int MINIMUM_EMPTY_SPACE_BETWEEN_FLOORS = 4;
     private static final int MIN_FLOOR_AREA = 4;
+    private static final Set<Material> BANNED_BLOCKS = Set.of(
+        Material.BARRIER
+    );
 
 
     public static List<ArtifactRegion> within(World world, int x1, int y1, int z1, int x2, int y2, int z2) {
@@ -25,8 +31,12 @@ public record ArtifactRegion(Map<Vector2i, Integer> floorMap, WorldTiedBoundingB
             List<Vector2i> freeLevelSpots = new ArrayList<>();
             for (int x = x1; x <= x2; x++) {
                 for (int z = z1; z <= z2; z++) {
+                    Block block = world.getBlockAt(x, y, z);
                     Vector2i pos = new Vector2i(x, z);
-                    if (ArtifactEntity.canBeContainedWithin(world.getBlockAt(x, y, z))) {
+                    if (BANNED_BLOCKS.contains(block.getType())) {
+                        emptySpace.remove(pos);
+                        continue;
+                    } else if (ArtifactEntity.canBeContainedWithin(block)) {
                         emptySpace.merge(pos, 1, Integer::sum);
                         continue;
                     } else if (emptySpace.getOrDefault(pos, 0) >= MINIMUM_EMPTY_SPACE_BETWEEN_FLOORS) {

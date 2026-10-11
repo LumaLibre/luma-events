@@ -16,6 +16,7 @@ import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
 import dev.lumas.events.games.logic.manor2.roles.RoleHitbox;
+import dev.lumas.events.games.logic.manor2.roles.Spectator;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
@@ -41,6 +42,7 @@ import org.bukkit.entity.Trident;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 
 import java.util.ArrayList;
@@ -187,7 +189,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         boolean gameOver = roleMap.getMatching(Ghost.class).isEmpty() || roleMap.getMatching(GhostHunter.class).isEmpty();
         ManorTeam winner = roleMap.getMatching(Ghost.class).isEmpty() ? ManorTeam.HUNTERS : ManorTeam.GHOSTS;
-        if (gameOver) {
+        if (gameOver && false) {
             gameOverSubtitle = Util.color("<gold> <winner> has won!", Util.TEXT_COLOR, Placeholder.component("winner", winner.displayName()));
             this.stop();
         }
@@ -285,6 +287,15 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     public void onPlayerAttackEntity(PrePlayerAttackEntityEvent event) {
         this.ensureNotIllegal();
         tryPickupArtifact(event.getPlayer(), event.getAttacked());
+    }
+
+    @EventHandler
+    public void onItemConsume(PlayerItemConsumeEvent event) {
+        this.ensureNotIllegal();
+        event.setCancelled(true);
+        if (roleMap.get(event.getPlayer().getUniqueId()) instanceof Spectator spectator) {
+            spectator.onUseItem(event.getItem());
+        }
     }
 
     private void tryPickupArtifact(Player player, Entity entity) {
