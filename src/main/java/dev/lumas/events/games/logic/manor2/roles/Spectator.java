@@ -15,6 +15,7 @@ import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import io.papermc.paper.persistence.PersistentDataContainerView;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.title.Title;
@@ -36,6 +37,11 @@ import java.util.stream.Stream;
 public class Spectator extends Manor2Role {
 
     private static final String SPECTATOR_INIT_MESSAGE = "<red>You are now a spectator";
+    private static final String[] EAT_ME = {
+        "Eat me!",
+        "For eating.",
+        "Take a <dark_red>bite"
+    };
     private static final String SPECTATOR_MESSAGE = "<gray>Spectating...";
     private static final NamespacedKey SCORE_TARGET = Preconditions.checkNotNull(NamespacedKey.fromString("manor2/score_target", EventMain.getInstance()));
     private static final String PLAYER_SCORE_ITEM = "player_score_item";
@@ -124,12 +130,19 @@ public class Spectator extends Manor2Role {
         itemStack.setData(DataComponentTypes.PROFILE, ResolvableProfile.resolvableProfile(player.getPlayerProfile()));
         itemStack.setData(DataComponentTypes.LORE, ItemLore.lore(
             List.of(
-                Util.color("<gradient:gold:yellow>Eat me to teleport"),
+                Util.color("<gradient:gold:yellow>" + Util.getRandom(EAT_ME)),
                 Util.color(""),
-                Util.color("This players score: <gold><score>", NamedTextColor.GRAY, Formatter.number("score", score))
+                Util.color(
+                    "<player>'s score: <gold><score>",
+                    NamedTextColor.GRAY,
+                    Formatter.number("score", score),
+                    Placeholder.component("player", player.displayName())
+                )
             )
         ));
-        itemStack.setData(DataComponentTypes.CUSTOM_NAME, player.displayName());
+        itemStack.setData(DataComponentTypes.CUSTOM_NAME, player.displayName()
+            .decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE)
+        );
         itemStack.editPersistentDataContainer(pdc -> {
             pdc.set(Manor2.ITEM_TAG, PersistentDataType.STRING, PLAYER_SCORE_ITEM);
             pdc.set(SCORE_TARGET, PersistentDataType.STRING, player.getUniqueId().toString());

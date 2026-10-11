@@ -13,6 +13,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import org.bukkit.entity.Player;
 
 import java.util.HashMap;
 import java.util.List;
@@ -23,19 +24,25 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ManorScoreboard extends Scoreboard<EventPlayer> {
 
     private static final List<String> GHOST_KILLED_MESSAGES = List.of(
-        "<gray><white><ghost></white> got blinded to death by <red><participants></red>",
-        "<gray><white><ghost></white> got their sheet stolen by <red><participants></red> (death)"
+        "<white><ghost></white> got blinded to death by <red><participants></red>",
+        "<white><ghost></white> got their sheet stolen by <red><participants></red> (death)",
+        "<white><ghost></white> experienced to many photons by <red><participants></red> (death)"
     );
     private static final List<String> HUNTER_KILLED_MESSAGES = List.of(
-        "<gray><red><hunter></red> got haunted to death by <white><participants></white>"
+        "<red><hunter></red> got haunted to death by <white><participants></white>",
+        "<red><hunter></red> forgot how to breath by <white><participants></white>",
+        "<red><hunter></red> completed <white><participants></white>'s bucket list (death)"
     );
     private static final List<String> ARTIFACT_FOUND_MESSAGES = List.of(
-        "<gray><red><participants></red> found a completely worthless artifact",
-        "<gray><red><participants></red> found a dusty relic"
+        "You found a completely worthless artifact",
+        "You found a dusty relic",
+        "You found something, but can't get yourself to let it go",
+        "You found an artifact, but it might not be that useful"
     );
     private static final List<String> PLAYER_ARTIFACT_FOUND_MESSAGES = List.of(
-        "<gray><red><participants></red> found an artifact in perfect condition",
-        "<gray><red><participants></red> found a nice looking family heirloom"
+        "<red><participants></red> found an artifact in perfect condition",
+        "<red><participants></red> found a nice looking family heirloom",
+        "<red><participants></red> found a national treasure"
     );
     private static final String SCORE_RECORD = "<green><gold>#<position></gold> is <red><scorer></red> with <gold><points> points</gold>! (<team>)";
     private static final int TOP_SCORERS = 5;
@@ -74,9 +81,12 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
         Map<UUID, Double> attribution = Map.of(eventPlayer.getUuid(), 100D);
 
         award(attribution, ctx.getDefinition().getArtifactFoundScore());
-        announce(ARTIFACT_FOUND_MESSAGES,
-            Placeholder.component("participants", participantsDisplay(attribution))
-        );
+        if (eventPlayer.getEventPlayer().getPlayer() instanceof Player player) {
+            player.sendMessage(Util.color(
+                Util.getRandom(ARTIFACT_FOUND_MESSAGES),
+                Util.TEXT_COLOR
+            ));
+        }
     }
 
     public void playerArtifactFound(GhostHunter eventPlayer) {
@@ -132,7 +142,11 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
     }
 
     private void announce(List<String> messages, TagResolver... resolvers) {
-        ctx.getAudience().sendMessage(MiniMessage.miniMessage().deserialize(Util.PREFIX + Util.getRandom(messages), resolvers));
+        ctx.getAudience().sendMessage(Util.color(
+            Util.PREFIX + Util.getRandom(messages),
+            Util.TEXT_COLOR,
+            resolvers
+        ));
     }
 
     private static Component participantsDisplay(Map<UUID, Double> attribution) {

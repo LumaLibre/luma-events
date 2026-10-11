@@ -12,6 +12,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 @ConfigSerializable
 public final class ArtifactType {
@@ -19,6 +20,8 @@ public final class ArtifactType {
     private ItemType itemType;
     private String displayName;
     private List<String> lore;
+
+    private static final String UNUSABLE_ITEM = "<bold>This item can not be used";
 
     public ArtifactType() {
         // NO-OP: For deserialization
@@ -33,19 +36,20 @@ public final class ArtifactType {
     public ItemStack toItem() {
         ItemStack itemStack = itemType.createItemStack(1);
         itemStack.setData(DataComponentTypes.CUSTOM_NAME, Util.color(displayName)
-                .colorIfAbsent(NamedTextColor.WHITE)
-                .decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE)
+            .colorIfAbsent(NamedTextColor.WHITE)
+            .decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE)
         );
-        itemStack.setData(DataComponentTypes.LORE, ItemLore.lore(lore.stream()
+        itemStack.setData(DataComponentTypes.LORE, ItemLore.lore(
+            Stream.concat(lore.stream(), Stream.of("", UNUSABLE_ITEM))
                 .map(Util::color)
                 .map(component -> component
-                        .colorIfAbsent(NamedTextColor.GRAY)
-                        .decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE)
+                    .colorIfAbsent(NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE)
                 )
                 .toList())
         );
         itemStack.editPersistentDataContainer(pdc ->
-                pdc.set(Manor2.ITEM_TAG, PersistentDataType.STRING, "artifact")
+            pdc.set(Manor2.ITEM_TAG, PersistentDataType.STRING, "artifact")
         );
         return itemStack;
     }
