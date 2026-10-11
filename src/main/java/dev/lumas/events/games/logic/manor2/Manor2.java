@@ -197,6 +197,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         packetGlow.stop();
         ghostAttacks.stop();
         recorder.stopRecording();
+        artifactManager.stop();
 
         Executors.sync(definition.getHunterStartLocations().getFirst(), blockCache::shutdown);
 
@@ -264,47 +265,36 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     }
 
     @EventHandler
-    public void onPlayerInteractEntity(PlayerInteractAtEntityEvent event) {
-        this.ensureNotIllegal();
-        if (roleMap.as(event.getPlayer().getUniqueId(), GhostHunter.class) instanceof GhostHunter ghostHunter) {
-            ArtifactEntity.fromEntity(event.getRightClicked())
-                .ifPresent(item -> {
-                    ArtifactPickupResult result = artifactManager.pickup(event.getRightClicked().getLocation());
-                    if (result != ArtifactPickupResult.NOT_FOUND) {
-                        event.getPlayer().getInventory().addItem(item);
-                        if (result == ArtifactPickupResult.FOUND_PLAYER_ARTIFACT) {
-                            scoreboard.playerArtifactFound(ghostHunter);
-                        } else {
-                            scoreboard.artifactFound(ghostHunter);
-                        }
-                    } else {
-                        event.getRightClicked().getLocation()
-                            .getNearbyEntities(1, 1, 1)
-                            .stream()
-                            .filter(ArtifactEntity::isArtifact)
-                            .forEach(Entity::remove);
-                    }
-                });
-        }
-        event.setCancelled(true);
+    public void onPlayerInteract() {
+
     }
 
     @EventHandler
-    public void onPlayerInteractEntity(PrePlayerAttackEntityEvent event) {
+    public void onPlayerInteractEntity(PlayerInteractAtEntityEvent event) {
         this.ensureNotIllegal();
-        if (roleMap.as(event.getPlayer().getUniqueId(), GhostHunter.class) instanceof GhostHunter ghostHunter) {
-            ArtifactEntity.fromEntity(event.getAttacked())
+        tryPickupArtifact(event.getPlayer(), event.getRightClicked());
+    }
+
+    @EventHandler
+    public void onPlayerAttackEntity(PrePlayerAttackEntityEvent event) {
+        this.ensureNotIllegal();
+        tryPickupArtifact(event.getPlayer(), event.getAttacked());
+    }
+
+    private void tryPickupArtifact(Player player, Entity entity) {
+        if (roleMap.as(player.getUniqueId(), GhostHunter.class) instanceof GhostHunter ghostHunter) {
+            ArtifactEntity.fromEntity(entity)
                 .ifPresent(item -> {
-                    ArtifactPickupResult result = artifactManager.pickup(event.getAttacked().getLocation());
+                    ArtifactPickupResult result = artifactManager.pickup(entity.getLocation());
                     if (result != ArtifactPickupResult.NOT_FOUND) {
-                        event.getPlayer().getInventory().addItem(item);
+                        player.getInventory().addItem(item);
                         if (result == ArtifactPickupResult.FOUND_PLAYER_ARTIFACT) {
                             scoreboard.playerArtifactFound(ghostHunter);
                         } else {
                             scoreboard.artifactFound(ghostHunter);
                         }
                     } else {
-                        event.getAttacked().getLocation()
+                        entity.getLocation()
                             .getNearbyEntities(1, 1, 1)
                             .stream()
                             .filter(ArtifactEntity::isArtifact)
@@ -312,7 +302,6 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                     }
                 });
         }
-        event.setCancelled(true);
     }
 
     private void sendGameOver(ManorTeam winner) {

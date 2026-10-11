@@ -2,6 +2,7 @@ package dev.lumas.events.games.logic.manor2.artifact;
 
 import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.manor2.roles.Artifact;
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -58,13 +59,15 @@ public record ArtifactEntity(Interaction interaction, ItemDisplay itemDisplay, l
         return new ArtifactEntity(interaction, itemDisplay, newTimestamp, startRotationRadians, boundRole);
     }
 
-    public static ArtifactEntity spawn(Location location, ArtifactType artifactType, long spawnTimestamp, @Nullable Artifact boundRole) {
+    public static ArtifactEntity spawn(Location location, ArtifactType artifactType, long spawnTimestamp, @Nullable Artifact boundRole, boolean glint) {
         Location spawnLocation = location.clone().add(0, 0.125, 0);
         spawnLocation.setYaw(0);
         spawnLocation.setPitch(0);
         float startRotationRadians = ThreadLocalRandom.current().nextFloat((float) (2 * Math.PI));
         ItemDisplay itemDisplay = spawnLocation.getWorld().spawn(spawnLocation, ItemDisplay.class, itemDisplayPreSpawn -> {
-            itemDisplayPreSpawn.setItemStack(artifactType.toItem());
+            ItemStack itemStack = artifactType.toItem();
+            itemStack.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, glint);
+            itemDisplayPreSpawn.setItemStack(itemStack);
             itemDisplayPreSpawn.setPersistent(false);
             itemDisplayPreSpawn.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.GROUND);
             itemDisplayPreSpawn.setGlowing(true);

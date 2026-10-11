@@ -103,8 +103,8 @@ public class Manor2Definition {
         new ArtifactType(ItemType.GOLD_BLOCK, "<gold>Block Of Gold", List.of("Definitely worth its weight in gold")),
         new ArtifactType(ItemType.FISHING_ROD, "<blue>Premium Fishing Rod", List.of("Could even catch the good old", "Loch Ness with it")),
         new ArtifactType(ItemType.DIAMOND, "<aqua>Large Gem", List.of("To keep for your partner")),
-        new ArtifactType(ItemType.DIAMOND_HORSE_ARMOR, "<aqua>Decorated Horse Armor", List.of("It might be too decorated to be practical",
-            "still impressive"))
+        new ArtifactType(ItemType.DIAMOND_HORSE_ARMOR, "<aqua>Decorated Horse Armor", List.of("Too decorated to be",
+            "practical, still impressive"))
     );
 
     @Getter
