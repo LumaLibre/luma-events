@@ -15,7 +15,6 @@ import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import io.papermc.paper.persistence.PersistentDataContainerView;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.title.Title;
@@ -130,9 +129,7 @@ public class Spectator extends Manor2Role {
                 Util.color("This players score: <gold><score>", NamedTextColor.GRAY, Formatter.number("score", score))
             )
         ));
-        itemStack.setData(DataComponentTypes.CUSTOM_NAME, player.displayName()
-            .decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE)
-        );
+        itemStack.setData(DataComponentTypes.CUSTOM_NAME, player.displayName());
         itemStack.editPersistentDataContainer(pdc -> {
             pdc.set(Manor2.ITEM_TAG, PersistentDataType.STRING, PLAYER_SCORE_ITEM);
             pdc.set(SCORE_TARGET, PersistentDataType.STRING, player.getUniqueId().toString());
@@ -141,7 +138,6 @@ public class Spectator extends Manor2Role {
             .hasConsumeParticles(true)
             .consumeSeconds(1f)
             .build());
-        itemStack.unsetData(DataComponentTypes.BLOCK_DATA);
         return Stream.of(itemStack);
     }
 
