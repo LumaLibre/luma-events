@@ -33,9 +33,11 @@ public class Ghost extends Manor2Role {
 
     @Override
     public void die() {
-        manor2.getRoleMap().swapRole(this, () ->
-            manor2.getDefinition().isArtifactPlay() ? new Artifact(manor2, eventPlayer) : new Spectator(manor2, eventPlayer)
-        );
+        if (manor2.getDefinition().isArtifactPlay()) {
+            manor2.getRoleMap().swapRole(this, () -> new Artifact(manor2, eventPlayer));
+        } else {
+            manor2.getRoleMap().swapRole(this, () -> new Spectator(manor2, eventPlayer));
+        }
     }
 
     @Override

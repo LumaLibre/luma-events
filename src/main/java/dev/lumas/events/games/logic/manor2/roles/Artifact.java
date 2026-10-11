@@ -148,5 +148,4 @@ public class Artifact extends Manor2Role {
         this.frozen = false;
         eventPlayer.operatePlayer(NiceRestraint::release);
     }
-
 }

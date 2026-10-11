@@ -10,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,6 +22,7 @@ public class MinigameRoleMap<T extends MinigameRole> extends ConcurrentHashMap<U
 
     private final Consumer<T> cleanupConsumer;
     private final Consumer<T> initiateConsumer;
+    private final Map<UUID, CompletableFuture<Void>> operationDoneFuture = new ConcurrentHashMap<>();
 
     public MinigameRoleMap(Consumer<T> cleanupConsumer) {
         this(cleanupConsumer, ignore -> {
@@ -85,18 +87,55 @@ public class MinigameRoleMap<T extends MinigameRole> extends ConcurrentHashMap<U
         return this.swapRole(rolePlayer.getEventPlayer(), newRoleSupplier);
     }
 
+    /**
+     * Swap this role. Does the swapping logic in the background
+     *
+     * @param eventPlayer     an event player to swap role with
+     * @param newRoleSupplier a supplier for the new role
+     * @return the new role
+     */
     public T swapRole(EventPlayer eventPlayer, Supplier<T> newRoleSupplier) {
         T currentRole = this.get(eventPlayer.getUuid());
-        CompletableFuture<Void> oldAssignmentDone;
-        if (currentRole != null) {
-            oldAssignmentDone = CompletableFuture.runAsync(() -> cleanupConsumer.accept(currentRole), Executors.executor(eventPlayer));
-        } else {
-            oldAssignmentDone = CompletableFuture.completedFuture(null);
-        }
+        CompletableFuture<Void> oldAssignmentDone = retire(currentRole);
         T newRole = newRoleSupplier.get();
-        oldAssignmentDone.thenRunAsync(() -> initiateConsumer.accept(newRole), Executors.executor(eventPlayer));
+        operationDoneFuture.put(
+            eventPlayer.getUuid(),
+            oldAssignmentDone.thenRunAsync(() -> initiateConsumer.accept(newRole), Executors.executor(eventPlayer))
+        );
         this.put(newRole.getEventPlayer().getUuid(), newRole);
         return newRole;
+    }
+
+    public <S extends MinigameRole> CompletableFuture<T> swapRoleSafely(S rolePlayer, Supplier<T> newRoleSupplier) {
+        return this.swapRoleSafely(rolePlayer.getEventPlayer(), newRoleSupplier);
+    }
+
+    /**
+     * Safely swap this role. Returns a future when this has been completed
+     *
+     * @param eventPlayer     an event player to swap role with
+     * @param newRoleSupplier a supplier for the new role
+     * @return a future of the new role
+     */
+    public CompletableFuture<T> swapRoleSafely(EventPlayer eventPlayer, Supplier<T> newRoleSupplier) {
+        T currentRole = this.get(eventPlayer.getUuid());
+        CompletableFuture<Void> oldAssignmentDone = retire(currentRole);
+        T newRole = newRoleSupplier.get();
+        CompletableFuture<Void> done = oldAssignmentDone.thenRunAsync(() -> initiateConsumer.accept(newRole), Executors.executor(eventPlayer));
+        operationDoneFuture.put(eventPlayer.getUuid(), done);
+        this.put(newRole.getEventPlayer().getUuid(), newRole);
+        return done.thenApply(ignored -> newRole);
+    }
+
+    /**
+     * Safely retire this role
+     *
+     * @param role The role to retire
+     * @return a completable future that completes when the role has been retired
+     */
+    public CompletableFuture<Void> retire(T role) {
+        return operationDoneFuture.getOrDefault(role.getUuid(), CompletableFuture.completedFuture(null))
+            .thenRunAsync(() -> cleanupConsumer.accept(role), Executors.executor(role));
     }
 
     /**

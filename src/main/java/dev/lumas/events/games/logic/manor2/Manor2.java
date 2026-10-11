@@ -28,6 +28,9 @@ import dev.lumas.events.utility.latency.tracing.Tracing;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.damage.DamageType;
@@ -99,6 +102,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private final ArtifactManager artifactManager;
 
     private CountdownBossBar timer;
+    private Component gameOverSubtitle = Util.color("Game ended by force", Util.TEXT_COLOR);
+
 
     public Manor2(Manor2Definition definition) {
         super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, false, false);
@@ -165,7 +170,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     @Override
     protected void onRunnable(long timeLeft) {
         if (timeLeft <= TimeUnit.SECONDS.toMillis(END_DELAY_SECONDS)) {
-            sendAudienceTitle("<yellow>Game Over", "<gold>It's a tie!");
+            gameOverSubtitle = Util.color("<gold>It's a tie!", Util.TEXT_COLOR);
             this.stop();
         }
         recorder.tick();
@@ -182,8 +187,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         boolean gameOver = roleMap.getMatching(Ghost.class).isEmpty() || roleMap.getMatching(GhostHunter.class).isEmpty();
         ManorTeam winner = roleMap.getMatching(Ghost.class).isEmpty() ? ManorTeam.HUNTERS : ManorTeam.GHOSTS;
-        if (false && gameOver) {
-            sendGameOver(winner);
+        if (gameOver) {
+            gameOverSubtitle = Util.color("<gold> <winner> has won!", Util.TEXT_COLOR, Placeholder.component("winner", winner.displayName()));
             this.stop();
         }
     }
@@ -203,8 +208,9 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
         for (Manor2Role role : roleMap) {
-            completableFutures.add(CompletableFuture.runAsync(() -> role.retire(this), Executors.executor(role)));
+            completableFutures.add(roleMap.retire(role));
         }
+        audience.showTitle(Title.title(Util.color("<yellow>Game Over", Util.TEXT_COLOR), gameOverSubtitle));
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
             .thenRun(() -> scoreboard.showScores(audience))
             .exceptionally(exception -> {
@@ -302,10 +308,6 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                     }
                 });
         }
-    }
-
-    private void sendGameOver(ManorTeam winner) {
-        sendAudienceTitle("<yellow>Game Over", "<gold>" + winner.displayName() + " has won!");
     }
 
     private void showParticipantsToEachOther() {

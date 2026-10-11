@@ -10,6 +10,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -45,46 +46,46 @@ public final class Util {
     public static final Gson GSON = GsonHolder.GSON;
     public static final Random RANDOM = new Random();
     public static final String PREFIX = "<b><gradient:#331D4D:#611e4e:#9f2e51>Event</gradient></b> <dark_gray>»</dark_gray> ";
-    public static final String TEXT_COLOR = "#DA7E6E";
+    public static final TextColor TEXT_COLOR = TextColor.fromHexString("#DA7E6E");
 
 
     public static void sendMsg(CommandSender receiver, String message) {
         if (receiver == null) {
             return;
         }
-        receiver.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)));
+        receiver.sendMessage(color(PREFIX + message).colorIfAbsent(TEXT_COLOR));
     }
 
     public static void sendMsg(Audience audience, String message) {
-        audience.sendMessage(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)));
+        audience.sendMessage(color(PREFIX + message).colorIfAbsent(TEXT_COLOR));
     }
 
     public static void broadcast(String message) {
-        Bukkit.broadcast(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)));
+        Bukkit.broadcast(color(PREFIX + message).colorIfAbsent(TEXT_COLOR));
     }
 
     public static void broadcast(String message, String permission) {
-        Bukkit.broadcast(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)), permission);
+        Bukkit.broadcast(color(PREFIX + message).colorIfAbsent(TEXT_COLOR), permission);
     }
 
     public static void broadcast(Component message, String permission) {
-        Bukkit.broadcast(color(PREFIX).append(message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)), permission);
+        Bukkit.broadcast(color(PREFIX).append(message).colorIfAbsent(TEXT_COLOR), permission);
     }
 
     public static void broadcast(Component message) {
-        Bukkit.broadcast(color(PREFIX).append(message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)));
+        Bukkit.broadcast(color(PREFIX).append(message).colorIfAbsent(TEXT_COLOR));
     }
 
     public static Component prefixed(String message) {
-        return color(PREFIX + message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR));
+        return color(PREFIX + message).colorIfAbsent(TEXT_COLOR);
     }
 
-    public static Component color(String string) {
-        return MiniMessage.miniMessage().deserialize("<!i>" + string);
+    public static Component color(String string, TagResolver... tagResolvers) {
+        return MiniMessage.miniMessage().deserialize("<!i>" + string, tagResolvers);
     }
 
-    public static Component color(String string, TextColor ifAbsentColor) {
-        return color(string).colorIfAbsent(ifAbsentColor);
+    public static Component color(String string, TextColor ifAbsentColor, TagResolver... tagResolvers) {
+        return color(string, tagResolvers).colorIfAbsent(ifAbsentColor);
     }
 
     public static List<Component> color(List<String> strings) {
@@ -105,13 +106,22 @@ public final class Util {
         }).toList();
     }
 
-    public static Title title(String title, String subtitle) {
-        return Title.title(Util.color(title), Util.color(subtitle));
+    public static Title title(String title, String subtitle, TagResolver... tagResolvers) {
+        return Title.title(Util.color(title, tagResolvers), Util.color(subtitle, tagResolvers));
     }
 
-    public static Title title(String title, String subtitle, Title.Times times) {
-        return Title.title(Util.color(title), Util.color(subtitle), times);
+    public static Title title(String title, String subtitle, Title.Times times, TagResolver... tagResolvers) {
+        return Title.title(Util.color(title, tagResolvers), Util.color(subtitle, tagResolvers), times);
     }
+
+    public static Title title(String title, String subtitle, TextColor colorIfAbsent, TagResolver... tagResolvers) {
+        return Title.title(Util.color(title, colorIfAbsent, tagResolvers), Util.color(subtitle, colorIfAbsent, tagResolvers));
+    }
+
+    public static Title title(String title, String subtitle, Title.Times times, TextColor colorIfAbsent, TagResolver... tagResolvers) {
+        return Title.title(Util.color(title, colorIfAbsent, tagResolvers), Util.color(subtitle, colorIfAbsent, tagResolvers), times);
+    }
+
 
     @Nullable
     public static <P, C> C getPersistentKey(ItemStack item, String strKey, PersistentDataType<P, C> dataType) {
@@ -234,10 +244,6 @@ public final class Util {
         }
 
         throw new RuntimeException("Failed to remove: " + amount + "/" + namespacedKey + " from " + player.getName() + "'s inventory!");
-    }
-
-    public static String getTextColor() {
-        return "<" + TEXT_COLOR + ">";
     }
 
     public static ItemStack createBasicItem(Material material, boolean glint) {
@@ -442,7 +448,7 @@ public final class Util {
             if (i > 0) result.append(" ");
             if (!words[i].isEmpty()) {
                 result.append(Character.toUpperCase(words[i].charAt(0)))
-                        .append(words[i].substring(1));
+                    .append(words[i].substring(1));
             }
         }
         return result.toString();

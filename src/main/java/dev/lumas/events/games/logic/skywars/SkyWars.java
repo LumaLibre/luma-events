@@ -94,8 +94,8 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         this.lobby = def.getLobby();
         this.map = new GenericStructure(def.getOrigin(), def.getSchematic());
         this.spawnPoints = map.findBlocks(data -> data.getMaterial() == SPAWN_MARKER_BLOCK).stream()
-                .map(location -> location.add(0.5, 0, 0.5))
-                .toList();
+            .map(location -> location.add(0.5, 0, 0.5))
+            .toList();
         Preconditions.checkArgument(!spawnPoints.isEmpty(), "SkyWars map " + def.getSchematic() + " has no spawn market blocks (" + SPAWN_MARKER_BLOCK + ")");
         this.arena = def.getRegion().toWorldTiedBoundingBox();
         this.boundingBox = arena;
@@ -135,50 +135,50 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         int teamCount = Math.ceilDiv(participants.size(), Math.ceilDiv(participants.size(), spawns.size()));
         TeamColor[] colors = TeamColor.values();
         List<SkyWarsTeam> teams = IntStream.range(0, teamCount)
-                .mapToObj(i -> new SkyWarsTeam(colors[i % colors.length], spawns.get(i)))
-                .toList();
+            .mapToObj(i -> new SkyWarsTeam(colors[i % colors.length], spawns.get(i)))
+            .toList();
         for (int i = 0; i < participants.size(); i++) {
             roleMap.put(new SkyWarsPlayer(this, participants.get(i), teams.get(i % teamCount)));
         }
 
         // teams that ended up a player short get their island's chests bumped up a tier
         Map<SkyWarsTeam, Long> teamSizes = roleMap.values().stream()
-                .collect(Collectors.groupingBy(SkyWarsRole::getTeam, Collectors.counting()));
+            .collect(Collectors.groupingBy(SkyWarsRole::getTeam, Collectors.counting()));
         long largestTeam = Collections.max(teamSizes.values());
         Set<Location> shortHandedIslands = teams.stream()
-                .filter(team -> teamSizes.get(team) < largestTeam)
-                .map(SkyWarsTeam::spawn)
-                .collect(Collectors.toSet());
+            .filter(team -> teamSizes.get(team) < largestTeam)
+            .map(SkyWarsTeam::spawn)
+            .collect(Collectors.toSet());
 
         this.showSetupProgress("Pasting Arena", 0);
         CompletableFuture<Void> paste = map.pasteAsync(
-                (position, data) -> data != GenericStructure.AIR,
-                data -> MARKER_BLOCKS.contains(data.getMaterial()) ? AIR : data,
-                progress -> showSetupProgress("Pasting Arena", progress));
+            (position, data) -> data != GenericStructure.AIR,
+            data -> MARKER_BLOCKS.contains(data.getMaterial()) ? AIR : data,
+            progress -> showSetupProgress("Pasting Arena", progress));
         CompletableFuture.allOf(lootChests.find(), paste)
-                .thenCompose(v -> {
-                    lootChests.activateDynamic((int) largestTeam);
-                    this.showSetupProgress("Filling Chests", 0);
-                    return lootChests.fillAll(
-                            chest -> shortHandedIslands.contains(islandOf(chest)),
-                            progress -> showSetupProgress("Filling Chests", progress));
-                })
-                .whenComplete((v, throwable) -> {
-                    this.setupStatus = null;
-                    if (throwable != null) {
-                        LOGGER.error("Failed to set up SkyWars map", throwable);
-                        this.stop();
-                        return;
-                    }
+            .thenCompose(v -> {
+                lootChests.activateDynamic((int) largestTeam);
+                this.showSetupProgress("Filling Chests", 0);
+                return lootChests.fillAll(
+                    chest -> shortHandedIslands.contains(islandOf(chest)),
+                    progress -> showSetupProgress("Filling Chests", progress));
+            })
+            .whenComplete((v, throwable) -> {
+                this.setupStatus = null;
+                if (throwable != null) {
+                    LOGGER.error("Failed to set up SkyWars map", throwable);
+                    this.stop();
+                    return;
+                }
 
-                    if (!this.active || this.stopping) {
-                        return;
-                    }
+                if (!this.active || this.stopping) {
+                    return;
+                }
 
-                    for (SkyWarsRole skyWarsPlayer : roleMap) {
-                        skyWarsPlayer.play();
-                    }
-                });
+                for (SkyWarsRole skyWarsPlayer : roleMap) {
+                    skyWarsPlayer.play();
+                }
+            });
     }
 
     @Override
@@ -212,17 +212,17 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         Executors.teleportGroupAsync(participants, lobby);
 
         CompletableFuture.allOf(cleanups.toArray(CompletableFuture[]::new))
-                .orTimeout(CLEANUP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .exceptionally(throwable -> {
-                    LOGGER.error("Not every SkyWars player finished cleaning up", throwable);
-                    return null;
-                })
-                .thenComposeAsync(v -> map.removeAsync(), Executors::runAsync)
-                .thenCompose(v -> clearArena())
-                .exceptionally(throwable -> {
-                    LOGGER.error("Failed to clean up the SkyWars arena", throwable);
-                    return null;
-                });
+            .orTimeout(CLEANUP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .exceptionally(throwable -> {
+                LOGGER.error("Not every SkyWars player finished cleaning up", throwable);
+                return null;
+            })
+            .thenComposeAsync(v -> map.removeAsync(), Executors::runAsync)
+            .thenCompose(v -> clearArena())
+            .exceptionally(throwable -> {
+                LOGGER.error("Failed to clean up the SkyWars arena", throwable);
+                return null;
+            });
     }
 
     public boolean finish() {
@@ -250,13 +250,13 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         scoreboard.handleGameEnd(this.audience, () -> sendAudienceMessage(winner == null
             ? Component.text("No team won this time!")
             : Component.empty()
-            .append(winner.displayName().append(Component.text(" Team")))
-            .append(Component.text(" has won!"))));
+              .append(winner.displayName().append(Component.text(" Team")))
+              .append(Component.text(" has won!"))));
         return true;
     }
 
     private void showSetupProgress(String label, double progress) {
-        this.setupStatus = Util.color(Util.getTextColor() + label + ": " + (int) (progress * 100) + "%");
+        this.setupStatus = Util.color(label + ": " + (int) (progress * 100) + "%", Util.TEXT_COLOR);
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -285,7 +285,8 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         if (ended.get()) return;
         Projectile projectile = event.getEntity();
         if (!(projectile instanceof Snowball || projectile instanceof Egg)) return;
-        if (!(event.getHitEntity() instanceof Player victim) || !(projectile.getShooter() instanceof Player thrower)) return;
+        if (!(event.getHitEntity() instanceof Player victim) || !(projectile.getShooter() instanceof Player thrower))
+            return;
 
         SkyWarsPlayer target = roleMap.as(victim.getUniqueId(), SkyWarsPlayer.class);
         SkyWarsPlayer attacker = roleMap.as(thrower.getUniqueId(), SkyWarsPlayer.class);
