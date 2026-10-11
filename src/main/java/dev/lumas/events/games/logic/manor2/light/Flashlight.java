@@ -267,7 +267,7 @@ public class Flashlight {
         }
     }
 
-    public ItemStack createItem() {
+    public ItemStack createItem() { // TODO: Optimize
         ItemStack item = ItemStack.of(Material.TRIDENT);
         item.setData(DataComponentTypes.ITEM_MODEL, NamespacedKey.minecraft("spyglass"));
         item.setData(DataComponentTypes.CUSTOM_NAME, Util.color("<gold><bold>Flashlight"));

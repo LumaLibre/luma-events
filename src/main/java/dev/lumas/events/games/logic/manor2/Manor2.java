@@ -191,7 +191,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     @Override
     protected void handleStop() {
         if (timer != null) {
-            timer.stop(false);
+            unsafe(() -> timer.stop(false));
         }
 
         packetGlow.stop();
