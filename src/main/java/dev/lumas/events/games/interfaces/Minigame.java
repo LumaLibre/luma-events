@@ -34,6 +34,7 @@ import org.bukkit.event.Listener;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -47,6 +48,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Setter
 public abstract class Minigame extends AsynchronousRunnable implements Listener {
 
+    public static final String MINIGAME_PARTICIPANT_PERM = "lumaevents.default";
     private static final boolean HIDDEN_ARMOR_AVAILABLE = Externals.pluginExists("HiddenArmor");
 
     protected static final Random RANDOM = Util.RANDOM;
@@ -135,7 +137,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             extraListeners.stream()
                     .filter(Objects::nonNull)
                     .forEach(this::unregisterEvents);
-            Util.broadcast("Not enough players joined to start " + this.name);
+            Util.broadcast("Not enough players joined to start " + this.name, MINIGAME_PARTICIPANT_PERM);
             return false;
         }
         this.onPreStart();
@@ -243,7 +245,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             });
         }
 
-        player.sendTitle(
+        player.sendTitle( // TODO: coloring
                 "<yellow>" + this.name,
                 "<red>" + this.description
         );
@@ -266,14 +268,25 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
     }
 
     private void openQueue(int seconds) {
+        Util.broadcast("<hover:show_text:'Click me!'><click:run_command:/event join>A minigame is starting! Use <gold>/event join</gold> to participate!", MINIGAME_PARTICIPANT_PERM);
+        if (!tokenPayout.isNormal()) Util.broadcast(describePayout(tokenPayout), MINIGAME_PARTICIPANT_PERM);
+
+        Collection<? extends Player> players = Bukkit.getOnlinePlayers()
+                .stream()
+                .filter(player -> player.hasPermission(MINIGAME_PARTICIPANT_PERM))
+                .toList();
+
         this.queueBossbar = CountdownBossBar.builder()
-                .title("<gradient:#1e8abf:#9be4df:#f8898a:#EDB172:#ffe494><b>" + name + " Starting in</b><gray>:</gray> <b>%ss</b></gradient>")
+                .title("<b><gradient:#3F255E:#9f2e51:#611e4e:#331D4D><b>" + name + " Starting in</b><gray>:</gray> <b>%ss</b></gradient>")
                 .seconds(seconds)
-                .color(BossBar.Color.BLUE)
+                .color(BossBar.Color.RED)
                 .callback(this::start)
-                .audience(Audience.audience(Bukkit.getOnlinePlayers()))
+                .audience(Audience.audience(players))
                 .build()
                 .start();
+        // newMinigame runs on the async scheduler, so read each player's location on the region that owns them
+        players.forEach(player -> Executors.runSync(player,
+            () -> player.playSound(player.getLocation(), Sound.ENTITY_EVOKER_PREPARE_WOLOLO, 1f, 0.75f)));
     }
 
     @Override
@@ -444,4 +457,14 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
     }
 
     protected abstract boolean handleParticipantJoin(EventPlayer player);
+
+    // TODO: cleanup/move
+    private static String describePayout(TokenPayout tokenPayout) {
+        if (tokenPayout.paysNothing()) return "This one is <yellow>just for fun</yellow> - it pays out no tokens.";
+        if (tokenPayout.flat()) {
+            String tokens = "<gold>" + tokenPayout.flatTokens() + "</gold> token" + (tokenPayout.flatTokens() == 1 ? "" : "s");
+            return "This one is <yellow>casual</yellow> - everyone gets " + tokens + ", regardless of score.";
+        }
+        return "This one pays out <gold>" + tokenPayout.percentDifference() + "</gold> tokens than usual!";
+    }
 }

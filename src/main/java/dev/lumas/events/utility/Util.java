@@ -16,7 +16,6 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
@@ -45,8 +44,8 @@ public final class Util {
 
     public static final Gson GSON = GsonHolder.GSON;
     public static final Random RANDOM = new Random();
-    public static final String PREFIX = "<b><gradient:#1e8abf:#9be4df:#f8898a:#EDB172:#ffe494>Event</gradient></b> <dark_gray>»</dark_gray> ";
-    public static final String TEXT_COLOR = "#ffefcd";
+    public static final String PREFIX = "<b><gradient:#331D4D:#611e4e:#9f2e51>Event</gradient></b> <dark_gray>»</dark_gray> ";
+    public static final String TEXT_COLOR = "#DA7E6E";
 
 
     public static void sendMsg(CommandSender receiver, String message) {
@@ -64,18 +63,16 @@ public final class Util {
         Bukkit.broadcast(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)));
     }
 
+    public static void broadcast(String message, String permission) {
+        Bukkit.broadcast(color(PREFIX + message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)), permission);
+    }
+
     public static void broadcast(Component message, String permission) {
         Bukkit.broadcast(color(PREFIX).append(message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)), permission);
     }
 
     public static void broadcast(Component message) {
         Bukkit.broadcast(color(PREFIX).append(message).colorIfAbsent(TextColor.fromHexString(TEXT_COLOR)));
-    }
-
-    public static void broadcastSound(Sound sound, float volume, float pitch) {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            player.playSound(player.getLocation(), sound, volume, pitch);
-        }
     }
 
     public static Component prefixed(String message) {

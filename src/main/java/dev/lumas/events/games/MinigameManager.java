@@ -9,7 +9,6 @@ import dev.lumas.events.games.exceptions.NoAvailableMinigames;
 import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.interfaces.TokenPayout;
 import dev.lumas.events.games.logic.NonActiveMinigame;
-import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Externals;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
@@ -17,8 +16,6 @@ import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.bukkit.Bukkit;
-import org.bukkit.Sound;
 import org.bukkit.event.HandlerList;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -57,13 +54,6 @@ public final class MinigameManager extends AsynchronousRunnable {
             this.current.stop();
         }
 
-        Util.broadcast("<hover:show_text:'Click me!'><click:run_command:/event join>A minigame is starting! Use <gold>/event join</gold> to participate!");
-        if (!tokenPayout.isNormal()) Util.broadcast(describePayout(tokenPayout));
-
-        // newMinigame runs on the async scheduler, so read each player's location on the region that owns them
-        Bukkit.getOnlinePlayers().forEach(player -> Executors.runSync(player,
-                () -> player.playSound(player.getLocation(), Sound.ENTITY_EVOKER_PREPARE_WOLOLO, 1f, 0.75f)));
-
         try {
             Minigame minigame = game.instantiate(definition);
             Depend depend = minigame.getClass().getAnnotation(Depend.class);
@@ -86,15 +76,6 @@ public final class MinigameManager extends AsynchronousRunnable {
             return false;
         }
         return this.current.timedStart(seconds);
-    }
-
-    private static String describePayout(TokenPayout tokenPayout) {
-        if (tokenPayout.paysNothing()) return "This one is <yellow>just for fun</yellow> - it pays out no tokens.";
-        if (tokenPayout.flat()) {
-            String tokens = "<gold>" + tokenPayout.flatTokens() + "</gold> token" + (tokenPayout.flatTokens() == 1 ? "" : "s");
-            return "This one is <yellow>casual</yellow> - everyone gets " + tokens + ", regardless of score.";
-        }
-        return "This one pays out <gold>" + tokenPayout.percentDifference() + "</gold> tokens than usual!";
     }
 
     public boolean newMinigame(MinigameConstant game, boolean force) throws GameAlreadyStartedException {

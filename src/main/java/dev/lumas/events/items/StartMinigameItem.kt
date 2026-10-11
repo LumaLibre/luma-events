@@ -1,6 +1,7 @@
 package dev.lumas.events.items
 
 import dev.lumas.events.games.MinigameManager
+import dev.lumas.events.games.interfaces.Minigame
 import dev.lumas.events.utility.Util
 import dev.lumas.lumaitems.model.item.CustomItemFunctions
 import dev.lumas.lumaitems.model.item.ItemFactory
@@ -50,7 +51,7 @@ class StartMinigameItem : CustomItemFunctions() {
         if (MinigameManager.getInstance().tryNewMinigameSafely(true)) {
             item.amount -= 1
             QuickTasks.addCooldown(this, player.uniqueId, 72000L)
-            Util.broadcast(player.name + " has started a minigame!")
+            Util.broadcast(player.name + " has started a minigame!", Minigame.MINIGAME_PARTICIPANT_PERM)
         } else {
             Util.sendMsg(player, "Failed to start minigame. Is there another minigame active?")
         }

@@ -1,6 +1,8 @@
 package dev.lumas.events.utility;
 
 import dev.lumas.events.EventMain;
+import lombok.Getter;
+import lombok.Setter;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
@@ -14,18 +16,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class JoinTrace {
 
+    @Getter @Setter
     private static volatile boolean verbose = false;
     private static final Set<String> reportedSites = ConcurrentHashMap.newKeySet();
 
     private JoinTrace() {}
 
-    public static boolean isVerbose() {
-        return verbose;
-    }
-
-    public static void setVerbose(boolean value) {
-        verbose = value;
-    }
 
     private static String where(@Nullable Location location) {
         if (location == null) return "world=<null>";
