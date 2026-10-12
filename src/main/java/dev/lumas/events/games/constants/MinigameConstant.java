@@ -5,6 +5,7 @@ import dev.lumas.events.configurable.ToggleableDefinition;
 import dev.lumas.events.configurable.sectors.MinigameDefinition;
 import dev.lumas.events.configurable.sectors.game.BoatRace2Definition;
 import dev.lumas.events.configurable.sectors.game.BombermanDefinition;
+import dev.lumas.events.configurable.sectors.game.CopycatDefinition;
 import dev.lumas.events.configurable.sectors.game.FreezeTagDefinition;
 import dev.lumas.events.configurable.sectors.game.IncursionDefinition;
 import dev.lumas.events.configurable.sectors.game.Manor2Definition;
@@ -34,6 +35,7 @@ import dev.lumas.events.games.logic.TNTRun;
 import dev.lumas.events.games.logic.TNTTag;
 import dev.lumas.events.games.logic.TheNabbits;
 import dev.lumas.events.games.logic.Towers;
+import dev.lumas.events.games.logic.copycat.Copycat;
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.mobarena.MobArenaRewrite;
 import dev.lumas.events.games.logic.skywars.SkyWars;
@@ -64,7 +66,8 @@ public enum MinigameConstant {
     BOMBERMAN(BombermanDefinition.class, Bomberman::new, "Bomberman", "bomberman"),
     SKYWARS(SkyWarsDefinition.class, SkyWars::new, "SkyWars", "skywars"),
     MANOR_2(Manor2Definition.class, Manor2::new, "Manor 2", "manor2"),
-    MOB_ARENA(MobArenaDefinition.class, MobArenaRewrite::new, "Mob Arena", "mob_arena")
+    MOB_ARENA(MobArenaDefinition.class, MobArenaRewrite::new, "Mob Arena", "mob_arena"),
+    COPYCAT(CopycatDefinition.class, Copycat::new, "Copycat", "copycat")
     ;
 
     private final Class<?> definitionType;

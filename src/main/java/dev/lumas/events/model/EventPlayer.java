@@ -2,6 +2,7 @@ package dev.lumas.events.model;
 
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.Scorer;
+import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Externals;
 import dev.lumas.events.utility.Util;
@@ -9,7 +10,6 @@ import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -223,6 +223,7 @@ public class EventPlayer implements Serializable, Scorer {
 
     public synchronized void minigameDirty(boolean dirty) {
         this.minigameDirty = dirty;
+        EventPlayerManager.saveAsync(this);
     }
 
     // TODO: collapse these methods

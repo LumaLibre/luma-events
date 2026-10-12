@@ -105,6 +105,10 @@ public final class EventPlayerManager {
         }
     }
 
+    public static void saveAsync(EventPlayer eventPlayer) {
+        Executors.runAsync(() -> save(eventPlayer));
+    }
+
 
     public static void saveAll() {
         EventMain.getInstance().getLogger().info("Saving " + cache.size() + " players");
