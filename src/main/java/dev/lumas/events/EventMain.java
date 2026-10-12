@@ -13,6 +13,7 @@ import dev.lumas.events.items.SummerDollopItem;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.LeaderboardCacheManager;
 import dev.lumas.events.tasks.PlaytimeCounterTask;
+import dev.lumas.events.trickortreat.TrickOrTreat;
 import dev.lumas.events.utility.Externals;
 import dev.lumas.lumaitems.util.extensions.Executors;
 import lombok.Getter;
@@ -61,11 +62,17 @@ public final class EventMain extends JavaPlugin {
         if (Externals.pluginExists("mcMMO")) {
             withMcMMO = true;
         }
+
+        // temp: trick or treat
+        TrickOrTreat.enable(this);
     }
 
     @Override
     public void onDisable() {
         STOPPING = true;
+
+        // temp: trick or treat
+        TrickOrTreat.disable();
 
         EventPlayerManager.saveAllAndClear();
         CountdownBossBar.stopAll(false);
