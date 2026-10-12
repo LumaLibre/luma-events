@@ -18,6 +18,7 @@ import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
 import dev.lumas.events.games.logic.manor2.roles.RoleHitbox;
 import dev.lumas.events.games.logic.manor2.roles.Spectator;
 import dev.lumas.events.games.models.CountdownBossBar;
+import dev.lumas.events.games.tokenformula.Manor2TokenFormula;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
@@ -102,10 +103,9 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private final ManorScoreboard scoreboard = new ManorScoreboard(this);
     @Getter
     private final ArtifactManager artifactManager;
-
     private CountdownBossBar timer;
     private Component gameOverSubtitle = Util.color("Game ended by force", Util.TEXT_COLOR);
-
+    private final Manor2TokenFormula tokenFormula = new Manor2TokenFormula();
 
     public Manor2(Manor2Definition definition) {
         super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, false, false);
@@ -118,7 +118,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
-        // TODO: Event tokens
+        tokenFormula.giveTokens(participant, scoreboard.getScore(participant));
     }
 
     @Override

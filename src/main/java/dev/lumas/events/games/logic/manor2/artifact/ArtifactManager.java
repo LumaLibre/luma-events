@@ -111,7 +111,6 @@ public class ArtifactManager {
         }
     }
 
-
     public ArtifactPickupResult pickup(@NotNull Location location) {
         Location3i at = Location3i.from(location);
         artifacts.remove(at);
