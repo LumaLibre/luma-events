@@ -32,21 +32,21 @@ public class Manor2Definition {
     @Comment("The ratio of hunters per ghost (rounds up)")
     private int hunterRatio = 10;
     @Comment("The time until a ghost is killed by being revealed (ticks)")
-    private int ghostRevealTime = 100;
+    private int ghostRevealTime = 50;
     @Comment("The time until a hunter is killed by being consumed by ghost (ticks)")
-    private int hunterDeathTime = 50;
+    private int hunterDeathTime = 25;
     @Comment("The score a ghost get when killing a hunter")
-    private int ghostKillScore = 75;
+    private int ghostKillScore = 100;
     @Comment("The score a hunter get when killing a ghost")
-    private int hunterKillScore = 150;
+    private int hunterKillScore = 200;
     @Comment("The score a hunter get when finding an artifact")
-    private int artifactFoundScore = 25;
+    private int artifactFoundScore = 50;
     @Comment("The score a hunter gets when finding a player artifact")
     private int playerArtifactFoundScore = 75;
     @Comment("The width of each region an artifact can spawn in")
     private int playerArtifactAliveMinuteScore = 75;
     @Comment("The width of each region an artifact can spawn in")
-    private double averageRegionWidth = 16;
+    private double averageRegionWidth = 12;
     @Comment("Allow players to play as artifacts")
     private boolean artifactPlay = true;
     @Comment("What fraction of artifact regions should be filled depending on hunter count")
