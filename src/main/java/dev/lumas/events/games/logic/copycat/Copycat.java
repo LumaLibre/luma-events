@@ -100,7 +100,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
     private static final double TIME_SCALE_PER_ROUND = (1.0 - TIME_SCALE_AT_ROUND_TEN) / 9.0;
     private static final double MIN_TIME_SCALE = 0.5;
     private static final int MAX_FASTERS = 3;
-    private static final int MAX_SHOWCASED = 3;
+    private static final int WORST_SHOWCASED = 2;
     private static final int BEST_SHOWCASED = 2;
     private static final double START_REQUIRED_ACCURACY = 0.30;
     private static final double MIN_REQUIRED_STEP = 0.01;
@@ -173,7 +173,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
             .max()
             .orElseThrow();
         long roundSeconds = PREVIEW_SECONDS + longestBuild
-            + (MAX_SHOWCASED + BEST_SHOWCASED) * SHOWCASE_SECONDS + INTERMISSION_SECONDS + 10;
+            + (BEST_SHOWCASED + WORST_SHOWCASED) * SHOWCASE_SECONDS + INTERMISSION_SECONDS + 10;
         return TimeUnit.SECONDS.toMillis(SETUP_ALLOWANCE_SECONDS
             + roundSeconds * Math.max(1, definition.getMaxRounds())
             + END_DELAY_SECONDS);
@@ -474,7 +474,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
         for (Builder builder : best) {
             showcase.addLast(new Showcased(builder, true));
         }
-        List<Builder> worst = losers.subList(0, Math.min(MAX_SHOWCASED, losers.size()));
+        List<Builder> worst = losers.subList(0, Math.min(WORST_SHOWCASED, losers.size()));
         for (int i = worst.size() - 1; i >= 0; i--) {
             showcase.addLast(new Showcased(worst.get(i), false));
         }
