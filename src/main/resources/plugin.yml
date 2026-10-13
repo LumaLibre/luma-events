@@ -13,3 +13,5 @@ softdepend:
   - ProtocolLib
   - LibsDisguises
   - packetevents
+  - Nexo
+  - Interactions

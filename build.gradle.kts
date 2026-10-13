@@ -26,6 +26,10 @@ repositories {
     maven("https://mvn.lib.co.nz/public/")
     maven("https://repo.glaremasters.me/repository/towny/") // towny
     maven("https://repo.opencollab.dev/main/") // floodgate
+
+    // temp: trick or treat
+    maven("https://repo.nexomc.com/releases")
+    maven("https://maven.citizensnpcs.co/repo")
 }
 
 
@@ -68,6 +72,11 @@ dependencies {
 
     compileOnly("com.github.LumaLibre:HiddenArmor-Folia:96bcba105e") // TODO: needs to be on repo.jsinco.dev
     compileOnly("org.geysermc.floodgate:api:2.2.5-SNAPSHOT")
+
+    // temp: trick or treat
+    compileOnly("com.nexomc:nexo:1.29.1") { isTransitive = false }
+    compileOnly(files("libs/Interactions-2.17.3-dev.jar"))
+    compileOnly("net.citizensnpcs:citizens-main:2.0.41-SNAPSHOT") { isTransitive = false }
 }
 
 tasks {
