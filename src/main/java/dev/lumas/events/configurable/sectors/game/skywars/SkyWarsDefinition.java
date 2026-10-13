@@ -1,7 +1,6 @@
 package dev.lumas.events.configurable.sectors.game.skywars;
 
 import dev.lumas.events.annotation.MapTied;
-import dev.lumas.events.configurable.sectors.region.Region;
 import lombok.Getter;
 import org.bukkit.Location;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
@@ -18,8 +17,8 @@ public class SkyWarsDefinition {
     @MapTied
     @Comment("How far (horizontally) a chest can be from a spawn point and still count as that spawn's island")
     private double islandRadius = 15;
-    @MapTied
-    private Region region = new Region();
+    @Comment("Spectators further than this from the origin are teleported back to their island")
+    private double maxSpectatorDistance = 700;
     private SkyWarsLoot loot = new SkyWarsLoot();
 
 }

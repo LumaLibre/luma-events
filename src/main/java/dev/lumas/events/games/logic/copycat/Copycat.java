@@ -441,8 +441,8 @@ public final class Copycat extends InventoryUnifiedMinigame {
         double required = requiredAccuracy(roundNumber);
         for (Builder builder : scored) {
             double accuracy = accuracy(builder, roundScores.get(builder.getUuid()));
-            String verdict = accuracy >= required ? "<green>made the cut" : "<red>below the cut";
-            builder.getEventPlayer().sendMessage("You got <gold>" + percent(accuracy) + "</gold> of the missing blocks right (needed " + percent(required) + ") - " + verdict);
+            String verdict = accuracy >= required ? "<green>You Made it!" : "<red>You didn't make it...";
+            builder.getEventPlayer().sendMessage("You got <gold>" + percent(accuracy) + "</gold> of the missing blocks right (needed " + percent(required) + ") — " + verdict);
         }
         List<Builder> losers = scored.stream()
             .filter(builder -> accuracy(builder, roundScores.get(builder.getUuid())) < required)

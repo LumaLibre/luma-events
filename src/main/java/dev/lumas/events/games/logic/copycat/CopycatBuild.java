@@ -57,6 +57,7 @@ public final class CopycatBuild {
         BlockFace.EAST, BlockFace.EAST_SOUTH_EAST, BlockFace.SOUTH_EAST, BlockFace.SOUTH_SOUTH_EAST,
         BlockFace.SOUTH, BlockFace.SOUTH_SOUTH_WEST, BlockFace.SOUTH_WEST, BlockFace.WEST_SOUTH_WEST,
         BlockFace.WEST, BlockFace.WEST_NORTH_WEST, BlockFace.NORTH_WEST, BlockFace.NORTH_NORTH_WEST);
+    private static final List<BlockFace> EXPOSURE_FACES = List.of(BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST);
     private static final PluginContextLogger LOGGER = PluginContextLogger.getPluginLogger();
     private static final Set<Material> INVISIBLE = Set.of(Material.BARRIER, Material.STRUCTURE_VOID, Material.LIGHT);
 
@@ -89,7 +90,17 @@ public final class CopycatBuild {
         this.units = Collections.unmodifiableList(groupUnits(this.blocks));
         this.removableUnits = this.units.stream()
             .filter(unit -> unit.stream().allMatch(pos -> settings.removable(this.blocks.get(pos).getMaterial())))
+            .filter(unit -> unit.stream().anyMatch(this::exposed))
             .toList();
+    }
+
+    private boolean exposed(BlockPos pos) {
+        for (BlockFace face : EXPOSURE_FACES) {
+            BlockPos neighbour = pos.add(face.getModX(), face.getModY(), face.getModZ());
+            if (neighbour.y() < 0 && !settings.offGround()) continue;
+            if (!blocks.containsKey(neighbour)) return true;
+        }
+        return false;
     }
 
     public static List<CopycatBuild> loadAll(File folder, Map<String, BuildSettings> overrides) {
@@ -161,7 +172,7 @@ public final class CopycatBuild {
             return null;
         }
         if (build.removableCount() == 0) {
-            LOGGER.warning("Skipping Copycat build " + file.getName() + ": every block is in ignored-materials");
+            LOGGER.warning("Skipping Copycat build " + file.getName() + ": no block is both exposed to air and outside ignored-materials");
             return null;
         }
         return build;

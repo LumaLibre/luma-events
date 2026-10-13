@@ -41,6 +41,7 @@ import org.bukkit.util.Vector;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +70,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     private static final long END_DELAY_SECONDS = 5;
     private static final long CLEANUP_TIMEOUT_SECONDS = 30;
     private static final double THROWABLE_KNOCKBACK = 0.3;
+    private static final double CLEAR_MARGIN = 16;
     static final PluginContextLogger LOGGER = PluginContextLogger.getPluginLogger();
     private static final BlockData AIR = Material.AIR.createBlockData();
     private static final Set<Material> MARKER_BLOCKS = Set.of(Material.TEST_BLOCK, Material.CHEST, Material.TRAPPED_CHEST);
@@ -77,10 +79,11 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     private final Location lobby;
     private final GenericStructure map;
     private final List<Location> spawnPoints;
-    @Getter
-    private final WorldTiedBoundingBox arena;
     private final double islandRadius;
+    private final double maxSpectatorDistanceSquared;
     private final LootChests lootChests;
+    @Getter
+    private final ArenaBorder border;
 
     @Getter
     private final MinigameRoleMap<SkyWarsRole> roleMap = new MinigameRoleMap<>(SkyWarsRole::cleanup);
@@ -97,10 +100,18 @@ public final class SkyWars extends InventoryUnifiedMinigame {
             .map(location -> location.add(0.5, 0, 0.5))
             .toList();
         Preconditions.checkArgument(!spawnPoints.isEmpty(), "SkyWars map " + def.getSchematic() + " has no spawn market blocks (" + SPAWN_MARKER_BLOCK + ")");
-        this.arena = def.getRegion().toWorldTiedBoundingBox();
-        this.boundingBox = arena;
         this.islandRadius = def.getIslandRadius();
+        this.maxSpectatorDistanceSquared = def.getMaxSpectatorDistance() * def.getMaxSpectatorDistance();
         this.lootChests = new LootChests(map, def.getLoot());
+        this.border = new ArenaBorder(map, MARKER_BLOCKS);
+        this.boundingBox = border.getFootprint();
+    }
+
+    public boolean isOutOfBounds(Location location) {
+        Location origin = map.getOrigin();
+        return !origin.getWorld().equals(location.getWorld())
+            || location.getY() < origin.getWorld().getMinHeight()
+            || location.distanceSquared(origin) > maxSpectatorDistanceSquared;
     }
 
     @Override
@@ -178,6 +189,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
                 for (SkyWarsRole skyWarsPlayer : roleMap) {
                     skyWarsPlayer.play();
                 }
+                border.activate();
             });
     }
 
@@ -190,6 +202,10 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         Component status = this.setupStatus;
         if (status != null && this.audience != null) {
             this.audience.sendActionBar(status);
+        }
+        if (border.tick()) {
+            this.sendAudienceMessage("<red>The border is closing in!</red> Head towards the center.");
+            this.playAudienceSound(Sound.BLOCK_BELL_USE, 1f, 0.6f);
         }
         for (SkyWarsRole skyWarsPlayer : roleMap) {
             skyWarsPlayer.tick();
@@ -204,21 +220,52 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         }
 
         List<CompletableFuture<Void>> cleanups = new ArrayList<>();
-        for (SkyWarsRole skyWarsPlayer : roleMap) {
+        for (SkyWarsRole role : roleMap) {
             try {
-                cleanups.add(skyWarsPlayer.cleanup());
+                cleanups.add(role.cleanup());
             } catch (Throwable throwable) {
                 cleanups.add(CompletableFuture.failedFuture(throwable));
             }
         }
-
-        Executors.teleportGroupAsync(participants, lobby);
 
         CompletableFuture.allOf(cleanups.toArray(CompletableFuture[]::new))
             .orTimeout(CLEANUP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .exceptionally(throwable -> {
                 LOGGER.error("Not every SkyWars player finished cleaning up", throwable);
                 return null;
+            })
+            .thenCompose(v -> {
+                CompletableFuture<Void> endDone = new CompletableFuture<>();
+                try {
+                    scoreboard.handleGameEnd(audience, () -> {
+                        try {
+                            CountdownBossBar.builder()
+                                .audience(this.audience)
+                                .color(BossBar.Color.BLUE)
+                                .title("<aqua><b>Game Over")
+                                .seconds(8)
+                                .callback(() -> this.sendAudienceMessage("This minigame has concluded."))
+                                .build()
+                                .start();
+
+                            Collection<CompletableFuture<Boolean>> teleports = Executors.teleportGroupAsync(participants, lobby);
+                            CompletableFuture.allOf(teleports.toArray(CompletableFuture[]::new))
+                                .whenComplete((r, t) -> {
+                                    if (t != null) {
+                                        endDone.completeExceptionally(t);
+                                    }
+                                    else {
+                                        endDone.complete(null);
+                                    }
+                                });
+                        } catch (Throwable t) {
+                            endDone.completeExceptionally(t);
+                        }
+                    });
+                } catch (Throwable t) {
+                    endDone.completeExceptionally(t);
+                }
+                return endDone;
             })
             .thenComposeAsync(v -> map.removeAsync(), Executors::runAsync)
             .thenCompose(v -> clearArena())
@@ -352,6 +399,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     }
 
     private CompletableFuture<Void> clearArena() {
+        WorldTiedBoundingBox arena = border.getFootprint().move(CLEAR_MARGIN, 0, CLEAR_MARGIN);
         World world = arena.getWorld();
         int minX = (int) Math.floor(arena.getMinX());
         int maxX = (int) Math.floor(arena.getMaxX());

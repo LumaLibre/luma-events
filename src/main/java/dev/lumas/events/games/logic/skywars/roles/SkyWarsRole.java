@@ -31,6 +31,12 @@ public abstract class SkyWarsRole extends MinigameRole {
         return ctx.isActive() && !ctx.isStopping() && ctx.getRoleMap().get(this.getUuid()) == this;
     }
 
+    protected void releaseBorder(Player player) {
+        if (ctx.isStopping() || !ctx.getRoleMap().containsKey(this.getUuid())) {
+            player.setWorldBorder(null);
+        }
+    }
+
     protected static void normalize(Player player) {
         player.setHealth(20.0);
         player.setFallDistance(0f);

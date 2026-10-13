@@ -236,6 +236,9 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                     .color(BossBar.Color.BLUE)
                     .title("<aqua><b>Game Over")
                     .seconds(8)
+                    .callback(() -> {
+                        this.sendAudienceMessage("This minigame has concluded.");
+                    })
                     .build()
                     .start();
             }))

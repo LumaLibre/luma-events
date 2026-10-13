@@ -4,9 +4,6 @@ import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.skywars.SkyWars;
 import dev.lumas.events.games.logic.skywars.SkyWarsTeam;
 import dev.lumas.events.model.EventPlayer;
-import dev.lumas.events.model.WorldTiedBoundingBox;
-import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.potion.PotionEffect;
@@ -42,7 +39,7 @@ public class SkyWarsSpectator extends SkyWarsRole {
             player.addPotionEffect(INVISIBILITY);
             player.setAllowFlight(true);
             player.setFlying(true);
-            if (!ctx.getArena().contains(player.getLocation())) {
+            if (ctx.isOutOfBounds(player.getLocation())) {
                 returnToArena(player);
             }
         });
@@ -55,6 +52,7 @@ public class SkyWarsSpectator extends SkyWarsRole {
             player.removePotionEffect(PotionEffectType.INVISIBILITY);
             player.setFlying(false);
             player.setAllowFlight(false);
+            releaseBorder(player);
         }));
 
         Player self = this.eventPlayer.getPlayer();
@@ -71,7 +69,7 @@ public class SkyWarsSpectator extends SkyWarsRole {
     @Override
     public void tick() {
         this.operatePlayer(player -> {
-            if (!ctx.getArena().contains(player.getLocation())) {
+            if (ctx.isOutOfBounds(player.getLocation())) {
                 returnToArena(player);
             }
             player.addPotionEffect(INVISIBILITY);
@@ -95,27 +93,6 @@ public class SkyWarsSpectator extends SkyWarsRole {
         if (returning || ctx.isStopping()) return;
         returning = true;
         player.setFallDistance(0f);
-        Location location = player.getLocation();
-        if (location.getY() < ctx.getArena().getMinY()) {
-            location = aboveVoid(location);
-        }
-        this.teleportAsync(clampToArena(location)).whenComplete((success, throwable) -> returning = false);
-    }
-
-    private Location aboveVoid(Location location) {
-        World world = location.getWorld();
-        int highestY = world.getHighestBlockYAt(location);
-        Location up = location.clone();
-        up.setY(highestY >= world.getMinHeight() ? highestY + 2 : team.spawn().getY());
-        return up;
-    }
-
-    private Location clampToArena(Location location) {
-        WorldTiedBoundingBox arena = ctx.getArena();
-        return new Location(arena.getWorld(),
-            Math.clamp(location.getX(), arena.getMinX() + 1, arena.getMaxX() - 1),
-            Math.clamp(location.getY(), arena.getMinY() + 1, arena.getMaxY() - 1),
-            Math.clamp(location.getZ(), arena.getMinZ() + 1, arena.getMaxZ() - 1),
-            location.getYaw(), location.getPitch());
+        this.teleportAsync(team.spawn()).whenComplete((success, throwable) -> returning = false);
     }
 }
