@@ -95,7 +95,7 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport, boolean wasAfk) {
         Player player = participant.getPlayer();
         Executors.runSync(participant, () -> {
             if (player != null) {
@@ -107,11 +107,11 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
                     Logging.warningLog("Failed to restore inventory for player: " + participant.getUuid() + ". No snapshot found. (Participant removal)");
                 }
             }
-            if (!this.isOpen()) {
+            if (!this.isOpen() && !wasAfk) {
                 this.tokenHandler(participant);
             }
         });
-        return super.removeParticipant(participant, doTeleport);
+        return super.removeParticipant(participant, doTeleport, wasAfk);
     }
 
     @Nullable

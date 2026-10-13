@@ -72,6 +72,7 @@ dependencies {
 
     compileOnly("com.github.LumaLibre:HiddenArmor-Folia:96bcba105e") // TODO: needs to be on repo.jsinco.dev
     compileOnly("org.geysermc.floodgate:api:2.2.5-SNAPSHOT")
+    compileOnly("dev.lumas.sleepy:Sleepy:1.0.0")
 
     // temp: trick or treat
     compileOnly("com.nexomc:nexo:1.29.1") { isTransitive = false }

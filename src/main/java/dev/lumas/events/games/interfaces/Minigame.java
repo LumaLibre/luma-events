@@ -6,12 +6,15 @@ import dev.lumas.events.games.events.MinigameExitPreventionListener;
 import dev.lumas.events.games.events.MinigamePreventDamageListener;
 import dev.lumas.events.games.events.MinigamePreventInventoryTampering;
 import dev.lumas.events.games.exceptions.GameComponentIllegallyActive;
+import dev.lumas.events.games.interfaces.models.InactivitySettings;
+import dev.lumas.events.games.interfaces.models.MinigameRole;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.MinigameBoundingBox;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Externals;
 import dev.lumas.events.utility.JoinTrace;
+import dev.lumas.events.utility.SoftSleepyAPI;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.effects.SoundDefinition;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
@@ -41,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,6 +64,8 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
     protected final List<EventPlayer> participants = new CopyOnWriteArrayList<>();
     private final Map<UUID, CompletableFuture<Boolean>> joinTeleports = new ConcurrentHashMap<>();
     protected final List<Listener> extraListeners = new ArrayList<>();
+    private final InactivitySettings cachedInactivitySettings = this.inactivitySettings();
+    private final Set<UUID> afkWarned = ConcurrentHashMap.newKeySet();
     private final MinigamePreventInventoryTampering inventoryTampering;
     private final MinigamePreventDamageListener preventDamage;
 
@@ -226,6 +232,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         this.active = false;
         this.open = false; // Should be false by now anyway :P
         this.participants.clear();
+        this.afkWarned.clear();
         return true;
     }
 
@@ -274,7 +281,12 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
     }
 
     public boolean removeParticipant(EventPlayer player, boolean doTeleport) {
+        return this.removeParticipant(player, true, false);
+    }
+
+    public boolean removeParticipant(EventPlayer player, boolean doTeleport, boolean wasAfk) {
         this.participants.remove(player);
+        this.afkWarned.remove(player.getUuid());
         player.operatePlayer(bukkitPlayer -> {
             if (bukkitPlayer.getGameMode() != GameMode.SURVIVAL) {
                 bukkitPlayer.setGameMode(GameMode.SURVIVAL);
@@ -331,6 +343,50 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }
+        unsafe(this::checkInactivity);
+    }
+
+    private void checkInactivity() {
+        InactivitySettings settings = this.cachedInactivitySettings;
+        for (EventPlayer participant : this.participants) {
+            UUID uuid = participant.getUuid();
+            if (!this.afkRemovable(participant, settings)) {
+                this.afkWarned.remove(uuid);
+                continue;
+            }
+            if (SoftSleepyAPI.hasBeenAfkForSeconds(uuid, settings.secondsBeforeKick())) {
+                this.removeInactiveParticipant(participant);
+            } else if (SoftSleepyAPI.hasBeenAfkForSeconds(uuid, settings.secondsAfk())) {
+                if (this.afkWarned.add(uuid)) {
+                    this.warnInactiveParticipant(participant, settings);
+                }
+            } else {
+                this.afkWarned.remove(uuid);
+            }
+        }
+    }
+
+    private boolean afkRemovable(EventPlayer participant, InactivitySettings settings) {
+        if (settings.afkRemovableRoles().isEmpty()) {
+            return true;
+        }
+        MinigameRole role = settings.roleLookup().apply(participant);
+        return role != null && settings.afkRemovableRoles().stream().anyMatch(type -> type.isInstance(role));
+    }
+
+    private void warnInactiveParticipant(EventPlayer participant, InactivitySettings settings) {
+        long remaining = Math.max(0, settings.secondsBeforeKick() - settings.secondsAfk());
+        participant.sendTitle("<red>You are AFK!", "<yellow>Move within " + remaining + "s or you will be removed");
+        participant.sendMessage("<red>You are AFK and will be removed from " + this.name + " in " + remaining + " seconds.");
+        participant.operatePlayer(player -> player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 0.5f));
+    }
+
+    private void removeInactiveParticipant(EventPlayer participant) {
+        if (!this.removeParticipant(participant, true, true)) {
+            return;
+        }
+        participant.sendMessage("<red>You were removed from " + this.name + " for being AFK.");
+        this.sendAudienceMessage("<yellow>" + participant.getName() + "</yellow> was removed for inactivity.");
     }
 
     public void ensureNotIllegal() {
@@ -398,6 +454,13 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             return;
         }
         this.audience.showTitle(Util.title(title, subtitle, times, Util.TEXT_COLOR));
+    }
+
+    public void sendAudienceActionBar(String message, TagResolver... tagResolvers) {
+        if (this.audience == null) {
+            return;
+        }
+        this.audience.sendActionBar(Util.color(message, Util.TEXT_COLOR, tagResolvers));
     }
 
     public void playAudienceSound(Sound sound, float volume, float pitch) {
@@ -475,6 +538,10 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
     // Minigame stops, returns true if successful
     protected abstract void handleStop();
+
+    protected InactivitySettings inactivitySettings() {
+        return InactivitySettings.defaults();
+    }
 
     protected CompletableFuture<Boolean> teleportOnJoin(EventPlayer player, @Nullable Location destination) {
         Player bukkitPlayer = player.getPlayer();

@@ -5,6 +5,7 @@ import com.google.common.base.Preconditions;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.game.Manor2Definition;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
+import dev.lumas.events.games.interfaces.models.InactivitySettings;
 import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
 import dev.lumas.events.games.interfaces.packet.PacketGlow;
 import dev.lumas.events.games.logic.manor2.artifact.ArtifactEntity;
@@ -114,6 +115,11 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         Manor2Definition.LagCompensationSettings lagCompensation = definition.getLagCompensation();
         this.latencyHandler = new LatencyHandler(latency, lagCompensation.isEnabled(), lagCompensation.getMaxRewindNano(), lagCompensation.getInterpolationMillis());
         this.tracing = new Tracing(this::involvedEntities, recorder, latencyHandler);
+    }
+
+    @Override
+    protected InactivitySettings inactivitySettings() {
+        return InactivitySettings.defaults(participant -> roleMap.get(participant.getUuid()), Ghost.class, GhostHunter.class);
     }
 
     @Override
