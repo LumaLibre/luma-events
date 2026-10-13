@@ -10,6 +10,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+// TODO: This needs to be implemented for all minigames, not just InventoryUnified ones because minigame.removeParticipant is important!
 public class MinigameInventoryRestoringQuitListener implements Listener {
 
     private final Minigame minigame;

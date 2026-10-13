@@ -14,6 +14,7 @@ import dev.lumas.events.games.logic.manor2.artifact.ArtifactPickupResult;
 import dev.lumas.events.games.logic.manor2.attack.GhostAttacks;
 import dev.lumas.events.games.logic.manor2.attack.OutsideBoundsEffect;
 import dev.lumas.events.games.logic.manor2.light.Flashlight;
+import dev.lumas.events.games.logic.manor2.roles.Artifact;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
@@ -48,6 +49,8 @@ import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -79,6 +82,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private static final long TICK_INTERVAL = 1L;
     private static final int TELEPORTS_PER_TICK = 5;
     private static final long END_DELAY_SECONDS = 10;
+    private static final int MINIMUM_GHOSTS = 1;
     public static final int TRAIL_HISTORY_TICKS = 20;
     public static final NamespacedKey ITEM_TAG = Preconditions.checkNotNull(
         NamespacedKey.fromString("manor2/item", EventMain.getInstance())
@@ -225,7 +229,16 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         }
         audience.showTitle(Title.title(Util.color("<yellow>Game Over", Util.TEXT_COLOR), gameOverSubtitle));
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
-            .thenRun(() -> scoreboard.showScores(audience))
+            .thenRun(() -> scoreboard.handleGameEnd(this.audience, () -> {
+                Executors.teleportGroupAsync(this.participants, definition.getLobby());
+                CountdownBossBar.builder()
+                    .audience(this.audience)
+                    .color(BossBar.Color.BLUE)
+                    .title("<aqua><b>Game Over")
+                    .seconds(8)
+                    .build()
+                    .start();
+            }))
             .exceptionally(exception -> {
                 exception.printStackTrace();
                 return null;
@@ -245,10 +258,56 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         if (player.getPlayer() != null && this.timer != null) {
             this.timer.getBossBar().removeViewer(player.getPlayer());
         }
-        if (roleMap.remove(player.getUuid()) instanceof Manor2Role role) {
-            Executors.runSync(player, () -> role.retire(this));
+        Manor2Role removed = roleMap.remove(player.getUuid());
+        if (removed != null) {
+            Executors.runSync(player, () -> removed.retire(this));
         }
-        return super.removeParticipant(player, doTeleport);
+        boolean result = super.removeParticipant(player, doTeleport);
+        if (removed instanceof Ghost) {
+            replenishGhosts();
+        }
+        return result;
+    }
+
+    private void replenishGhosts() {
+        if (!this.active || this.stopping) {
+            return;
+        }
+        int missing = MINIMUM_GHOSTS - roleMap.getMatching(Ghost.class).size();
+        for (int i = 0; i < missing; i++) {
+            Manor2Role candidate = ghostCandidate();
+            if (candidate == null) {
+                return;
+            }
+            promoteToGhost(candidate);
+        }
+    }
+
+    @Nullable
+    private Manor2Role ghostCandidate() {
+        List<Manor2Role> benched = new ArrayList<>();
+        benched.addAll(roleMap.getMatching(Spectator.class));
+        benched.addAll(roleMap.getMatching(Artifact.class));
+        if (!benched.isEmpty()) {
+            return Util.getRandom(benched);
+        }
+        List<GhostHunter> hunters = roleMap.getMatching(GhostHunter.class);
+        if (hunters.size() <= 1) {
+            return null;
+        }
+        return Util.getRandom(hunters);
+    }
+
+    private void promoteToGhost(Manor2Role role) {
+        EventPlayer eventPlayer = role.getEventPlayer();
+        scoreboard.registerTeam(role.getUuid(), ManorTeam.GHOSTS);
+        roleMap.swapRoleSafely(role, () -> new Ghost(this, eventPlayer))
+            .thenRun(() -> eventPlayer.teleportAsync(Util.getRandom(definition.getGhostStartLocations())))
+            .exceptionally(exception -> {
+                exception.printStackTrace();
+                return null;
+            });
+        sendAudienceMessage("<yellow>" + eventPlayer.getName() + "</yellow> has risen as a ghost!");
     }
 
     @EventHandler
