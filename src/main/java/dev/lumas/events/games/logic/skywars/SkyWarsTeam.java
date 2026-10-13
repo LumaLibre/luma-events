@@ -32,6 +32,10 @@ public record SkyWarsTeam(TeamColor color, Location spawn) {
         return Component.text(color.getDisplayName(), color.getTextColor());
     }
 
+    public String miniMessageName() {
+        return "<" + color.getTextColor().asHexString() + ">" + color.getDisplayName();
+    }
+
     public ItemStack helmet() {
         ItemStack helmet = ItemStack.of(Material.LEATHER_HELMET);
         helmet.editMeta(LeatherArmorMeta.class, meta -> {

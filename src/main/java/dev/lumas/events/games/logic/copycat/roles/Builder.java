@@ -51,6 +51,7 @@ public final class Builder extends CopycatRole {
     private final Plot plot;
     private final Set<BlockPos> unresolved = ConcurrentHashMap.newKeySet();
     private final Set<BlockPos> extras = ConcurrentHashMap.newKeySet();
+    private final Set<BlockPos> placedByPlayer = ConcurrentHashMap.newKeySet();
     private volatile Map<BlockPos, Placed> targets = Map.of();
     private volatile Set<BlockPos> hidden = Set.of();
     @Getter
@@ -135,6 +136,7 @@ public final class Builder extends CopycatRole {
         this.hidden = Set.copyOf(chosen);
         this.unresolved.clear();
         this.extras.clear();
+        this.placedByPlayer.clear();
         this.locked = false;
         this.lockedAt = 0;
         World world = plot.getWorld();
@@ -194,6 +196,7 @@ public final class Builder extends CopycatRole {
     }
 
     public void onPlaced(BlockPos blockPos, Placed placed) {
+        placedByPlayer.add(blockPos);
         Placed target = targets.get(blockPos);
         if (target == null) {
             extras.add(blockPos);
@@ -236,7 +239,8 @@ public final class Builder extends CopycatRole {
             }
             boolean wasHidden = hidden.contains(blockPos);
             if (CopycatBuild.matches(target, found)) {
-                if (wasHidden) correct++;
+                if (wasHidden && placedByPlayer.contains(blockPos)) correct++;
+                else if (wasHidden) missing++;
             } else if (found.isAir()) {
                 if (wasHidden) missing++;
                 else removedGiven++;
@@ -264,7 +268,7 @@ public final class Builder extends CopycatRole {
         if (locked || !unresolved.isEmpty() || !extras.isEmpty()) return;
         lock();
         this.operatePlayer(player -> {
-            player.showTitle(Util.title("<green><b>Perfect!", "<gray>Your build is locked in"));
+            player.showTitle(Util.title("<green><b>Perfect!", "<gray>Your build is locked in", Copycat.QUICK_TITLE));
             player.playSound(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
         });
         ctx.sendAudienceMessage("<green>" + getName() + "</green> finished a perfect copy!");

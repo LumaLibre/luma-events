@@ -16,7 +16,7 @@ import java.util.concurrent.CompletableFuture;
 @Getter
 public final class Arena {
 
-    private static final BlockData WALL = Material.WHITE_TERRACOTTA.createBlockData();
+    private static final BlockData WALL = Material.BARRIER.createBlockData();
     static final BlockData FLOOR = Material.BLACK_TERRACOTTA.createBlockData();
     static final BlockData FOOTPRINT_MARKER = Material.LIGHT_GRAY_TERRACOTTA.createBlockData();
     private static final int PLOT_PADDING = 6;

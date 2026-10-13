@@ -45,7 +45,7 @@ public class Spectator extends CopycatRole {
             player.addPotionEffect(INVISIBILITY);
             player.setAllowFlight(true);
             player.setFlying(true);
-            player.showTitle(Util.title(title, subtitle));
+            player.showTitle(Util.title(title, subtitle, Copycat.QUICK_TITLE));
         });
     }
 

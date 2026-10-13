@@ -21,6 +21,7 @@ import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -62,6 +63,7 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -97,9 +99,12 @@ public final class Copycat extends InventoryUnifiedMinigame {
     private static final double MIN_TIME_SCALE = 0.5;
     private static final int MAX_FASTERS = 4;
     private static final int MAX_SHOWCASED = 3;
+    private static final int BEST_SHOWCASED = 2;
     private static final double START_REQUIRED_ACCURACY = 0.30;
-    private static final double MIN_REQUIRED_STEP = 0.03;
-    private static final double MAX_REQUIRED_STEP = 0.07;
+    private static final double MIN_REQUIRED_STEP = 0.01;
+    private static final double MAX_REQUIRED_STEP = 0.03;
+    public static final Title.Times QUICK_TITLE = Title.Times.times(Duration.ofMillis(150), Duration.ofMillis(1200), Duration.ofMillis(300));
+    private static final Title.Times SHORT_TITLE = Title.Times.times(Duration.ofMillis(200), Duration.ofMillis(2000), Duration.ofMillis(400));
     private static final double MAX_REQUIRED_ACCURACY = 0.75;
     private static final long SHOWCASE_SECONDS = 7;
     private static final long INTERMISSION_SECONDS = 5;
@@ -125,7 +130,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
     private final CopycatTokenFormula tokenFormula = new CopycatTokenFormula();
     private final Map<UUID, Integer> roundsSurvived = new ConcurrentHashMap<>();
     private final Map<UUID, BuildScore> roundScores = new ConcurrentHashMap<>();
-    private final Deque<Builder> showcase = new ConcurrentLinkedDeque<>();
+    private final Deque<Showcased> showcase = new ConcurrentLinkedDeque<>();
     private final List<Builder> eliminated = new CopyOnWriteArrayList<>();
     private final AtomicBoolean ended = new AtomicBoolean();
     @Getter
@@ -166,7 +171,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
             .max()
             .orElseThrow();
         long roundSeconds = PREVIEW_SECONDS + longestBuild
-            + MAX_SHOWCASED * SHOWCASE_SECONDS + INTERMISSION_SECONDS + 10;
+            + (MAX_SHOWCASED + BEST_SHOWCASED) * SHOWCASE_SECONDS + INTERMISSION_SECONDS + 10;
         return TimeUnit.SECONDS.toMillis(SETUP_ALLOWANCE_SECONDS
             + roundSeconds * Math.max(1, definition.getMaxRounds())
             + END_DELAY_SECONDS);
@@ -189,7 +194,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
         if (role != null) {
             role.cleanup();
         }
-        showcase.removeIf(builder -> builder.getUuid().equals(participant.getUuid()));
+        showcase.removeIf(entry -> entry.builder().getUuid().equals(participant.getUuid()));
         eliminated.removeIf(builder -> builder.getUuid().equals(participant.getUuid()));
         participant.teleportAsync(lobby);
         return super.removeParticipant(participant, doTeleport);
@@ -214,7 +219,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
             roleMap.put(new Builder(this, participants.get(i), plots.get(i)));
         }
 
-        this.sendAudienceTitle("<yellow>Building the arena", "<gray>Hold tight...");
+        this.sendAudienceTitle("<yellow>Building the arena", "<gray>Hold tight...", SHORT_TITLE);
         arena.build().whenComplete((ignored, throwable) -> {
             if (throwable != null) {
                 LOGGER.error("Failed to build the Copycat arena", throwable);
@@ -377,7 +382,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
         this.phase = Phase.PREVIEW;
         this.phaseEndsAt = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(PREVIEW_SECONDS);
         this.showBar("<yellow><b>Memorize!</b></yellow> <gray>|</gray> <white>%ss", BossBar.Color.YELLOW, PREVIEW_SECONDS);
-        this.sendAudienceTitle("<yellow><b>Round " + roundNumber, "<gray>Memorize the build!");
+        this.sendAudienceTitle("<yellow><b>Round " + roundNumber, "<gray>Memorize the build!", QUICK_TITLE);
         this.playAudienceSound(Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 1.2f);
     }
 
@@ -393,7 +398,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
             builder.uncover();
         }
         this.showBar("<green><b>Build!</b></green> <gray>|</gray> <white>%ss", BossBar.Color.GREEN, buildSeconds);
-        this.sendAudienceTitle("<green><b>Build!", "<gray>" + current.hiddenCount() + " blocks went missing, " + buildSeconds + "s to get " + percent(requiredAccuracy(roundNumber)) + " right");
+        this.sendAudienceTitle("<green><b>Build!", "<gray>" + current.hiddenCount() + " blocks went missing, " + buildSeconds + "s to get " + percent(requiredAccuracy(roundNumber)) + " right", QUICK_TITLE);
         this.sendAudienceMessage("You have exactly the blocks that were removed. Put them back where they belong!");
     }
 
@@ -401,7 +406,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
         if (phase != Phase.BUILDING) return;
         this.phase = Phase.SCORING;
         this.stopBar();
-        this.sendAudienceTitle("<gold><b>Time!", "<gray>Checking builds...");
+        this.sendAudienceTitle("<gold><b>Time!", "<gray>Checking builds...", QUICK_TITLE);
         this.roundScores.clear();
 
         Round current = this.round;
@@ -457,26 +462,39 @@ public final class Copycat extends InventoryUnifiedMinigame {
         eliminated.clear();
         eliminated.addAll(losers);
         showcase.clear();
-        if (losers.isEmpty()) {
-            if (builders.size() > 0 && scored.size() == builders.size()) {
-                this.sendAudienceMessage("<green>Everyone made the cut!</green> Nobody is eliminated this round.");
-            }
+        List<Builder> cut = losers;
+        List<Builder> best = scored.stream()
+            .filter(builder -> !cut.contains(builder))
+            .sorted(Comparator.<Builder>comparingDouble(builder -> accuracy(builder, roundScores.get(builder.getUuid())))
+                .thenComparingInt(builder -> roundScores.get(builder.getUuid()).points())
+                .reversed())
+            .limit(BEST_SHOWCASED)
+            .toList();
+        for (Builder builder : best) {
+            showcase.addLast(new Showcased(builder, true));
+        }
+        List<Builder> worst = losers.subList(0, Math.min(MAX_SHOWCASED, losers.size()));
+        for (int i = worst.size() - 1; i >= 0; i--) {
+            showcase.addLast(new Showcased(worst.get(i), false));
+        }
+
+        if (losers.isEmpty() && builders.size() > 0 && scored.size() == builders.size()) {
+            this.sendAudienceMessage("<green>Everyone made the cut!</green> Nobody is eliminated this round.");
+        } else if (!losers.isEmpty()) {
+            this.sendAudienceMessage("<red>" + losers.size() + "</red> " + (losers.size() == 1 ? "player" : "players") + " didn't reach " + percent(required) + ".");
+        }
+        if (showcase.isEmpty()) {
             this.beginIntermission();
             return;
         }
-        List<Builder> shown = losers.subList(0, Math.min(MAX_SHOWCASED, losers.size()));
-        for (int i = shown.size() - 1; i >= 0; i--) {
-            showcase.addLast(shown.get(i));
-        }
         this.phase = Phase.SHOWCASE;
-        this.sendAudienceMessage("<red>" + losers.size() + "</red> " + (losers.size() == 1 ? "player" : "players") + " didn't reach " + percent(required) + ". Let's take a look...");
         this.showNext();
     }
 
     private synchronized void showNext() {
         if (phase != Phase.SHOWCASE) return;
-        Builder next = showcase.pollFirst();
-        if (next == null) {
+        Showcased entry = showcase.pollFirst();
+        if (entry == null) {
             for (Builder loser : eliminated) {
                 this.eliminate(loser);
             }
@@ -485,13 +503,23 @@ public final class Copycat extends InventoryUnifiedMinigame {
             return;
         }
 
+        Builder next = entry.builder();
         this.phaseEndsAt = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(SHOWCASE_SECONDS);
         BuildScore score = roundScores.get(next.getUuid());
+        String accuracy = score == null ? "?" : percent(accuracy(next, score));
         String points = score == null ? "?" : String.valueOf(score.points());
-        String summary = score == null ? "" : " <gray>|</gray> " + score.summary();
         Executors.teleportGroupAsync(participants, next.getPlot().getOverview());
-        this.sendAudienceTitle("<red>" + next.getName() + "'s build", "<gold>" + points + " points</gold>" + summary);
-        this.playAudienceSound(Sound.ENTITY_VILLAGER_NO, 0.8f, 1f);
+        if (entry.best()) {
+            this.sendAudienceTitle("<green>" + next.getName() + "'s build", "<gold>" + accuracy + " correct</gold> <gray>|</gray> <gold>" + points + " points", SHORT_TITLE);
+            this.playAudienceSound(Sound.ENTITY_PLAYER_LEVELUP, 0.8f, 1.2f);
+        } else {
+            String summary = score == null ? "" : " <gray>|</gray> " + score.summary();
+            this.sendAudienceTitle("<red>" + next.getName() + "'s build", "<gold>" + accuracy + " correct</gold>" + summary, SHORT_TITLE);
+            this.playAudienceSound(Sound.ENTITY_VILLAGER_NO, 0.8f, 1f);
+        }
+    }
+
+    private record Showcased(Builder builder, boolean best) {
     }
 
     private void eliminate(Builder builder) {
@@ -537,7 +565,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
             if (next > current) {
                 this.sendAudienceMessage("The bar has been raised: get at least <gold>" + percent(next) + "</gold> of the missing blocks right to survive <gray>(was " + percent(current) + ")</gray>");
             }
-            this.sendAudienceTitle("<gold><b>" + faster(roundNumber + 1), subtitle);
+            this.sendAudienceTitle("<gold><b>" + faster(roundNumber + 1), subtitle, SHORT_TITLE);
             this.playAudienceSound(Sound.BLOCK_NOTE_BLOCK_BASEDRUM, 1f, 0.8f + 0.1f * Math.min(MAX_FASTERS, roundNumber));
         }
     }

@@ -185,7 +185,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     protected void onRunnable(long timeLeft) {
         if (this.stopping) return;
         if (timeLeft <= TimeUnit.SECONDS.toMillis(END_DELAY_SECONDS)) {
-            this.finish();
+            this.finish(true);
         }
         Component status = this.setupStatus;
         if (status != null && this.audience != null) {
@@ -198,7 +198,10 @@ public final class SkyWars extends InventoryUnifiedMinigame {
 
     @Override
     protected void handleStop() {
-        this.finish();
+        if (ended.compareAndSet(false, true)) {
+            Set<SkyWarsTeam> alive = aliveTeams();
+            announceWinner(alive.size() == 1 ? alive.iterator().next() : null);
+        }
 
         List<CompletableFuture<Void>> cleanups = new ArrayList<>();
         for (SkyWarsRole skyWarsPlayer : roleMap) {
@@ -226,33 +229,42 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     }
 
     public boolean finish() {
-        if (this.active || this.stopping || !ended.compareAndSet(false, true)) {
+        return this.finish(false);
+    }
+
+    private boolean finish(boolean timeUp) {
+        if (!this.active || this.stopping || this.open) {
             return false;
         }
 
         Set<SkyWarsTeam> alive = aliveTeams();
-
-        if (alive.size() > 1) {
+        if (alive.size() > 1 && !timeUp) {
             return false;
         }
-
+        if (!ended.compareAndSet(false, true)) {
+            return false;
+        }
 
         SkyWarsTeam winner = alive.size() == 1 ? alive.iterator().next() : null;
 
         CountdownBossBar.builder()
-            .title("<red><b>Game Over</b> <gray>| <gold>" + (winner == null ? "No team won" : winner.displayName() + " Team has won"))
+            .title("<red><b>Game Over</b> <gray>| " + (winner == null ? "<gold>No team won" : winner.miniMessageName() + " Team has won"))
             .audience(this.audience)
             .color(BossBar.Color.RED)
             .seconds(END_DELAY_SECONDS)
             .callback(this::stop)
             .build()
             .start();
+        announceWinner(winner);
+        return true;
+    }
+
+    private void announceWinner(@Nullable SkyWarsTeam winner) {
         scoreboard.handleGameEnd(this.audience, () -> sendAudienceMessage(winner == null
             ? Component.text("No team won this time!")
             : Component.empty()
               .append(winner.displayName().append(Component.text(" Team")))
               .append(Component.text(" has won!"))));
-        return true;
     }
 
     private void showSetupProgress(String label, double progress) {
