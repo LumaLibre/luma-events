@@ -2,6 +2,7 @@ package dev.lumas.events.games.logic.copycat;
 
 import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Executors;
+import dev.lumas.events.utility.vector.BlockPos;
 import lombok.experimental.UtilityClass;
 import org.bukkit.Chunk;
 import org.bukkit.ChunkSnapshot;

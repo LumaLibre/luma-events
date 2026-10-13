@@ -2,7 +2,6 @@ package dev.lumas.events.games.logic.copycat.roles;
 
 import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.copycat.ArenaBlocks;
-import dev.lumas.events.games.logic.copycat.BlockPos;
 import dev.lumas.events.games.logic.copycat.BuildScore;
 import dev.lumas.events.games.logic.copycat.Copycat;
 import dev.lumas.events.games.logic.copycat.CopycatBuild;
@@ -12,6 +11,7 @@ import dev.lumas.events.games.logic.copycat.Round;
 import dev.lumas.events.games.logic.copycat.TileDetail;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Util;
+import dev.lumas.events.utility.vector.BlockPos;
 import lombok.Getter;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;

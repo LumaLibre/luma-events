@@ -1,6 +1,7 @@
 package dev.lumas.events.games.logic.copycat;
 
 import dev.lumas.core.util.PluginContextLogger;
+import dev.lumas.events.utility.vector.BlockPos;
 import dev.thorinwasher.schem.BlockUtil;
 import dev.thorinwasher.schem.Schematic;
 import dev.thorinwasher.schem.SchematicReader;

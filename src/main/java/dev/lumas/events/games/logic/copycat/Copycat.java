@@ -19,6 +19,7 @@ import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Couple;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
+import dev.lumas.events.utility.vector.BlockPos;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.title.Title;
@@ -86,18 +87,19 @@ public final class Copycat extends InventoryUnifiedMinigame {
         "Photographic memory required.",
         "Blink, and you'll miss it!",
         "No peeking!",
+        "Faster, faster!"
     };
     static final PluginContextLogger LOGGER = PluginContextLogger.getPluginLogger();
     private static final String SCHEM_FOLDER = "copycat";
     private static final long TICK_INTERVAL = 2;
-    private static final int PREVIEW_SECONDS = 15;
+    private static final int PREVIEW_SECONDS = 16;
     private static final double MIN_HIDDEN_FRACTION = 0.25;
     private static final double MAX_HIDDEN_FRACTION = 0.50;
     private static final int HARDEST_ROUND = 10;
     private static final double TIME_SCALE_AT_ROUND_TEN = 1.9 / 2.1;
     private static final double TIME_SCALE_PER_ROUND = (1.0 - TIME_SCALE_AT_ROUND_TEN) / 9.0;
     private static final double MIN_TIME_SCALE = 0.5;
-    private static final int MAX_FASTERS = 4;
+    private static final int MAX_FASTERS = 3;
     private static final int MAX_SHOWCASED = 3;
     private static final int BEST_SHOWCASED = 2;
     private static final double START_REQUIRED_ACCURACY = 0.30;
@@ -108,7 +110,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
     private static final double MAX_REQUIRED_ACCURACY = 0.75;
     private static final long SHOWCASE_SECONDS = 7;
     private static final long INTERMISSION_SECONDS = 5;
-    private static final long END_DELAY_SECONDS = 8;
+    private static final long END_DELAY_SECONDS = 5;
     private static final long SETUP_ALLOWANCE_SECONDS = 45;
     private static final long CLEANUP_TIMEOUT_SECONDS = 30;
     public static final int CORRECT_POINTS = 10;
@@ -143,7 +145,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
     private volatile CountdownBossBar bar;
 
     public Copycat(CopycatDefinition definition) {
-        super("Copycat", Util.getRandom(SPLASH), 0, TICK_INTERVAL, true, true, false, false);
+        super("Speed Build", Util.getRandom(SPLASH), 0, TICK_INTERVAL, true, true, false, false);
         Preconditions.checkState(definition.getLobby() != null, "Copycat needs a lobby");
         Preconditions.checkState(definition.getOrigin() != null, "Copycat needs an arena origin");
         this.definition = definition;
@@ -185,6 +187,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
         this.teleportOnJoin(player, lobby);
+        player.sendMessage("Copy the build presented to you. You have <gold>16s</gold> to memorize it an replicate the creation. Fail to replicate the build above a certain accuracy then you're out.");
         return super.handleParticipantJoin(player);
     }
 
@@ -219,7 +222,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
             roleMap.put(new Builder(this, participants.get(i), plots.get(i)));
         }
 
-        this.sendAudienceTitle("<yellow>Building the arena", "<gray>Hold tight...", SHORT_TITLE);
+        this.sendAudienceActionBar("Building the arena...");
         arena.build().whenComplete((ignored, throwable) -> {
             if (throwable != null) {
                 LOGGER.error("Failed to build the Copycat arena", throwable);
@@ -230,7 +233,6 @@ public final class Copycat extends InventoryUnifiedMinigame {
             for (CopycatRole role : roleMap) {
                 role.play();
             }
-            this.sendAudienceMessage("Copy the build in front of you. Perfect copies score the most, mistakes <red>cost</red> points, and anyone who gets fewer than <gold>" + percent(requiredAccuracy(1)) + "</gold> of the missing blocks right is <red>out</red>. The bar rises every round.");
             this.startRound();
         });
     }
@@ -381,7 +383,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
     private synchronized void beginPreview() {
         this.phase = Phase.PREVIEW;
         this.phaseEndsAt = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(PREVIEW_SECONDS);
-        this.showBar("<yellow><b>Memorize!</b></yellow> <gray>|</gray> <white>%ss", BossBar.Color.YELLOW, PREVIEW_SECONDS);
+        this.showBar("<yellow><b>Preview</b></yellow> <gray>|</gray> <white>%ss", BossBar.Color.YELLOW, PREVIEW_SECONDS);
         this.sendAudienceTitle("<yellow><b>Round " + roundNumber, "<gray>Memorize the build!", QUICK_TITLE);
         this.playAudienceSound(Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 1.2f);
     }
@@ -398,8 +400,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
             builder.uncover();
         }
         this.showBar("<green><b>Build!</b></green> <gray>|</gray> <white>%ss", BossBar.Color.GREEN, buildSeconds);
-        this.sendAudienceTitle("<green><b>Build!", "<gray>" + current.hiddenCount() + " blocks went missing, " + buildSeconds + "s to get " + percent(requiredAccuracy(roundNumber)) + " right", QUICK_TITLE);
-        this.sendAudienceMessage("You have exactly the blocks that were removed. Put them back where they belong!");
+        this.sendAudienceTitle("<green><b>Go!", "<gray>" + current.hiddenCount() + " blocks went missing, " + buildSeconds + "s to get " + percent(requiredAccuracy(roundNumber)) + " right", QUICK_TITLE);
     }
 
     private synchronized void beginScoring() {
@@ -478,8 +479,8 @@ public final class Copycat extends InventoryUnifiedMinigame {
             showcase.addLast(new Showcased(worst.get(i), false));
         }
 
-        if (losers.isEmpty() && builders.size() > 0 && scored.size() == builders.size()) {
-            this.sendAudienceMessage("<green>Everyone made the cut!</green> Nobody is eliminated this round.");
+        if (losers.isEmpty() && !builders.isEmpty() && scored.size() == builders.size()) {
+            this.sendAudienceMessage("<green>Nobody was eliminated this round.");
         } else if (!losers.isEmpty()) {
             this.sendAudienceMessage("<red>" + losers.size() + "</red> " + (losers.size() == 1 ? "player" : "players") + " didn't reach " + percent(required) + ".");
         }
@@ -526,7 +527,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
         if (!controls(builder)) return;
         CopycatRole spectator = roleMap.swapRole(builder.getEventPlayer(), () -> new Spectator(this, builder.getEventPlayer()));
         spectator.play();
-        this.sendAudienceMessage("<red>" + builder.getName() + "</red> has been eliminated.");
+        this.sendAudienceMessage("<red>" + builder.getName() + "</red> was eliminated.");
     }
 
     public void submit(Builder builder) {
@@ -563,7 +564,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
                 ? "<gray>Less time, and you now need <gold>" + percent(next) + "</gold> right"
                 : "<gray>Less time per block next round";
             if (next > current) {
-                this.sendAudienceMessage("The bar has been raised: get at least <gold>" + percent(next) + "</gold> of the missing blocks right to survive <gray>(was " + percent(current) + ")</gray>");
+                this.sendAudienceMessage("Get at least <gold>" + percent(next) + "</gold> of the missing blocks right to survive this round.");
             }
             this.sendAudienceTitle("<gold><b>" + faster(roundNumber + 1), subtitle, SHORT_TITLE);
             this.playAudienceSound(Sound.BLOCK_NOTE_BLOCK_BASEDRUM, 1f, 0.8f + 0.1f * Math.min(MAX_FASTERS, roundNumber));

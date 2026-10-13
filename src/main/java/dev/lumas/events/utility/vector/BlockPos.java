@@ -1,4 +1,4 @@
-package dev.lumas.events.games.logic.copycat;
+package dev.lumas.events.utility.vector;
 
 import org.bukkit.Chunk;
 import org.bukkit.Location;

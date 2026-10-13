@@ -1,6 +1,7 @@
 package dev.lumas.events.games.logic.copycat;
 
 import dev.lumas.events.model.WorldTiedBoundingBox;
+import dev.lumas.events.utility.vector.BlockPos;
 import lombok.Getter;
 import org.bukkit.Location;
 import org.bukkit.World;
