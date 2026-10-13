@@ -52,6 +52,7 @@ dependencies {
     }
 
     implementation("dev.thorinwasher.schem:schem-reader:1.0.0")
+    compileOnly("net.kyori:adventure-nbt")
     implementation("net.objecthunter:exp4j:0.4.8")
 
     // paper includes configurate and configurate does not get updated that often

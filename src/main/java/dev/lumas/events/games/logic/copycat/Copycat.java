@@ -43,6 +43,7 @@ import org.bukkit.event.block.BlockMultiPlaceEvent;
 import org.bukkit.event.block.BlockPhysicsEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.BlockSpreadEvent;
+import org.bukkit.event.block.CauldronLevelChangeEvent;
 import org.bukkit.event.block.LeavesDecayEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -66,6 +67,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -88,8 +90,17 @@ public final class Copycat extends InventoryUnifiedMinigame {
     private static final long TICK_INTERVAL = 2;
     private static final int PREVIEW_SECONDS = 15;
     private static final double MIN_HIDDEN_FRACTION = 0.25;
-    private static final double MAX_HIDDEN_FRACTION = 0.60;
-    private static final int ELIMINATIONS_PER_ROUND = 3;
+    private static final double MAX_HIDDEN_FRACTION = 0.50;
+    private static final int HARDEST_ROUND = 10;
+    private static final double TIME_SCALE_AT_ROUND_TEN = 1.9 / 2.1;
+    private static final double TIME_SCALE_PER_ROUND = (1.0 - TIME_SCALE_AT_ROUND_TEN) / 9.0;
+    private static final double MIN_TIME_SCALE = 0.5;
+    private static final int MAX_FASTERS = 4;
+    private static final int MAX_SHOWCASED = 3;
+    private static final double START_REQUIRED_ACCURACY = 0.30;
+    private static final double MIN_REQUIRED_STEP = 0.03;
+    private static final double MAX_REQUIRED_STEP = 0.07;
+    private static final double MAX_REQUIRED_ACCURACY = 0.75;
     private static final long SHOWCASE_SECONDS = 7;
     private static final long INTERMISSION_SECONDS = 5;
     private static final long END_DELAY_SECONDS = 8;
@@ -124,7 +135,6 @@ public final class Copycat extends InventoryUnifiedMinigame {
     private volatile Round round;
     private volatile List<Builder> roundBuilders = List.of();
     private volatile int roundNumber;
-    private volatile int plannedRounds = 1;
     private volatile CountdownBossBar bar;
 
     public Copycat(CopycatDefinition definition) {
@@ -135,7 +145,11 @@ public final class Copycat extends InventoryUnifiedMinigame {
         this.lobby = definition.getLobby();
 
         File folder = EventMain.getInstance().getDataPath().resolve("schematics").resolve(SCHEM_FOLDER).toFile();
-        List<CopycatBuild> builds = CopycatBuild.loadAll(folder);
+        Map<String, BuildSettings> overrides = new HashMap<>();
+        for (CopycatDefinition.BuildSettings entry : definition.getBuilds()) {
+            overrides.put(entry.getSchem(), BuildSettings.from(entry));
+        }
+        List<CopycatBuild> builds = CopycatBuild.loadAll(folder, overrides);
         if (builds.isEmpty()) {
             throw new MinigameException("No schematics " + folder.getPath());
         }
@@ -148,11 +162,11 @@ public final class Copycat extends InventoryUnifiedMinigame {
 
     private static long duration(CopycatDefinition definition, List<CopycatBuild> builds) {
         int longestBuild = builds.stream()
-            .mapToInt(build -> Round.buildSeconds(Round.hiddenCount(build, MAX_HIDDEN_FRACTION), definition.getBuildSecondsPerBlock()))
+            .mapToInt(build -> Round.buildSeconds(build, Round.hiddenCount(build, MAX_HIDDEN_FRACTION), definition.getBuildSecondsPerBlock()))
             .max()
             .orElseThrow();
         long roundSeconds = PREVIEW_SECONDS + longestBuild
-            + ELIMINATIONS_PER_ROUND * SHOWCASE_SECONDS + INTERMISSION_SECONDS + 10;
+            + MAX_SHOWCASED * SHOWCASE_SECONDS + INTERMISSION_SECONDS + 10;
         return TimeUnit.SECONDS.toMillis(SETUP_ALLOWANCE_SECONDS
             + roundSeconds * Math.max(1, definition.getMaxRounds())
             + END_DELAY_SECONDS);
@@ -194,10 +208,6 @@ public final class Copycat extends InventoryUnifiedMinigame {
         Collections.shuffle(participants);
         this.arena = new Arena(definition.getOrigin(), participants.size(), maxFootprint, maxHeight);
         this.boundingBox = arena.getBounds();
-        int roundsToEliminateEveryone = Math.ceilDiv(Math.max(0, participants.size() - 1), ELIMINATIONS_PER_ROUND);
-        this.plannedRounds = Math.max(1, participants.size() <= 1
-            ? definition.getMaxRounds()
-            : Math.min(definition.getMaxRounds(), roundsToEliminateEveryone));
         scoreboard.addScorers(List.copyOf(participants));
         List<Plot> plots = arena.getPlots();
         for (int i = 0; i < participants.size(); i++) {
@@ -215,7 +225,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
             for (CopycatRole role : roleMap) {
                 role.play();
             }
-            this.sendAudienceMessage("Copy the build in front of you. Perfect copies score the most, mistakes <red>cost</red> points, and the <red>worst " + ELIMINATIONS_PER_ROUND + "</red> each round are out.");
+            this.sendAudienceMessage("Copy the build in front of you. Perfect copies score the most, mistakes <red>cost</red> points, and anyone who gets fewer than <gold>" + percent(requiredAccuracy(1)) + "</gold> of the missing blocks right is <red>out</red>. The bar rises every round.");
             this.startRound();
         });
     }
@@ -297,22 +307,53 @@ public final class Copycat extends InventoryUnifiedMinigame {
         return current == builder || (current instanceof TransientSpectator transientSpectator && transientSpectator.owns(builder));
     }
 
-    private double hiddenFraction(int number) {
-        double progress = plannedRounds <= 1 ? 1.0 : Math.min(1.0, (number - 1) / (double) (plannedRounds - 1));
+    private static double hiddenFraction(int number) {
+        double progress = Math.min(1.0, (number - 1) / (double) (HARDEST_ROUND - 1));
         return MIN_HIDDEN_FRACTION + (MAX_HIDDEN_FRACTION - MIN_HIDDEN_FRACTION) * progress;
+    }
+
+    private static double timeScale(int number) {
+        return Math.max(MIN_TIME_SCALE, 1.0 - TIME_SCALE_PER_ROUND * (number - 1));
+    }
+
+    static double requiredAccuracy(int number) {
+        double required = START_REQUIRED_ACCURACY;
+        for (int round = 2; round <= number && required < MAX_REQUIRED_ACCURACY; round++) {
+            double progress = Math.min(1.0, (round - 2) / (double) (HARDEST_ROUND - 2));
+            required += MIN_REQUIRED_STEP + (MAX_REQUIRED_STEP - MIN_REQUIRED_STEP) * progress;
+        }
+        return Math.min(MAX_REQUIRED_ACCURACY, required);
+    }
+
+    private static String percent(double fraction) {
+        return (int) Math.round(fraction * 100) + "%";
+    }
+
+    private static double accuracy(Builder builder, BuildScore score) {
+        return score.correct() / (double) Math.max(1, builder.hiddenCount());
+    }
+
+    private static String faster(int number) {
+        String words = String.join(", ", Collections.nCopies(Math.min(MAX_FASTERS, number - 1), "faster"));
+        return Character.toUpperCase(words.charAt(0)) + words.substring(1) + "!";
+    }
+
+    private boolean hasNextRound() {
+        List<Builder> builders = builders();
+        boolean lastOneStanding = builders.size() == 1 && roleMap.size() > 1;
+        return !builders.isEmpty() && !lastOneStanding && !pool.isEmpty() && roundNumber < definition.getMaxRounds();
     }
 
     private synchronized void startRound() {
         if (!this.active || this.stopping || phase == Phase.FINISHED) return;
-        List<Builder> builders = builders();
-        boolean lastOneStanding = builders.size() == 1 && roleMap.size() > 1;
-        if (builders.isEmpty() || lastOneStanding || pool.isEmpty() || roundNumber >= definition.getMaxRounds()) {
+        if (!hasNextRound()) {
             this.finish();
             return;
         }
 
+        List<Builder> builders = builders();
         int number = ++roundNumber;
-        Round next = new Round(number, pool.poll().rotated(RANDOM.nextInt(4)), hiddenFraction(number), definition.getBuildSecondsPerBlock());
+        Round next = new Round(number, pool.poll().rotated(RANDOM.nextInt(4)), hiddenFraction(number), definition.getBuildSecondsPerBlock(), timeScale(number));
         this.round = next;
         this.roundBuilders = List.copyOf(builders);
         this.phase = Phase.SETUP;
@@ -352,7 +393,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
             builder.uncover();
         }
         this.showBar("<green><b>Build!</b></green> <gray>|</gray> <white>%ss", BossBar.Color.GREEN, buildSeconds);
-        this.sendAudienceTitle("<green><b>Build!", "<gray>" + current.hiddenCount() + " blocks went missing, " + buildSeconds + "s to fix it");
+        this.sendAudienceTitle("<green><b>Build!", "<gray>" + current.hiddenCount() + " blocks went missing, " + buildSeconds + "s to get " + percent(requiredAccuracy(roundNumber)) + " right");
         this.sendAudienceMessage("You have exactly the blocks that were removed. Put them back where they belong!");
     }
 
@@ -391,13 +432,21 @@ public final class Copycat extends InventoryUnifiedMinigame {
             builder.getEventPlayer().sendMessage("<gold>" + score.points() + " points</gold> <gray>-</gray> " + score.summary());
         }
 
-        int cut = Math.min(ELIMINATIONS_PER_ROUND, builders.size() - 1);
+        double required = requiredAccuracy(roundNumber);
+        for (Builder builder : scored) {
+            double accuracy = accuracy(builder, roundScores.get(builder.getUuid()));
+            String verdict = accuracy >= required ? "<green>made the cut" : "<red>below the cut";
+            builder.getEventPlayer().sendMessage("You got <gold>" + percent(accuracy) + "</gold> of the missing blocks right (needed " + percent(required) + ") - " + verdict);
+        }
         List<Builder> losers = scored.stream()
-            .filter(builder -> !roundScores.get(builder.getUuid()).perfect())
-            .sorted(Comparator.<Builder>comparingInt(builder -> roundScores.get(builder.getUuid()).points())
-                .thenComparing(builder -> -roundScores.get(builder.getUuid()).mistakes()))
-            .limit(Math.max(0, cut))
+            .filter(builder -> accuracy(builder, roundScores.get(builder.getUuid())) < required)
+            .sorted(Comparator.<Builder>comparingDouble(builder -> accuracy(builder, roundScores.get(builder.getUuid())))
+                .thenComparingInt(builder -> roundScores.get(builder.getUuid()).points()))
             .toList();
+        if (!losers.isEmpty() && losers.size() == builders.size()) {
+            this.sendAudienceMessage("<yellow>Nobody reached " + percent(required) + "!</yellow> Everyone gets another chance.");
+            losers = List.of();
+        }
 
         for (Builder builder : builders) {
             if (!losers.contains(builder)) {
@@ -409,15 +458,18 @@ public final class Copycat extends InventoryUnifiedMinigame {
         eliminated.addAll(losers);
         showcase.clear();
         if (losers.isEmpty()) {
-            this.sendAudienceMessage("<green>Everyone nailed it!</green> Nobody is eliminated this round.");
+            if (builders.size() > 0 && scored.size() == builders.size()) {
+                this.sendAudienceMessage("<green>Everyone made the cut!</green> Nobody is eliminated this round.");
+            }
             this.beginIntermission();
             return;
         }
-        for (int i = losers.size() - 1; i >= 0; i--) {
-            showcase.addLast(losers.get(i));
+        List<Builder> shown = losers.subList(0, Math.min(MAX_SHOWCASED, losers.size()));
+        for (int i = shown.size() - 1; i >= 0; i--) {
+            showcase.addLast(shown.get(i));
         }
         this.phase = Phase.SHOWCASE;
-        this.sendAudienceMessage("Let's take a look at the <red>" + losers.size() + "</red> weakest builds...");
+        this.sendAudienceMessage("<red>" + losers.size() + "</red> " + (losers.size() == 1 ? "player" : "players") + " didn't reach " + percent(required) + ". Let's take a look...");
         this.showNext();
     }
 
@@ -476,6 +528,18 @@ public final class Copycat extends InventoryUnifiedMinigame {
             builder.play();
         }
         //scoreboard.showScores(this.audience); // TODO:
+        if (hasNextRound()) {
+            double current = requiredAccuracy(roundNumber);
+            double next = requiredAccuracy(roundNumber + 1);
+            String subtitle = next > current
+                ? "<gray>Less time, and you now need <gold>" + percent(next) + "</gold> right"
+                : "<gray>Less time per block next round";
+            if (next > current) {
+                this.sendAudienceMessage("The bar has been raised: get at least <gold>" + percent(next) + "</gold> of the missing blocks right to survive <gray>(was " + percent(current) + ")</gray>");
+            }
+            this.sendAudienceTitle("<gold><b>" + faster(roundNumber + 1), subtitle);
+            this.playAudienceSound(Sound.BLOCK_NOTE_BLOCK_BASEDRUM, 1f, 0.8f + 0.1f * Math.min(MAX_FASTERS, roundNumber));
+        }
     }
 
     private void finish() {
@@ -551,23 +615,25 @@ public final class Copycat extends InventoryUnifiedMinigame {
         Block block = event.getBlock();
         BlockData data = block.getBlockData();
         BlockPos pos = BlockPos.of(block);
-        this.returnItems(event.getPlayer(), data);
+        this.returnItems(event.getPlayer(), Placed.of(block));
         builder.onBroken(pos);
         if (CopycatBuild.isTallPair(data)) {
             BlockPos partnerPos = CopycatBuild.partnerOf(pos, data);
             Block partner = block.getWorld().getBlockAt(partnerPos.x(), partnerPos.y(), partnerPos.z());
-            if (CopycatBuild.isWaterlogged(partner.getBlockData())) {
-                event.getPlayer().getInventory().addItem(new ItemStack(Material.WATER_BUCKET));
+            Material bucket = CopycatBuild.extraBucket(partner.getBlockData());
+            if (bucket != null) {
+                event.getPlayer().getInventory().addItem(new ItemStack(bucket));
             }
             partner.setBlockData(ArenaBlocks.AIR, false);
             builder.onBroken(partnerPos);
         }
     }
 
-    private void returnItems(Player player, BlockData data) {
-        player.getInventory().addItem(CopycatBuild.itemFor(data));
-        if (CopycatBuild.isWaterlogged(data)) {
-            player.getInventory().addItem(new ItemStack(Material.WATER_BUCKET));
+    private void returnItems(Player player, Placed placed) {
+        player.getInventory().addItem(CopycatBuild.itemFor(placed.data(), placed.detail()));
+        Material bucket = CopycatBuild.extraBucket(placed.data());
+        if (bucket != null) {
+            player.getInventory().addItem(new ItemStack(bucket));
         }
     }
 
@@ -595,11 +661,36 @@ public final class Copycat extends InventoryUnifiedMinigame {
                 }
             }
             for (BlockState replaced : multi.getReplacedBlockStates()) {
-                builder.onPlaced(BlockPos.of(replaced.getBlock()), replaced.getBlock().getBlockData());
+                builder.onPlaced(BlockPos.of(replaced.getBlock()), settle(replaced.getBlock()));
             }
             return;
         }
-        builder.onPlaced(BlockPos.of(event.getBlockPlaced()), event.getBlockPlaced().getBlockData());
+        builder.onPlaced(BlockPos.of(event.getBlockPlaced()), settle(event.getBlockPlaced()));
+    }
+
+    private static Placed settle(Block block) {
+        BlockData data = block.getBlockData();
+        BlockData settled = CopycatBuild.settle(data);
+        if (settled != data) {
+            block.setBlockData(settled, false);
+        }
+        return new Placed(settled, Placed.isTile(settled) ? TileDetail.of(block.getState()) : null);
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onCauldronChange(CauldronLevelChangeEvent event) {
+        this.ensureNotIllegal();
+        if (!inArena(event.getBlock())) return;
+        Builder builder = event.getEntity() instanceof Player player && isParticipant(player)
+            ? editingBuilder(player, event.getBlock())
+            : null;
+        boolean bucket = event.getReason() == CauldronLevelChangeEvent.ChangeReason.BUCKET_EMPTY
+            || event.getReason() == CauldronLevelChangeEvent.ChangeReason.BUCKET_FILL;
+        if (builder == null || !bucket) {
+            event.setCancelled(true);
+            return;
+        }
+        builder.onPlaced(BlockPos.of(event.getBlock()), CopycatBuild.settle(event.getNewState().getBlockData()));
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
@@ -613,6 +704,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
             return;
         }
         BlockData data = block.getBlockData();
+        if (CopycatBuild.isCauldron(data.getMaterial())) return;
         if (event.getBucket() == Material.WATER_BUCKET && data instanceof Waterlogged waterlogged && !data.getMaterial().isAir()) {
             Waterlogged after = (Waterlogged) waterlogged.clone();
             after.setWaterlogged(true);
@@ -640,6 +732,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
             event.setCancelled(true);
             return;
         }
+        if (CopycatBuild.isCauldron(data.getMaterial())) return;
         if (CopycatBuild.isFluid(data.getMaterial())) {
             builder.onBroken(BlockPos.of(block));
             return;

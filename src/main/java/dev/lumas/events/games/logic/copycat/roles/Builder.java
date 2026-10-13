@@ -6,8 +6,10 @@ import dev.lumas.events.games.logic.copycat.BlockPos;
 import dev.lumas.events.games.logic.copycat.BuildScore;
 import dev.lumas.events.games.logic.copycat.Copycat;
 import dev.lumas.events.games.logic.copycat.CopycatBuild;
+import dev.lumas.events.games.logic.copycat.Placed;
 import dev.lumas.events.games.logic.copycat.Plot;
 import dev.lumas.events.games.logic.copycat.Round;
+import dev.lumas.events.games.logic.copycat.TileDetail;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Util;
 import lombok.Getter;
@@ -15,6 +17,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -25,6 +28,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +51,7 @@ public final class Builder extends CopycatRole {
     private final Plot plot;
     private final Set<BlockPos> unresolved = ConcurrentHashMap.newKeySet();
     private final Set<BlockPos> extras = ConcurrentHashMap.newKeySet();
-    private volatile Map<BlockPos, BlockData> targets = Map.of();
+    private volatile Map<BlockPos, Placed> targets = Map.of();
     private volatile Set<BlockPos> hidden = Set.of();
     @Getter
     private volatile boolean locked;
@@ -111,7 +115,7 @@ public final class Builder extends CopycatRole {
         CopycatBuild build = round.getBuild();
         Map<BlockPos, BlockData> placed = plot.place(build);
         BlockPos offset = plot.placementOffset(build);
-        List<List<BlockPos>> units = new ArrayList<>(build.getUnits());
+        List<List<BlockPos>> units = new ArrayList<>(build.getRemovableUnits());
         Collections.shuffle(units, Util.RANDOM);
         Set<BlockPos> chosen = new HashSet<>();
         int wanted = round.hiddenCount();
@@ -123,13 +127,20 @@ public final class Builder extends CopycatRole {
                 chosen.add(pos.add(offset));
             }
         }
-        this.targets = Map.copyOf(placed);
+        Map<BlockPos, TileDetail> details = new HashMap<>();
+        build.getDetails().forEach((pos, detail) -> details.put(pos.add(offset), detail));
+        Map<BlockPos, Placed> targets = new HashMap<>();
+        placed.forEach((pos, data) -> targets.put(pos, new Placed(data, details.get(pos))));
+        this.targets = Map.copyOf(targets);
         this.hidden = Set.copyOf(chosen);
         this.unresolved.clear();
         this.extras.clear();
         this.locked = false;
         this.lockedAt = 0;
-        return ArenaBlocks.write(plot.getWorld(), placed);
+        World world = plot.getWorld();
+        Map<BlockPos, BlockData> writes = new HashMap<>(plot.activate(build));
+        writes.putAll(placed);
+        return ArenaBlocks.write(world, writes).thenCompose(ignored -> ArenaBlocks.decorate(world, details));
     }
 
     public CompletableFuture<Void> uncover() {
@@ -137,24 +148,27 @@ public final class Builder extends CopycatRole {
         this.unresolved.addAll(toRemove);
 
         Map<Material, Integer> counts = new EnumMap<>(Material.class);
-        int buckets = 0;
+        List<ItemStack> special = new ArrayList<>();
         for (BlockPos blockPos : toRemove) {
-            BlockData data = targets.get(blockPos);
+            Placed target = targets.get(blockPos);
+            BlockData data = target.data();
             int amount = CopycatBuild.itemCount(data);
-            if (amount > 0) {
+            if (amount > 0 && target.detail() != null) {
+                special.add(CopycatBuild.itemFor(data, target.detail()));
+            } else if (amount > 0) {
                 counts.merge(CopycatBuild.placementItem(data), amount, Integer::sum);
             }
-            if (CopycatBuild.isWaterlogged(data)) {
-                buckets++;
+            Material bucket = CopycatBuild.extraBucket(data);
+            if (bucket != null) {
+                special.add(new ItemStack(bucket));
             }
         }
-        int waterBuckets = buckets;
         this.operatePlayer(player -> {
             player.getInventory().clear();
             player.getInventory().setItem(DONE_SLOT, DONE_ITEM.clone());
             counts.forEach((material, amount) -> player.getInventory().addItem(new ItemStack(material, amount)));
-            for (int i = 0; i < waterBuckets; i++) {
-                player.getInventory().addItem(new ItemStack(Material.WATER_BUCKET));
+            for (ItemStack item : special) {
+                player.getInventory().addItem(item);
             }
             player.playSound(player, Sound.BLOCK_BEACON_DEACTIVATE, 1f, 1.4f);
         });
@@ -176,10 +190,14 @@ public final class Builder extends CopycatRole {
     }
 
     public void onPlaced(BlockPos blockPos, BlockData data) {
-        BlockData target = targets.get(blockPos);
+        onPlaced(blockPos, new Placed(data, null));
+    }
+
+    public void onPlaced(BlockPos blockPos, Placed placed) {
+        Placed target = targets.get(blockPos);
         if (target == null) {
             extras.add(blockPos);
-        } else if (CopycatBuild.matches(target, data)) {
+        } else if (CopycatBuild.matches(target, placed)) {
             unresolved.remove(blockPos);
         } else {
             unresolved.add(blockPos);
@@ -195,31 +213,31 @@ public final class Builder extends CopycatRole {
         }
     }
 
-    public CompletableFuture<Map<BlockPos, BlockData>> readBuildArea() {
+    public CompletableFuture<Map<BlockPos, Placed>> readBuildArea() {
         return ArenaBlocks.read(plot.getWorld(), plot.buildAreaPositions());
     }
 
     public CompletableFuture<Void> clearBuildArea() {
-        return ArenaBlocks.fill(plot.getWorld(), plot.buildAreaPositions(), ArenaBlocks.AIR);
+        return ArenaBlocks.fill(plot.getWorld(), plot.fullAreaPositions(), ArenaBlocks.AIR);
     }
 
-    public BuildScore score(Map<BlockPos, BlockData> actual, long deadline) {
+    public BuildScore score(Map<BlockPos, Placed> actual, long deadline) {
         int correct = 0;
         int missing = 0;
         int wrong = 0;
         int removedGiven = 0;
         int extra = 0;
         for (BlockPos blockPos : plot.buildAreaPositions()) {
-            BlockData target = targets.get(blockPos);
-            BlockData found = actual.getOrDefault(blockPos, ArenaBlocks.AIR);
+            Placed target = targets.get(blockPos);
+            Placed found = actual.getOrDefault(blockPos, Placed.AIR);
             if (target == null) {
-                if (!found.getMaterial().isAir()) extra++;
+                if (!found.isAir()) extra++;
                 continue;
             }
             boolean wasHidden = hidden.contains(blockPos);
             if (CopycatBuild.matches(target, found)) {
                 if (wasHidden) correct++;
-            } else if (found.getMaterial().isAir()) {
+            } else if (found.isAir()) {
                 if (wasHidden) missing++;
                 else removedGiven++;
             } else {

@@ -14,7 +14,7 @@ import org.jetbrains.annotations.NotNull;
 @Register(Autowire.COMMAND)
 @CommandMeta(
         name = "event",
-        aliases = {"lumarine", "summer", "marine", "mari"},
+        aliases = {"lumares", "lumaween", "halloween", "hallo"},
         permission = "lumaevents.default"
 )
 public class CommandManager extends AbstractCommandManager<EventMain, CommandModule> {

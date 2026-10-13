@@ -5,6 +5,11 @@ import dev.thorinwasher.schem.BlockUtil;
 import dev.thorinwasher.schem.Schematic;
 import dev.thorinwasher.schem.SchematicReader;
 import lombok.Getter;
+import net.kyori.adventure.nbt.BinaryTag;
+import net.kyori.adventure.nbt.BinaryTagIO;
+import net.kyori.adventure.nbt.BinaryTagTypes;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
+import net.kyori.adventure.nbt.ListBinaryTag;
 import org.bukkit.Material;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Bisected;
@@ -15,6 +20,7 @@ import org.bukkit.block.data.Orientable;
 import org.bukkit.block.data.Rotatable;
 import org.bukkit.block.data.Waterlogged;
 import org.bukkit.block.data.type.Bed;
+import org.bukkit.block.data.type.Campfire;
 import org.bukkit.block.data.type.Candle;
 import org.bukkit.block.data.type.SeaPickle;
 import org.bukkit.block.data.type.Slab;
@@ -25,6 +31,7 @@ import org.bukkit.block.data.type.TurtleEgg;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
+import org.joml.Vector3i;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -37,6 +44,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @Getter
 public final class CopycatBuild {
@@ -49,17 +57,23 @@ public final class CopycatBuild {
         BlockFace.SOUTH, BlockFace.SOUTH_SOUTH_WEST, BlockFace.SOUTH_WEST, BlockFace.WEST_SOUTH_WEST,
         BlockFace.WEST, BlockFace.WEST_NORTH_WEST, BlockFace.NORTH_WEST, BlockFace.NORTH_NORTH_WEST);
     private static final PluginContextLogger LOGGER = PluginContextLogger.getPluginLogger();
+    private static final Set<Material> INVISIBLE = Set.of(Material.BARRIER, Material.STRUCTURE_VOID, Material.LIGHT);
 
     private final String name;
     private final Map<BlockPos, BlockData> blocks;
+    private final Map<BlockPos, TileDetail> details;
+    private final BuildSettings settings;
     private final List<List<BlockPos>> units;
+    private final List<List<BlockPos>> removableUnits;
     private final int sizeX;
     private final int sizeY;
     private final int sizeZ;
 
-    private CopycatBuild(String name, Map<BlockPos, BlockData> blocks) {
+    private CopycatBuild(String name, Map<BlockPos, BlockData> blocks, Map<BlockPos, TileDetail> details, BuildSettings settings) {
         this.name = name;
         this.blocks = Collections.unmodifiableMap(blocks);
+        this.details = Collections.unmodifiableMap(details);
+        this.settings = settings;
         int maxX = 0;
         int maxY = 0;
         int maxZ = 0;
@@ -72,9 +86,12 @@ public final class CopycatBuild {
         this.sizeY = maxY + 1;
         this.sizeZ = maxZ + 1;
         this.units = Collections.unmodifiableList(groupUnits(this.blocks));
+        this.removableUnits = this.units.stream()
+            .filter(unit -> unit.stream().allMatch(pos -> settings.removable(this.blocks.get(pos).getMaterial())))
+            .toList();
     }
 
-    public static List<CopycatBuild> loadAll(File folder) {
+    public static List<CopycatBuild> loadAll(File folder, Map<String, BuildSettings> overrides) {
         if (!folder.exists()) {
             folder.mkdirs();
         }
@@ -84,8 +101,10 @@ public final class CopycatBuild {
             return builds;
         }
         for (File file : files) {
-            CopycatBuild build = load(file);
+            CopycatBuild build = load(file, overrides.getOrDefault(file.getName(), BuildSettings.DEFAULT));
             if (build != null) {
+                LOGGER.info("Loaded Copycat build " + build.name + " (" + build.sizeX + "x" + build.sizeY + "x" + build.sizeZ
+                    + ", " + build.blockCount() + " blocks, off-ground: " + build.settings.offGround() + ")");
                 builds.add(build);
             }
         }
@@ -93,10 +112,12 @@ public final class CopycatBuild {
     }
 
     @Nullable
-    private static CopycatBuild load(File file) {
+    private static CopycatBuild load(File file, BuildSettings settings) {
         Schematic schematic;
+        Map<BlockPos, TileDetail> rawDetails;
         try (InputStream in = new FileInputStream(file)) {
             schematic = new SchematicReader().read(in);
+            rawDetails = readDetails(file, schematic.offset());
         } catch (IOException | RuntimeException e) {
             LOGGER.error("Could not read Copycat build " + file.getName(), e);
             return null;
@@ -105,13 +126,13 @@ public final class CopycatBuild {
         Map<BlockPos, BlockData> raw = new HashMap<>();
         List<String> problems = new ArrayList<>();
         schematic.apply(new Matrix3d(), (vector, data) -> {
-            if (data.getMaterial().isAir()) return;
+            if (data.getMaterial().isAir() || INVISIBLE.contains(data.getMaterial())) return;
             String problem = reject(data);
             if (problem != null) {
                 if (problems.size() < 3) problems.add(problem);
                 return;
             }
-            raw.put(new BlockPos(vector.x(), vector.y(), vector.z()), data);
+            raw.put(new BlockPos(vector.x(), vector.y(), vector.z()), settle(data));
         });
 
         if (!problems.isEmpty()) {
@@ -123,20 +144,47 @@ public final class CopycatBuild {
             return null;
         }
 
-        Map<BlockPos, BlockData> normalized = normalize(raw);
+        rawDetails.keySet().retainAll(raw.keySet());
+        BlockPos min = minOf(raw);
+        Map<BlockPos, BlockData> normalized = shift(raw, min);
         String pairProblem = checkPairs(normalized);
         if (pairProblem != null) {
             LOGGER.warning("Skipping Copycat build " + file.getName() + ": " + pairProblem);
             return null;
         }
 
-        CopycatBuild build = new CopycatBuild(file.getName(), normalized);
+        CopycatBuild build = new CopycatBuild(file.getName(), normalized, shift(rawDetails, min), settings);
         if (build.sizeX > MAX_FOOTPRINT || build.sizeZ > MAX_FOOTPRINT || build.sizeY > MAX_HEIGHT) {
             LOGGER.warning("Skipping Copycat build " + file.getName() + ": " + build.sizeX + "x" + build.sizeY + "x" + build.sizeZ
                 + " exceeds " + MAX_FOOTPRINT + "x" + MAX_HEIGHT + "x" + MAX_FOOTPRINT);
             return null;
         }
+        if (build.removableCount() == 0) {
+            LOGGER.warning("Skipping Copycat build " + file.getName() + ": every block is in ignored-materials");
+            return null;
+        }
         return build;
+    }
+
+    private static Map<BlockPos, TileDetail> readDetails(File file, Vector3i offset) throws IOException {
+        CompoundBinaryTag root = BinaryTagIO.unlimitedReader().read(file.toPath(), BinaryTagIO.Compression.GZIP);
+        CompoundBinaryTag schematic = root.get("Schematic") instanceof CompoundBinaryTag nested ? nested : root;
+        ListBinaryTag entities = schematic.getInt("Version") == 3
+            ? schematic.getCompound("Blocks").getList("BlockEntities", BinaryTagTypes.COMPOUND)
+            : schematic.getList("BlockEntities", BinaryTagTypes.COMPOUND);
+
+        Map<BlockPos, TileDetail> details = new HashMap<>();
+        for (BinaryTag entry : entities) {
+            CompoundBinaryTag entity = (CompoundBinaryTag) entry;
+            int[] pos = entity.getIntArray("Pos");
+            if (pos.length != 3) continue;
+            CompoundBinaryTag data = entity.get("Data") instanceof CompoundBinaryTag nested ? nested : entity;
+            TileDetail detail = TileDetail.parse(entity.getString("Id"), data);
+            if (detail != null) {
+                details.put(new BlockPos(pos[0] + offset.x(), pos[1] + offset.y(), pos[2] + offset.z()), detail);
+            }
+        }
+        return details;
     }
 
     @Nullable
@@ -188,11 +236,41 @@ public final class CopycatBuild {
         return ((Bisected) data).getHalf() == Bisected.Half.BOTTOM ? pos.add(0, 1, 0) : pos.add(0, -1, 0);
     }
 
+    public static BlockData settle(BlockData data) {
+        if (data instanceof Campfire campfire && campfire.isLit()) {
+            Campfire unlit = (Campfire) campfire.clone();
+            unlit.setLit(false);
+            return unlit;
+        }
+        if (isCauldron(data.getMaterial()) && data instanceof Levelled levelled && levelled.getLevel() != levelled.getMaximumLevel()) {
+            Levelled full = (Levelled) levelled.clone();
+            full.setLevel(full.getMaximumLevel());
+            return full;
+        }
+        return data;
+    }
+
     public static boolean isWaterlogged(@Nullable BlockData data) {
         return data instanceof Waterlogged waterlogged && waterlogged.isWaterlogged();
     }
 
-    private static Map<BlockPos, BlockData> normalize(Map<BlockPos, BlockData> raw) {
+    @Nullable
+    public static Material extraBucket(@Nullable BlockData data) {
+        if (data == null) return null;
+        return switch (data.getMaterial()) {
+            case WATER_CAULDRON -> Material.WATER_BUCKET;
+            case LAVA_CAULDRON -> Material.LAVA_BUCKET;
+            case POWDER_SNOW_CAULDRON -> Material.POWDER_SNOW_BUCKET;
+            default -> isWaterlogged(data) ? Material.WATER_BUCKET : null;
+        };
+    }
+
+    public static boolean isCauldron(Material material) {
+        return material == Material.CAULDRON || material == Material.WATER_CAULDRON
+            || material == Material.LAVA_CAULDRON || material == Material.POWDER_SNOW_CAULDRON;
+    }
+
+    private static BlockPos minOf(Map<BlockPos, ?> raw) {
         int minX = Integer.MAX_VALUE;
         int minY = Integer.MAX_VALUE;
         int minZ = Integer.MAX_VALUE;
@@ -201,10 +279,13 @@ public final class CopycatBuild {
             minY = Math.min(minY, blockPos.y());
             minZ = Math.min(minZ, blockPos.z());
         }
-        Map<BlockPos, BlockData> normalized = new LinkedHashMap<>();
-        BlockPos min = new BlockPos(minX, minY, minZ);
-        raw.forEach((pos, data) -> normalized.put(pos.subtract(min), data));
-        return normalized;
+        return new BlockPos(minX, minY, minZ);
+    }
+
+    private static <T> Map<BlockPos, T> shift(Map<BlockPos, T> raw, BlockPos min) {
+        Map<BlockPos, T> shifted = new LinkedHashMap<>();
+        raw.forEach((pos, value) -> shifted.put(pos.subtract(min), value));
+        return shifted;
     }
 
     public CopycatBuild rotated(int quarterTurns) {
@@ -214,17 +295,28 @@ public final class CopycatBuild {
         }
         Matrix3d rotation = new Matrix3d().rotationY(Math.toRadians(90.0 * turns));
         Map<BlockPos, BlockData> rotated = new HashMap<>();
+        Map<BlockPos, TileDetail> rotatedDetails = new HashMap<>();
         blocks.forEach((pos, data) -> {
-            int x = pos.x();
-            int z = pos.z();
-            for (int i = 0; i < turns; i++) {
-                int rotatedX = z;
-                z = -x;
-                x = rotatedX;
+            BlockPos target = rotate(pos, turns);
+            rotated.put(target, rotateSixteenths(BlockUtil.transformBlockData(data, rotation), turns));
+            TileDetail detail = details.get(pos);
+            if (detail != null) {
+                rotatedDetails.put(target, detail);
             }
-            rotated.put(new BlockPos(x, pos.y(), z), rotateSixteenths(BlockUtil.transformBlockData(data, rotation), turns));
         });
-        return new CopycatBuild(name, normalize(rotated));
+        BlockPos min = minOf(rotated);
+        return new CopycatBuild(name, shift(rotated, min), shift(rotatedDetails, min), settings);
+    }
+
+    private static BlockPos rotate(BlockPos pos, int turns) {
+        int x = pos.x();
+        int z = pos.z();
+        for (int i = 0; i < turns; i++) {
+            int rotatedX = z;
+            z = -x;
+            x = rotatedX;
+        }
+        return new BlockPos(x, pos.y(), z);
     }
 
     private static BlockData rotateSixteenths(BlockData data, int turns) {
@@ -239,14 +331,27 @@ public final class CopycatBuild {
         return blocks.size();
     }
 
+    public int removableCount() {
+        return removableUnits.stream().mapToInt(List::size).sum();
+    }
+
     public static ItemStack itemFor(BlockData data) {
-        return new ItemStack(placementItem(data), Math.max(1, itemCount(data)));
+        return itemFor(data, null);
+    }
+
+    public static ItemStack itemFor(BlockData data, @Nullable TileDetail detail) {
+        ItemStack item = new ItemStack(placementItem(data), Math.max(1, itemCount(data)));
+        if (detail != null) {
+            detail.applyTo(item);
+        }
+        return item;
     }
 
     public static Material placementItem(BlockData data) {
         return switch (data.getMaterial()) {
             case WATER -> Material.WATER_BUCKET;
             case LAVA -> Material.LAVA_BUCKET;
+            case WATER_CAULDRON, LAVA_CAULDRON, POWDER_SNOW_CAULDRON -> Material.CAULDRON;
             default -> data.getPlacementMaterial();
         };
     }
@@ -263,6 +368,10 @@ public final class CopycatBuild {
         if (data instanceof SeaPickle pickle) return pickle.getPickles();
         if (data instanceof TurtleEgg egg) return egg.getEggs();
         return 1;
+    }
+
+    public static boolean matches(Placed target, Placed actual) {
+        return matches(target.data(), actual.data()) && TileDetail.same(target.detail(), actual.detail());
     }
 
     public static boolean matches(BlockData target, BlockData actual) {

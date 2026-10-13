@@ -7,6 +7,7 @@ import org.bukkit.Chunk;
 import org.bukkit.ChunkSnapshot;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -41,13 +42,26 @@ public final class ArenaBlocks {
         });
     }
 
-    public static CompletableFuture<Map<BlockPos, BlockData>> read(World world, Collection<BlockPos> positions) {
-        Map<BlockPos, BlockData> result = new ConcurrentHashMap<>();
+    public static CompletableFuture<Map<BlockPos, Placed>> read(World world, Collection<BlockPos> positions) {
+        Map<BlockPos, Placed> result = new ConcurrentHashMap<>();
         return perChunk(world, positions, (chunk, chunkPositions) -> {
             for (BlockPos blockPos : chunkPositions) {
-                result.put(blockPos, chunk.getBlock(blockPos.x() & 15, blockPos.y(), blockPos.z() & 15).getBlockData());
+                result.put(blockPos, Placed.of(chunk.getBlock(blockPos.x() & 15, blockPos.y(), blockPos.z() & 15)));
             }
         }).thenApply(ignored -> result);
+    }
+
+    public static CompletableFuture<Void> decorate(World world, Map<BlockPos, TileDetail> details) {
+        if (details.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return perChunk(world, details.keySet(), (chunk, chunkPositions) -> {
+            for (BlockPos blockPos : chunkPositions) {
+                BlockState state = chunk.getBlock(blockPos.x() & 15, blockPos.y(), blockPos.z() & 15).getState();
+                details.get(blockPos).applyTo(state);
+                state.update(true, false);
+            }
+        });
     }
 
     public static CompletableFuture<Void> clear(WorldTiedBoundingBox box) {
