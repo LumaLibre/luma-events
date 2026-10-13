@@ -18,6 +18,7 @@ import dev.lumas.events.games.logic.manor2.roles.Artifact;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
+import dev.lumas.events.games.logic.manor2.roles.RoleDialogues;
 import dev.lumas.events.games.logic.manor2.roles.RoleHitbox;
 import dev.lumas.events.games.logic.manor2.roles.Spectator;
 import dev.lumas.events.games.models.CountdownBossBar;
@@ -30,10 +31,12 @@ import dev.lumas.events.utility.latency.LatencyHandler;
 import dev.lumas.events.utility.latency.LatencyTracker;
 import dev.lumas.events.utility.latency.hitbox.TrailRecorder;
 import dev.lumas.events.utility.latency.tracing.Tracing;
+import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
@@ -114,6 +117,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private Component gameOverSubtitle = Util.color("Game ended by force", Util.TEXT_COLOR);
     private final Manor2TokenFormula tokenFormula = new Manor2TokenFormula();
     private final OutsideBoundsEffect outsideBounds = new OutsideBoundsEffect(this);
+    private final Dialog dialog = RoleDialogues.dialog();
 
     public Manor2(Manor2Definition definition) {
         super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, false, false);
@@ -205,7 +209,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         boolean gameOver = roleMap.getMatching(Ghost.class).isEmpty() || roleMap.getMatching(GhostHunter.class).isEmpty();
         ManorTeam winner = roleMap.getMatching(Ghost.class).isEmpty() ? ManorTeam.HUNTERS : ManorTeam.GHOSTS;
         if (gameOver) {
-            gameOverSubtitle = Util.color("<gold> <winner> has won!", Util.TEXT_COLOR, Placeholder.component("winner", winner.displayName()));
+            gameOverSubtitle = Util.color("<gold><winner> has won!", Util.TEXT_COLOR, Placeholder.component("winner", winner.plural()));
             this.stop();
         }
     }
@@ -229,19 +233,11 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         }
         audience.showTitle(Title.title(Util.color("<yellow>Game Over", Util.TEXT_COLOR), gameOverSubtitle));
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
-            .thenRun(() -> scoreboard.handleGameEnd(this.audience, () -> {
-                Executors.teleportGroupAsync(this.participants, definition.getLobby());
-                CountdownBossBar.builder()
-                    .audience(this.audience)
-                    .color(BossBar.Color.BLUE)
-                    .title("<aqua><b>Game Over")
-                    .seconds(8)
-                    .callback(() -> {
-                        this.sendAudienceMessage("This minigame has concluded.");
-                    })
-                    .build()
-                    .start();
-            }))
+            .thenRun(() -> {
+                Executors.teleportGroupAsync(participants, definition.getLobby());
+                scoreboard.showScores(this.audience);
+                this.sendAudienceMessage("This minigame has concluded.");
+            })
             .exceptionally(exception -> {
                 exception.printStackTrace();
                 return null;
@@ -253,6 +249,11 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     protected boolean handleParticipantJoin(EventPlayer player) {
         this.latency.start(); // No-op if already started
         player.teleportAsync(definition.getLobby());
+        player.operatePlayer(bukkitPlayer -> Util.sendMsg(
+            bukkitPlayer,
+            "<manor2_info><yellow>Click here for more info</yellow></manor2_info> about Manor 2",
+            Placeholder.styling("manor2_info", ClickEvent.callback(audience1 -> audience1.showDialog(dialog)))
+        ));
         return super.handleParticipantJoin(player);
     }
 

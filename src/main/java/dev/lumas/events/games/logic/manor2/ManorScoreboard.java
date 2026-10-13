@@ -114,7 +114,7 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
                 Formatter.number("points", entry.getValue()),
                 Placeholder.component("team", scorerTeams
                     .getOrDefault(entry.getKey().getUuid(), ManorTeam.UNDEFINED)
-                    .displayName()
+                    .plural()
                 )
             ));
         }
