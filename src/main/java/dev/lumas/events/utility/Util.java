@@ -49,15 +49,15 @@ public final class Util {
     public static final TextColor TEXT_COLOR = TextColor.fromHexString("#DA7E6E");
 
 
-    public static void sendMsg(CommandSender receiver, String message) {
+    public static void sendMsg(@Nullable CommandSender receiver, String message) {
         if (receiver == null) {
             return;
         }
         receiver.sendMessage(color(PREFIX + message).colorIfAbsent(TEXT_COLOR));
     }
 
-    public static void sendMsg(Audience audience, String message) {
-        audience.sendMessage(color(PREFIX + message).colorIfAbsent(TEXT_COLOR));
+    public static void sendMsg(Audience audience, String message, TagResolver... tagResolvers) {
+        audience.sendMessage(color(PREFIX + message, tagResolvers).colorIfAbsent(TEXT_COLOR));
     }
 
     public static void broadcast(String message) {

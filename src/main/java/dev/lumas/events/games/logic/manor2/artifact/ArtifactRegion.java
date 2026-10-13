@@ -16,7 +16,7 @@ import java.util.Set;
 
 public record ArtifactRegion(Map<Vector2i, Integer> floorMap, WorldTiedBoundingBox boundingBox) {
 
-    private static final int MINIMUM_EMPTY_SPACE_BETWEEN_FLOORS = 4;
+    private static final int MINIMUM_EMPTY_SPACE_BETWEEN_FLOORS = 3;
     private static final int MIN_FLOOR_AREA = 4;
     private static final Set<Material> BANNED_BLOCKS = Set.of(
         Material.BARRIER
