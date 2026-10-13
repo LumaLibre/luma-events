@@ -11,6 +11,7 @@ import dev.lumas.events.games.logic.manor2.artifact.ArtifactEntity;
 import dev.lumas.events.games.logic.manor2.artifact.ArtifactManager;
 import dev.lumas.events.games.logic.manor2.artifact.ArtifactPickupResult;
 import dev.lumas.events.games.logic.manor2.attack.GhostAttacks;
+import dev.lumas.events.games.logic.manor2.attack.OutsideBoundsEffect;
 import dev.lumas.events.games.logic.manor2.light.Flashlight;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
@@ -73,6 +74,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         "Someone must extinguish thy flame.",
         "Don't cross the streams!!!!"
     };
+    private static final Component USES_LIGHT_MESSAGE = Util.color("<gradient:white:yellow>This mini-game uses light mechanics");
     private static final long TICK_INTERVAL = 1L;
     private static final int TELEPORTS_PER_TICK = 5;
     private static final long END_DELAY_SECONDS = 10;
@@ -106,6 +108,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private CountdownBossBar timer;
     private Component gameOverSubtitle = Util.color("Game ended by force", Util.TEXT_COLOR);
     private final Manor2TokenFormula tokenFormula = new Manor2TokenFormula();
+    private final OutsideBoundsEffect outsideBounds = new OutsideBoundsEffect(this);
 
     public Manor2(Manor2Definition definition) {
         super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, false, false);
@@ -147,6 +150,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             Executors.delayedSync(player, Math.floorDiv(i, TELEPORTS_PER_TICK) + 1, () -> {
                     Executors.teleportSafely(player, target);
                     role.initiatePlay();
+                    player.sendActionBar(USES_LIGHT_MESSAGE);
                 }
             );
         }
@@ -178,6 +182,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         recorder.tick();
         ghostAttacks.tick();
         artifactManager.tick();
+        outsideBounds.tick();
         for (Manor2Role role : roleMap) {
             role.tick();
             role.operatePlayer(player -> {

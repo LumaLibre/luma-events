@@ -107,6 +107,12 @@ public class Manor2Definition {
             "practical, still impressive"))
     );
 
+    private List<ParticleDefinition> outOfBoundsParticles = List.of(
+        new ParticleDefinition(Particle.DUST, 100, 1, new BoundingBox(
+            -1, 0.1, -1, 1, 0.4, 1
+        ), new Particle.DustOptions(Color.GRAY, 2))
+    );
+
     @Getter
     @ConfigSerializable
     public static class LagCompensationSettings {

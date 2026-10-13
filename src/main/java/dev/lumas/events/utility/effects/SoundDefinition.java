@@ -15,6 +15,7 @@ public record SoundDefinition(Sound.Type sound, float volume, float pitch, @Null
         Sound.Builder builder = Sound.sound()
             .type(sound)
             .volume(volume)
+            .source(Sound.Source.MASTER)
             .pitch(pitch);
         if (seed != null) {
             builder.seed(seed);
