@@ -9,6 +9,11 @@ import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.items.LocalCustomItemManager;
 import dev.lumas.events.items.SoulOrbItem;
+import dev.lumas.events.items.candy.DarkChocolateItem;
+import dev.lumas.events.items.candy.GhostTaffyItem;
+import dev.lumas.events.items.candy.LemonDropItem;
+import dev.lumas.events.items.candy.ResinCaramelItem;
+import dev.lumas.events.items.candy.SugarplumBonbonItem;
 import dev.lumas.events.items.StartMinigameItem;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.LeaderboardCacheManager;
@@ -53,6 +58,11 @@ public final class EventMain extends JavaPlugin {
 
         LocalCustomItemManager.addCustomItem(new SoulOrbItem());
         LocalCustomItemManager.addCustomItem(new StartMinigameItem());
+        LocalCustomItemManager.addCustomItem(new ResinCaramelItem());
+        LocalCustomItemManager.addCustomItem(new LemonDropItem());
+        LocalCustomItemManager.addCustomItem(new SugarplumBonbonItem());
+        LocalCustomItemManager.addCustomItem(new GhostTaffyItem());
+        LocalCustomItemManager.addCustomItem(new DarkChocolateItem());
         LocalCustomItemManager.registerCustomItems();
 
         // playtime counter
