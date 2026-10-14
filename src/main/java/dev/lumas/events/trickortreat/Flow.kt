@@ -55,6 +55,8 @@ data class Flow(
     val door: Door? = null,
     val conversations: Map<KnockLevel, String> = emptyMap(),
     val doorkeepers: Map<String, Doorkeeper> = emptyMap(),
+    val groupRadius: Double? = null,
+    val groupMaxYDiff: Double? = null,
 ) {
 
     val isComplete get() = door != null && conversations.isNotEmpty()

@@ -15,6 +15,7 @@ class KnockSettings(
     var windowTicks: Long = 60,
     var answerDelayTicks: Long = 20,
     var groupRadius: Double = 18.0,
+    var groupMaxYDiff: Double = 4.0,
 )
 
 @ConfigSerializable
@@ -67,6 +68,8 @@ class FlowSettings(
     var npc: NpcSettings? = null,
     var openAt: List<String>? = null,
     var npcs: Map<String, NpcSettings>? = null,
+    var groupRadius: Double? = null,
+    var groupMaxYDiff: Double? = null,
 ) {
     fun toFlow(name: String): Flow {
         val default = (npc ?: NpcSettings()).toDoorkeeper(openAt).takeIf { it != Doorkeeper() }
@@ -75,6 +78,8 @@ class FlowSettings(
             door,
             KnockLevel.entries.mapNotNull { level -> conversations?.get(level.key)?.let { level to it } }.toMap(),
             listOfNotNull(default?.let { Flow.DEFAULT_KEEPER to it }).toMap() + npcs.orEmpty().mapValues { it.value.toDoorkeeper() },
+            groupRadius,
+            groupMaxYDiff,
         )
     }
 
@@ -88,6 +93,8 @@ class FlowSettings(
                 default?.openAt?.toStrings(),
                 (flow.doorkeepers - Flow.DEFAULT_KEEPER).mapNotNull { (name, keeper) -> NpcSettings.of(keeper, withOpenAt = true)?.let { name to it } }
                     .toMap().ifEmpty { null },
+                flow.groupRadius,
+                flow.groupMaxYDiff,
             )
         }
     }

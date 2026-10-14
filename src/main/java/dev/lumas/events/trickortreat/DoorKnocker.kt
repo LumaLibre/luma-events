@@ -2,6 +2,7 @@ package dev.lumas.events.trickortreat
 
 import com.nexomc.nexo.api.NexoFurniture
 import org.bukkit.GameMode
+import org.bukkit.Location
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.entity.Player
 import org.bukkit.plugin.Plugin
@@ -77,7 +78,7 @@ class DoorKnocker(private val plugin: Plugin, private val store: TrickOrTreatSto
         val conversation = flow.conversationFor(level) ?: return
         if (conversation !in InteractionsHook.conversations()) return plugin.logger.warning("Trick or treat flow ${flow.name} uses unknown conversation $conversation")
         val location = entity.location
-        val participants = location.getNearbyPlayers(store.knock.groupRadius)
+        val participants = group(flow, location)
             .filter { !it.isDead && it.gameMode != GameMode.SPECTATOR && !InteractionsHook.isTalking(it) }
             .filter { InteractionsHook.start(it, conversation, location) }
         visit(flow, entity, conversation, participants)
@@ -91,10 +92,13 @@ class DoorKnocker(private val plugin: Plugin, private val store: TrickOrTreatSto
             val entity = location.getNearbyEntitiesByType(ItemDisplay::class.java, 1.5)
                 .firstOrNull { door.matches(it.location) && NexoFurniture.isFurniture(it) }
                 ?: return@execute plugin.logger.warning("Trick or treat flow ${flow.name} has no door furniture at $door")
-            val participants = location.getNearbyPlayers(store.knock.groupRadius).filter { InteractionsHook.conversationOf(it) == file }
+            val participants = group(flow, location).filter { InteractionsHook.conversationOf(it) == file }
             visit(flow, entity, file, (participants + player).distinct())
         }
     }
+
+    private fun group(flow: Flow, location: Location) =
+        location.getNearbyPlayers(flow.groupRadius ?: store.knock.groupRadius, flow.groupMaxYDiff ?: store.knock.groupMaxYDiff)
 
     private fun visit(flow: Flow, entity: ItemDisplay, conversation: String, participants: List<Player>) {
         if (participants.isEmpty()) return

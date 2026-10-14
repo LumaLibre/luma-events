@@ -65,6 +65,7 @@ class TrickOrTreatCommand : CommandModule {
             args.size in 3..5 && subcommand == "door" -> listOf("~")
             args.size == 3 && subcommand == "npc" -> NPC_OPTIONS
             args.size == 4 && subcommand == "npc" && args[2].equals("id", ignoreCase = true) && TrickOrTreat.citizensEnabled(plugin) -> CitizensAPI.getNPCRegistry().sorted().map { it.id.toString() }
+            args.size == 4 && subcommand == "npc" && args[2].equals("hide", ignoreCase = true) -> listOf("true", "false")
             args.size == 3 && subcommand == "openat" -> listOf("add", "remove")
             args.size == 4 && subcommand == "openat" -> openAtSuggestions(args[1], args[2])
             else -> emptyList()
@@ -121,7 +122,7 @@ class TrickOrTreatCommand : CommandModule {
     }
 
     private fun npc(sender: CommandSender, command: String, args: List<String>) {
-        val usage = "Usage: /$command npc <flow>[.npc] <${NPC_OPTIONS.joinToString("|")}> [id]"
+        val usage = "Usage: /$command npc <flow>[.npc] <${NPC_OPTIONS.joinToString("|")}> [id|true|false]"
         if (args.size !in 2..3) return sender.error(usage)
         val (name, keeperName) = target(args[0]) ?: return sender.error(TARGET_ERROR)
         val flow = store.flows[name] ?: Flow(name)
@@ -147,6 +148,16 @@ class TrickOrTreatCommand : CommandModule {
                     "inside" -> keeper.copy(inside = location)
                     else -> keeper.copy(outside = location)
                 }
+            }
+            "hide" -> {
+                val hide = when (args.getOrNull(2)?.lowercase()) {
+                    null -> !keeper.hideWhileClosed
+                    "true" -> true
+                    "false" -> false
+                    else -> return sender.error(usage)
+                }
+                sender.info(if (hide) "The NPC of $label now hides while the door is closed." else "The NPC of $label now waits at its standby location while the door is closed.")
+                keeper.copy(hideWhileClosed = hide)
             }
             "reset" -> {
                 sender.info("Removed the NPC from $label.")
@@ -217,11 +228,14 @@ class TrickOrTreatCommand : CommandModule {
         store.flows.values.forEach {
             val conversations = KnockLevel.entries.joinToString { level -> "${level.key}: ${it.conversations[level] ?: "-"}" }
             sender.info("- ${it.name}: door ${it.door ?: "not set"}, $conversations")
+            if (it.groupRadius != null || it.groupMaxYDiff != null) {
+                sender.info("  group radius: ${it.groupRadius ?: "default"}, max y diff: ${it.groupMaxYDiff ?: "default"}")
+            }
             it.doorkeepers.forEach { (keeperName, keeper) ->
                 val prefix = if (keeperName == Flow.DEFAULT_KEEPER) "  " else "  [$keeperName] "
                 val locations = listOf("standby" to keeper.standby, "inside" to keeper.inside, "outside" to keeper.outside)
                     .joinToString { (key, location) -> "$key: ${location?.describe() ?: "-"}" }
-                sender.info("${prefix}npc: ${keeper.npc ?: "-"}, $locations")
+                sender.info("${prefix}npc: ${keeper.npc ?: "-"}, $locations, hide while closed: ${keeper.hideWhileClosed}")
                 if (keeper.openAt.isNotEmpty()) sender.info("${prefix}steps out at: ${keeper.openAt.joinToString()}")
             }
         }
@@ -259,7 +273,7 @@ class TrickOrTreatCommand : CommandModule {
 
     companion object {
         private val SUBCOMMANDS = listOf("door", "conversation", "npc", "openat", "delete", "list", "reload")
-        private val NPC_OPTIONS = listOf("id", "standby", "inside", "outside", "reset")
+        private val NPC_OPTIONS = listOf("id", "standby", "inside", "outside", "hide", "reset")
         private val NAME = Regex("[A-Za-z0-9_-]+")
         private const val TARGET_ERROR = "Flow and NPC names may only contain letters, digits, - and _, use <flow>.<npc> for one of several NPCs."
     }
