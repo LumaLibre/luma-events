@@ -251,7 +251,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         player.teleportAsync(definition.getLobby());
         player.operatePlayer(bukkitPlayer -> Util.sendMsg(
             bukkitPlayer,
-            "<manor2_info><yellow>Click here for more info</yellow></manor2_info> about Manor 2",
+            "<manor2_info><gold>Click here for more info</gold></manor2_info> about Manor 2",
             Placeholder.styling("manor2_info", ClickEvent.callback(audience1 -> audience1.showDialog(dialog)))
         ));
         return super.handleParticipantJoin(player);

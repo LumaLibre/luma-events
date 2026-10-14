@@ -31,19 +31,21 @@ public class RoleDialogues {
                     DialogBase.builder(Util.color("Manor 2"))
                         .body(List.of(
                             DialogBody.plainMessage(Util.color("""
-                                <gray><bold>How to play</bold></gray>
+                                <gray><bold>How to play</bold></gray><br>
                                 This game uses light mechanics. It's recommended
-                                that you turn <bold>off</bold> any type of <bold>night vision</bold>
-                                to be able to notice.
-                                
-                                <gray><bold>Ghost</bold></gray>
+                                that you turn <bold>off</bold> any type of <bold>night vision</bold>.
+                                """.stripIndent().replace("\n", " "), Util.TEXT_COLOR)),
+                            DialogBody.plainMessage(Util.color("""
+                                <gray><bold>Ghost</bold></gray><br>
                                 The ghost kill ghost hunters, this is done by going into range and attacking.
-                                You have to be strategic to stay out of light.
-                                
-                                <gray><bold>Hunters</bold></gray>
-                                The hunters collect artifact and kills ghosts. This is done by shining on things with
+                                You have to be strategic to stay out of light, as you can not attack when lit. Ghosts are almost
+                                always invisible for hunters, except when they are lit.
+                                """.stripIndent().replace("\n", " "), Util.TEXT_COLOR)),
+                            DialogBody.plainMessage(Util.color("""
+                                <gray><bold>Hunters</bold></gray><br>
+                                The hunters collect artifacts and kills ghosts. This is done by shining on things with
                                 your flashlight.
-                                """.stripIndent(), Util.TEXT_COLOR)),
+                                """.stripIndent().replace("\n", " "), Util.TEXT_COLOR)),
                             DialogBody.plainMessage(Util.color("<bold><gradient:red:#8a5500>Spooky times brought to you by<gradient>")),
                             DialogBody.item(head(THORIN), DialogBody.plainMessage(Util.color("Thorinwasher")), false, false, 1, 16),
                             DialogBody.item(head(JSINCO), DialogBody.plainMessage(Util.color("Jsinco")), false, false, 1, 16),
