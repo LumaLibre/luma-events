@@ -145,7 +145,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
     private volatile CountdownBossBar bar;
 
     public Copycat(CopycatDefinition definition) {
-        super("Speed Build", Util.getRandom(SPLASH), 0, TICK_INTERVAL, true, true, false, false);
+        super("Copycat", Util.getRandom(SPLASH), 0, TICK_INTERVAL, true, true, false, false);
         Preconditions.checkState(definition.getLobby() != null, "Copycat needs a lobby");
         Preconditions.checkState(definition.getOrigin() != null, "Copycat needs an arena origin");
         this.definition = definition;
@@ -185,9 +185,30 @@ public final class Copycat extends InventoryUnifiedMinigame {
     }
 
     @Override
+    protected Couple<String, String> howToPlay() {
+        return Couple.of("<b><gradient:#331D4D:#611e4e:#9f2e51>Copycat", """
+            <gray><b>Premise</b></gray>
+            The goal of this minigame is to replicate
+            a specific build based on memory in a
+            short period of time. The timer gets
+            shorter as the game goes on.
+            
+            <gray><b>Memorize</b></gray>
+            You have <gold>16 seconds</gold> to memorize
+            a given build. After that, random blocks that are exposed to
+            air will be removed from the build and it will be your job to
+            fill them in.
+            
+            <gray><b>Eliminations</b></gray>
+            Each round, you have to get a certain percentage
+            of the build correct. If you don't, you're out.
+            Eliminated players become spectators.
+            """);
+    }
+
+    @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
         this.teleportOnJoin(player, lobby);
-        player.sendMessage("Copy the build presented to you. You have <gold>16s</gold> to memorize it an replicate the creation. Fail to replicate the build above a certain accuracy then you're out.");
         return super.handleParticipantJoin(player);
     }
 

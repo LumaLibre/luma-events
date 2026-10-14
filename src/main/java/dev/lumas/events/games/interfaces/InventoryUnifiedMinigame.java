@@ -89,8 +89,10 @@ public abstract class InventoryUnifiedMinigame extends Minigame {
 
     @Override
     protected boolean handleParticipantJoin(EventPlayer player) {
-        String m = "This minigame will modify your inventory during gameplay. <yellow>Disconnecting will automatically kick you from this game.</yellow>";
-        player.sendMessage(m);
+        if (this.howToPlay() == null) {
+            String m = "This minigame will modify your inventory during gameplay. <yellow>Disconnecting will automatically kick you from this game.</yellow>";
+            player.sendMessage(m);
+        }
         return true;
     }
 

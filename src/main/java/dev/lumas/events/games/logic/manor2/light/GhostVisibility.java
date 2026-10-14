@@ -27,9 +27,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public final class GhostVisibility {
 
-    private static final int HIDE_AFTER_UNLIT_TICKS = 10;
+    private static final int HIDE_AFTER_UNLIT_TICKS = 15;
     private static final int MAX_LIT_TICKS = 20 * 5;
-    private static final double EXPOSED_MIN_CENTEREDNESS = 0.75;
+    private static final double EXPOSED_MIN_CENTEREDNESS = 0.6;
     private static final double SILHOUETTE_MIN_CENTEREDNESS = 0.5;
     private static final int SILHOUETTE_MIN_LIGHT_LEVEL = 5;
     private static final int EXPOSED_MIN_LIGHT_LEVEL = 7;

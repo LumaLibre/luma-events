@@ -9,6 +9,7 @@ import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -20,8 +21,9 @@ public class JoinListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
         Minigame current = MinigameManager.getInstance().getCurrent();
-        EventPlayer eventPlayer = EventPlayerManager.getByUUID(event.getPlayer().getUniqueId());
+        EventPlayer eventPlayer = EventPlayerManager.getByUUID(player.getUniqueId());
         boolean claimableCharm = !eventPlayer.isClaimedCharm() && EventMain.getConfiguration().isCharmClaimable();
 
         if (claimableCharm && !eventPlayer.getScores().isEmpty()) {
@@ -30,10 +32,10 @@ public class JoinListener implements Listener {
             });
         }
 
-        if (current.isOpen())  {
+        if (current.isOpen() && player.hasPermission(Minigame.MINIGAME_PARTICIPANT_PERM))  {
             CountdownBossBar queueBossbar = current.getQueueBossbar();
             if (!queueBossbar.isCancelled()) {
-                queueBossbar.addViewer(event.getPlayer());
+                queueBossbar.addViewer(player);
             }
         }
     }

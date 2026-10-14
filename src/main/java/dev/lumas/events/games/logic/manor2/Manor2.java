@@ -18,12 +18,12 @@ import dev.lumas.events.games.logic.manor2.roles.Artifact;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
-import dev.lumas.events.games.logic.manor2.roles.RoleDialogues;
 import dev.lumas.events.games.logic.manor2.roles.RoleHitbox;
 import dev.lumas.events.games.logic.manor2.roles.Spectator;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.tokenformula.Manor2TokenFormula;
 import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.utility.Couple;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.clientside.LocalizedFakeBlockCache;
@@ -31,12 +31,10 @@ import dev.lumas.events.utility.latency.LatencyHandler;
 import dev.lumas.events.utility.latency.LatencyTracker;
 import dev.lumas.events.utility.latency.hitbox.TrailRecorder;
 import dev.lumas.events.utility.latency.tracing.Tracing;
-import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
@@ -117,7 +115,6 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private Component gameOverSubtitle = Util.color("Game ended by force", Util.TEXT_COLOR);
     private final Manor2TokenFormula tokenFormula = new Manor2TokenFormula();
     private final OutsideBoundsEffect outsideBounds = new OutsideBoundsEffect(this);
-    private final Dialog dialog = RoleDialogues.dialog();
 
     public Manor2(Manor2Definition definition) {
         super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, false, false);
@@ -228,6 +225,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         Executors.sync(definition.getHunterStartLocations().getFirst(), blockCache::shutdown);
 
+        List<EventPlayer> endedParticipants = List.copyOf(participants);
         List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
         for (Manor2Role role : roleMap) {
             completableFutures.add(roleMap.retire(role));
@@ -235,7 +233,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         audience.showTitle(Title.title(Util.color("<yellow>Game Over", Util.TEXT_COLOR), gameOverSubtitle));
         CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new))
             .thenRun(() -> {
-                Executors.teleportGroupAsync(participants, definition.getLobby());
+                Executors.teleportGroupAsync(endedParticipants, definition.getLobby());
                 scoreboard.showScores(this.audience);
                 this.sendAudienceMessage("This minigame has concluded.");
             })
@@ -250,12 +248,32 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     protected boolean handleParticipantJoin(EventPlayer player) {
         this.latency.start(); // No-op if already started
         player.teleportAsync(definition.getLobby());
-        player.operatePlayer(bukkitPlayer -> Util.sendMsg(
-            bukkitPlayer,
-            "<manor2_info><gold>Click here for more info</gold></manor2_info> about Manor 2",
-            Placeholder.styling("manor2_info", ClickEvent.callback(audience1 -> audience1.showDialog(dialog)))
-        ));
         return super.handleParticipantJoin(player);
+    }
+
+    @Override
+    protected Couple<String, String> howToPlay() {
+        return Couple.of("<b><gradient:#331D4D:#611e4e:#9f2e51>Manor 2", """
+            <gray><b>Light Mechanics</b></gray>
+            This game uses light mechanics. It's recommended
+            that you turn <b><u>off</u></b> any type of <b>full bright</b>
+            or <b>gamma increasement mods</b>.
+            Ghosts are always <b>vanished</b> when they are not revealed with a flashlight,
+            you are <u>worsening</u> your own experience of this game by leaving these mods
+            enabled because you can't see what area your own flashlight is covering!
+            
+            <gray><b>Ghost</b></gray>
+            The ghost kill ghost hunters, this is done by going into range and attacking (left-clicking a hunter).
+            You have to be strategic to stay out of light. For every 10 players, there is 1 ghost.
+            
+            <gray><b>Hunters</b></gray>
+            The hunters collect artifact and kills ghosts.
+            Ghosts are invisible to you by default. You need to reveal them with your flashlight.
+            Your screen will turn cold and your flashlight will flicker when you're near a ghost.
+            You can collect artifacts by shining on things with your flashlight.
+            Hunters can save their teammates by shining a flashlight on the ghost
+            whilst the ghost is attacking.
+            """);
     }
 
     @Override

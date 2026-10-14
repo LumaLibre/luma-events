@@ -14,6 +14,7 @@ import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.WorldTiedBoundingBox;
+import dev.lumas.events.utility.Couple;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import lombok.Getter;
@@ -112,6 +113,25 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         return !origin.getWorld().equals(location.getWorld())
             || location.getY() < origin.getWorld().getMinHeight()
             || location.distanceSquared(origin) > maxSpectatorDistanceSquared;
+    }
+
+    @Override
+    protected Couple<String, String> howToPlay() {
+        return Couple.of("<b><gradient:#331D4D:#611e4e:#9f2e51>SkyWars", """
+            <gray><b>Teams</b></gray>
+            Each map only has around 12-16 islands,
+            players are grouped into teams and this
+            is a team-based minigame. Every player
+            has a permanent helmet representing their
+            team color that cannot be removed.
+            
+            <gray><b>Looting</b></gray>
+            Loot rarity is based on the type of
+            copper chest you open. Normal copper
+            contains the most common loot whereas
+            oxidized copper contains the rarest
+            loot in this game.
+            """);
     }
 
     @Override
