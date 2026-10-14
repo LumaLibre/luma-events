@@ -19,7 +19,7 @@ class LemonDropItem : CandyItem() {
 
     override fun effects() = listOf(
         CandyEffect(0.15, "Way too sour! Your vision swims...") { player: Player ->
-            player.addPotionEffect(PotionEffect(PotionEffectType.NAUSEA, 20 * 7, 0))
+            player.addPotionEffect(PotionEffect(PotionEffectType.NAUSEA, 20 * 8, 0))
         },
         CandyEffect(0.2, "The zest wakes you right up!") { player: Player ->
             player.addPotionEffect(PotionEffect(PotionEffectType.HASTE, 20 * 30, 1))

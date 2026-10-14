@@ -22,7 +22,7 @@ class GhostTaffyItem : CandyItem() {
             player.addPotionEffect(PotionEffect(PotionEffectType.SLOW_FALLING, 20 * 20, 0))
         },
         CandyEffect(0.2, "You fade a little... spooky!") { player: Player ->
-            player.addPotionEffect(PotionEffect(PotionEffectType.INVISIBILITY, 20 * 10, 0))
+            player.addPotionEffect(PotionEffect(PotionEffectType.INVISIBILITY, 20 * 20, 0))
         },
     )
 }

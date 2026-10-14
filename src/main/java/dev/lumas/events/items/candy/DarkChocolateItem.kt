@@ -19,10 +19,10 @@ class DarkChocolateItem : CandyItem() {
 
     override fun effects() = listOf(
         CandyEffect(0.2, "Rich and comforting. You feel better already.") { player: Player ->
-            player.addPotionEffect(PotionEffect(PotionEffectType.REGENERATION, 20 * 6, 0))
+            player.addPotionEffect(PotionEffect(PotionEffectType.REGENERATION, 20 * 7, 0))
         },
         CandyEffect(0.1, "Bitter... but it steels your nerves.") { player: Player ->
-            player.addPotionEffect(PotionEffect(PotionEffectType.RESISTANCE, 20 * 15, 0))
+            player.addPotionEffect(PotionEffect(PotionEffectType.RESISTANCE, 20 * 25, 0))
         },
     )
 }

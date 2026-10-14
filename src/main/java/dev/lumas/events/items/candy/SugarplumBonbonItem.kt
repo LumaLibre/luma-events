@@ -22,7 +22,7 @@ class SugarplumBonbonItem : CandyItem() {
             player.addPotionEffect(PotionEffect(PotionEffectType.GLOWING, 20 * 25, 0))
         },
         CandyEffect(0.15, "The foil's shimmer dazzles you!") { player: Player ->
-            player.addPotionEffect(PotionEffect(PotionEffectType.BLINDNESS, 20 * 15, 0))
+            player.addPotionEffect(PotionEffect(PotionEffectType.BLINDNESS, 20 * 10, 0))
         },
     )
 }

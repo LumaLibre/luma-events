@@ -19,10 +19,10 @@ class ResinCaramelItem : CandyItem() {
 
     override fun effects() = listOf(
         CandyEffect(0.2, "Sugar rush! Your feet feel lighter.") { player: Player ->
-            player.addPotionEffect(PotionEffect(PotionEffectType.SPEED, 20 * 15, 1))
+            player.addPotionEffect(PotionEffect(PotionEffectType.SPEED, 20 * 25, 1))
         },
         CandyEffect(0.15, "The caramel glues your boots to the ground!") { player: Player ->
-            player.addPotionEffect(PotionEffect(PotionEffectType.SLOWNESS, 20 * 8, 1))
+            player.addPotionEffect(PotionEffect(PotionEffectType.SLOWNESS, 20 * 10, 2))
         },
     )
 }
