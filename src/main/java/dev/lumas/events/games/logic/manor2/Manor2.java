@@ -165,6 +165,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                     Executors.teleportSafely(player, target);
                     role.initiatePlay();
                     player.sendActionBar(USES_LIGHT_MESSAGE);
+                    player.clearActivePotionEffects();
                 }
             );
         }

@@ -20,6 +20,7 @@ public class GhostHunter extends Manor2Role {
 
     private final Flashlight flashlight;
     private final Manor2 manor2;
+    private volatile boolean isDead = false;
 
     public GhostHunter(Manor2 manor2, EventPlayer eventPlayer) {
         super(eventPlayer);
@@ -38,6 +39,10 @@ public class GhostHunter extends Manor2Role {
 
     @Override
     public void die() {
+        if (isDead) {
+            return;
+        }
+        isDead = true;
         manor2.getRoleMap().swapRole(this, () ->
             manor2.getDefinition().isArtifactPlay() ? new Artifact(manor2, eventPlayer) : new Spectator(manor2, eventPlayer)
         );

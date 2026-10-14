@@ -24,6 +24,7 @@ public class Ghost extends Manor2Role {
     private final GhostVisibility visibility;
     private Manor2 manor2;
     private int ticksUntilWhirl = 0;
+    private volatile boolean isDead = false;
 
     public Ghost(Manor2 manor2, EventPlayer eventPlayer) {
         super(eventPlayer);
@@ -33,6 +34,10 @@ public class Ghost extends Manor2Role {
 
     @Override
     public void die() {
+        if (isDead) {
+            return;
+        }
+        isDead = true;
         if (manor2.getDefinition().isArtifactPlay()) {
             manor2.getRoleMap().swapRole(this, () -> new Artifact(manor2, eventPlayer));
         } else {

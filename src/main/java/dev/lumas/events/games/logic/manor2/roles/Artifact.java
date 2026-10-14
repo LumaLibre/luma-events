@@ -43,6 +43,7 @@ public class Artifact extends Manor2Role {
     private AtomicLong revealReadyTime = new AtomicLong(Long.MAX_VALUE);
     private final Visibility visibility;
     private volatile boolean frozen = false;
+    private volatile boolean isDead = false;
 
     protected Artifact(Manor2 manor2, EventPlayer eventPlayer) {
         super(eventPlayer);
@@ -89,6 +90,10 @@ public class Artifact extends Manor2Role {
 
     @Override
     public void die() {
+        if (isDead) {
+            return;
+        }
+        isDead = true;
         eventPlayer.operatePlayer(player -> {
             player.sendActionBar(Util.color(DEATH_MESSAGE));
         });
