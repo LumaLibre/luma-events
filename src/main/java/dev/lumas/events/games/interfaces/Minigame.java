@@ -12,6 +12,7 @@ import dev.lumas.events.games.interfaces.models.MinigameRole;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.MinigameBoundingBox;
+import dev.lumas.events.utility.Couple;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Externals;
 import dev.lumas.events.utility.JoinTrace;
@@ -19,6 +20,10 @@ import dev.lumas.events.utility.SoftSleepyAPI;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.effects.SoundDefinition;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
+import io.papermc.paper.dialog.Dialog;
+import io.papermc.paper.registry.data.dialog.DialogBase;
+import io.papermc.paper.registry.data.dialog.body.DialogBody;
+import io.papermc.paper.registry.data.dialog.type.DialogType;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import lombok.Setter;
@@ -26,6 +31,8 @@ import me.kteq.hiddenarmor.HiddenArmorAPI;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
@@ -288,7 +295,28 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             "<yellow>" + this.name,
             "<red>" + this.description
         );
+        this.sendHowToPlay(player);
         return true;
+    }
+
+    private void sendHowToPlay(EventPlayer player) {
+        Couple<String, String> howToPlay = this.howToPlay();
+        if (howToPlay == null) {
+            return;
+        }
+        Dialog dialog = Dialog.create(builder ->
+            builder.empty()
+                .base(
+                    DialogBase.builder(Util.color(howToPlay.a()))
+                        .body(List.of(DialogBody.plainMessage(Util.color(howToPlay.b(), Util.TEXT_COLOR))))
+                        .build()
+                ).type(DialogType.notice())
+        );
+        player.operatePlayer(bukkitPlayer -> Util.sendMsg(
+            bukkitPlayer,
+            "<how_to_play><yellow>Click here for more info</yellow></how_to_play> about " + this.name,
+            Placeholder.styling("how_to_play", ClickEvent.callback(audience -> audience.showDialog(dialog)))
+        ));
     }
 
     public final boolean removeParticipant(EventPlayer player, boolean doTeleport) {
@@ -565,6 +593,10 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
     }
 
     protected abstract boolean handleParticipantJoin(EventPlayer player);
+
+    protected @Nullable Couple<String, String> howToPlay() {
+        return null;
+    }
 
     // TODO: cleanup/move
     private static String describePayout(TokenPayout tokenPayout) {
