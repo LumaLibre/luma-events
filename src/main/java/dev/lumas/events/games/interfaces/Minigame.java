@@ -5,6 +5,7 @@ import dev.lumas.events.EventMain;
 import dev.lumas.events.games.events.MinigameExitPreventionListener;
 import dev.lumas.events.games.events.MinigamePreventDamageListener;
 import dev.lumas.events.games.events.MinigamePreventInventoryTampering;
+import dev.lumas.events.games.events.SleepyEventListener;
 import dev.lumas.events.games.exceptions.GameComponentIllegallyActive;
 import dev.lumas.events.games.interfaces.models.InactivitySettings;
 import dev.lumas.events.games.interfaces.models.MinigameRole;
@@ -92,6 +93,9 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         this.tickInterval = tickInterval;
         this.async = async;
         this.extraListeners.add(new MinigameExitPreventionListener(this));
+        if (SoftSleepyAPI.available()) {
+            this.extraListeners.add(new SleepyEventListener(this));
+        }
         this.inventoryTampering = new MinigamePreventInventoryTampering(this);
         this.preventDamage = new MinigamePreventDamageListener(this);
         registerEvents(this.inventoryTampering);
@@ -104,6 +108,9 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         this.duration = duration;
         this.tickInterval = tickInterval;
         this.async = async;
+        if (SoftSleepyAPI.available()) {
+            this.extraListeners.add(new SleepyEventListener(this));
+        }
         if (preventExit) this.extraListeners.add(new MinigameExitPreventionListener(this));
         this.inventoryTampering = preventInventoryTampering ? new MinigamePreventInventoryTampering(this) : null;
         this.preventDamage = preventDamage ? new MinigamePreventDamageListener(this) : null;
@@ -247,6 +254,10 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
                 player.sendMessage("This minigame has denied your entry.");
                 return false;
             }
+            Player bukkitPlayer = player.getPlayer();
+            if (bukkitPlayer != null) {
+                SoftSleepyAPI.wakeup(bukkitPlayer);
+            }
         } catch (Throwable throwable) {
             throwable.printStackTrace();
             player.sendMessage("An error occurred while trying to join the minigame.");
@@ -381,7 +392,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         participant.operatePlayer(player -> player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 0.5f));
     }
 
-    private void removeInactiveParticipant(EventPlayer participant) {
+    public void removeInactiveParticipant(EventPlayer participant) {
         if (!this.removeParticipant(participant, true, true)) {
             return;
         }

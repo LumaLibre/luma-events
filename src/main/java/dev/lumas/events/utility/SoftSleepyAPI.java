@@ -18,4 +18,13 @@ public class SoftSleepyAPI {
         if (!SLEEPY_AVAILABLE) return false;
         return SleepyAPI.hasBeenAfkFor(uuid, seconds);
     }
+
+    public static void wakeup(Player player) {
+        if (!SLEEPY_AVAILABLE) return;
+        SleepyAPI.wakeup(player);
+    }
+
+    public static boolean available() {
+        return SLEEPY_AVAILABLE;
+    }
 }
