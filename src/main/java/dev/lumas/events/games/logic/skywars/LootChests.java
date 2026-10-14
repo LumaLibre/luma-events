@@ -10,15 +10,12 @@ import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Chest;
-import org.bukkit.block.DoubleChest;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -30,7 +27,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.DoubleConsumer;
@@ -51,7 +47,6 @@ final class LootChests {
     private volatile List<Location> chests = List.of();
     private volatile Map<Location, BlockData> dynamicMarkers = Map.of();
     private volatile Map<Location, BlockData> dynamicChests = Map.of();
-    private final Map<Location, LootPool> unopened = new ConcurrentHashMap<>();
 
     LootChests(GenericStructure map, SkyWarsLoot loot) {
         this.map = map;
@@ -167,7 +162,6 @@ final class LootChests {
                     LootPool pool = poolFor(block.getType());
                     if (pool != null && block.getState(false) instanceof Chest chest) {
                         fill(pool, chest.getBlockInventory());
-                        unopened.put(block.getLocation(), pool);
                         filled.incrementAndGet();
                     } else {
                         SkyWars.LOGGER.warning("Expected a copper chest at " + describe(location) + " but found " + block.getType());
@@ -204,22 +198,6 @@ final class LootChests {
         BlockData upgraded = next.createBlockData();
         block.getBlockData().copyTo(upgraded);
         block.setBlockData(upgraded, false);
-    }
-
-    int claim(Inventory inventory) {
-        InventoryHolder holder = inventory.getHolder(false);
-        List<InventoryHolder> halves = holder instanceof DoubleChest doubleChest
-                ? Arrays.asList(doubleChest.getLeftSide(false), doubleChest.getRightSide(false))
-                : Collections.singletonList(holder);
-
-        int points = 0;
-        for (InventoryHolder half : halves) {
-            LootPool pool = half instanceof Chest chest ? unopened.remove(chest.getLocation()) : null;
-            if (pool != null) {
-                points += pool.getPoints();
-            }
-        }
-        return points;
     }
 
     void fill(LootPool pool, Inventory inventory) {

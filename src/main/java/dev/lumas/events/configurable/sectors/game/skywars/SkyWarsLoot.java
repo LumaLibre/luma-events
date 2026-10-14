@@ -18,7 +18,6 @@ import static java.util.Map.entry;
 public class SkyWarsLoot {
 
     private LootPool common = new LootPool(
-        0,
         Map.ofEntries(
             entry("blocks", Map.ofEntries(
                 entry("cobblestone", new LootPackage(10, of(Material.COBBLESTONE, 32))),
@@ -56,7 +55,6 @@ public class SkyWarsLoot {
     );
 
     private LootPool uncommon = new LootPool(
-        1,
         Map.of(),
         Map.ofEntries(
             entry("iron_sword", new LootPackage(6, of(Material.IRON_SWORD))),
@@ -84,7 +82,6 @@ public class SkyWarsLoot {
     );
 
     private LootPool rare = new LootPool(
-        2,
         Map.ofEntries(
             entry("gear", Map.ofEntries(
                 entry("iron_sword", new LootPackage(5, of(Material.IRON_SWORD))),
@@ -115,7 +112,6 @@ public class SkyWarsLoot {
     );
 
     private LootPool epic = new LootPool(
-        3,
         Map.ofEntries(
             entry("gear", Map.ofEntries(
                 entry("diamond_sword", new LootPackage(5, of(Material.DIAMOND_SWORD))),
@@ -156,8 +152,6 @@ public class SkyWarsLoot {
     @ConfigSerializable
     public static class LootPool {
 
-        @Comment("Points a player earns for being the first to open one of these chests")
-        private int points;
         @Comment("Categories where exactly one package is always rolled")
         private Map<String, Map<String, LootPackage>> guaranteed;
         @Comment("Weighted packages rolled randomly after the guaranteed ones")
@@ -165,8 +159,7 @@ public class SkyWarsLoot {
         private int minRandomRolls;
         private int maxRandomRolls;
 
-        public LootPool(int points, Map<String, Map<String, LootPackage>> guaranteed, Map<String, LootPackage> random, int minRandomRolls, int maxRandomRolls) {
-            this.points = points;
+        public LootPool(Map<String, Map<String, LootPackage>> guaranteed, Map<String, LootPackage> random, int minRandomRolls, int maxRandomRolls) {
             this.guaranteed = guaranteed;
             this.random = random;
             this.minRandomRolls = minRandomRolls;

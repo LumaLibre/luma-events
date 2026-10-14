@@ -12,6 +12,7 @@ import dev.lumas.events.games.logic.skywars.roles.SkyWarsRole;
 import dev.lumas.events.games.logic.skywars.roles.SkyWarsSpectator;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
+import dev.lumas.events.games.tokenformula.SkyWarsTokenFormula;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.WorldTiedBoundingBox;
 import dev.lumas.events.utility.Couple;
@@ -36,7 +37,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
-import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.util.Vector;
 import org.jspecify.annotations.Nullable;
@@ -47,6 +47,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -91,7 +92,9 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     private volatile @Nullable Component setupStatus;
     private final AtomicBoolean ended = new AtomicBoolean();
     @Getter
-    private final Scoreboard<SkyWarsRole> scoreboard = new Scoreboard<>();
+    private final Scoreboard<EventPlayer> scoreboard = new Scoreboard<>();
+    private final SkyWarsTokenFormula tokenFormula = new SkyWarsTokenFormula();
+    private volatile Set<UUID> winners = Set.of();
 
     public SkyWars(SkyWarsDefinition def) {
         super("SkyWars", Util.getRandom(SPLASH), DURATION, 2, true, true, false, false);
@@ -136,7 +139,8 @@ public final class SkyWars extends InventoryUnifiedMinigame {
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
-        // TODO: Event tokens
+        boolean won = winners.contains(participant.getUuid());
+        tokenFormula.giveTokens(participant, Couple.of(scoreboard.getScore(participant), won));
     }
 
     @Override
@@ -171,6 +175,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         for (int i = 0; i < participants.size(); i++) {
             roleMap.put(new SkyWarsPlayer(this, participants.get(i), teams.get(i % teamCount)));
         }
+        scoreboard.addScorers(List.copyOf(participants));
 
         // teams that ended up a player short get their island's chests bumped up a tier
         Map<SkyWarsTeam, Long> teamSizes = roleMap.values().stream()
@@ -326,6 +331,12 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     }
 
     private void announceWinner(@Nullable SkyWarsTeam winner) {
+        if (winner != null) {
+            this.winners = roleMap.values().stream()
+                .filter(role -> role.getTeam().equals(winner))
+                .map(SkyWarsRole::getUuid)
+                .collect(Collectors.toUnmodifiableSet());
+        }
         scoreboard.handleGameEnd(this.audience, () -> sendAudienceMessage(winner == null
             ? Component.text("No team won this time!")
             : Component.empty()
@@ -394,18 +405,6 @@ public final class SkyWars extends InventoryUnifiedMinigame {
 
         Player killer = event.getPlayer().getKiller();
         victim.die(event, killer == null ? null : roleMap.get(killer.getUniqueId()));
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onInventoryOpen(InventoryOpenEvent event) {
-        this.ensureNotIllegal();
-        SkyWarsPlayer player = roleMap.as(event.getPlayer().getUniqueId(), SkyWarsPlayer.class);
-        if (player == null) return;
-
-        int points = lootChests.claim(event.getInventory());
-        if (points > 0) {
-            scoreboard.addScore(player, points);
-        }
     }
 
     @EventHandler

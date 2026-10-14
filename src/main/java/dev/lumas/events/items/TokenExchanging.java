@@ -74,7 +74,7 @@ public class TokenExchanging {
 
     @Getter
     public enum TokenType {
-        SUMMER_DOLLOP(SummerDollopItem.class, "<b><gradient:#487bd0:#6decea:#edf2dd:#f682ca:#FFFE5E>Summer Dollop</gradient></b>", "summer-dollop"),
+        SOUL_ORB(SoulOrbItem.class, "<b><gradient:#3F255E:#9f2e51:#611e4e:#331D4D>Soul Orb</gradient></b>", "soul-orb"),
         ;
 
         private final Class<? extends CustomItem> tokenClass;

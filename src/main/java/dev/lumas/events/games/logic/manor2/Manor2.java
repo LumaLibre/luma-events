@@ -113,6 +113,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private final ArtifactManager artifactManager;
     private CountdownBossBar timer;
     private Component gameOverSubtitle = Util.color("Game ended by force", Util.TEXT_COLOR);
+    private volatile @Nullable ManorTeam winner;
     private final Manor2TokenFormula tokenFormula = new Manor2TokenFormula();
     private final OutsideBoundsEffect outsideBounds = new OutsideBoundsEffect(this);
 
@@ -132,7 +133,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
     @Override
     protected void tokenHandler(EventPlayer participant) {
-        tokenFormula.giveTokens(participant, scoreboard.getScore(participant));
+        boolean won = winner != null && winner == scoreboard.teamOf(participant.getUuid());
+        tokenFormula.giveTokens(participant, Couple.of(scoreboard.getScore(participant), won));
     }
 
     @Override
@@ -206,7 +208,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
         boolean gameOver = roleMap.getMatching(Ghost.class).isEmpty() || roleMap.getMatching(GhostHunter.class).isEmpty();
         ManorTeam winner = roleMap.getMatching(Ghost.class).isEmpty() ? ManorTeam.HUNTERS : ManorTeam.GHOSTS;
-        if (gameOver) {
+        if (gameOver && !this.stopping) {
+            this.winner = winner;
             gameOverSubtitle = Util.color("<gold><winner> has won!", Util.TEXT_COLOR, Placeholder.component("winner", winner.plural()));
             this.stop();
         }

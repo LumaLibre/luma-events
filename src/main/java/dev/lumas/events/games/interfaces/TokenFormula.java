@@ -43,7 +43,7 @@ public abstract class TokenFormula<C> {
         }
         TokenSource source = TokenSource.minigame(this.minigameName);
         Executors.runSync(bukkitPlayer, () ->
-                TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.SUMMER_DOLLOP, amount, source));
+                TokenExchanging.give(bukkitPlayer, TokenExchanging.TokenType.SOUL_ORB, amount, source));
         return amount;
     }
 

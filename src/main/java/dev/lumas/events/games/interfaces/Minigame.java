@@ -583,10 +583,6 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
     }
 
     protected CompletableFuture<Boolean> teleportOnJoin(EventPlayer player, @Nullable Location destination) {
-        Player bukkitPlayer = player.getPlayer();
-        if (bukkitPlayer != null) {
-            JoinTrace.joinStart(bukkitPlayer, destination);
-        }
         CompletableFuture<Boolean> future = player.teleportAsync(destination);
         this.joinTeleports.put(player.getUuid(), future);
         return future;

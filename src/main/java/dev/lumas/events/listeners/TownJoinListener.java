@@ -29,7 +29,7 @@ public final class TownJoinListener implements Listener {
     private static final long MIN_INVITER_PLAYTIME_TICKS = TimeUnit.HOURS.toSeconds(24) * 20L;
     private static final long INVITER_REWARD_COOLDOWN_NANOS = TimeUnit.MINUTES.toNanos(25);
     private static final int MIN_INVITER_REWARD = 1;
-    private static final int MAX_INVITER_REWARD = 15;
+    private static final int MAX_INVITER_REWARD = 7;
 
     private final Map<UUID, Long> inviterRewardCooldowns = new ConcurrentHashMap<>();
 
@@ -100,7 +100,7 @@ public final class TownJoinListener implements Listener {
         );
         TokenExchanging.give(
                 inviter,
-                TokenExchanging.TokenType.SUMMER_DOLLOP,
+                TokenExchanging.TokenType.SOUL_ORB,
                 inviterReward,
                 source
         );

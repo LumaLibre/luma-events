@@ -133,6 +133,10 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
         scorerTeams.put(playerUuid, manorTeam);
     }
 
+    public ManorTeam teamOf(UUID playerUuid) {
+        return scorerTeams.getOrDefault(playerUuid, ManorTeam.UNDEFINED);
+    }
+
     private void award(Map<UUID, Double> attribution, int sharedScore) {
         attribution.forEach((uuid, percentage) -> {
             if (ctx.getRoleMap().get(uuid) instanceof Manor2Role scorer) {

@@ -20,8 +20,12 @@ public class SkyWarsPlayer extends SkyWarsRole {
     private static final double BORDER_DAMAGE_BASE = 1.0;
     private static final double BORDER_DAMAGE_PER_BLOCK = 0.5;
     private static final double BORDER_DAMAGE_MAX = 8.0;
+    private static final int KILL_POINTS = 10;
+    private static final int SURVIVAL_POINTS = 1;
+    private static final long SURVIVAL_INTERVAL = 10000;
 
     private long lastBorderDamage = -1;
+    private volatile long nextSurvivalPoints = Long.MAX_VALUE;
 
     public SkyWarsPlayer(SkyWars skyWars, EventPlayer eventPlayer, SkyWarsTeam team) {
         super(skyWars, eventPlayer, team);
@@ -29,6 +33,7 @@ public class SkyWarsPlayer extends SkyWarsRole {
 
     @Override
     public void play() {
+        this.nextSurvivalPoints = System.currentTimeMillis() + SURVIVAL_INTERVAL;
         this.teleportAsync(team.spawn()).thenAccept(success -> {
             if (!success) return;
             this.operatePlayer(player -> {
@@ -59,6 +64,10 @@ public class SkyWarsPlayer extends SkyWarsRole {
 
     @Override
     public void tick() {
+        if (isCurrent() && System.currentTimeMillis() >= nextSurvivalPoints) {
+            nextSurvivalPoints += SURVIVAL_INTERVAL;
+            ctx.getScoreboard().addScore(this.eventPlayer, SURVIVAL_POINTS);
+        }
         this.operatePlayer(player -> {
             if (!isCurrent() || player.isDead()) return;
             double outside = ctx.getBorder().distanceOutside(player.getLocation());
@@ -84,7 +93,7 @@ public class SkyWarsPlayer extends SkyWarsRole {
     @Override
     public void die(PlayerDeathEvent event, @Nullable SkyWarsRole killer) {
         if (killer != null) {
-            ctx.getScoreboard().addScore(killer, 5);
+            ctx.getScoreboard().addScore(killer.getEventPlayer(), KILL_POINTS);
         }
 
         Player player = event.getPlayer();
