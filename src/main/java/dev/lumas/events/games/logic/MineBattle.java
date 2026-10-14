@@ -96,14 +96,14 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     // Reveal for 3s at half-time, 5s at 3/4, 10s at 7/8 and permanently at 15/16
     private static final PeriodicRevealStep[] REVEAL_SCHEDULE = {
-        new PeriodicRevealStep(1, 2,  3_000),
-        new PeriodicRevealStep(2, 3,  0),
-        new PeriodicRevealStep(3, 4,  5_000),
-        new PeriodicRevealStep(4, 5,  0),
-        new PeriodicRevealStep(5, 6,  0),
-        new PeriodicRevealStep(6, 7,  0),
+        new PeriodicRevealStep(1, 2, 3_000),
+        new PeriodicRevealStep(2, 3, 0),
+        new PeriodicRevealStep(3, 4, 5_000),
+        new PeriodicRevealStep(4, 5, 0),
+        new PeriodicRevealStep(5, 6, 0),
+        new PeriodicRevealStep(6, 7, 0),
         new PeriodicRevealStep(7, 8, 10_000),
-        new PeriodicRevealStep(15,16, -1)
+        new PeriodicRevealStep(15, 16, -1)
     };
 
     private static final ItemStack START_SWORD_TEMPLATE = Util.createItem(Material.STONE_SWORD, meta -> {
@@ -116,7 +116,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     });
 
     private static final NamespacedKey COPPER_MAX_HEALTH_KEY =
-            new NamespacedKey(EventMain.getInstance(), "minebattle_copper_max_health");
+        new NamespacedKey(EventMain.getInstance(), "minebattle_copper_max_health");
 
     private static final int SURVIVE_POINTS = 1;
     private static final int KILL_POINTS = 2;
@@ -149,7 +149,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private long lastSurvivalTimeLeftMs = -1L;
 
     private final MinigameRoleMap<AbstractMineBattlePlayer> roleMap =
-            new MinigameRoleMap<>(AbstractMineBattlePlayer::cleanup);
+        new MinigameRoleMap<>(AbstractMineBattlePlayer::cleanup);
     private final Map<UUID, Set<UUID>> hiddenByViewer = new HashMap<>();
     private final Map<UUID, Map<UUID, Long>> forceVisibleUntil = new HashMap<>();
 
@@ -212,8 +212,11 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             double weight = entry.getValue();
             if (weight <= 0.0) continue;
             Material material;
-            try { material = Material.valueOf(key.toUpperCase(Locale.ROOT)); }
-            catch (IllegalArgumentException ex) { continue; }
+            try {
+                material = Material.valueOf(key.toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ex) {
+                continue;
+            }
             joiner.add(weight + "%" + material.getKey().getKey());
         }
         return joiner.toString();
@@ -242,7 +245,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                     break;
                 }
                 WorldEditStructure structure =
-                        new WorldEditStructure(loc.add(0,-1,0), "minebattle/" + file.getName());
+                    new WorldEditStructure(loc.add(0, -1, 0), "minebattle/" + file.getName());
                 structure.paste();
             }
         } catch (Throwable t) {
@@ -251,25 +254,25 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
         if (this.isCancelled()) return; // does this need to be done sync? - Apparently so.
         CountdownBossBar.builder()
-                .title("<yellow>Generating Arena...") // <gray>%ss</gray>
-                .color(BossBar.Color.YELLOW)
-                .seconds(5)
-                .audience(this.audience)
-                .countUp(true)
-                .callback(() -> {
-                    if (this.isCancelled()) return;
-                    this.arenaReady = true;
+            .title("<yellow>Generating Arena...") // <gray>%ss</gray>
+            .color(BossBar.Color.YELLOW)
+            .seconds(5)
+            .audience(this.audience)
+            .countUp(true)
+            .callback(() -> {
+                if (this.isCancelled()) return;
+                this.arenaReady = true;
 
-                    if (useWorldBorder) setupWorldBorderSafe(radius);
+                if (useWorldBorder) setupWorldBorderSafe(radius);
 
-                    teleportPlayersToAssignedSpawnsThen(() -> {
-                        if (useWorldBorder) armAndShrinkWorldBorder();
-                        startGameTimerBossBar();
-                        this.sendAudienceMessage("<green>MineBattle started!</green>");
-                    });
-                })
-                .build()
-                .start();
+                teleportPlayersToAssignedSpawnsThen(() -> {
+                    if (useWorldBorder) armAndShrinkWorldBorder();
+                    startGameTimerBossBar();
+                    this.sendAudienceMessage("<green>MineBattle started!</green>");
+                });
+            })
+            .build()
+            .start();
     }
 
     @Override
@@ -290,7 +293,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport, boolean wasAfk) {
         AbstractMineBattlePlayer role = this.roleMap.remove(participant.getUuid());
         if (role != null) role.cleanup();
         UUID uuid = participant.getUuid();
@@ -309,7 +312,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             forceVisibleUntil.remove(uuid);
             for (Map<UUID, Long> m : forceVisibleUntil.values()) m.remove(uuid);
         });
-        return super.removeParticipant(participant, doTeleport);
+        return super.removeParticipant(participant, doTeleport, wasAfk);
     }
 
     @Override
@@ -358,30 +361,30 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         this.restoreWorldBorder();
 
         this.scoreboard.handleGameEnd(this.audience, () -> CountdownBossBar.builder()
-                .audience(this.audience)
-                .color(BossBar.Color.BLUE)
-                .title("<aqua><b>Game Over")
-                .seconds(10)
-                .callback(() -> this.participants.forEach(eventPlayer -> {
-                    eventPlayer.teleportAsync(this.getGameDropOffLocation());
-                    eventPlayer.sendMessage("This minigame has concluded.");
-                }))
-                .build()
-                .start());
+            .audience(this.audience)
+            .color(BossBar.Color.BLUE)
+            .title("<aqua><b>Game Over")
+            .seconds(10)
+            .callback(() -> this.participants.forEach(eventPlayer -> {
+                eventPlayer.teleportAsync(this.getGameDropOffLocation());
+                eventPlayer.sendMessage("This minigame has concluded.");
+            }))
+            .build()
+            .start());
     }
 
     private void startGameTimerBossBar() {
         this.gameTimerBossBar = CountdownBossBar.builder()
-                .title("<green>Time Left: %ss")
-                .color(BossBar.Color.GREEN)
-                .miliseconds(this.getDuration() - 5_000L)
-                .audience(this.audience)
-                .callback(() -> {
-                    this.sendAudienceMessage("<yellow>Time is up!</yellow>");
-                    this.stop();
-                })
-                .build()
-                .start();
+            .title("<green>Time Left: %ss")
+            .color(BossBar.Color.GREEN)
+            .miliseconds(this.getDuration() - 5_000L)
+            .audience(this.audience)
+            .callback(() -> {
+                this.sendAudienceMessage("<yellow>Time is up!</yellow>");
+                this.stop();
+            })
+            .build()
+            .start();
     }
 
     public static abstract class AbstractMineBattlePlayer extends MinigameRole {
@@ -394,6 +397,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
 
         public abstract void cleanup();
+
         public abstract void tick();
     }
 
@@ -417,7 +421,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         public void tick() {
             this.tickCounter += this.context.tickInterval;
 
-            if (this.tickCounter >=  TICK_INTERVAL_PAYOUT) {
+            if (this.tickCounter >= TICK_INTERVAL_PAYOUT) {
                 this.tickCounter = 0;
                 this.context.scoreboard.addScore(this.eventPlayer, SURVIVE_POINTS);
             }
@@ -540,6 +544,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             session.flushQueue();
         }
     }
+
     private void carvePocketsFAWE(World weWorld, List<Location> centers) {
         Pattern air = parsePattern(weWorld, "air");
 
@@ -551,6 +556,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             }
         }
     }
+
     private void removeArenaFAWE(ArenaRegions regions) {
         Pattern air = parsePattern(regions.world(), "air");
         try (EditSession session = WorldEdit.getInstance().newEditSession(regions.world())) {
@@ -664,15 +670,16 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         if (!arenaReady) return;
 
         List<Player> actives = this.roleMap.getMatching(ActiveMineBattlePlayer.class).stream()
-                .map(role -> role.getEventPlayer().getPlayer())
-                .filter(Objects::nonNull)
-                .toList();
+            .map(role -> role.getEventPlayer().getPlayer())
+            .filter(Objects::nonNull)
+            .toList();
         List<Player> spectators = this.roleMap.getMatching(MineBattleSpectator.class).stream()
-                .map(role -> role.getEventPlayer().getPlayer())
-                .filter(Objects::nonNull)
-                .toList();
+            .map(role -> role.getEventPlayer().getPlayer())
+            .filter(Objects::nonNull)
+            .toList();
 
-        record Visibility(Player viewer, Player target, boolean shouldSee) {}
+        record Visibility(Player viewer, Player target, boolean shouldSee) {
+        }
         List<Visibility> changes = new ArrayList<>();
 
         // Active <-> Active (LOS in any direction)
@@ -799,8 +806,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private void forceShowFor(UUID viewerId, UUID targetId, long durationMs) {
         long until = System.currentTimeMillis() + durationMs;
         forceVisibleUntil
-                .computeIfAbsent(viewerId, k -> new HashMap<>())
-                .merge(targetId, until, Math::max);
+            .computeIfAbsent(viewerId, k -> new HashMap<>())
+            .merge(targetId, until, Math::max);
         Set<UUID> hidden = hiddenByViewer.computeIfAbsent(viewerId, k -> new HashSet<>());
         hidden.remove(targetId);
         Player viewer = Bukkit.getPlayer(viewerId);
@@ -810,7 +817,9 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
     }
 
-    private record PeriodicRevealStep(int num, int den, long durationMs) {}
+    private record PeriodicRevealStep(int num, int den, long durationMs) {
+    }
+
     private void tickPeriodicReveal(long timeLeftMillis) {
         if (!doPeriodicReveal) return;
         if (!arenaReady) return;
@@ -884,12 +893,12 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         WorldBorder border = bw.getWorldBorder();
 
         savedBorder = new WorldBorderSnapshot(
-                border.getCenter(),
-                border.getSize(),
-                border.getDamageAmount(),
-                border.getDamageBuffer(),
-                border.getWarningDistance(),
-                border.getWarningTimeTicks()
+            border.getCenter(),
+            border.getSize(),
+            border.getDamageAmount(),
+            border.getDamageBuffer(),
+            border.getWarningDistance(),
+            border.getWarningTimeTicks()
         );
 
         double start = (radius + 1) * 2.0 + 6.0; // diameter
@@ -951,7 +960,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         }
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                .thenRun(() -> Executors.delayedGlobal(20L, afterAllTeleports));
+            .thenRun(() -> Executors.delayedGlobal(20L, afterAllTeleports));
     }
 
     private void equip(Player player) {
@@ -1065,7 +1074,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         Player killer = null;
         try {
             if (event.getDamageSource().getCausingEntity() instanceof Player p) killer = p;
-        } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {
+        }
         if (killer == null) killer = dead.getKiller();
 
         Player finalKiller = killer;
@@ -1120,9 +1130,9 @@ public final class MineBattle extends InventoryUnifiedMinigame {
 
     private EventPlayer getParticipant(UUID uuid) {
         return this.participants.stream()
-                .filter(p -> p.getUuid().equals(uuid))
-                .findFirst()
-                .orElse(null);
+            .filter(p -> p.getUuid().equals(uuid))
+            .findFirst()
+            .orElse(null);
     }
 
     private void hideFromOtherPlayers(Player dead) {
@@ -1292,31 +1302,31 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 player.playSound(player, Sound.ENTITY_ILLUSIONER_PREPARE_MIRROR, 1, 1);
                 if (isRevealAllActive()) return;
                 this.getParticipants().stream()
-                        .filter(ep -> !Objects.equals(ep.getUuid(), player.getUniqueId()))
-                        .forEach(ep -> ep.operatePlayer(p -> {
-                            if (!isActive(p)) return; // don't reveal spectators
-                            if (p.getLocation().distanceSquared(player.getLocation()) > 25*25) return;
-                            forceShowFor(player.getUniqueId(), p.getUniqueId(), 3_000); // (= 60 ticks)
-                            if (p.hasPotionEffect(PotionEffectType.GLOWING)) p.removePotionEffect(PotionEffectType.GLOWING);
-                            p.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 0));
-                            p.playSound(p, Sound.ENTITY_WITHER_SPAWN, 1, 1);
-                        }));
+                    .filter(ep -> !Objects.equals(ep.getUuid(), player.getUniqueId()))
+                    .forEach(ep -> ep.operatePlayer(p -> {
+                        if (!isActive(p)) return; // don't reveal spectators
+                        if (p.getLocation().distanceSquared(player.getLocation()) > 25 * 25) return;
+                        forceShowFor(player.getUniqueId(), p.getUniqueId(), 3_000); // (= 60 ticks)
+                        if (p.hasPotionEffect(PotionEffectType.GLOWING)) p.removePotionEffect(PotionEffectType.GLOWING);
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 0));
+                        p.playSound(p, Sound.ENTITY_WITHER_SPAWN, 1, 1);
+                    }));
             }
             case DEEPSLATE_LAPIS_ORE -> {
                 player.playSound(player, Sound.BLOCK_AMETHYST_BLOCK_HIT, 1, 1);
                 ItemStack reward = new ItemStack(Material.ENCHANTED_BOOK);
                 EnchantmentStorageMeta rewardMeta = (EnchantmentStorageMeta) reward.getItemMeta();
                 switch (random.nextInt(14)) {
-                    case 0  -> rewardMeta.addStoredEnchant(Enchantment.SHARPNESS, 1, true);
-                    case 1  -> rewardMeta.addStoredEnchant(Enchantment.SHARPNESS, 2, true);
-                    case 2  -> rewardMeta.addStoredEnchant(Enchantment.FEATHER_FALLING, 3, true);
-                    case 3  -> rewardMeta.addStoredEnchant(Enchantment.PROTECTION, 1, true);
-                    case 4  -> rewardMeta.addStoredEnchant(Enchantment.PROTECTION, 2, true);
-                    case 5  -> rewardMeta.addStoredEnchant(Enchantment.BLAST_PROTECTION, 1, true);
-                    case 6  -> rewardMeta.addStoredEnchant(Enchantment.BLAST_PROTECTION, 2, true);
-                    case 7  -> rewardMeta.addStoredEnchant(Enchantment.BLAST_PROTECTION, 3, true);
-                    case 8  -> rewardMeta.addStoredEnchant(Enchantment.KNOCKBACK, 1, true);
-                    case 9  -> rewardMeta.addStoredEnchant(Enchantment.KNOCKBACK, 2, true);
+                    case 0 -> rewardMeta.addStoredEnchant(Enchantment.SHARPNESS, 1, true);
+                    case 1 -> rewardMeta.addStoredEnchant(Enchantment.SHARPNESS, 2, true);
+                    case 2 -> rewardMeta.addStoredEnchant(Enchantment.FEATHER_FALLING, 3, true);
+                    case 3 -> rewardMeta.addStoredEnchant(Enchantment.PROTECTION, 1, true);
+                    case 4 -> rewardMeta.addStoredEnchant(Enchantment.PROTECTION, 2, true);
+                    case 5 -> rewardMeta.addStoredEnchant(Enchantment.BLAST_PROTECTION, 1, true);
+                    case 6 -> rewardMeta.addStoredEnchant(Enchantment.BLAST_PROTECTION, 2, true);
+                    case 7 -> rewardMeta.addStoredEnchant(Enchantment.BLAST_PROTECTION, 3, true);
+                    case 8 -> rewardMeta.addStoredEnchant(Enchantment.KNOCKBACK, 1, true);
+                    case 9 -> rewardMeta.addStoredEnchant(Enchantment.KNOCKBACK, 2, true);
                     case 10 -> rewardMeta.addStoredEnchant(Enchantment.THORNS, 1, true);
                     case 11 -> rewardMeta.addStoredEnchant(Enchantment.THORNS, 2, true);
                     case 12 -> rewardMeta.addStoredEnchant(Enchantment.THORNS, 3, true);
@@ -1353,7 +1363,8 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 player.playSound(player, Sound.BLOCK_BEEHIVE_EXIT, 1, 1);
                 Util.giveItem(player, new ItemStack(Material.GOLDEN_APPLE));
             }
-            default -> {}
+            default -> {
+            }
         }
 
     }
@@ -1432,7 +1443,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
             PotionEffectType type = entry.getKey();
             int maxAmp = entry.getValue();
             return player.getActivePotionEffects().stream()
-                    .anyMatch(effect -> effect.getType().equals(type) && effect.getAmplifier() >= maxAmp);
+                .anyMatch(effect -> effect.getType().equals(type) && effect.getAmplifier() >= maxAmp);
         });
 
         if (!hasAllEffectsAtMax) {
@@ -1456,7 +1467,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
                 PotionEffectType type = entry.getKey();
                 int maxAmp = entry.getValue();
                 return player.getActivePotionEffects().stream()
-                        .anyMatch(effect -> effect.getType().equals(type) && effect.getAmplifier() >= maxAmp);
+                    .anyMatch(effect -> effect.getType().equals(type) && effect.getAmplifier() >= maxAmp);
             });
 
             if (hasAllEffectsAtMax) {
@@ -1478,17 +1489,17 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         // preconditions
         if (List.of(Enchantment.SHARPNESS, Enchantment.KNOCKBACK).contains(enchantment) && !isSword(event.getCurrentItem())) {
             player.sendActionBar(enchantment.displayName(1).color(NamedTextColor.RED)
-                    .append(Component.text(" may only be applied to swords!").color(NamedTextColor.RED)));
+                .append(Component.text(" may only be applied to swords!").color(NamedTextColor.RED)));
             return;
         }
         if (Objects.equals(Enchantment.FEATHER_FALLING, enchantment) && !isBoots(event.getCurrentItem())) {
             player.sendActionBar(enchantment.displayName(1).color(NamedTextColor.RED)
-                    .append(Component.text(" may only be applied to boots!").color(NamedTextColor.RED)));
+                .append(Component.text(" may only be applied to boots!").color(NamedTextColor.RED)));
             return;
         }
         if (List.of(Enchantment.PROTECTION, Enchantment.BLAST_PROTECTION, Enchantment.THORNS).contains(enchantment) && !isArmor(event.getCurrentItem())) {
             player.sendActionBar(enchantment.displayName(1).color(NamedTextColor.RED)
-                    .append(Component.text(" may only be applied to armor!").color(NamedTextColor.RED)));
+                .append(Component.text(" may only be applied to armor!").color(NamedTextColor.RED)));
             return;
         }
 
@@ -1510,7 +1521,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
         // enchant
         event.getCurrentItem().addUnsafeEnchantment(enchantment, resultLevel);
         event.getWhoClicked().setItemOnCursor(new ItemStack(Material.AIR));
-        player.playSound (player, Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1, 1);
+        player.playSound(player, Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1, 1);
     }
 
     private boolean isSword(ItemStack item) {
@@ -1561,7 +1572,7 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     private @Nullable File pickRandomSchematicFile() {
         if (!schematicsFolder.exists()) schematicsFolder.mkdirs();
         File[] files = schematicsFolder.listFiles(f ->
-                f.isFile() && (f.getName().endsWith(".schem") || f.getName().endsWith(".schematic"))
+            f.isFile() && (f.getName().endsWith(".schem") || f.getName().endsWith(".schematic"))
         );
         if (files == null || files.length == 0) return null;
         return files[RANDOM.nextInt(files.length)];
@@ -1590,11 +1601,12 @@ public final class MineBattle extends InventoryUnifiedMinigame {
     }
 
     private record WorldBorderSnapshot(
-            Location center,
-            double size,
-            double damageAmount,
-            double damageBuffer,
-            int warningDistance,
-            int warningTime
-    ) {}
+        Location center,
+        double size,
+        double damageAmount,
+        double damageBuffer,
+        int warningDistance,
+        int warningTime
+    ) {
+    }
 }

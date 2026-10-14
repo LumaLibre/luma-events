@@ -57,7 +57,7 @@ import java.util.concurrent.TimeUnit;
 public final class FreezeTag extends InventoryUnifiedMinigame {
 
     private static final AttributeModifier FREEZE_MOD = new AttributeModifier(
-            new NamespacedKey(EventMain.getInstance(), "freeze_tag"), -1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
+        new NamespacedKey(EventMain.getInstance(), "freeze_tag"), -1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
 
     private final FreezeTagDefinition settings;
     private final Paintball2_1TokenFormula tokenFormula;
@@ -87,8 +87,8 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
 
         int middle = shuffled.size() / 2;
         this.teams = List.of(
-                new FreezeTagTeam(shuffled.subList(0, middle), settings.getTeam1(), settings.getTeam1SpawnLocation()),
-                new FreezeTagTeam(shuffled.subList(middle, shuffled.size()), settings.getTeam2(), settings.getTeam2SpawnLocation())
+            new FreezeTagTeam(shuffled.subList(0, middle), settings.getTeam1(), settings.getTeam1SpawnLocation()),
+            new FreezeTagTeam(shuffled.subList(middle, shuffled.size()), settings.getTeam2(), settings.getTeam2SpawnLocation())
         );
 
         for (FreezeTagTeam team : teams) {
@@ -113,11 +113,11 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         this.roundInProgress = true;
 
         this.countdownBossBar = CountdownBossBar.builder()
-                .title("<white><b>Time Remaining: %ss")
-                .color(BossBar.Color.WHITE)
-                .miliseconds(this.getDuration())
-                .audience(this.audience)
-                .build();
+            .title("<white><b>Time Remaining: %ss")
+            .color(BossBar.Color.WHITE)
+            .miliseconds(this.getDuration())
+            .audience(this.audience)
+            .build();
         this.countdownBossBar.start();
     }
 
@@ -140,16 +140,16 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         this.audience.showTitle(Util.title("<yellow>Game Over!", "<gold>" + winnerName + " wins!"));
 
         CountdownBossBar.builder()
-                .audience(this.audience)
-                .color(BossBar.Color.BLUE)
-                .title("<aqua><b>Game Over")
-                .seconds(10)
-                .callback(() -> {
-                    this.sendAudienceMessage("This minigame has concluded.");
-                    Executors.teleportGroupAsync(this.participants, settings.getLobbyLocation());
-                })
-                .build()
-                .start();
+            .audience(this.audience)
+            .color(BossBar.Color.BLUE)
+            .title("<aqua><b>Game Over")
+            .seconds(10)
+            .callback(() -> {
+                this.sendAudienceMessage("This minigame has concluded.");
+                Executors.teleportGroupAsync(this.participants, settings.getLobbyLocation());
+            })
+            .build()
+            .start();
     }
 
     @Override
@@ -203,20 +203,20 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
                     int unfreezeTaken = pendingUnfreezeHits.getOrDefault(member.getUuid(), 0);
                     int hitsLeft = Math.max(0, unfreezeRequired - unfreezeTaken);
                     middlePart = Component.text("❄".repeat(hitsLeft)).color(NamedTextColor.AQUA)
-                            .append(Component.text("❄".repeat(unfreezeRequired - hitsLeft)).color(NamedTextColor.DARK_GRAY));
+                        .append(Component.text("❄".repeat(unfreezeRequired - hitsLeft)).color(NamedTextColor.DARK_GRAY));
                 } else {
                     int required = settings.getFreezeHitsRequired();
                     int takenHits = pendingFreezeHits.getOrDefault(member.getUuid(), 0);
                     int livesLeft = Math.max(0, required - takenHits);
                     middlePart = Component.text(heartsDisplay(livesLeft, required))
-                            .color(NamedTextColor.RED);
+                        .color(NamedTextColor.RED);
                 }
 
                 Component myTeamPart = Component.text(team.getName() + " ❄ " + myFrozen + "/" + team.getMembers().size())
-                        .color(team.getColor());
+                    .color(team.getColor());
 
                 Component enemyTeamPart = Component.text(enemy.getName() + " ❄ " + enemyFrozen + "/" + enemy.getMembers().size())
-                        .color(enemy.getColor());
+                    .color(enemy.getColor());
 
                 member.sendActionBar(myTeamPart.append(sep).append(middlePart).append(sep).append(enemyTeamPart));
             }
@@ -235,12 +235,12 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport, boolean wasAfk) {
         if (teams != null) {
             teams.stream()
-                    .filter(t -> t.isMember(participant))
-                    .findFirst()
-                    .ifPresent(t -> t.removeMember(participant));
+                .filter(t -> t.isMember(participant))
+                .findFirst()
+                .ifPresent(t -> t.removeMember(participant));
         }
 
         Player player = participant.getPlayer();
@@ -256,7 +256,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
             if (countdownBossBar != null) countdownBossBar.getBossBar().removeViewer(player);
         }
 
-        return super.removeParticipant(participant, doTeleport);
+        return super.removeParticipant(participant, doTeleport, wasAfk);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -327,7 +327,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
                     attacker.sendActionBar(Util.color("<green>Unfreezing <white>" + victim.getName() + "<green>: " + hits + "<dark_gray>/<green>" + required));
                     Location crackCenter = victim.getLocation().clone().add(0, victim.getHeight() / 2.0, 0);
                     victim.getWorld().spawnParticle(Particle.BLOCK, crackCenter, 20, 0.35, 0.7, 0.35, 0.05,
-                            Material.FROSTED_ICE.createBlockData());
+                        Material.FROSTED_ICE.createBlockData());
                 }
             }
         } else {
@@ -383,8 +383,8 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         Location victimLoc = victim.getLocation();
 
         org.bukkit.util.Vector knockback = victimLoc.toVector()
-                .subtract(attackerLoc.toVector())
-                .setY(0);
+            .subtract(attackerLoc.toVector())
+            .setY(0);
 
         if (knockback.lengthSquared() == 0) {
             knockback = attackerLoc.getDirection().setY(0);
@@ -505,7 +505,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         Executors.runSync(player, () -> {
             Location center = player.getLocation().clone().add(0, player.getHeight() / 2.0, 0);
             player.getWorld().spawnParticle(Particle.BLOCK, center, 80, 0.4, 0.9, 0.4, 0.15,
-                    Material.FROSTED_ICE.createBlockData());
+                Material.FROSTED_ICE.createBlockData());
             player.getWorld().spawnParticle(Particle.SNOWFLAKE, center, 40, 0.5, 0.9, 0.5, 0.1);
 
             state.iceDisplay().remove();
@@ -581,14 +581,14 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
 
         int winsRequired = settings.getRoundWinsRequired();
         FreezeTagTeam matchWinner = roundWins.entrySet().stream()
-                .filter(e -> e.getValue() >= winsRequired)
-                .map(Map.Entry::getKey)
-                .findFirst().orElse(null);
+            .filter(e -> e.getValue() >= winsRequired)
+            .map(Map.Entry::getKey)
+            .findFirst().orElse(null);
 
         String roundWinnerName = roundWinner != null ? roundWinner.getName() : "Nobody (Tie)";
         this.audience.showTitle(Util.title(
-                "<yellow>Round " + currentRound + " Over!",
-                "<gold>" + roundWinnerName + " wins!"
+            "<yellow>Round " + currentRound + " Over!",
+            "<gold>" + roundWinnerName + " wins!"
         ));
 
         if (matchWinner != null) {
@@ -624,8 +624,8 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         roundInProgress = true;
 
         this.audience.showTitle(Util.title(
-                "<green><b>Round " + currentRound + "!",
-                "<gray>" + buildRoundWinsDisplay()
+            "<green><b>Round " + currentRound + "!",
+            "<gray>" + buildRoundWinsDisplay()
         ));
     }
 
@@ -636,7 +636,7 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
             FreezeTagTeam t = teams.get(i);
             if (i > 0) sb.append(" | ");
             sb.append(t.getName()).append(": ").append(roundWins.getOrDefault(t, 0))
-              .append("/").append(settings.getRoundWinsRequired());
+                .append("/").append(settings.getRoundWinsRequired());
         }
         return sb.toString();
     }
@@ -648,9 +648,9 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
             int maxWins = roundWins.values().stream().mapToInt(Integer::intValue).max().orElse(0);
             if (maxWins > 0) {
                 List<FreezeTagTeam> leaders = roundWins.entrySet().stream()
-                        .filter(e -> e.getValue() == maxWins)
-                        .map(Map.Entry::getKey)
-                        .toList();
+                    .filter(e -> e.getValue() == maxWins)
+                    .map(Map.Entry::getKey)
+                    .toList();
                 if (leaders.size() == 1) return leaders.get(0);
             }
         }
@@ -725,5 +725,6 @@ public final class FreezeTag extends InventoryUnifiedMinigame {
         }
     }
 
-    private record FrozenState(BlockDisplay iceDisplay, Location frozenAt) {}
+    private record FrozenState(BlockDisplay iceDisplay, Location frozenAt) {
+    }
 }

@@ -63,12 +63,12 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     // terracotta -> its glazed counterpart, plain TERRACOTTA has none so it is simply absent here
     private static final Map<Material, Material> GLAZED_VARIANTS = glazedVariants();
     private static final String[] ELIMINATION_MESSAGES = {
-            "<red>%s</red> fell to their doom.",
-            "<aqua>%s</aqua> couldn't keep up.",
-            "<green>%s</green> isn't great with colors...",
-            "<yellow>%s</yellow> chose a bad block.",
-            "<light_purple>%s</light_purple> was eliminated!",
-            "<gold>%s</gold> became a spectator."
+        "<red>%s</red> fell to their doom.",
+        "<aqua>%s</aqua> couldn't keep up.",
+        "<green>%s</green> isn't great with colors...",
+        "<yellow>%s</yellow> chose a bad block.",
+        "<light_purple>%s</light_purple> was eliminated!",
+        "<gold>%s</gold> became a spectator."
     };
 
     private final Location spawnLocation;
@@ -103,8 +103,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         this.reachableRadius = def.getReachableRadius();
         this.blankPanel = new GenericStructure(this.center, def.getBlankPanelSchematic());
         this.panels = new ArrayList<>(def.getSchematics().stream()
-                .map(fileName -> new GenericStructure(this.center, fileName))
-                .toList());
+            .map(fileName -> new GenericStructure(this.center, fileName))
+            .toList());
         this.roleMap = new MinigameRoleMap<>(AbstractPanelPlayer::cleanup);
         this.hiddenPlayers = new ConcurrentHashMap<>();
         this.scoreboard = new Scoreboard<>();
@@ -114,7 +114,6 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         this.superSpeed = def.isSuperSpeed();
         this.superSpeedBoost = def.getSuperSpeedBoost();
         this.glazed = RANDOM.nextInt(100) < GLAZED_CHANCE;
-
 
 
         this.round = 0;
@@ -137,9 +136,9 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         int score = this.scoreboard.getScore(participant);
         UUID uuid = participant.getUuid();
         this.tokenFormula.giveTokens(participant, new PanelPartyTokenFormula.Context(
-                this.panelsSurvived.getOrDefault(uuid, 0),
-                this.purplePanelsSurvived.getOrDefault(uuid, 0),
-                this.panelsPerToken
+            this.panelsSurvived.getOrDefault(uuid, 0),
+            this.purplePanelsSurvived.getOrDefault(uuid, 0),
+            this.panelsPerToken
         ));
         participant.addPermanentScore(MinigameConstant.PANEL_PARTY, score);
     }
@@ -151,7 +150,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport, boolean wasAfk) {
         AbstractPanelPlayer role = this.roleMap.remove(participant.getUuid());
         if (role != null) {
             Executors.runSync(participant, role::cleanup); // cleanup touches the player, so run it on their thread
@@ -160,7 +159,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             }
         }
         this.restoreVisibilityFor(participant.getUuid()); // they are leaving, drop any spectators they had hidden
-        return super.removeParticipant(participant, doTeleport);
+        return super.removeParticipant(participant, doTeleport, wasAfk);
     }
 
     @Override
@@ -205,8 +204,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         if (!isFinished && chosenMaterial != null) {
             TextColor textColor = TextColor.color(chosenMaterial.createBlockData().getMapColor().asRGB());
             component = Component.text("Stand on: " + Util.formatMaterialName(chosenMaterial.toString()))
-                    .color(textColor)
-                    .decorate(TextDecoration.UNDERLINED);
+                .color(textColor)
+                .decorate(TextDecoration.UNDERLINED);
         } else {
             component = null;
         }
@@ -268,27 +267,27 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
         this.scoreboard.handleGameEnd(this.getAudience(), () -> {
             CountdownBossBar.builder()
-                    .audience(this.audience)
-                    .color(BossBar.Color.BLUE)
-                    .title("<aqua><b>Game Over")
-                    .seconds(10)
-                    .callback(() -> {
-                        try {
-                            this.participants.forEach(eventPlayer -> {
-                                Location loc = this.getGameDropOffLocation();
-                                if (loc != null) {
-                                    Executors.runDelayedAsync(TimeUnit.MILLISECONDS, 100, (t) -> {
-                                        eventPlayer.teleportAsync(loc);
-                                    });
-                                }
-                                eventPlayer.sendMessage("This minigame has concluded.");
-                            });
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    })
-                    .build()
-                    .start();
+                .audience(this.audience)
+                .color(BossBar.Color.BLUE)
+                .title("<aqua><b>Game Over")
+                .seconds(10)
+                .callback(() -> {
+                    try {
+                        this.participants.forEach(eventPlayer -> {
+                            Location loc = this.getGameDropOffLocation();
+                            if (loc != null) {
+                                Executors.runDelayedAsync(TimeUnit.MILLISECONDS, 100, (t) -> {
+                                    eventPlayer.teleportAsync(loc);
+                                });
+                            }
+                            eventPlayer.sendMessage("This minigame has concluded.");
+                        });
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                })
+                .build()
+                .start();
         });
     }
 
@@ -461,8 +460,11 @@ public final class PanelParty extends InventoryUnifiedMinigame {
         }
 
         public abstract void tick();
+
         public abstract void cleanup();
+
         public abstract void eliminate();
+
         public abstract void attacked(EntityDamageByEntityEvent event, AbstractPanelPlayer attacker);
     }
 
@@ -547,7 +549,7 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             this.context.roleMap.swapRole(this, () -> new PanelSpectator(this.context, this.eventPlayer));
 
             Location location = this.context.center.clone().add(0, 10, 0);
-            this.eventPlayer.operatePlayer(player ->  {
+            this.eventPlayer.operatePlayer(player -> {
                 player.setFallDistance(0);
                 player.teleportAsync(location);
             });
@@ -726,8 +728,8 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             Preconditions.checkNotNull(this.chosenMaterial, "Chosen block data cannot be null.");
             TextColor textColor = TextColor.color(chosenMaterial.createBlockData().getMapColor().asRGB());
             Component component = Component.text("Stand on: " + Util.formatMaterialName(chosenMaterial.toString()))
-                    .color(textColor)
-                    .decorate(TextDecoration.UNDERLINED);
+                .color(textColor)
+                .decorate(TextDecoration.UNDERLINED);
             this.context.sendAudienceMessage(component);
 
 
@@ -752,44 +754,44 @@ public final class PanelParty extends InventoryUnifiedMinigame {
             this.context.playAudienceSound(Sound.BLOCK_NOTE_BLOCK_BIT, 1.0f, 1.0f);
 
             this.countdownBossBar = CountdownBossBar.builder()
-                    .seconds(this.difficulty.getSeconds())
-                    .title(titleBuilder.toString())
-                    .audience(this.context.getAudience())
-                    .color(this.difficulty.getBossBarColor())
-                    .callback(() -> {
-                        Preconditions.checkNotNull(this.chosenMaterial, "Chosen block data cannot be null during countdown callback.");
-                        // remove panel
-                        Executors.sync(context.center, () -> {
-                            panel.remove((vector3i, blockData) ->
-                                    !this.context.glazedMaterial(blockData.getMaterial()).equals(this.chosenMaterial)
-                            );
-                        });
+                .seconds(this.difficulty.getSeconds())
+                .title(titleBuilder.toString())
+                .audience(this.context.getAudience())
+                .color(this.difficulty.getBossBarColor())
+                .callback(() -> {
+                    Preconditions.checkNotNull(this.chosenMaterial, "Chosen block data cannot be null during countdown callback.");
+                    // remove panel
+                    Executors.sync(context.center, () -> {
+                        panel.remove((vector3i, blockData) ->
+                            !this.context.glazedMaterial(blockData.getMaterial()).equals(this.chosenMaterial)
+                        );
+                    });
 
-                        if (this.difficulty.hasModifier(PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK)) {
-                            for (PanelParticipant panelParticipant : this.context.roleMap.getMatching(PanelParticipant.class)) {
-                                panelParticipant.setItemInHand(PanelParticipant.AIR);
-                            }
+                    if (this.difficulty.hasModifier(PanelDifficultyModifier.SHOW_PHYSICAL_BLOCK)) {
+                        for (PanelParticipant panelParticipant : this.context.roleMap.getMatching(PanelParticipant.class)) {
+                            panelParticipant.setItemInHand(PanelParticipant.AIR);
                         }
+                    }
 
-                        // start intermission
-                        this.intermission.set(true);
-                        this.context.playAudienceSound(Sound.BLOCK_NOTE_BLOCK_IRON_XYLOPHONE, 1.0f, 1.0f);
+                    // start intermission
+                    this.intermission.set(true);
+                    this.context.playAudienceSound(Sound.BLOCK_NOTE_BLOCK_IRON_XYLOPHONE, 1.0f, 1.0f);
 
-                        this.intermissionBossBar = CountdownBossBar.builder()
-                                .seconds(ROUND_INTERVAL_SECONDS)
-                                .title(intermissionTitle)
-                                .audience(this.context.getAudience())
-                                .color(this.difficulty.getBossBarColor())
-                                .callback(() -> {
-                                    this.intermission.set(false);
-                                    this.finished.set(true);
-                                    //this.context.playAudienceSound(Sound.BLOCK_NOTE_BLOCK_FLUTE, 0.8f, 1.0f);
-                                })
-                                .build()
-                                .start();
-                    })
-                    .build()
-                    .start();
+                    this.intermissionBossBar = CountdownBossBar.builder()
+                        .seconds(ROUND_INTERVAL_SECONDS)
+                        .title(intermissionTitle)
+                        .audience(this.context.getAudience())
+                        .color(this.difficulty.getBossBarColor())
+                        .callback(() -> {
+                            this.intermission.set(false);
+                            this.finished.set(true);
+                            //this.context.playAudienceSound(Sound.BLOCK_NOTE_BLOCK_FLUTE, 0.8f, 1.0f);
+                        })
+                        .build()
+                        .start();
+                })
+                .build()
+                .start();
 
             return true;
         }
@@ -850,9 +852,9 @@ public final class PanelParty extends InventoryUnifiedMinigame {
 
         private String panelName(String localSchemPathName) {
             return "\"" + Util.formatMaterialName(localSchemPathName
-                    .replace("and", "&")
-                    .replace("panel_", "")
-                    .replace(".schem", "")) +"\"";
+                .replace("and", "&")
+                .replace("panel_", "")
+                .replace(".schem", "")) + "\"";
         }
     }
 

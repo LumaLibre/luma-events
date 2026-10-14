@@ -112,44 +112,44 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
 
         this.initialBossBar = CountdownBossBar.builder()
-                .title("<red>Seeker spawns in: %ss")
-                .color(BossBar.Color.RED)
-                .seconds(HIDE_DURATION) // TODO: change to 30
-                .audience(this.audience)
-                .callback(() -> {
-                    Preconditions.checkNotNull(this.countdownBossBar, "Countdown boss bar should not be null when initial countdown ends.");
-                    this.setDuration(this.getDuration() + Util.secsToMillis(HIDE_DURATION));
-                    this.countdownBossBar.start();
-                    firstSeeker.getEventPlayer().teleportAsync(this.startLocation);
-                    firstSeeker.getEventPlayer().sendMessage("<red>The game has started. Find and catch all the Hiders!");
-                    firstSeeker.getEventPlayer().sendTitle("<red>Volume Up!!", "Audio cues are important!");
+            .title("<red>Seeker spawns in: %ss")
+            .color(BossBar.Color.RED)
+            .seconds(HIDE_DURATION) // TODO: change to 30
+            .audience(this.audience)
+            .callback(() -> {
+                Preconditions.checkNotNull(this.countdownBossBar, "Countdown boss bar should not be null when initial countdown ends.");
+                this.setDuration(this.getDuration() + Util.secsToMillis(HIDE_DURATION));
+                this.countdownBossBar.start();
+                firstSeeker.getEventPlayer().teleportAsync(this.startLocation);
+                firstSeeker.getEventPlayer().sendMessage("<red>The game has started. Find and catch all the Hiders!");
+                firstSeeker.getEventPlayer().sendTitle("<red>Volume Up!!", "Audio cues are important!");
 
-                    this.propHuntPlayers.forEach(propHuntPlayer -> {
-                        Player player = propHuntPlayer.bukkitPlayer();
-                        if (player != null) {
-                            // increase volume based on distance from start location
-                            float distance = (float) player.getLocation().distance(this.startLocation);
-                            // increase by 0.8 for every 10 blocks, cap at 15.0f
-                            float volume = Math.min(0.8f + (distance / 10f) * 0.8f, 15.0f);
-                            Executors.runSync(player, () -> {
-                                player.playSound(this.startLocation, Sound.ENTITY_WARDEN_EMERGE, volume, 1.0f);
-                            });
-                        }
-                    });
-                })
-                .build()
-                .start();
+                this.propHuntPlayers.forEach(propHuntPlayer -> {
+                    Player player = propHuntPlayer.bukkitPlayer();
+                    if (player != null) {
+                        // increase volume based on distance from start location
+                        float distance = (float) player.getLocation().distance(this.startLocation);
+                        // increase by 0.8 for every 10 blocks, cap at 15.0f
+                        float volume = Math.min(0.8f + (distance / 10f) * 0.8f, 15.0f);
+                        Executors.runSync(player, () -> {
+                            player.playSound(this.startLocation, Sound.ENTITY_WARDEN_EMERGE, volume, 1.0f);
+                        });
+                    }
+                });
+            })
+            .build()
+            .start();
 
         this.countdownBossBar = CountdownBossBar.builder()
-                .title("<green>Time Left: %ss")
-                .color(BossBar.Color.GREEN)
-                .miliseconds(this.getDuration())
-                .audience(this.audience)
-                .callback(() -> {
-                    this.stop();
-                    this.sendAudienceMessage("Time is up! Hiders win!");
-                })
-                .build();
+            .title("<green>Time Left: %ss")
+            .color(BossBar.Color.GREEN)
+            .miliseconds(this.getDuration())
+            .audience(this.audience)
+            .callback(() -> {
+                this.stop();
+                this.sendAudienceMessage("Time is up! Hiders win!");
+            })
+            .build();
     }
 
     @Override
@@ -201,18 +201,18 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         this.scoreboard.handleGameEnd(this.audience, () -> {
             this.participants.forEach(participant -> participant.teleportAsync(this.spawnLocation));
             CountdownBossBar.builder()
-                    .audience(this.audience)
-                    .color(BossBar.Color.BLUE)
-                    .title("<aqua><b>Game Over")
-                    .seconds(15)
-                    .callback(() -> {
-                        this.participants.forEach(participant -> {
-                            participant.teleportAsync(this.getGameDropOffLocation());
-                            participant.sendMessage("This minigame has concluded.");
-                        });
-                    })
-                    .build()
-                    .start();
+                .audience(this.audience)
+                .color(BossBar.Color.BLUE)
+                .title("<aqua><b>Game Over")
+                .seconds(15)
+                .callback(() -> {
+                    this.participants.forEach(participant -> {
+                        participant.teleportAsync(this.getGameDropOffLocation());
+                        participant.sendMessage("This minigame has concluded.");
+                    });
+                })
+                .build()
+                .start();
         });
     }
 
@@ -223,12 +223,12 @@ public final class PropHunt extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport, boolean wasAfk) {
         PropHuntPlayer propHuntPlayer = this.propHuntPlayers.remove(participant.getUuid());
         if (propHuntPlayer != null) {
             propHuntPlayer.cleanup();
         }
-        return super.removeParticipant(participant, doTeleport);
+        return super.removeParticipant(participant, doTeleport, wasAfk);
     }
 
 
@@ -255,7 +255,6 @@ public final class PropHunt extends InventoryUnifiedMinigame {
             propHuntPlayer.onBlockInteract(event, clickedBlock);
         }
     }
-
 
 
     @EventHandler
@@ -342,8 +341,11 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         protected boolean hidden;
 
         public abstract void cleanup();
+
         public abstract void onTick();
+
         public abstract void onBlockInteract(PlayerInteractEvent event, Block clickedBlock);
+
         public abstract void onEntityInteract(PlayerInteractEvent event, Player clickedEntity, Hider hider);
 
         @Nullable
@@ -526,6 +528,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
         /**
          * Locks the player in place using an invisible armor stand.
+         *
          * @return true if the player was successfully locked, false if they were already locked.
          */
         public boolean lock() {
@@ -616,12 +619,12 @@ public final class PropHunt extends InventoryUnifiedMinigame {
         private Location tryFindBestAirPocket(Block origin) {
             // Try to find the nearest air block. The top block is preferred, then sides, then bottom.
             BlockFace[] faces = {
-                    BlockFace.UP,
-                    BlockFace.NORTH,
-                    BlockFace.EAST,
-                    BlockFace.SOUTH,
-                    BlockFace.WEST,
-                    BlockFace.DOWN
+                BlockFace.UP,
+                BlockFace.NORTH,
+                BlockFace.EAST,
+                BlockFace.SOUTH,
+                BlockFace.WEST,
+                BlockFace.DOWN
             };
             for (BlockFace face : faces) {
                 Block adjacent = origin.getRelative(face);
@@ -673,8 +676,8 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                 this.clueTickCounter = 0;
                 // TODO: Volume scale based on distance to closest hider
                 this.closestHider(
-                        (closest, closestPlayer) -> player.playSound(closestPlayer.getLocation(), Sound.ENTITY_WARDEN_LISTENING, 0.8f, 1.0f),
-                        (other, otherPlayer) -> player.playSound(otherPlayer.getLocation(), Sound.ENTITY_WARDEN_TENDRIL_CLICKS, 2.0f, 1.0f)
+                    (closest, closestPlayer) -> player.playSound(closestPlayer.getLocation(), Sound.ENTITY_WARDEN_LISTENING, 0.8f, 1.0f),
+                    (other, otherPlayer) -> player.playSound(otherPlayer.getLocation(), Sound.ENTITY_WARDEN_TENDRIL_CLICKS, 2.0f, 1.0f)
                 );
             }
         }
@@ -705,7 +708,7 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
         public void catchHider(@NotNull Hider hider) {
             EventPlayer hiderEventPlayer = hider.getEventPlayer();
-            this.context.sendAudienceMessage("<yellow>" + this.getEventPlayer().getName() + "</yellow> has caught <yellow>" + hiderEventPlayer.getName()+ "</yellow>!");
+            this.context.sendAudienceMessage("<yellow>" + this.getEventPlayer().getName() + "</yellow> has caught <yellow>" + hiderEventPlayer.getName() + "</yellow>!");
             hiderEventPlayer.sendMessage("You have been caught by <yellow>" + this.getEventPlayer().getName() + "</yellow>!");
 
             Supplier<PropHuntPlayer> newRoleSupplier;
@@ -804,7 +807,6 @@ public final class PropHunt extends InventoryUnifiedMinigame {
     }
 
 
-
     private static class PropHuntPlayerMap extends HashMap<UUID, PropHuntPlayer> implements Iterable<PropHuntPlayer> {
 
 
@@ -814,23 +816,23 @@ public final class PropHunt extends InventoryUnifiedMinigame {
 
         public List<Hider> getHiders() {
             return this.values().stream()
-                    .filter(player -> player instanceof Hider)
-                    .map(player -> (Hider) player)
-                    .toList();
+                .filter(player -> player instanceof Hider)
+                .map(player -> (Hider) player)
+                .toList();
         }
 
         public List<Seeker> getSeekers() {
             return this.values().stream()
-                    .filter(player -> player instanceof Seeker)
-                    .map(player -> (Seeker) player)
-                    .toList();
+                .filter(player -> player instanceof Seeker)
+                .map(player -> (Seeker) player)
+                .toList();
         }
 
         public List<Spectator> getSpectators() {
             return this.values().stream()
-                    .filter(player -> player instanceof Spectator)
-                    .map(player -> (Spectator) player)
-                    .toList();
+                .filter(player -> player instanceof Spectator)
+                .map(player -> (Spectator) player)
+                .toList();
         }
 
         public List<PropHuntPlayer> getPlayers(Class<? extends PropHuntPlayer>... types) {
@@ -838,8 +840,8 @@ public final class PropHunt extends InventoryUnifiedMinigame {
                 return this.values().stream().toList();
             }
             return this.values().stream()
-                    .filter(player -> Util.isAssignableFromAny(player.getClass(), types))
-                    .toList();
+                .filter(player -> Util.isAssignableFromAny(player.getClass(), types))
+                .toList();
         }
 
         @Nullable
@@ -883,24 +885,24 @@ public final class PropHunt extends InventoryUnifiedMinigame {
          * Ensures that there are at least {@code count} players of the specified {@code type}.
          * If there are not enough players of that type, it will promote players from the provided {@code fromTypes}.
          *
-         * @param type The type of player to ensure.
+         * @param type            The type of player to ensure.
          * @param newRoleConsumer A consumer that creates a new instance of the specified type.
-         * @param count The minimum number of players of the specified type.
-         * @param fromTypes The types of players to promote from.
+         * @param count           The minimum number of players of the specified type.
+         * @param fromTypes       The types of players to promote from.
          * @return true if the requirement was met or successfully promoted, false otherwise.
          */
         @SafeVarargs
         private <T extends PropHuntPlayer, S extends PropHuntPlayer> boolean ensureAtLeast(Class<T> type, NewRoleConsumer<T> newRoleConsumer, int count, Class<S>... fromTypes) {
             long currentCount = this.values().stream()
-                    .filter(type::isInstance)
-                    .count();
+                .filter(type::isInstance)
+                .count();
             if (currentCount >= count) {
                 return true;
             }
             int difference = count - (int) currentCount;
             List<PropHuntPlayer> candidates = this.values().stream()
-                    .filter(player -> Util.isAssignableFromAny(player.getClass(), fromTypes))
-                    .toList();
+                .filter(player -> Util.isAssignableFromAny(player.getClass(), fromTypes))
+                .toList();
 
             if (candidates.size() < difference) {
                 return false; // Not enough candidates to promote

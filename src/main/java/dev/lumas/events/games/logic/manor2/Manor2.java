@@ -259,7 +259,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer player, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer player, boolean doTeleport, boolean wasAfk) {
         if (player.getPlayer() != null && this.timer != null) {
             this.timer.getBossBar().removeViewer(player.getPlayer());
         }
@@ -267,7 +267,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         if (removed != null) {
             Executors.runSync(player, () -> removed.retire(this));
         }
-        boolean result = super.removeParticipant(player, doTeleport);
+        boolean result = super.removeParticipant(player, doTeleport, wasAfk);
         if (removed instanceof Ghost) {
             replenishGhosts();
         }

@@ -192,7 +192,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport, boolean wasAfk) {
         CopycatRole role = roleMap.remove(participant.getUuid());
         if (role != null) {
             role.cleanup();
@@ -200,7 +200,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
         showcase.removeIf(entry -> entry.builder().getUuid().equals(participant.getUuid()));
         eliminated.removeIf(builder -> builder.getUuid().equals(participant.getUuid()));
         participant.teleportAsync(lobby);
-        return super.removeParticipant(participant, doTeleport);
+        return super.removeParticipant(participant, doTeleport, wasAfk);
     }
 
     @Override
@@ -539,7 +539,8 @@ public final class Copycat extends InventoryUnifiedMinigame {
             int hidden = Math.max(1, builder.hiddenCount());
             int accuracy = (int) Math.round(100.0 * score.correct() / hidden);
             builder.getEventPlayer().sendMessage("Build submitted with <gold>" + accuracy + "% accuracy</gold> <gray>(" + score.correct() + "/" + hidden + " blocks back where they belong)</gray>");
-            if (!this.active || this.stopping || phase != Phase.BUILDING || roleMap.get(builder.getUuid()) != builder) return;
+            if (!this.active || this.stopping || phase != Phase.BUILDING || roleMap.get(builder.getUuid()) != builder)
+                return;
             roleMap.swapRole(builder.getEventPlayer(), () -> new TransientSpectator(this, builder)).play();
         });
     }

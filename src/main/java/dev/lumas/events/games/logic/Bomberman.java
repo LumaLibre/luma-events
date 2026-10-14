@@ -86,14 +86,14 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     private static final int RESCUE_HEIGHT = 32;
     private static final long ROUND_OVERHEAD = 15000L;
     private static final long DURATION =
-            (ROUND_DURATION + SUDDEN_DEATH_DURATION + (long) (GAME_OVER_SECONDS * 1000) + ROUND_OVERHEAD) * ROUNDS;
+        (ROUND_DURATION + SUDDEN_DEATH_DURATION + (long) (GAME_OVER_SECONDS * 1000) + ROUND_OVERHEAD) * ROUNDS;
 
     /**
      * Slowness VII for a second after a spawn teleport. Players coming back from a spectator round keep their
      * momentum and are often still leaning on a movement key, which used to walk them straight off the edge.
      */
     private static final PotionEffect SPAWN_FREEZE =
-            new PotionEffect(PotionEffectType.SLOWNESS, 20, 6, false, false, false);
+        new PotionEffect(PotionEffectType.SLOWNESS, 20, 6, false, false, false);
 
     private static final Color[] BOMB_COLORS = pastelPalette(50);
 
@@ -122,7 +122,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     protected int minimumParticipants() {
         return 1;
     }
-    
+
     private void stripKit(EventPlayer participant) {
         Player target = participant.getPlayer();
         if (target == null) return;
@@ -157,14 +157,16 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         });
     }
 
-    /** Teleports a participant onto the arena and pins them where they land for a moment. */
+    /**
+     * Teleports a participant onto the arena and pins them where they land for a moment.
+     */
     private void spawnAt(EventPlayer participant, Location location) {
         participant.teleportAsync(location).thenRun(() -> Executors.delayedSync(participant, 1, () ->
-                participant.operatePlayer(player -> {
-                    player.setVelocity(new Vector(0, 0, 0));
-                    player.setFallDistance(0.0f);
-                    player.addPotionEffect(SPAWN_FREEZE);
-                })));
+            participant.operatePlayer(player -> {
+                player.setVelocity(new Vector(0, 0, 0));
+                player.setFallDistance(0.0f);
+                player.addPotionEffect(SPAWN_FREEZE);
+            })));
     }
 
     @Override
@@ -174,13 +176,13 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport, boolean wasAfk) {
         AbstractBombermanPlayer role = this.roles.get(participant.getUuid());
         if (role != null) {
             role.cleanup();
             this.roles.remove(participant.getUuid());
         }
-        return super.removeParticipant(participant, doTeleport);
+        return super.removeParticipant(participant, doTeleport, wasAfk);
     }
 
     @Override
@@ -195,44 +197,44 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         this.arena.teardown(() -> {
             if (this.ending) return;
             this.arena.generate(Math.max(1, this.participants.size()), () -> {
-            if (this.ending) {
-                this.arena.teardown();
-                return;
-            }
-            List<Location> spawns = this.arena.spawns();
+                if (this.ending) {
+                    this.arena.teardown();
+                    return;
+                }
+                List<Location> spawns = this.arena.spawns();
 
-            for (AbstractBombermanPlayer previous : this.roles.values()) {
-                previous.cleanup();
-            }
-            this.roles.clear();
+                for (AbstractBombermanPlayer previous : this.roles.values()) {
+                    previous.cleanup();
+                }
+                this.roles.clear();
 
-            int spawnIndex = 0;
-            for (EventPlayer eventPlayer : this.participants) {
-                this.roles.put(new BombermanPlayer(eventPlayer, this, BOMB_COLORS[spawnIndex % BOMB_COLORS.length]));
-                equip(eventPlayer);
-                spawnAt(eventPlayer, spawns.get(spawnIndex % spawns.size()));
-                spawnIndex++;
-            }
+                int spawnIndex = 0;
+                for (EventPlayer eventPlayer : this.participants) {
+                    this.roles.put(new BombermanPlayer(eventPlayer, this, BOMB_COLORS[spawnIndex % BOMB_COLORS.length]));
+                    equip(eventPlayer);
+                    spawnAt(eventPlayer, spawns.get(spawnIndex % spawns.size()));
+                    spawnIndex++;
+                }
 
-            this.timerBar = CountdownBossBar.builder()
+                this.timerBar = CountdownBossBar.builder()
                     .title("<red><b>Round " + this.round + "/" + ROUNDS + "</b></red> <gray>|</gray> <yellow>%ss remaining")
                     .color(BossBar.Color.RED)
                     .miliseconds(ROUND_DURATION)
                     .audience(this.audience)
                     .callback(this::endRound)
                     .build();
-            this.timerBar.start();
+                this.timerBar.start();
 
-            this.startingPlayers = this.roles.getMatching(BombermanPlayer.class).size();
-            this.scoreboard.addScorers(List.copyOf(this.participants));
-            if (this.tokenFormula == null) {
-                int fairShare = Math.max(1, this.arena.totalDestructible() / Math.max(1, this.startingPlayers));
-                int perRound = (fairShare * 2) + ((this.startingPlayers - 1) * KILL_SCORE);
-                this.tokenFormula = new BombermanTokenFormula(perRound * ROUNDS);
-            }
-            this.sendAudienceTitle("<red><b>Round " + this.round, "<gray>Last one standing wins");
-            this.playAudienceSound(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.2f, 1.4f);
-            this.roundLive = true;
+                this.startingPlayers = this.roles.getMatching(BombermanPlayer.class).size();
+                this.scoreboard.addScorers(List.copyOf(this.participants));
+                if (this.tokenFormula == null) {
+                    int fairShare = Math.max(1, this.arena.totalDestructible() / Math.max(1, this.startingPlayers));
+                    int perRound = (fairShare * 2) + ((this.startingPlayers - 1) * KILL_SCORE);
+                    this.tokenFormula = new BombermanTokenFormula(perRound * ROUNDS);
+                }
+                this.sendAudienceTitle("<red><b>Round " + this.round, "<gray>Last one standing wins");
+                this.playAudienceSound(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.2f, 1.4f);
+                this.roundLive = true;
             });
         });
     }
@@ -305,12 +307,12 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
         Runnable interlude = () -> {
             this.timerBar = CountdownBossBar.builder()
-                    .title(header + "</b></red> <gray>|</gray> " + outcome)
-                    .color(BossBar.Color.WHITE)
-                    .seconds(GAME_OVER_SECONDS)
-                    .audience(this.audience)
-                    .callback(lastRound ? this::stop : this::startRound)
-                    .build();
+                .title(header + "</b></red> <gray>|</gray> " + outcome)
+                .color(BossBar.Color.WHITE)
+                .seconds(GAME_OVER_SECONDS)
+                .audience(this.audience)
+                .callback(lastRound ? this::stop : this::startRound)
+                .build();
             this.timerBar.start();
         };
 
@@ -353,12 +355,12 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
             this.startingPlayers = alive.size();
             this.timerBar = CountdownBossBar.builder()
-                    .title("<dark_red><b>Sudden Death</b></dark_red> <gray>|</gray> <yellow>%ss remaining")
-                    .color(BossBar.Color.PURPLE)
-                    .miliseconds(SUDDEN_DEATH_DURATION)
-                    .audience(this.audience)
-                    .callback(this::endRound)
-                    .build();
+                .title("<dark_red><b>Sudden Death</b></dark_red> <gray>|</gray> <yellow>%ss remaining")
+                .color(BossBar.Color.PURPLE)
+                .miliseconds(SUDDEN_DEATH_DURATION)
+                .audience(this.audience)
+                .callback(this::endRound)
+                .build();
             this.timerBar.start();
 
             this.sendAudienceTitle("<dark_red><b>Sudden Death", "<gray>Last one standing takes the round");
@@ -474,7 +476,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         if (!(event.getEntity() instanceof TNTPrimed tnt)) return;
 
         BombermanPlayer owner = tnt.getSource() instanceof Player source
-                && this.roles.get(source.getUniqueId()) instanceof BombermanPlayer bomber ? bomber : null;
+            && this.roles.get(source.getUniqueId()) instanceof BombermanPlayer bomber ? bomber : null;
         if (owner != null) owner.releaseBomb();
 
         if (!this.arena.contains(event.getLocation())) return;
@@ -497,7 +499,9 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         burst(event.getLocation(), owner == null ? Color.WHITE : owner.getColor());
     }
 
-    /** Golden-angle hues so consecutive players never get near-identical colors. */
+    /**
+     * Golden-angle hues so consecutive players never get near-identical colors.
+     */
     private static Color[] pastelPalette(int count) {
         Color[] palette = new Color[count];
         for (int i = 0; i < count; i++) {
@@ -516,12 +520,36 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         float t = 1.0f - saturation * (1.0f - offset);
         float r, g, b;
         switch (index % 6) {
-            case 0 -> { r = 1.0f; g = t; b = p; }
-            case 1 -> { r = q; g = 1.0f; b = p; }
-            case 2 -> { r = p; g = 1.0f; b = t; }
-            case 3 -> { r = p; g = q; b = 1.0f; }
-            case 4 -> { r = t; g = p; b = 1.0f; }
-            default -> { r = 1.0f; g = p; b = q; }
+            case 0 -> {
+                r = 1.0f;
+                g = t;
+                b = p;
+            }
+            case 1 -> {
+                r = q;
+                g = 1.0f;
+                b = p;
+            }
+            case 2 -> {
+                r = p;
+                g = 1.0f;
+                b = t;
+            }
+            case 3 -> {
+                r = p;
+                g = q;
+                b = 1.0f;
+            }
+            case 4 -> {
+                r = t;
+                g = p;
+                b = 1.0f;
+            }
+            default -> {
+                r = 1.0f;
+                g = p;
+                b = q;
+            }
         }
         return Color.fromRGB(Math.round(r * 255), Math.round(g * 255), Math.round(b * 255));
     }
@@ -530,9 +558,9 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         Firework firework = location.getWorld().spawn(location, Firework.class, spawned -> {
             FireworkMeta meta = spawned.getFireworkMeta();
             meta.addEffect(FireworkEffect.builder()
-                    .withColor(color)
-                    .with(FireworkEffect.Type.BALL)
-                    .build());
+                .withColor(color)
+                .with(FireworkEffect.Type.BALL)
+                .build());
             meta.setPower(0);
             spawned.setFireworkMeta(meta);
         });
@@ -563,8 +591,8 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             return;
         }
         if (event.getDamager() instanceof TNTPrimed tnt
-                && tnt.getSource() instanceof Player source
-                && source.getUniqueId().equals(victim.getUniqueId())) {
+            && tnt.getSource() instanceof Player source
+            && source.getUniqueId().equals(victim.getUniqueId())) {
             event.setCancelled(true);
         }
     }
@@ -642,7 +670,9 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         }
 
         public abstract void tick();
+
         public abstract void cleanup();
+
         public abstract void death(PlayerDeathEvent event);
 
         @Override
@@ -718,7 +748,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             if (fellOff) {
                 this.context.sendAudienceMessage("<red>" + getName() + "</red> fell off the map!");
             } else if (killer != null && !killer.getUniqueId().equals(player.getUniqueId())
-                    && this.context.roles.get(killer.getUniqueId()) instanceof BombermanPlayer bomber) {
+                && this.context.roles.get(killer.getUniqueId()) instanceof BombermanPlayer bomber) {
                 this.context.scoreboard.addScore(bomber.getEventPlayer(), KILL_SCORE);
                 this.context.sendAudienceMessage("<red>" + getName() + "</red> was blown up by <green>" + bomber.getName() + "</green>!");
             } else {
@@ -821,23 +851,23 @@ public final class Bomberman extends InventoryUnifiedMinigame {
     public static final class Arena {
 
         private static final String[] TEMPLATE = {
-                "DDPNPDDPNPDDPNPDD",
-                "PONOPODONODOPONOP",
-                "PNNPNDDPNPDDNPNNP",
-                "NOPOXODONODOXOPON",
-                "PPNXPPPPNPPPPXNPP",
-                "DODOPOPOXOPOPODOD",
-                "DDDDPPDNPNDPPDDDD",
-                "POPOPONONONOPOPOP",
-                "NNNNNXPNPNPXNNNNN",
-                "POPOPONONONOPOPOP",
-                "DDDDPPDNPNDPPDDDD",
-                "DODOPOPOXOPOPODOD",
-                "PPNXPPPPNPPPPXNPP",
-                "NOPOXODONODOXOPON",
-                "PNNPNDDPNPDDNPNNP",
-                "PONOPODONODOPONOP",
-                "DDPNPDDPNPDDPNPDD",
+            "DDPNPDDPNPDDPNPDD",
+            "PONOPODONODOPONOP",
+            "PNNPNDDPNPDDNPNNP",
+            "NOPOXODONODOXOPON",
+            "PPNXPPPPNPPPPXNPP",
+            "DODOPOPOXOPOPODOD",
+            "DDDDPPDNPNDPPDDDD",
+            "POPOPONONONOPOPOP",
+            "NNNNNXPNPNPXNNNNN",
+            "POPOPONONONOPOPOP",
+            "DDDDPPDNPNDPPDDDD",
+            "DODOPOPOXOPOPODOD",
+            "PPNXPPPPNPPPPXNPP",
+            "NOPOXODONODOXOPON",
+            "PNNPNDDPNPDDNPNNP",
+            "PONOPODONODOPONOP",
+            "DDPNPDDPNPDDPNPDD",
         };
 
         private static final int TEMPLATE_SIZE = TEMPLATE.length;
@@ -868,13 +898,13 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         private static final BlockData PILLAR = Material.OBSIDIAN.createBlockData();
 
         private static final List<Map<Character, BlockData>> SOFT_PALETTES = List.of(
-                softPalette(Material.NETHERRACK, Material.OAK_PLANKS, Material.DIRT),
-                softPalette(Material.CRIMSON_NYLIUM, Material.CRIMSON_PLANKS, Material.SOUL_SOIL),
-                softPalette(Material.WARPED_NYLIUM, Material.WARPED_PLANKS, Material.SOUL_SAND),
-                softPalette(Material.RED_SAND, Material.BIRCH_PLANKS, Material.SANDSTONE),
-                softPalette(Material.SNOW_BLOCK, Material.SPRUCE_PLANKS, Material.PACKED_ICE),
-                softPalette(Material.MYCELIUM, Material.JUNGLE_PLANKS, Material.PODZOL),
-                softPalette(Material.SCULK, Material.DARK_OAK_PLANKS, Material.ROOTED_DIRT)
+            softPalette(Material.NETHERRACK, Material.OAK_PLANKS, Material.DIRT),
+            softPalette(Material.CRIMSON_NYLIUM, Material.CRIMSON_PLANKS, Material.SOUL_SOIL),
+            softPalette(Material.WARPED_NYLIUM, Material.WARPED_PLANKS, Material.SOUL_SAND),
+            softPalette(Material.RED_SAND, Material.BIRCH_PLANKS, Material.SANDSTONE),
+            softPalette(Material.SNOW_BLOCK, Material.SPRUCE_PLANKS, Material.PACKED_ICE),
+            softPalette(Material.MYCELIUM, Material.JUNGLE_PLANKS, Material.PODZOL),
+            softPalette(Material.SCULK, Material.DARK_OAK_PLANKS, Material.ROOTED_DIRT)
         );
 
         private static Map<Character, BlockData> softPalette(Material n, Material p, Material d) {
@@ -917,7 +947,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             }
             if (spawnCells.size() < playerCount) {
                 LOGGER.warning("only " + spawnCells.size() + " spawns fit " + playerCount
-                        + " players at " + MIN_SPAWN_SPACING + " blocks apart, even at the maximum arena size; players will share spawns.");
+                    + " players at " + MIN_SPAWN_SPACING + " blocks apart, even at the maximum arena size; players will share spawns.");
             }
 
             this.soft = Util.getRandom(SOFT_PALETTES);
@@ -954,7 +984,7 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             this.spawns = List.copyOf(picked);
 
             LOGGER.info("Generating arena for " + playerCount + " players: "
-                    + chosenSize + "x" + chosenSize + " blocks, " + this.spawns.size() + " spawns.");
+                + chosenSize + "x" + chosenSize + " blocks, " + this.spawns.size() + " spawns.");
 
             stream(false, () -> {
                 this.ready = true;
@@ -1090,9 +1120,9 @@ public final class Bomberman extends InventoryUnifiedMinigame {
             double deltaX = dx == 0 ? Double.MAX_VALUE : Math.abs(1.0 / dx);
             double deltaZ = dz == 0 ? Double.MAX_VALUE : Math.abs(1.0 / dz);
             double nextX = dx == 0 ? Double.MAX_VALUE
-                    : (dx > 0 ? (cx + 1 - fromX) : (fromX - cx)) * Math.abs(1.0 / dx);
+                : (dx > 0 ? (cx + 1 - fromX) : (fromX - cx)) * Math.abs(1.0 / dx);
             double nextZ = dz == 0 ? Double.MAX_VALUE
-                    : (dz > 0 ? (cz + 1 - fromZ) : (fromZ - cz)) * Math.abs(1.0 / dz);
+                : (dz > 0 ? (cz + 1 - fromZ) : (fromZ - cz)) * Math.abs(1.0 / dz);
 
             int guard = size * 4;
             while (guard-- > 0) {
@@ -1148,9 +1178,9 @@ public final class Bomberman extends InventoryUnifiedMinigame {
         public WorldTiedBoundingBox maxBounds() {
             int half = MAX_SIZE / 2 + 1;
             Location min = new Location(origin.getWorld(),
-                    origin.getBlockX() - half, origin.getBlockY() - 1, origin.getBlockZ() - half);
+                origin.getBlockX() - half, origin.getBlockY() - 1, origin.getBlockZ() - half);
             Location max = new Location(origin.getWorld(),
-                    origin.getBlockX() + half, origin.getBlockY() + PILLAR_HEIGHT + 2, origin.getBlockZ() + half);
+                origin.getBlockX() + half, origin.getBlockY() + PILLAR_HEIGHT + 2, origin.getBlockZ() + half);
             return WorldTiedBoundingBox.of(min, max);
         }
 
@@ -1218,8 +1248,8 @@ public final class Bomberman extends InventoryUnifiedMinigame {
 
             double centre = (size - 1) / 2.0;
             candidates.sort((a, b) -> Double.compare(
-                    Math.hypot(b[0] - centre, b[1] - centre),
-                    Math.hypot(a[0] - centre, a[1] - centre)));
+                Math.hypot(b[0] - centre, b[1] - centre),
+                Math.hypot(a[0] - centre, a[1] - centre)));
 
             List<int[]> chosen = new ArrayList<>(count);
             for (double spacing = size; spacing >= MIN_SPAWN_SPACING && chosen.size() < count; spacing -= 1) {
@@ -1227,7 +1257,10 @@ public final class Bomberman extends InventoryUnifiedMinigame {
                     if (chosen.size() >= count) break;
                     boolean farEnough = true;
                     for (int[] taken : chosen) {
-                        if (Math.hypot(taken[0] - cell[0], taken[1] - cell[1]) < spacing) { farEnough = false; break; }
+                        if (Math.hypot(taken[0] - cell[0], taken[1] - cell[1]) < spacing) {
+                            farEnough = false;
+                            break;
+                        }
                     }
                     if (farEnough) chosen.add(cell);
                 }

@@ -84,21 +84,21 @@ public final class Manor extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport, boolean wasAfk) {
         ManorPlayer manorPlayer = this.manorPlayers.remove(participant.getUuid());
         if (manorPlayer != null) {
             manorPlayer.onRemove();
         }
-        return super.removeParticipant(participant, doTeleport);
+        return super.removeParticipant(participant, doTeleport, wasAfk);
     }
 
     @Override
     protected void handleStart() {
         this.bossBar = BossBar.bossBar(
-                Util.color("<b>Remaining Players: " + (this.getParticipants().size() - 1)),
-                1.0f,
-                BossBar.Color.WHITE,
-                BossBar.Overlay.PROGRESS
+            Util.color("<b>Remaining Players: " + (this.getParticipants().size() - 1)),
+            1.0f,
+            BossBar.Color.WHITE,
+            BossBar.Overlay.PROGRESS
         );
 
         for (EventPlayer participant : this.getParticipants()) {
@@ -120,31 +120,31 @@ public final class Manor extends InventoryUnifiedMinigame {
         });
 
         this.countdownBossBar = CountdownBossBar.builder()
-                .title("<red><b>Hunter spawns in: %s")
-                .seconds(15)
-                .audience(this.audience)
-                .color(BossBar.Color.RED)
-                .callback(() -> {
-                    this.ensureHunterAssigned();
-                    Hunter newHunter = this.manorPlayers.getHunter();
-                    if (newHunter == null) {
-                        this.sendAudienceMessage("Error assigning hunter. Ending game...");
-                        this.stop();
-                        return;
-                    }
-                    newHunter.getEventPlayer().teleportAsync(this.startLocation);
-                    newHunter.sendMessage("<red>Catch <b>everyone</b> to win.");
+            .title("<red><b>Hunter spawns in: %s")
+            .seconds(15)
+            .audience(this.audience)
+            .color(BossBar.Color.RED)
+            .callback(() -> {
+                this.ensureHunterAssigned();
+                Hunter newHunter = this.manorPlayers.getHunter();
+                if (newHunter == null) {
+                    this.sendAudienceMessage("Error assigning hunter. Ending game...");
+                    this.stop();
+                    return;
+                }
+                newHunter.getEventPlayer().teleportAsync(this.startLocation);
+                newHunter.sendMessage("<red>Catch <b>everyone</b> to win.");
 
-                    this.manorPlayers.getRunners().forEach(runner -> {
-                        runner.sendMessage("<light_purple>The hunter has spawned. Do not get <b>caught</b>.");
-                    });
+                this.manorPlayers.getRunners().forEach(runner -> {
+                    runner.sendMessage("<light_purple>The hunter has spawned. Do not get <b>caught</b>.");
+                });
 
-                    this.manorPlayers.forEach(manorPlayer -> {
-                        manorPlayer.getEventPlayer().addBossBar(this.bossBar);
-                    });
-                })
-                .build()
-                .start();
+                this.manorPlayers.forEach(manorPlayer -> {
+                    manorPlayer.getEventPlayer().addBossBar(this.bossBar);
+                });
+            })
+            .build()
+            .start();
     }
 
     @Override
@@ -171,18 +171,18 @@ public final class Manor extends InventoryUnifiedMinigame {
             this.participants.forEach(eventPlayer -> eventPlayer.teleportAsync(this.spawnLocation));
 
             CountdownBossBar.builder()
-                    .audience(this.audience)
-                    .color(BossBar.Color.BLUE)
-                    .title("<blue><b>Game Over")
-                    .seconds(15)
-                    .callback(() -> {
-                        this.participants.forEach(eventPlayer -> {
-                            eventPlayer.teleportAsync(this.getGameDropOffLocation());
-                            eventPlayer.sendMessage("This minigame has concluded.");
-                        });
-                    })
-                    .build()
-                    .start();
+                .audience(this.audience)
+                .color(BossBar.Color.BLUE)
+                .title("<blue><b>Game Over")
+                .seconds(15)
+                .callback(() -> {
+                    this.participants.forEach(eventPlayer -> {
+                        eventPlayer.teleportAsync(this.getGameDropOffLocation());
+                        eventPlayer.sendMessage("This minigame has concluded.");
+                    });
+                })
+                .build()
+                .start();
         });
     }
 
@@ -245,7 +245,6 @@ public final class Manor extends InventoryUnifiedMinigame {
         this.sendAudienceMessage("The current hunter has disconnected. A new hunter has been assigned.");
         return true;
     }
-
 
 
     @Getter
@@ -326,8 +325,11 @@ public final class Manor extends InventoryUnifiedMinigame {
         }
 
         public abstract void onTick(long timeLeft);
+
         public abstract void onRemove();
+
         public abstract void onAttacked(EntityDamageByEntityEvent event, ManorPlayer attacker);
+
         public abstract void onDeath(PlayerDeathEvent event, ManorPlayer attacker);
     }
 
@@ -532,7 +534,6 @@ public final class Manor extends InventoryUnifiedMinigame {
         }
 
 
-
         public boolean updateHeartbeatTickSpeed(int tickSpeed) {
             if (this.heartbeatTickSpeed != tickSpeed) {
                 this.heartbeatTickSpeed = tickSpeed;
@@ -621,7 +622,6 @@ public final class Manor extends InventoryUnifiedMinigame {
     }
 
 
-
     private static class ManorPlayerMap extends HashMap<UUID, ManorPlayer> implements Iterable<ManorPlayer> {
 
 
@@ -676,7 +676,7 @@ public final class Manor extends InventoryUnifiedMinigame {
             return (T) manorPlayer;
         }
 
-        public  <T extends ManorPlayer> T swapRole(EventPlayer eventPlayer, Supplier<? extends ManorPlayer> newRoleSupplier) {
+        public <T extends ManorPlayer> T swapRole(EventPlayer eventPlayer, Supplier<? extends ManorPlayer> newRoleSupplier) {
             ManorPlayer currentRole = this.get(eventPlayer.getUuid());
             if (currentRole != null) {
                 Executors.runSync(eventPlayer, () -> {

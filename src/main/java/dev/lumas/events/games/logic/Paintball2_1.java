@@ -66,7 +66,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
     private static final List<Material> STANDARD_BLACKLIST = List.of(Material.BARRIER, Material.AIR, Material.CAVE_AIR, Material.LADDER);
     private static final AttributeModifier ATTRIBUTE_MODIFIER = new AttributeModifier(new NamespacedKey(EventMain.getInstance(), "paintball"), -4.5, AttributeModifier.Operation.ADD_NUMBER);
-    private static final PotionEffect REGEN = new PotionEffect(PotionEffectType.REGENERATION, 100, 1, false, false,false);
+    private static final PotionEffect REGEN = new PotionEffect(PotionEffectType.REGENERATION, 100, 1, false, false, false);
     private static final PotionEffect GLOW = new PotionEffect(PotionEffectType.GLOWING, 100, 0, false, false, false);
 
     private final Paintball2_1Definition def;
@@ -95,8 +95,8 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         ColorKits colorKits = ColorKits.random();
         int middle = this.participants.size() / 2;
         this.paintballTeams = List.of(
-                new PaintballTeam(this.participants.subList(0, middle), colorKits.getTeam1(), def.getTeam1SpawnLocation(), def.getTeam1BedParts()),
-                new PaintballTeam(this.participants.subList(middle, this.participants.size()), colorKits.getTeam2(), def.getTeam2SpawnLocation(), def.getTeam2BedParts())
+            new PaintballTeam(this.participants.subList(0, middle), colorKits.getTeam1(), def.getTeam1SpawnLocation(), def.getTeam1BedParts()),
+            new PaintballTeam(this.participants.subList(middle, this.participants.size()), colorKits.getTeam2(), def.getTeam2SpawnLocation(), def.getTeam2BedParts())
         );
         this.scoreboard.addScorers(this.paintballTeams);
 
@@ -116,11 +116,11 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
 
         this.countdownBossBar = CountdownBossBar.builder()
-                .title("<white><b>Time Remaining: %ss")
-                .color(BossBar.Color.WHITE)
-                .miliseconds(this.getDuration())
-                .audience(this.audience)
-                .build();
+            .title("<white><b>Time Remaining: %ss")
+            .color(BossBar.Color.WHITE)
+            .miliseconds(this.getDuration())
+            .audience(this.audience)
+            .build();
         this.countdownBossBar.start();
     }
 
@@ -133,7 +133,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         // TODO: Need to calculate scores and display winning team
         this.scoreboard.handleGameEnd(this.audience, () -> {
             this.participants.stream().filter(
-                    p -> p.getPlayer() != null
+                p -> p.getPlayer() != null
             ).forEach(p -> {
                 Player player = p.getPlayer();
                 GlowColorManager.getInstance().update(player);
@@ -142,15 +142,15 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             Executors.teleportGroupAsync(this.participants, def.getSpawnLocation());
 
             CountdownBossBar.builder()
-                    .audience(this.audience)
-                    .color(BossBar.Color.RED)
-                    .title("<red><b>Game Over")
-                    .seconds(15)
-                    .callback(() -> this.participants.forEach(eventPlayer -> {
-                        eventPlayer.sendMessage("This minigame has concluded.");
-                    }))
-                    .build()
-                    .start();
+                .audience(this.audience)
+                .color(BossBar.Color.RED)
+                .title("<red><b>Game Over")
+                .seconds(15)
+                .callback(() -> this.participants.forEach(eventPlayer -> {
+                    eventPlayer.sendMessage("This minigame has concluded.");
+                }))
+                .build()
+                .start();
         });
     }
 
@@ -192,8 +192,8 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             return;
         }
         int team1PaintedBlocks = (int) paintedLocations.values().stream()
-                .filter(team -> team.equals(paintballTeams.getFirst()))
-                .count();
+            .filter(team -> team.equals(paintballTeams.getFirst()))
+            .count();
         int team2PaintedBlocks = totalPaintedBlocks - team1PaintedBlocks; // Since there are only 2 teams
         double team1Coverage = (double) team1PaintedBlocks / totalPaintedBlocks * 100;
         double team2Coverage = (double) team2PaintedBlocks / totalPaintedBlocks * 100;
@@ -211,13 +211,13 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
                 double enemyCoverage = enemyTeam == team1 ? team1Coverage : team2Coverage;
 
                 Component kills = Component.text("K: " + paintballTeam.killCount(member) + "!")
-                        .color(NamedTextColor.GRAY)
-                        .decorate(TextDecoration.ITALIC);
+                    .color(NamedTextColor.GRAY)
+                    .decorate(TextDecoration.ITALIC);
 
                 Component ourTeamComp = Component.text("Good Guys " + String.format("%.0f", ourCoverage) + "%")
-                        .color(paintballTeam.getTextColor());
+                    .color(paintballTeam.getTextColor());
                 Component enemyTeamComp = Component.text("Bad Guys " + String.format("%.0f", enemyCoverage) + "%")
-                        .color(enemyTeam.getTextColor());
+                    .color(enemyTeam.getTextColor());
 
                 Component actionBar = ourTeamComp.append(breakLine).append(enemyTeamComp).append(breakLine).append(kills).decorate(TextDecoration.BOLD);
 
@@ -250,11 +250,11 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport, boolean wasAfk) {
         if (this.paintballTeams != null) {
             this.paintballTeams.stream()
-                    .filter(t -> t.isMember(participant))
-                    .findFirst().ifPresent(team -> team.removeMember(participant));
+                .filter(t -> t.isMember(participant))
+                .findFirst().ifPresent(team -> team.removeMember(participant));
         }
 
         lastThrowMillis.remove(participant.getUuid());
@@ -263,7 +263,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
             GlowColorManager.getInstance().update(player);
             if (this.countdownBossBar != null) this.countdownBossBar.getBossBar().removeViewer(player);
         }
-        return super.removeParticipant(participant, doTeleport);
+        return super.removeParticipant(participant, doTeleport, wasAfk);
     }
 
     @EventHandler
@@ -293,9 +293,9 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         lastThrowMillis.put(shooter.getUniqueId(), now);
 
         PaintballTeam paintballTeam = this.paintballTeams.stream()
-                .filter(team -> team.isMember(shooter))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Player is not a member of any team."));
+            .filter(team -> team.isMember(shooter))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("Player is not a member of any team."));
         snowball.setItem(paintballTeam.getSnowballMaterial());
         snowball.setVelocity(snowball.getVelocity().multiply(0.4));
 
@@ -318,9 +318,9 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         }
 
         PaintballTeam victimTeam = this.paintballTeams.stream()
-                .filter(team -> team.isMember(eventPlayer))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Victim is not a member of any team."));
+            .filter(team -> team.isMember(eventPlayer))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("Victim is not a member of any team."));
 
         if (event.getDamageSource().getCausingEntity() == null || !(event.getDamageSource().getCausingEntity() instanceof Player shooter)) {
 
@@ -341,12 +341,10 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         EventPlayer shooterEventPlayer = EventPlayerManager.getByUUID(shooter.getUniqueId());
 
 
-
         PaintballTeam paintballTeam = this.paintballTeams.stream()
-                .filter(team -> team.isMember(shooterEventPlayer))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Player is not a member of any team."));
-
+            .filter(team -> team.isMember(shooterEventPlayer))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("Player is not a member of any team."));
 
 
         this.paint(player.getLocation().add(0, -1, 0), paintballTeam, shooterEventPlayer, 3);
@@ -354,8 +352,8 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
         // LumaItems ParticleLib
         ParticleDisplay particleDisplay = ParticleDisplay.of(Particle.DUST)
-                        .withColor(Util.bukkitToAwtColor(paintballTeam.getBlockData().getMapColor()))
-                                .withLocation(player.getEyeLocation());
+            .withColor(Util.bukkitToAwtColor(paintballTeam.getBlockData().getMapColor()))
+            .withLocation(player.getEyeLocation());
         Particles.spikeSphere(3.0, 10.0, 3, 0.1, 0.8, particleDisplay);
 
         // Respawn the player at their team's spawn point
@@ -388,9 +386,9 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         }
 
         PaintballTeam paintballTeam = this.paintballTeams.stream()
-                .filter(team -> team.isMember(shooter))
-                .findFirst()
-                .orElseThrow();
+            .filter(team -> team.isMember(shooter))
+            .findFirst()
+            .orElseThrow();
 
         // food level
         shooter.getInventory().setItemInMainHand(paintballTeam.getPaintball());
@@ -412,9 +410,9 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
     private void handleProjectileHitPlayer(Player hitPlayer, Player shooter, PaintballTeam paintballTeam) {
         PaintballTeam paintballTeam2 = this.paintballTeams.stream()
-                .filter(team -> team.isMember(hitPlayer))
-                .findFirst()
-                .orElse(null);
+            .filter(team -> team.isMember(hitPlayer))
+            .findFirst()
+            .orElse(null);
         if (paintballTeam2 == null) return;
 
         if (!boundingBox.contains(hitPlayer.getLocation()) || paintballTeam == paintballTeam2) {
@@ -448,7 +446,7 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
 
         for (Block block : sphere.getSphere()) {
-           this.paintOnBlock(block, paintballTeam, shooter);
+            this.paintOnBlock(block, paintballTeam, shooter);
         }
 
     }
@@ -538,9 +536,10 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
 
         public Map<EventPlayer, Integer> membersByScores() {
             return scoreMap.entrySet().stream()
-                    .sorted(Map.Entry.<EventPlayer, Integer>comparingByValue().reversed())
-                    .collect(HashMap::new, (map, entry) -> map.put(entry.getKey(), entry.getValue()), HashMap::putAll);
+                .sorted(Map.Entry.<EventPlayer, Integer>comparingByValue().reversed())
+                .collect(HashMap::new, (map, entry) -> map.put(entry.getKey(), entry.getValue()), HashMap::putAll);
         }
+
         public List<EventPlayer> getMembers() {
             return List.copyOf(scoreMap.keySet());
         }
@@ -596,7 +595,8 @@ public final class Paintball2_1 extends InventoryUnifiedMinigame {
         PINK(Material.PINK_WOOL, Material.PINK_BED, TextColor.fromHexString("#f4b8da"), "pink_dye", NamedTextColor.WHITE),
         LIGHT_BLUE(Material.LIGHT_BLUE_WOOL, Material.LIGHT_BLUE_BED, NamedTextColor.AQUA, "light_blue_dye"),
         MAGENTA(Material.MAGENTA_WOOL, Material.MAGENTA_BED, TextColor.fromHexString("#d630d6"), "magenta_dye", NamedTextColor.LIGHT_PURPLE),
-        WHITE(Material.WHITE_WOOL, Material.WHITE_BED, NamedTextColor.WHITE, "white_dye", NamedTextColor.WHITE),;
+        WHITE(Material.WHITE_WOOL, Material.WHITE_BED, NamedTextColor.WHITE, "white_dye", NamedTextColor.WHITE),
+        ;
 
         private final Material material;
         private final Material bed;

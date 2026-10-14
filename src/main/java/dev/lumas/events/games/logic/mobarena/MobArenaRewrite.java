@@ -174,7 +174,7 @@ public final class MobArenaRewrite extends Minigame {
         List<Integer> quotas = this.definition.getBaseQuotaPerWave();
         int base = quotas == null || quotas.isEmpty() ? 30 : quotas.get(Math.min(number - 1, quotas.size() - 1));
         WaveState current = new WaveState(number, count, base, this.definition.getSpawnWindowSeconds(),
-                this.definition.getSpawnIntervalSeconds(), now);
+            this.definition.getSpawnIntervalSeconds(), now);
         this.wave = current;
         this.nextWaveAt = 0;
         List<BossType> types = new ArrayList<>();
@@ -221,7 +221,7 @@ public final class MobArenaRewrite extends Minigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant, boolean teleport) {
+    public boolean removeParticipant(EventPlayer participant, boolean teleport, boolean wasAfk) {
         ArenaPlayer role = this.players.remove(participant.getUuid());
         this.souls.remove(participant.getUuid());
         if (role != null) {
@@ -229,7 +229,7 @@ public final class MobArenaRewrite extends Minigame {
             this.dropCarriedSouls(participant.getUuid(), at);
             role.restore();
         }
-        return super.removeParticipant(participant, teleport);
+        return super.removeParticipant(participant, teleport, wasAfk);
     }
 
     private boolean spawn(ArenaMob.Specification specification, Location anchor, @Nullable ArenaMob summoner) {
@@ -941,7 +941,7 @@ public final class MobArenaRewrite extends Minigame {
 
         public boolean start() {
             this.task = this.entity.getScheduler().runAtFixedRate(EventMain.getInstance(), ignored -> this.tick(),
-                    () -> this.ctx.removeMob(this, false), 1, 10);
+                () -> this.ctx.removeMob(this, false), 1, 10);
             return this.task != null;
         }
 
@@ -986,10 +986,10 @@ public final class MobArenaRewrite extends Minigame {
                 mob.getEquipment().setDropChance(slot, 0);
             }
             Map<Attribute, Double> attributes = Map.of(
-                    Attribute.MAX_HEALTH, Math.min(1024, this.specification.health()),
-                    Attribute.FOLLOW_RANGE, 64.0,
-                    Attribute.KNOCKBACK_RESISTANCE, this.specification.rank().isBoss() ? 0.8 : 0.25,
-                    Attribute.SCALE, this.specification.scale()
+                Attribute.MAX_HEALTH, Math.min(1024, this.specification.health()),
+                Attribute.FOLLOW_RANGE, 64.0,
+                Attribute.KNOCKBACK_RESISTANCE, this.specification.rank().isBoss() ? 0.8 : 0.25,
+                Attribute.SCALE, this.specification.scale()
             );
 
             for (Map.Entry<Attribute, Double> entry : attributes.entrySet()) {

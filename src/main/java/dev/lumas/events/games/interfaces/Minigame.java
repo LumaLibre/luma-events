@@ -280,8 +280,8 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         return true;
     }
 
-    public boolean removeParticipant(EventPlayer player, boolean doTeleport) {
-        return this.removeParticipant(player, true, false);
+    public final boolean removeParticipant(EventPlayer player, boolean doTeleport) {
+        return this.removeParticipant(player, doTeleport, false);
     }
 
     public boolean removeParticipant(EventPlayer player, boolean doTeleport, boolean wasAfk) {

@@ -89,10 +89,10 @@ public final class BoatRace2 extends Minigame {
         this.overFlowPoint = def.getOverFlowPoint();
 
         def.getCheckpoints().stream()
-                .map(region -> WorldTiedBoundingBox.of(region.getLoc1(), region.getLoc2()))
-                .forEach(box -> this.checkpoints.add(new BoatRaceCheckpoint(box, UUID.randomUUID().toString())));
+            .map(region -> WorldTiedBoundingBox.of(region.getLoc1(), region.getLoc2()))
+            .forEach(box -> this.checkpoints.add(new BoatRaceCheckpoint(box, UUID.randomUUID().toString())));
         this.checkpoints.add(
-                new BoatRaceCheckpoint(WorldTiedBoundingBox.of(def.getFinishLine().getLoc1(), def.getFinishLine().getLoc2()), FINISH_LINE_IDENTIFIER)
+            new BoatRaceCheckpoint(WorldTiedBoundingBox.of(def.getFinishLine().getLoc1(), def.getFinishLine().getLoc2()), FINISH_LINE_IDENTIFIER)
         );
     }
 
@@ -138,8 +138,8 @@ public final class BoatRace2 extends Minigame {
         }
 
         this.audience.showTitle(Title.title(
-                Util.color("<gold>↑"),
-                Util.color("<green>Go!")
+            Util.color("<gold>↑"),
+            Util.color("<green>Go!")
         ));
 
     }
@@ -181,18 +181,18 @@ public final class BoatRace2 extends Minigame {
             this.participants.stream().filter(player -> player.getPlayer() != null
             ).forEach(p -> p.teleportAsync(this.spawnLocation));
             CountdownBossBar.builder()
-                    .audience(this.audience)
-                    .color(BossBar.Color.RED)
-                    .title("<red><b>Game Over</b></red>")
-                    .seconds(15)
-                    .callback(() -> {
-                        this.participants.forEach(player -> {
-                            player.teleportAsync(this.getGameDropOffLocation());
-                            player.sendMessage("This minigame has concluded.");
-                        });
-                    })
-                    .build()
-                    .start();
+                .audience(this.audience)
+                .color(BossBar.Color.RED)
+                .title("<red><b>Game Over</b></red>")
+                .seconds(15)
+                .callback(() -> {
+                    this.participants.forEach(player -> {
+                        player.teleportAsync(this.getGameDropOffLocation());
+                        player.sendMessage("This minigame has concluded.");
+                    });
+                })
+                .build()
+                .start();
         });
     }
 
@@ -203,16 +203,16 @@ public final class BoatRace2 extends Minigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer player, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer player, boolean doTeleport, boolean wasAfk) {
         BoatRacePlayer racer = this.racers.stream()
-                .filter(r -> r.is(player))
-                .findFirst()
-                .orElse(null);
+            .filter(r -> r.is(player))
+            .findFirst()
+            .orElse(null);
         if (racer != null) {
             racer.cleanup();
             this.racers.remove(racer);
         }
-        return super.removeParticipant(player, doTeleport);
+        return super.removeParticipant(player, doTeleport, wasAfk);
     }
 
     @EventHandler
@@ -227,9 +227,9 @@ public final class BoatRace2 extends Minigame {
         }
 
         BoatRacePlayer racer = this.racers.stream()
-                .filter(r -> r.is(player))
-                .findFirst()
-                .orElse(null);
+            .filter(r -> r.is(player))
+            .findFirst()
+            .orElse(null);
         if (racer == null) {
             return;
         }
@@ -253,9 +253,9 @@ public final class BoatRace2 extends Minigame {
         }
 
         BoatRacePlayer racer = this.racers.stream()
-                .filter(r -> r.is(player))
-                .findFirst()
-                .orElse(null);
+            .filter(r -> r.is(player))
+            .findFirst()
+            .orElse(null);
 
         if (racer == null) {
             return;
@@ -282,18 +282,18 @@ public final class BoatRace2 extends Minigame {
             this.ensureNotIllegal(); // illegal check down here
 
             BoatRaceCheckpoint checkpoint = this.checkpoints.stream()
-                    .filter(cp -> cp.isInWithMarge(loc, 2.5))
-                    .findFirst()
-                    .orElse(null);
+                .filter(cp -> cp.isInWithMarge(loc, 2.5))
+                .findFirst()
+                .orElse(null);
 
             if (checkpoint == null) {
                 return;
             }
 
             BoatRacePlayer racer = this.racers.stream()
-                    .filter(r -> r.is(event.getPlayer()))
-                    .findFirst()
-                    .orElse(null);
+                .filter(r -> r.is(event.getPlayer()))
+                .findFirst()
+                .orElse(null);
 
             if (racer == null) {
                 return;
@@ -338,7 +338,7 @@ public final class BoatRace2 extends Minigame {
             if (racer.getLap() >= this.maxLaps) {
                 Player bukkitPlayer = event.getPlayer();
                 eventPlayer.sendTitle("<green>Finished!", "<gray>You placed <gold>#" + position);
-                Util.sendMsg(this.audience, "<gold>"+bukkitPlayer.getName()+"</gold>"+ " has finished in <gold>#" + position + "</gold> place!");
+                Util.sendMsg(this.audience, "<gold>" + bukkitPlayer.getName() + "</gold>" + " has finished in <gold>#" + position + "</gold> place!");
                 racer.finish(position);
                 Executors.teleportSafely(event.getPlayer(), this.spectateLocation);
                 this.tryEndIfNoMoreRacers();
@@ -358,27 +358,27 @@ public final class BoatRace2 extends Minigame {
     private void sortRacers() {
         // tie-breaker formula:
         Comparator<BoatRacePlayer> comparator = Comparator
-                .comparingInt(BoatRacePlayer::getLap).reversed()
-                .thenComparingInt(racer -> {
-                    // Only return a value for this if the racer is finished
-                    if (racer.isFinished()) {
-                        return racer.getFinishedPosition(); // Use finished position if available
-                    }
-                    return Integer.MAX_VALUE; // If not finished...
-                })
-                .thenComparingInt(racer -> racer.getRemainingCheckPoints(this.checkpoints))
-                .thenComparingDouble(player -> {
-                    Player bukkitPlayer = player.getEventPlayer().getPlayer();
-                    if (bukkitPlayer == null || !bukkitPlayer.isOnline()) {
-                        return Double.MAX_VALUE; // If player is offline, place them at the end
-                    }
-                    Location nextCheckpointLoc = getNextCheckpoint(player).getCenterLocation(); // Implement this
-                    return bukkitPlayer.getLocation().distance(nextCheckpointLoc); // Sort by distance to next checkpoint
-                });
+            .comparingInt(BoatRacePlayer::getLap).reversed()
+            .thenComparingInt(racer -> {
+                // Only return a value for this if the racer is finished
+                if (racer.isFinished()) {
+                    return racer.getFinishedPosition(); // Use finished position if available
+                }
+                return Integer.MAX_VALUE; // If not finished...
+            })
+            .thenComparingInt(racer -> racer.getRemainingCheckPoints(this.checkpoints))
+            .thenComparingDouble(player -> {
+                Player bukkitPlayer = player.getEventPlayer().getPlayer();
+                if (bukkitPlayer == null || !bukkitPlayer.isOnline()) {
+                    return Double.MAX_VALUE; // If player is offline, place them at the end
+                }
+                Location nextCheckpointLoc = getNextCheckpoint(player).getCenterLocation(); // Implement this
+                return bukkitPlayer.getLocation().distance(nextCheckpointLoc); // Sort by distance to next checkpoint
+            });
         this.sortedRacers = this.racers.stream()
-                .filter(BoatRacePlayer::isOnline)
-                .sorted(comparator)
-                .toList();
+            .filter(BoatRacePlayer::isOnline)
+            .sorted(comparator)
+            .toList();
     }
 
 
@@ -390,9 +390,9 @@ public final class BoatRace2 extends Minigame {
         }
         // If all checkpoints are lapped, return finish
         return this.checkpoints.stream()
-                .filter(BoatRaceCheckpoint::isFinishLine)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No finish line checkpoint found!"));
+            .filter(BoatRaceCheckpoint::isFinishLine)
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("No finish line checkpoint found!"));
     }
 
 
@@ -402,9 +402,9 @@ public final class BoatRace2 extends Minigame {
         }
 
         List<BoatRacePlayer> stillRacing = this.racers.stream()
-                .filter(BoatRacePlayer::isOnline)
-                .filter(r -> !r.isFinished())
-                .toList();
+            .filter(BoatRacePlayer::isOnline)
+            .filter(r -> !r.isFinished())
+            .toList();
         if (stillRacing.isEmpty()) {
             this.stop();
         }
@@ -439,10 +439,10 @@ public final class BoatRace2 extends Minigame {
             this.checkpoints = new LinkedHashMap<>();
             this.boat = boat;
             this.bossBar = BossBar.bossBar(
-                    Util.color("<b>Lap: " + (this.lap + 1) + "/" + maxLaps),
-                    0.0f,
-                    BossBar.Color.WHITE,
-                    BossBar.Overlay.PROGRESS
+                Util.color("<b>Lap: " + (this.lap + 1) + "/" + maxLaps),
+                0.0f,
+                BossBar.Color.WHITE,
+                BossBar.Overlay.PROGRESS
             );
             this.maxLaps = maxLaps;
             this.bossBar.addViewer(Objects.requireNonNull(eventPlayer.getPlayer()));

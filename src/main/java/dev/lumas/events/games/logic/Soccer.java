@@ -207,12 +207,12 @@ public final class Soccer extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport, boolean wasAfk) {
         this.frozenPlayers.remove(participant.getUuid());
         participant.operatePlayer(Soccer::unfreeze);
         participant.removeBossBar(this.bossBar);
         this.roleMap.remove(participant.getUuid()); // no role, no tokens: leaving forfeits them
-        return super.removeParticipant(participant, doTeleport);
+        return super.removeParticipant(participant, doTeleport, wasAfk);
     }
 
     @Override
@@ -760,7 +760,8 @@ public final class Soccer extends InventoryUnifiedMinigame {
             double cubeBottom = sulfurCube.getY();
             double cubeTop = cubeBottom + sulfurCube.getHeight();
 
-            record Contender(SoccerPlayer soccerPlayer, Vector push, double drive) {}
+            record Contender(SoccerPlayer soccerPlayer, Vector push, double drive) {
+            }
             List<Contender> contenders = new ArrayList<>();
 
             for (Player player : sulfurCube.getLocation().getNearbyPlayers(PUSH_DISTANCE_THRESHOLD + 1.0)) {
@@ -846,7 +847,9 @@ public final class Soccer extends InventoryUnifiedMinigame {
             this.sweepPlayers(event, to, start, direction, distance);
         }
 
-        /** @return true if the cube was parked against a player it would otherwise have skipped straight past */
+        /**
+         * @return true if the cube was parked against a player it would otherwise have skipped straight past
+         */
         private boolean sweepPlayers(EntityMoveEvent event, Location to, Vector start, Vector direction, double distance) {
             double height = sulfurCube.getHeight();
             for (Player player : to.getNearbyPlayers(distance + PUSH_DISTANCE_THRESHOLD + 1.0)) {

@@ -126,13 +126,13 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport, boolean wasAfk) {
         SkyWarsRole skyWarsPlayer = roleMap.remove(participant.getUuid());
         if (skyWarsPlayer != null) {
             skyWarsPlayer.cleanup();
         }
         participant.teleportAsync(lobby);
-        boolean removed = super.removeParticipant(participant, doTeleport);
+        boolean removed = super.removeParticipant(participant, doTeleport, wasAfk);
         this.finish();
         return removed;
     }
@@ -253,8 +253,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
                                 .whenComplete((r, t) -> {
                                     if (t != null) {
                                         endDone.completeExceptionally(t);
-                                    }
-                                    else {
+                                    } else {
                                         endDone.complete(null);
                                     }
                                 });

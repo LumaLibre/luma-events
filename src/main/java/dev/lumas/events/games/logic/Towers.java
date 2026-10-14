@@ -151,7 +151,7 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
 
         AtomicInteger count = new AtomicInteger(3);
-        Executors.runRepeatingAsync(TimeUnit.SECONDS, 1,task -> {
+        Executors.runRepeatingAsync(TimeUnit.SECONDS, 1, task -> {
             if (count.get() <= 0) {
                 task.cancel();
                 this.newItem();
@@ -159,7 +159,7 @@ public final class Towers extends InventoryUnifiedMinigame {
                 this.sendAudienceTitle("<b>Go!", "");
                 return;
             }
-            this.sendAudienceTitle( "<b>" + count.get(), "Get ready!");
+            this.sendAudienceTitle("<b>" + count.get(), "Get ready!");
             count.getAndDecrement();
         });
     }
@@ -258,13 +258,13 @@ public final class Towers extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer participant, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer participant, boolean doTeleport, boolean wasAfk) {
         TowersPlayer towersPlayer = this.towersPlayers.remove(participant.getUuid());
         if (towersPlayer != null) {
             towersPlayer.cleanup();
         }
         Executors.runSync(participant, () -> releaseHidden(participant.getPlayer()));
-        return super.removeParticipant(participant, doTeleport);
+        return super.removeParticipant(participant, doTeleport, wasAfk);
     }
 
     @EventHandler
@@ -472,13 +472,13 @@ public final class Towers extends InventoryUnifiedMinigame {
     }
 
 
-
     private <T extends TowersPlayer> T swapRole(Class<? extends TowersPlayer> ifRole, TowersPlayer towersPlayer, Supplier<? extends TowersPlayer> newRoleSupplier) {
         if (ifRole.isInstance(towersPlayer)) {
             return this.swapRole(towersPlayer.getEventPlayer(), newRoleSupplier);
         }
         return (T) towersPlayer;
     }
+
     private <T extends TowersPlayer> T swapRole(EventPlayer eventPlayer, Supplier<? extends TowersPlayer> newRoleSupplier) {
         TowersPlayer currentRole = towersPlayers.get(eventPlayer.getUuid());
         if (currentRole != null) {
@@ -604,7 +604,9 @@ public final class Towers extends InventoryUnifiedMinigame {
         }
 
         public abstract void onTick(long timeLeft);
+
         public abstract void onDeath(PlayerDeathEvent event);
+
         public abstract void cleanup();
     }
 
@@ -666,7 +668,7 @@ public final class Towers extends InventoryUnifiedMinigame {
                 player.setFlying(false);
             }
 
-            String floorString = this.context.isEscalation ? " <yellow>| <aqua>Floor: " + ((int)player.getLocation().getY()) + "/" + ((int) this.context.forceGameArenaYLevel) : "";
+            String floorString = this.context.isEscalation ? " <yellow>| <aqua>Floor: " + ((int) player.getLocation().getY()) + "/" + ((int) this.context.forceGameArenaYLevel) : "";
             player.sendActionBar(Text.mm("<yellow>Time left: " + Util.millisToSecs(timeLeft) + "s | <green>Kills: " + this.kills + floorString));
         }
 

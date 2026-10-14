@@ -106,22 +106,22 @@ public final class TNTTag extends InventoryUnifiedMinigame {
 
         this.scoreboard.handleGameEnd(this.audience, () -> {
             this.participants.stream().filter(
-                    p -> p.getPlayer() != null
+                p -> p.getPlayer() != null
             ).forEach(p -> p.teleportAsync(this.spawnPoint));
             CountdownBossBar.builder()
-                    .audience(this.audience)
-                    .color(BossBar.Color.RED)
-                    .title("<red><b>Game Over")
-                    .seconds(15)
-                    .callback(() -> this.boundingBox.getPlayers().forEach(player -> {
-                        Location loc = this.getGameDropOffLocation();
-                        if (loc != null) {
-                            Executors.teleportSafely(player, loc);
-                        }
-                        Util.sendMsg(player, "This minigame has concluded.");
-                    }))
-                    .build()
-                    .start();
+                .audience(this.audience)
+                .color(BossBar.Color.RED)
+                .title("<red><b>Game Over")
+                .seconds(15)
+                .callback(() -> this.boundingBox.getPlayers().forEach(player -> {
+                    Location loc = this.getGameDropOffLocation();
+                    if (loc != null) {
+                        Executors.teleportSafely(player, loc);
+                    }
+                    Util.sendMsg(player, "This minigame has concluded.");
+                }))
+                .build()
+                .start();
         });
     }
 
@@ -140,7 +140,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
     }
 
     @Override
-    public boolean removeParticipant(EventPlayer player, boolean doTeleport) {
+    public boolean removeParticipant(EventPlayer player, boolean doTeleport, boolean wasAfk) {
         TNTTagPlayer tntTagPlayer = this.tntTagPlayers.get(player.getUuid());
         if (tntTagPlayer != null) {
             tntTagPlayer.removeEffects(false);
@@ -151,7 +151,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         if (bukkitPlayer != null && this.roundCountdownBar != null) {
             this.roundCountdownBar.getBossBar().removeViewer(bukkitPlayer);
         }
-        return super.removeParticipant(player, doTeleport);
+        return super.removeParticipant(player, doTeleport, wasAfk);
     }
 
     public <T extends TNTTagPlayer> T swapRole(EventPlayer eventPlayer, Supplier<? extends TNTTagPlayer> newRoleSupplier) {
@@ -167,28 +167,28 @@ public final class TNTTag extends InventoryUnifiedMinigame {
 
     private List<Tagger> getTaggers() {
         return this.tntTagPlayers.values().stream()
-                .filter(it -> it instanceof Tagger)
-                .map(Tagger.class::cast)
-                .toList();
+            .filter(it -> it instanceof Tagger)
+            .map(Tagger.class::cast)
+            .toList();
     }
 
     private List<Runner> getRunners() {
         return this.tntTagPlayers.values().stream()
-                .filter(it -> it instanceof Runner)
-                .map(Runner.class::cast)
-                .toList();
+            .filter(it -> it instanceof Runner)
+            .map(Runner.class::cast)
+            .toList();
     }
 
     private boolean isAllParticipantsOffline() {
         return this.participants.stream()
-                .map(EventPlayer::getPlayer)
-                .noneMatch(Objects::nonNull);
+            .map(EventPlayer::getPlayer)
+            .noneMatch(Objects::nonNull);
     }
 
     private boolean isAllTaggersOffline() {
         return this.getTaggers().stream()
-                .map(TNTTagPlayer::getPlayer)
-                .noneMatch(Objects::nonNull);
+            .map(TNTTagPlayer::getPlayer)
+            .noneMatch(Objects::nonNull);
     }
 
     @Nullable
@@ -202,7 +202,7 @@ public final class TNTTag extends InventoryUnifiedMinigame {
 
     public void startRound() {
         // for every 5 players, a new tagger is added
-        int taggerCount = Math.max(1, this.getRunners().size() / 5 );
+        int taggerCount = Math.max(1, this.getRunners().size() / 5);
         Logging.log("DEBUG: " + this.getRunners().size() + " runners, " + taggerCount + " taggers.");
         for (int i = this.getTaggers().size(); i < taggerCount; i++) {
             Runner tagger = Util.getRandom(this.getRunners());
@@ -219,33 +219,33 @@ public final class TNTTag extends InventoryUnifiedMinigame {
 
         // tp all to spawnPoint
         this.tntTagPlayers.values().stream()
-                .map(TNTTagPlayer::getPlayer)
-                .filter(Objects::nonNull)
-                .forEach(this::teleportNearSpawnPoint);
+            .map(TNTTagPlayer::getPlayer)
+            .filter(Objects::nonNull)
+            .forEach(this::teleportNearSpawnPoint);
 
         this.sendAudienceMessage("A new round has started!");
         this.roundCountdownBar = CountdownBossBar.builder()
-                .seconds(ROUND_DURATION)
-                .color(BossBar.Color.YELLOW)
-                .title("<yellow><b>Round ends in: %ss <gray>| <yellow>Round: " + (this.roundCount + 1) + "/" + MAX_ROUNDS)
-                .audience(this.audience)
-                .callback(() -> {
-                    this.endRound();
+            .seconds(ROUND_DURATION)
+            .color(BossBar.Color.YELLOW)
+            .title("<yellow><b>Round ends in: %ss <gray>| <yellow>Round: " + (this.roundCount + 1) + "/" + MAX_ROUNDS)
+            .audience(this.audience)
+            .callback(() -> {
+                this.endRound();
 
-                    if (this.getRunners().size() < 2) {
-                        this.sendAudienceMessage("Not enough runners left to continue, ending early!");
-                        this.stop();
-                        return;
-                    }
+                if (this.getRunners().size() < 2) {
+                    this.sendAudienceMessage("Not enough runners left to continue, ending early!");
+                    this.stop();
+                    return;
+                }
 
-                    this.roundCount++;
-                    if (this.roundCount < MAX_ROUNDS) {
-                        this.startRound();
-                    } else {
-                        this.stop();
-                    }
-                })
-                .build();
+                this.roundCount++;
+                if (this.roundCount < MAX_ROUNDS) {
+                    this.startRound();
+                } else {
+                    this.stop();
+                }
+            })
+            .build();
         this.roundCountdownBar.start();
     }
 
@@ -334,7 +334,9 @@ public final class TNTTag extends InventoryUnifiedMinigame {
         }
 
         public abstract void addEffects();
+
         public abstract void removeEffects(boolean ending);
+
         public abstract void tick();
 
         @Nullable
