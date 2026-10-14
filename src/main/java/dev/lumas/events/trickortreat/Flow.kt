@@ -43,22 +43,37 @@ data class Doorkeeper(
     val inside: Location? = null,
     val outside: Location? = null,
     val hideWhileClosed: Boolean = false,
+    val openAt: Set<DialoguePoint> = emptySet(),
 ) {
     val isComplete get() = npc != null && standby != null && inside != null && outside != null
+
+    val isActive get() = isComplete && openAt.isNotEmpty()
 }
 
 data class Flow(
     val name: String,
     val door: Door? = null,
     val conversations: Map<KnockLevel, String> = emptyMap(),
-    val doorkeeper: Doorkeeper = Doorkeeper(),
-    val openAt: Set<DialoguePoint> = emptySet(),
+    val doorkeepers: Map<String, Doorkeeper> = emptyMap(),
 ) {
 
     val isComplete get() = door != null && conversations.isNotEmpty()
+
+    fun doorkeeper(name: String) = doorkeepers[name] ?: Doorkeeper()
+
+    fun withDoorkeeper(name: String, keeper: Doorkeeper) =
+        copy(doorkeepers = if (keeper == Doorkeeper()) doorkeepers - name else doorkeepers + (name to keeper))
+
+    fun opensAt(point: DialoguePoint) = doorkeepers.values.any { it.isActive && point in it.openAt }
+
+    fun watches(file: String) = doorkeepers.values.any { keeper -> keeper.openAt.any { it.file == file } }
 
     // Falls back to the closest configured level, preferring the milder one on ties
     fun conversationFor(level: KnockLevel) = KnockLevel.entries
         .sortedBy { abs(it.ordinal - level.ordinal) * 2 + if (it > level) 1 else 0 }
         .firstNotNullOfOrNull(conversations::get)
+
+    companion object {
+        const val DEFAULT_KEEPER = "default"
+    }
 }

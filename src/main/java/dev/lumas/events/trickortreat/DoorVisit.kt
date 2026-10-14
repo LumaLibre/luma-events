@@ -21,20 +21,26 @@ class DoorVisit(
 ) {
 
     private enum class Phase(val holdsDoorOpen: Boolean) {
-        WAITING(false), ARRIVING(false), STEPPING_OUT(true), OUTSIDE(true), RETURNING(true), CLOSING(false), FINISHED(false)
+        WAITING(false), ARRIVING(false), STEPPING_OUT(true), OUTSIDE(true), RETURNING(true), BACK(false)
+    }
+
+    private class Escort(val keeper: Doorkeeper, val npc: NPC) {
+        var phase = Phase.WAITING
     }
 
     private val participants = participants.toMutableList()
-    private val keeper = flow.doorkeeper.takeIf { it.isComplete && flow.openAt.isNotEmpty() }
-    private val npc = keeper?.let { keeper ->
+    private val escorts = flow.doorkeepers.mapNotNull { (name, keeper) ->
+        if (!keeper.isActive) return@mapNotNull null
         if (!TrickOrTreat.citizensEnabled(plugin)) {
             plugin.logger.warning("Trick or treat flow ${flow.name} has an NPC, but Citizens is not enabled")
-            return@let null
+            return@mapNotNull null
         }
-        NpcHook.get(keeper.npc!!)
-            .also { if (it == null) plugin.logger.warning("Trick or treat flow ${flow.name} uses unknown NPC ${keeper.npc}") }
+        val npc = NpcHook.get(keeper.npc!!)
+            ?: return@mapNotNull null.also { plugin.logger.warning("Trick or treat flow ${flow.name} uses unknown NPC ${keeper.npc} for $name") }
+        Escort(keeper, npc)
     }
-    private var phase = Phase.WAITING
+    private var closing = false
+    private var finished = false
     private var task: ScheduledTask? = null
 
     fun start() {
@@ -43,31 +49,33 @@ class DoorVisit(
 
     fun abort() {
         task?.cancel()
-        if (phase == Phase.WAITING || phase == Phase.FINISHED) return
-        phase = Phase.FINISHED
+        if (finished) return
+        finished = true
+        val visited = escorts.filter { it.phase != Phase.WAITING }
+        if (visited.isEmpty()) return
         runCatching {
-            npc?.rest()
+            visited.forEach { it.rest() }
             setDoorOpen(false)
         }
     }
 
-    // Also keeps the door open against Nexo's automatic close while the NPC is out
+    // Also keeps the door open against Nexo's automatic close while any NPC is out
     private fun tick() {
         participants.removeIf { !it.isOnline || InteractionsHook.conversationOf(it) != conversation }
-        if (phase.holdsDoorOpen) setDoorOpen(true)
-        when (phase) {
-            Phase.WAITING -> when {
-                npc != null && participants.any { InteractionsHook.pointOf(it) in flow.openAt } -> stepOut(npc)
-                participants.isEmpty() -> finish()
-            }
-            Phase.OUTSIDE -> if (participants.isEmpty()) stepIn(npc!!)
-            else -> Unit
+        if (closing) return
+        if (escorts.any { it.phase.holdsDoorOpen }) setDoorOpen(true)
+        if (participants.isNotEmpty()) {
+            escorts.filter { it.phase == Phase.WAITING && participants.any { player -> InteractionsHook.pointOf(player) in it.keeper.openAt } }
+                .forEach { it.stepOut() }
+            return
         }
+        escorts.filter { it.phase == Phase.OUTSIDE }.forEach { it.stepIn() }
+        if (escorts.all { it.phase == Phase.WAITING || it.phase == Phase.BACK }) close()
     }
 
-    private fun stepOut(npc: NPC) {
+    private fun Escort.stepOut() {
         phase = Phase.ARRIVING
-        npc.place(keeper!!.inside!!)
+        npc.place(keeper.inside!!)
         later(TELEPORT_TICKS) {
             phase = Phase.STEPPING_OUT
             setDoorOpen(true)
@@ -80,27 +88,30 @@ class DoorVisit(
         }
     }
 
-    private fun stepIn(npc: NPC) {
+    private fun Escort.stepIn() {
         phase = Phase.RETURNING
-        val keeper = keeper!!
         npc.face(keeper.inside!!)
         later(PAUSE_TICKS) {
             npc.walk(keeper.inside) {
                 npc.face(keeper.outside!!)
-                later(PAUSE_TICKS) {
-                    phase = Phase.CLOSING
-                    setDoorOpen(false)
-                    later(PAUSE_TICKS) {
-                        npc.rest()
-                        finish()
-                    }
-                }
+                later(PAUSE_TICKS) { phase = Phase.BACK }
             }
         }
     }
 
+    private fun close() {
+        val visited = escorts.filter { it.phase == Phase.BACK }
+        if (visited.isEmpty()) return finish()
+        closing = true
+        setDoorOpen(false)
+        later(PAUSE_TICKS) {
+            visited.forEach { it.rest() }
+            finish()
+        }
+    }
+
     private fun finish() {
-        phase = Phase.FINISHED
+        finished = true
         task?.cancel()
         onFinish()
     }
@@ -109,15 +120,15 @@ class DoorVisit(
         if (isSpawned) faceLocation(location)
     }
 
-    private fun NPC.rest() {
-        if (keeper!!.hideWhileClosed) hide() else place(keeper.standby!!)
+    private fun Escort.rest() {
+        if (keeper.hideWhileClosed) npc.hide() else npc.place(keeper.standby!!)
     }
 
     // Falls back to teleporting so a blocked path or a lost callback never leaves the NPC stranded outside
     private fun NPC.walk(target: Location, then: () -> Unit) {
         var arrived = false
         fun arrive(teleport: Boolean) {
-            if (arrived || phase == Phase.FINISHED) return
+            if (arrived || finished) return
             arrived = true
             if (teleport) place(target)
             then()
@@ -146,7 +157,7 @@ class DoorVisit(
     }
 
     private fun later(ticks: Long, action: () -> Unit) {
-        plugin.server.regionScheduler.runDelayed(plugin, door.location, { action() }, ticks)
+        plugin.server.regionScheduler.runDelayed(plugin, door.location, { if (!finished) action() }, ticks)
     }
 
     companion object {

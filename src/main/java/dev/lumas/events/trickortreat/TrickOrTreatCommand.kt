@@ -56,7 +56,10 @@ class TrickOrTreatCommand : CommandModule {
         val subcommand = args.first().lowercase()
         val options = when {
             args.size == 1 -> SUBCOMMANDS
-            args.size == 2 && subcommand in listOf("door", "conversation", "npc", "openat", "delete") -> store.flows.keys.toList()
+            args.size == 2 && subcommand in listOf("npc", "openat") -> store.flows.values.flatMap { flow ->
+                listOf(flow.name) + (flow.doorkeepers.keys - Flow.DEFAULT_KEEPER).map { "${flow.name}.$it" }
+            }
+            args.size == 2 && subcommand in listOf("door", "conversation", "delete") -> store.flows.keys.toList()
             args.size == 3 && subcommand == "conversation" -> KnockLevel.entries.map { it.key }
             args.size == 4 && subcommand == "conversation" -> InteractionsHook.conversations() + "reset"
             args.size in 3..5 && subcommand == "door" -> listOf("~")
@@ -118,12 +121,12 @@ class TrickOrTreatCommand : CommandModule {
     }
 
     private fun npc(sender: CommandSender, command: String, args: List<String>) {
-        val usage = "Usage: /$command npc <flow> <${NPC_OPTIONS.joinToString("|")}> [id]"
+        val usage = "Usage: /$command npc <flow>[.npc] <${NPC_OPTIONS.joinToString("|")}> [id]"
         if (args.size !in 2..3) return sender.error(usage)
-        val name = args[0]
-        if (!NAME.matches(name)) return sender.error("Flow names may only contain letters, digits, - and _.")
+        val (name, keeperName) = target(args[0]) ?: return sender.error(TARGET_ERROR)
         val flow = store.flows[name] ?: Flow(name)
-        val keeper = flow.doorkeeper
+        val keeper = flow.doorkeeper(keeperName)
+        val label = describe(name, keeperName)
         val option = args[1].lowercase()
         val updated = when (option) {
             "id" -> {
@@ -132,13 +135,13 @@ class TrickOrTreatCommand : CommandModule {
                     val number = id.toIntOrNull() ?: return sender.error("NPC ids must be whole numbers.")
                     CitizensAPI.getNPCRegistry().getById(number) ?: return sender.error("No NPC with id $number.")
                 } ?: CitizensAPI.getDefaultNPCSelector().getSelected(sender) ?: return sender.error("Select an NPC or pass its id.")
-                sender.info("NPC for $name set to ${npc.name} (${npc.id}).")
+                sender.info("NPC for $label set to ${npc.name} (${npc.id}).")
                 keeper.copy(npc = npc.id)
             }
             "standby", "inside", "outside" -> {
                 val player = sender as? Player ?: return sender.error("Only players can set NPC locations.")
                 val location = player.location.toBlockCenter()
-                sender.info("${option.replaceFirstChar(Char::uppercase)} location for $name set to ${location.describe()}")
+                sender.info("${option.replaceFirstChar(Char::uppercase)} location for $label set to ${location.describe()}")
                 when (option) {
                     "standby" -> keeper.copy(standby = location)
                     "inside" -> keeper.copy(inside = location)
@@ -146,45 +149,49 @@ class TrickOrTreatCommand : CommandModule {
                 }
             }
             "reset" -> {
-                sender.info("Removed the NPC from $name.")
-                Doorkeeper()
+                sender.info("Removed the NPC from $label.")
+                Doorkeeper(openAt = keeper.openAt)
             }
             else -> return sender.error(usage)
         }
-        store.put(flow.copy(doorkeeper = updated))
+        store.put(flow.withDoorkeeper(keeperName, updated))
         knocker.rest(store.flows.getValue(name))
         warnIncomplete(sender, name)
     }
 
     private fun openAt(sender: CommandSender, command: String, args: List<String>) {
-        val usage = "Usage: /$command openat <flow> <add|remove> <file:conversation:dialogue>"
+        val usage = "Usage: /$command openat <flow>[.npc] <add|remove> <file:conversation:dialogue>"
         if (args.size != 3) return sender.error(usage)
-        val (name, action, value) = args
-        if (!NAME.matches(name)) return sender.error("Flow names may only contain letters, digits, - and _.")
+        val (targetName, action, value) = args
+        val (name, keeperName) = target(targetName) ?: return sender.error(TARGET_ERROR)
         val point = DialoguePoint.parse(value) ?: return sender.error("Dialogue points look like file:conversation:dialogue.")
         val flow = store.flows[name] ?: Flow(name)
+        val keeper = flow.doorkeeper(keeperName)
+        val label = describe(name, keeperName)
         when (action.lowercase()) {
             "add" -> {
                 if (point !in InteractionsHook.points(point.file)) return sender.error("Interactions has no dialogue $point.")
-                store.put(flow.copy(openAt = flow.openAt + point))
-                sender.info("The door of $name now opens at $point.")
+                store.put(flow.withDoorkeeper(keeperName, keeper.copy(openAt = keeper.openAt + point)))
+                sender.info("The NPC of $label now steps out at $point.")
             }
             "remove" -> {
-                if (point !in flow.openAt) return sender.error("$name doesn't open at $point.")
-                store.put(flow.copy(openAt = flow.openAt - point))
-                sender.info("The door of $name no longer opens at $point.")
+                if (point !in keeper.openAt) return sender.error("The NPC of $label doesn't step out at $point.")
+                store.put(flow.withDoorkeeper(keeperName, keeper.copy(openAt = keeper.openAt - point)))
+                sender.info("The NPC of $label no longer steps out at $point.")
             }
             else -> return sender.error(usage)
         }
         warnIncomplete(sender, name)
     }
 
-    private fun openAtSuggestions(name: String, action: String): List<String> {
+    private fun openAtSuggestions(targetName: String, action: String): List<String> {
+        val (name, keeperName) = target(targetName) ?: return emptyList()
         val flow = store.flows[name] ?: return emptyList()
+        val openAt = flow.doorkeeper(keeperName).openAt
         return when (action.lowercase()) {
             "add" -> flow.conversations.values.distinct().ifEmpty { InteractionsHook.conversations() }
-                .flatMap(InteractionsHook::points).filter { it !in flow.openAt }.map(DialoguePoint::toString)
-            "remove" -> flow.openAt.map(DialoguePoint::toString)
+                .flatMap(InteractionsHook::points).filter { it !in openAt }.map(DialoguePoint::toString)
+            "remove" -> openAt.map(DialoguePoint::toString)
             else -> emptyList()
         }
     }
@@ -210,13 +217,13 @@ class TrickOrTreatCommand : CommandModule {
         store.flows.values.forEach {
             val conversations = KnockLevel.entries.joinToString { level -> "${level.key}: ${it.conversations[level] ?: "-"}" }
             sender.info("- ${it.name}: door ${it.door ?: "not set"}, $conversations")
-            val keeper = it.doorkeeper
-            if (keeper != Doorkeeper()) {
+            it.doorkeepers.forEach { (keeperName, keeper) ->
+                val prefix = if (keeperName == Flow.DEFAULT_KEEPER) "  " else "  [$keeperName] "
                 val locations = listOf("standby" to keeper.standby, "inside" to keeper.inside, "outside" to keeper.outside)
                     .joinToString { (key, location) -> "$key: ${location?.describe() ?: "-"}" }
-                sender.info("  npc: ${keeper.npc ?: "-"}, $locations")
+                sender.info("${prefix}npc: ${keeper.npc ?: "-"}, $locations")
+                if (keeper.openAt.isNotEmpty()) sender.info("${prefix}steps out at: ${keeper.openAt.joinToString()}")
             }
-            if (it.openAt.isNotEmpty()) sender.info("  opens at: ${it.openAt.joinToString()}")
         }
     }
 
@@ -224,17 +231,23 @@ class TrickOrTreatCommand : CommandModule {
         val flow = store.flows[name] ?: return
         if (flow.door == null) sender.error("$name has no door yet and is inactive.")
         if (flow.conversations.isEmpty()) sender.error("$name has no conversations yet and is inactive.")
-        val keeper = flow.doorkeeper
-        if (keeper == Doorkeeper() && flow.openAt.isEmpty()) return
-        val missing = listOfNotNull(
-            "npc id".takeIf { keeper.npc == null },
-            "standby location".takeIf { keeper.standby == null },
-            "inside location".takeIf { keeper.inside == null },
-            "outside location".takeIf { keeper.outside == null },
-            "dialogue to open at".takeIf { flow.openAt.isEmpty() },
-        )
-        if (missing.isNotEmpty()) sender.error("The NPC of $name won't step out until it has: ${missing.joinToString()}.")
+        flow.doorkeepers.forEach { (keeperName, keeper) ->
+            val missing = listOfNotNull(
+                "npc id".takeIf { keeper.npc == null },
+                "standby location".takeIf { keeper.standby == null },
+                "inside location".takeIf { keeper.inside == null },
+                "outside location".takeIf { keeper.outside == null },
+                "dialogue to open at".takeIf { keeper.openAt.isEmpty() },
+            )
+            if (missing.isNotEmpty()) sender.error("The NPC of ${describe(name, keeperName)} won't step out until it has: ${missing.joinToString()}.")
+        }
     }
+
+    private fun target(value: String) = value.split('.', limit = 2)
+        .let { it[0] to (it.getOrNull(1) ?: Flow.DEFAULT_KEEPER) }
+        .takeIf { (name, keeper) -> NAME.matches(name) && NAME.matches(keeper) }
+
+    private fun describe(name: String, keeper: String) = if (keeper == Flow.DEFAULT_KEEPER) name else "$name.$keeper"
 
     private fun CommandSender.info(message: String) = Util.sendMsg(this, MiniMessage.miniMessage().escapeTags(message))
 
@@ -248,5 +261,6 @@ class TrickOrTreatCommand : CommandModule {
         private val SUBCOMMANDS = listOf("door", "conversation", "npc", "openat", "delete", "list", "reload")
         private val NPC_OPTIONS = listOf("id", "standby", "inside", "outside", "reset")
         private val NAME = Regex("[A-Za-z0-9_-]+")
+        private const val TARGET_ERROR = "Flow and NPC names may only contain letters, digits, - and _, use <flow>.<npc> for one of several NPCs."
     }
 }

@@ -38,13 +38,12 @@ class DoorKnocker(private val plugin: Plugin, private val store: TrickOrTreatSto
     }
 
     fun rest(flow: Flow) {
-        val keeper = flow.doorkeeper.takeIf { it.isComplete } ?: return
         if (!TrickOrTreat.citizensEnabled(plugin) || visits.containsKey(flow.door ?: return)) return
-        NpcHook.rest(plugin, keeper)
+        flow.doorkeepers.values.filter { it.isComplete }.forEach { NpcHook.rest(plugin, it) }
     }
 
     fun watch(player: Player, file: String) {
-        if (store.flows.values.none { flow -> flow.openAt.any { it.file == file } }) return
+        if (store.flows.values.none { it.watches(file) }) return
         // The conversation becomes active a few ticks after the start event
         var waited = 0
         player.scheduler.runAtFixedRate(plugin, { task ->
@@ -56,7 +55,7 @@ class DoorKnocker(private val plugin: Plugin, private val store: TrickOrTreatSto
             }
             waited = START_TIMEOUT_TICKS
             val flow = store.flows.values
-                .filter { point in it.openAt && it.doorkeeper.isComplete && it.door?.world == player.world.name && !visits.containsKey(it.door) }
+                .filter { it.opensAt(point) && it.door?.world == player.world.name && !visits.containsKey(it.door) }
                 .minByOrNull { it.door!!.location(player.world).distanceSquared(player.location) } ?: return@runAtFixedRate
             task.cancel()
             open(flow, file, player)
