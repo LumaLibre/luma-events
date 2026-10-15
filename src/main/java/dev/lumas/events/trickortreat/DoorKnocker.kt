@@ -19,6 +19,8 @@ class DoorKnocker(private val plugin: Plugin, private val store: TrickOrTreatSto
     private val sessions = ConcurrentHashMap<Door, Session>()
     private val visits = ConcurrentHashMap<Door, DoorVisit>()
 
+    fun isDoor(entity: ItemDisplay) = store.flowAt(entity.location) != null
+
     fun knock(player: Player, entity: ItemDisplay): Boolean {
         val flow = store.flowAt(entity.location) ?: return false
         val door = flow.door!!
