@@ -3,7 +3,6 @@ package dev.lumas.events.items;
 import dev.lumas.events.EventMain;
 import dev.lumas.lumaitems.api.LumaItemsAPI;
 import dev.lumas.lumaitems.model.item.CustomItem;
-import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
@@ -14,9 +13,12 @@ import java.util.List;
 public class LocalCustomItemManager {
 
     private static final LumaItemsAPI lumaItemsAPI = LumaItemsAPI.getInstance();
-    @Getter
     private static final List<CustomItem> customItems = new ArrayList<>();
 
+
+    public static List<CustomItem> getCustomItems() {
+        return customItems;
+    }
 
     public static void addCustomItem(CustomItem customItem) {
         customItems.add(customItem);

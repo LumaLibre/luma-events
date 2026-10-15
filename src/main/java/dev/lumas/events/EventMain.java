@@ -15,6 +15,7 @@ import dev.lumas.events.items.candy.GhostTaffyItem;
 import dev.lumas.events.items.candy.LemonDropItem;
 import dev.lumas.events.items.candy.ResinCaramelItem;
 import dev.lumas.events.items.candy.SugarplumBonbonItem;
+import dev.lumas.events.items.candy.SurpriseEggItem;
 import dev.lumas.events.items.StartMinigameItem;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.LeaderboardCacheManager;
@@ -65,6 +66,7 @@ public final class EventMain extends JavaPlugin {
         LocalCustomItemManager.addCustomItem(new GhostTaffyItem());
         LocalCustomItemManager.addCustomItem(new DarkChocolateItem());
         LocalCustomItemManager.addCustomItem(new CottonCandyItem());
+        LocalCustomItemManager.addCustomItem(new SurpriseEggItem());
         LocalCustomItemManager.registerCustomItems();
 
         // playtime counter
