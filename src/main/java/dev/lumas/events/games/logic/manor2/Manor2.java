@@ -270,16 +270,17 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                 enabled because you can't see what area your own flashlight is covering!
                 <br><br>
                 <gray><b>Ghost</b></gray><br>
-                The ghost kill ghost hunters, this is done by going into range and attacking (left-clicking a hunter).
-                You have to be strategic to stay out of light. For every 10 players, there is 1 ghost.
+                The ghosts kill hunters, this is done by going into range and <b>attacking</b> (<b>left-clicking a hunter</b>).
+                Ghosts are shy, but can be revealed when <b>they get light on them</b>. When revealed, they are <b>incapable
+                of killing hunters</b>. For every 10 players, there is 1 ghost.
                 <br><br>
                 <gray><b>Hunters</b></gray><br>
-                The hunters collect artifact and kills ghosts.
-                Ghosts are invisible to you by default. You need to reveal them with your flashlight.
-                Your screen will turn cold and your flashlight will flicker when you're near a ghost.
-                You can collect artifacts by shining on things with your flashlight.
-                Hunters can save their teammates by shining a flashlight on the ghost
-                whilst the ghost is attacking.
+                The hunters collect artifact and kills ghosts. The main issue is that both of these are invisible.
+                But luckily they brought a flashlight! With this flashlight they can (<b>right-click to use</b>):<br>
+                <gray>-</gray> Reveal artifacts for points<br>
+                <gray>-</gray> Reveal and even kill ghosts<br>
+                <gray>-</gray> Prevent ongoing and new ghost attacks<br><br>
+                To know if a <b>ghost is near</b>, a hunter gets <b>cold</b> and <b>lights starts to flicker</b>.
                 """)
             .broughtToYouBy("<bold><gradient:red:#8a5500>Spooky times brought to you by<gradient>")
             .authorInformation(List.of(

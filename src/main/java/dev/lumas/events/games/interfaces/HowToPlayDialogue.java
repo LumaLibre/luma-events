@@ -21,7 +21,7 @@ public class HowToPlayDialogue {
 
     private final String title;
     /**
-     * Not that the '\n' character is replaced with the 'space' character. Use &ltbr&gt instead!
+     * Note that the '\n' character is replaced with the 'space' character. Use &ltbr&gt instead!
      */
     private final String textBody;
     private final String broughtToYouBy;
