@@ -9,10 +9,7 @@ import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Util;
 import org.bukkit.Color;
 import org.bukkit.Location;
-import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.BlockType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -28,7 +25,6 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class GhostVisibility {
 
     private static final int HIDE_AFTER_UNLIT_TICKS = 15;
-    private static final int MAX_LIT_TICKS = 20 * 5;
     private static final double EXPOSED_MIN_CENTEREDNESS = 0.6;
     private static final double SILHOUETTE_MIN_CENTEREDNESS = 0.5;
     private static final int SILHOUETTE_MIN_LIGHT_LEVEL = 5;
@@ -36,7 +32,6 @@ public final class GhostVisibility {
     private static final double MAX_REVEAL_DISTANCE = 20;
     private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 3, 0, true, true, false);
     private static final PotionEffect GLOW = new PotionEffect(PotionEffectType.GLOWING, 3, 0, true, true, false);
-    private static final NamespacedKey SNOW_SPEED_MODIFIER_NAME = NamespacedKey.minecraft("powder_snow");
 
     private final Manor2 manor2;
     private final Visibility visibility;
@@ -44,7 +39,6 @@ public final class GhostVisibility {
     private final AtomicReference<@Nullable LightHit> pendingLight = new AtomicReference<>(); // strongest light from any hunter
     private volatile RevealState flashLight = RevealState.HIDDEN;
     private volatile RevealState staticLight = RevealState.HIDDEN;
-    private int litTicks = 0;
     private int unlitTicks = 0;
     private volatile boolean stopping = false;
 
@@ -98,7 +92,6 @@ public final class GhostVisibility {
             this.staticLight = staticLight(player.getLocation());
             RevealState toUse = staticLight.moreRevealed(current) ? staticLight : current;
             if (toUse == RevealState.EXPOSED) {
-                litTicks = Math.min(litTicks + 1, MAX_LIT_TICKS);
                 player.removePotionEffect(PotionEffectType.INVISIBILITY);
                 if (changed) {
                     Location playerLocation = player.getLocation();
@@ -107,16 +100,6 @@ public final class GhostVisibility {
                 }
             } else {
                 player.addPotionEffect(INVISIBILITY);
-                if (litTicks > 0) {
-                    litTicks--;
-                }
-            }
-            double litProgress = (double) litTicks / MAX_LIT_TICKS;
-            player.setFreezeTicks((int) (player.getMaxFreezeTicks() - litProgress * player.getMaxFreezeTicks()));
-            player.lockFreezeTicks(true);
-            AttributeInstance instance = player.getAttribute(Attribute.MOVEMENT_SPEED);
-            if (instance != null) {
-                instance.removeModifier(SNOW_SPEED_MODIFIER_NAME);
             }
             if (toUse.isRevealed()) {
                 player.addPotionEffect(GLOW);
@@ -141,8 +124,6 @@ public final class GhostVisibility {
         ghost.operatePlayer(player -> {
             player.removePotionEffect(PotionEffectType.INVISIBILITY);
             player.removePotionEffect(PotionEffectType.GLOWING);
-            player.lockFreezeTicks(false);
-            player.setFreezeTicks(0);
         });
     }
 

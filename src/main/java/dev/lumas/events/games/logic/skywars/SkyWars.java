@@ -3,6 +3,7 @@ package dev.lumas.events.games.logic.skywars;
 import com.google.common.base.Preconditions;
 import dev.lumas.core.util.PluginContextLogger;
 import dev.lumas.events.configurable.sectors.game.skywars.SkyWarsDefinition;
+import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.HowToPlayDialogue;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
@@ -145,7 +146,9 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     @Override
     protected void tokenHandler(EventPlayer participant) {
         boolean won = winners.contains(participant.getUuid());
-        tokenFormula.giveTokens(participant, Couple.of(scoreboard.getScore(participant), won));
+        int score = scoreboard.getScore(participant);
+        tokenFormula.giveTokens(participant, Couple.of(score, won));
+        participant.addPermanentScore(MinigameConstant.SKYWARS, score);
     }
 
     @Override
@@ -249,6 +252,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
             announceWinner(alive.size() == 1 ? alive.iterator().next() : null);
         }
 
+        List<EventPlayer> finishingParticipants = List.copyOf(participants);
         List<CompletableFuture<Void>> cleanups = new ArrayList<>();
         for (SkyWarsRole role : roleMap) {
             try {
@@ -265,36 +269,20 @@ public final class SkyWars extends InventoryUnifiedMinigame {
                 return null;
             })
             .thenCompose(v -> {
-                CompletableFuture<Void> endDone = new CompletableFuture<>();
                 try {
-                    scoreboard.handleGameEnd(audience, () -> {
-                        try {
-                            CountdownBossBar.builder()
-                                .audience(this.audience)
-                                .color(BossBar.Color.BLUE)
-                                .title("<aqua><b>Game Over")
-                                .seconds(8)
-                                .callback(() -> this.sendAudienceMessage("This minigame has concluded."))
-                                .build()
-                                .start();
-
-                            Collection<CompletableFuture<Boolean>> teleports = Executors.teleportGroupAsync(participants, lobby);
-                            CompletableFuture.allOf(teleports.toArray(CompletableFuture[]::new))
-                                .whenComplete((r, t) -> {
-                                    if (t != null) {
-                                        endDone.completeExceptionally(t);
-                                    } else {
-                                        endDone.complete(null);
-                                    }
-                                });
-                        } catch (Throwable t) {
-                            endDone.completeExceptionally(t);
-                        }
-                    });
+                    scoreboard.handleGameEnd(audience, () -> CountdownBossBar.builder()
+                        .audience(this.audience)
+                        .color(BossBar.Color.BLUE)
+                        .title("<aqua><b>Game Over")
+                        .seconds(8)
+                        .callback(() -> this.sendAudienceMessage("This minigame has concluded."))
+                        .build()
+                        .start());
                 } catch (Throwable t) {
-                    endDone.completeExceptionally(t);
+                    LOGGER.error("Failed to show the SkyWars game over screen", t);
                 }
-                return endDone;
+                Collection<CompletableFuture<Boolean>> teleports = Executors.teleportGroupAsync(finishingParticipants, lobby);
+                return CompletableFuture.allOf(teleports.toArray(CompletableFuture[]::new));
             })
             .thenComposeAsync(v -> map.removeAsync(), Executors::runAsync)
             .thenCompose(v -> clearArena())

@@ -11,6 +11,8 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -19,6 +21,8 @@ public class Ghost extends Manor2Role {
 
     private static final int WHIRL_INTERVAL_TICKS = 80;
     private static final float WHIRL_VOLUME = 0.6f;
+
+    private static final PotionEffect NIGHT_VISION = new PotionEffect(PotionEffectType.NIGHT_VISION, 220, 0, true, false, false);
 
     @Getter
     private final GhostVisibility visibility;
@@ -65,6 +69,7 @@ public class Ghost extends Manor2Role {
     @Override
     public void tick() {
         visibility.tick();
+        operatePlayer(player -> player.addPotionEffect(NIGHT_VISION));
         whirl();
     }
 

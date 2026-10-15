@@ -4,6 +4,7 @@ import com.destroystokyo.paper.event.player.PlayerLaunchProjectileEvent;
 import com.google.common.base.Preconditions;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.game.Manor2Definition;
+import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.HowToPlayDialogue;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.models.InactivitySettings;
@@ -137,7 +138,9 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     @Override
     protected void tokenHandler(EventPlayer participant) {
         boolean won = winner != null && winner == scoreboard.teamOf(participant.getUuid());
-        tokenFormula.giveTokens(participant, Couple.of(scoreboard.getScore(participant), won));
+        int score = scoreboard.getScore(participant);
+        tokenFormula.giveTokens(participant, Couple.of(score, won));
+        participant.addPermanentScore(MinigameConstant.MANOR_2, score);
     }
 
     @Override
