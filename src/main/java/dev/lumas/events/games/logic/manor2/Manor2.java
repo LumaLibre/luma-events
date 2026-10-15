@@ -4,6 +4,7 @@ import com.destroystokyo.paper.event.player.PlayerLaunchProjectileEvent;
 import com.google.common.base.Preconditions;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.game.Manor2Definition;
+import dev.lumas.events.games.interfaces.HowToPlayDialogue;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
 import dev.lumas.events.games.interfaces.models.InactivitySettings;
 import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
@@ -57,6 +58,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -255,28 +257,37 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     }
 
     @Override
-    protected Couple<String, String> howToPlay() {
-        return Couple.of("<b><gradient:#331D4D:#611e4e:#9f2e51>Manor 2", """
-            <gray><b>Light Mechanics</b></gray>
-            This game uses light mechanics. It's recommended
-            that you turn <b><u>off</u></b> any type of <b>full bright</b>
-            or <b>gamma increasement mods</b>.
-            Ghosts are always <b>vanished</b> when they are not revealed with a flashlight,
-            you are <u>worsening</u> your own experience of this game by leaving these mods
-            enabled because you can't see what area your own flashlight is covering!
-            
-            <gray><b>Ghost</b></gray>
-            The ghost kill ghost hunters, this is done by going into range and attacking (left-clicking a hunter).
-            You have to be strategic to stay out of light. For every 10 players, there is 1 ghost.
-            
-            <gray><b>Hunters</b></gray>
-            The hunters collect artifact and kills ghosts.
-            Ghosts are invisible to you by default. You need to reveal them with your flashlight.
-            Your screen will turn cold and your flashlight will flicker when you're near a ghost.
-            You can collect artifacts by shining on things with your flashlight.
-            Hunters can save their teammates by shining a flashlight on the ghost
-            whilst the ghost is attacking.
-            """);
+    protected HowToPlayDialogue howToPlay() {
+        return HowToPlayDialogue.builder()
+            .title("<b><gradient:#331D4D:#611e4e:#9f2e51>Manor 2")
+            .textBody("""
+                <gray><b>Light Mechanics</b></gray><br>
+                This game uses light mechanics. It's recommended
+                that you turn <b><u>off</u></b> any type of <b>full bright</b>
+                or <b>gamma increasement mods</b>.
+                Ghosts are always <b>vanished</b> when they are not revealed with a flashlight,
+                you are <u>worsening</u> your own experience of this game by leaving these mods
+                enabled because you can't see what area your own flashlight is covering!
+                <br><br>
+                <gray><b>Ghost</b></gray><br>
+                The ghost kill ghost hunters, this is done by going into range and attacking (left-clicking a hunter).
+                You have to be strategic to stay out of light. For every 10 players, there is 1 ghost.
+                <br><br>
+                <gray><b>Hunters</b></gray><br>
+                The hunters collect artifact and kills ghosts.
+                Ghosts are invisible to you by default. You need to reveal them with your flashlight.
+                Your screen will turn cold and your flashlight will flicker when you're near a ghost.
+                You can collect artifacts by shining on things with your flashlight.
+                Hunters can save their teammates by shining a flashlight on the ghost
+                whilst the ghost is attacking.
+                """)
+            .broughtToYouBy("<bold><gradient:red:#8a5500>Spooky times brought to you by<gradient>")
+            .authorInformation(List.of(
+                new HowToPlayDialogue.AuthorInformation(UUID.fromString("d2b440c3-edde-4443-899e-6825c31d0919"), "Thorin"),
+                new HowToPlayDialogue.AuthorInformation(UUID.fromString("144ce39d-301b-40a9-9788-0ca8cb23daf4"), "Jsinco"),
+                new HowToPlayDialogue.AuthorInformation(UUID.fromString("ec568111-1f7f-4446-90e5-095eac5cc9cb"), "Mitality")
+            ))
+            .build();
     }
 
     @Override

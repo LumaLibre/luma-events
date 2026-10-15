@@ -12,7 +12,6 @@ import dev.lumas.events.games.interfaces.models.MinigameRole;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.MinigameBoundingBox;
-import dev.lumas.events.utility.Couple;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Externals;
 import dev.lumas.events.utility.JoinTrace;
@@ -21,9 +20,6 @@ import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.effects.SoundDefinition;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import io.papermc.paper.dialog.Dialog;
-import io.papermc.paper.registry.data.dialog.DialogBase;
-import io.papermc.paper.registry.data.dialog.body.DialogBody;
-import io.papermc.paper.registry.data.dialog.type.DialogType;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import lombok.Getter;
 import lombok.Setter;
@@ -300,18 +296,11 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
     }
 
     private void sendHowToPlay(EventPlayer player) {
-        Couple<String, String> howToPlay = this.howToPlay();
+        HowToPlayDialogue howToPlay = this.howToPlay();
         if (howToPlay == null) {
             return;
         }
-        Dialog dialog = Dialog.create(builder ->
-            builder.empty()
-                .base(
-                    DialogBase.builder(Util.color(howToPlay.a()))
-                        .body(List.of(DialogBody.plainMessage(Util.color(howToPlay.b(), Util.TEXT_COLOR))))
-                        .build()
-                ).type(DialogType.notice())
-        );
+        final Dialog dialog = howToPlay.dialog();
         player.operatePlayer(bukkitPlayer -> Util.sendMsg(
             bukkitPlayer,
             "<how_to_play><yellow>Click here for more info</yellow></how_to_play> about " + this.name,
@@ -590,7 +579,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
     protected abstract boolean handleParticipantJoin(EventPlayer player);
 
-    protected @Nullable Couple<String, String> howToPlay() {
+    protected @Nullable HowToPlayDialogue howToPlay() {
         return null;
     }
 
