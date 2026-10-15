@@ -52,7 +52,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
-
+import org.bukkit.inventory.ItemType;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -60,7 +60,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -92,6 +91,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     public static final NamespacedKey ITEM_TAG = Preconditions.checkNotNull(
         NamespacedKey.fromString("manor2/item", EventMain.getInstance())
     );
+    private static final String GHOST_HEAD_BASE64 = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNTAzYzY0NzlmZjU2OWQ1OWNiYTliZDJjOWU1MzlkOWU4MDRjMjkzYWQwMTFhMDdjZDFkYzY4ZWZiMDdjOWU2YSJ9fX0=";
     @Getter
     private final Manor2Definition definition;
 
@@ -264,33 +264,28 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     protected HowToPlayDialogue howToPlay() {
         return HowToPlayDialogue.builder()
             .title("<b><gradient:#331D4D:#611e4e:#9f2e51>Manor 2")
-            .textBody("""
-                <gray><b>Light Mechanics</b></gray><br>
-                This game uses light mechanics. It's recommended
-                that you turn <b><u>off</u></b> any type of <b>full bright</b>
-                or <b>gamma increasement mods</b>.
-                Ghosts are always <b>vanished</b> when they are not revealed with a flashlight,
-                you are <u>worsening</u> your own experience of this game by leaving these mods
-                enabled because you can't see what area your own flashlight is covering!
-                <br><br>
-                <gray><b>Ghost</b></gray><br>
-                The ghosts kill hunters, this is done by going into range and <b>attacking</b> (<b>left-clicking a hunter</b>).
-                Ghosts are shy, but can be revealed when <b>they get light on them</b>. When revealed, they are <b>incapable
-                of killing hunters</b>. For every 10 players, there is 1 ghost.
-                <br><br>
-                <gray><b>Hunters</b></gray><br>
-                The hunters collect artifact and kills ghosts. The main issue is that both of these are invisible.
-                But luckily they brought a flashlight! With this flashlight they can (<b>right-click to use</b>):<br>
-                <gray>-</gray> Reveal artifacts for points<br>
-                <gray>-</gray> Reveal and even kill ghosts<br>
-                <gray>-</gray> Prevent ongoing and new ghost attacks<br><br>
-                To know if a <b>ghost is near</b>, a hunter gets <b>cold</b> and <b>lights starts to flicker</b>.
-                """)
-            .broughtToYouBy("<bold><gradient:red:#8a5500>Spooky times brought to you by<gradient>")
-            .authorInformation(List.of(
-                new HowToPlayDialogue.AuthorInformation(UUID.fromString("d2b440c3-edde-4443-899e-6825c31d0919"), "Thorin"),
-                new HowToPlayDialogue.AuthorInformation(UUID.fromString("144ce39d-301b-40a9-9788-0ca8cb23daf4"), "Jsinco"),
-                new HowToPlayDialogue.AuthorInformation(UUID.fromString("ec568111-1f7f-4446-90e5-095eac5cc9cb"), "Mitality")
+            .sections(List.of(
+                new HowToPlayDialogue.ItemSection(ItemType.TORCH.createItemStack(), "<gray><b>Light Mechanics</b></gray>", """
+                    This game uses light mechanics. It's recommended
+                    that you turn <b><u>off</u></b> any type of <b>full bright</b>
+                    or <b>gamma increasement mods</b>.
+                    Ghosts are always <b>vanished</b> when they are not revealed with a flashlight,
+                    you are <u>worsening</u> your own experience of this game by leaving these mods
+                    enabled because you can't see what area your own flashlight is covering!
+                    """),
+                new HowToPlayDialogue.HeadSection(GHOST_HEAD_BASE64, "<gray><b>Ghost</b></gray>", """
+                    The ghosts kill hunters, this is done by going into range and <b>attacking</b> (<b>left-clicking a hunter</b>).
+                    Ghosts are shy, but can be revealed when <b>they get light on them</b>. When revealed, they are <b>incapable
+                    of killing hunters</b>. For every 10 players, there is 1 ghost.
+                    """),
+                new HowToPlayDialogue.ItemSection(ItemType.BOW.createItemStack(), "<gray><b>Hunters</b></gray>", """
+                    The hunters collect artifact and kills ghosts. The main issue is that both of these are invisible.
+                    But luckily they brought a flashlight! With this flashlight they can (<b>right-click to use</b>):<br>
+                    <gray>-</gray> Reveal artifacts for points<br>
+                    <gray>-</gray> Reveal and even kill ghosts<br>
+                    <gray>-</gray> Prevent ongoing and new ghost attacks<br><br>
+                    To know if a <b>ghost is near</b>, a hunter gets <b>cold</b> and <b>lights starts to flicker</b>.
+                    """)
             ))
             .build();
     }
