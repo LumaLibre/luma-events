@@ -1,10 +1,13 @@
 package dev.lumas.events.games.logic.manor2.roles;
 
+import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.ManorTeam;
 import dev.lumas.events.games.logic.manor2.light.GhostVisibility;
 import dev.lumas.events.games.logic.manor2.light.LightHit;
 import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.utility.wyck.WyckBiomesService;
+import dev.lumas.events.utility.wyck.WyckBiomesService.Manor2Biomes;
 import dev.lumas.glowapi.model.GlowColorManager;
 import lombok.Getter;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -58,11 +61,17 @@ public class Ghost extends Manor2Role {
         player.showTitle(ManorTeam.GHOSTS.assignmentTitle());
         GlowColorManager.getInstance().setTransientColor(player, NamedTextColor.DARK_GRAY);
         manor2.getPacketGlow().addViewer(player);
+        if (EventMain.isWithWyck()) {
+            WyckBiomesService.INSTANCE.show(Manor2Biomes.GHOST, player);
+        }
     }
 
     @Override
     public void retire(Manor2 manor2) {
         visibility.stop();
+        if (EventMain.isWithWyck()) {
+            WyckBiomesService.INSTANCE.hide(Manor2Biomes.GHOST, eventPlayer.getUuid());
+        }
         super.retire(manor2);
     }
 

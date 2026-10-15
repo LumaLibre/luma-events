@@ -10,7 +10,12 @@ import dev.lumas.events.utility.Util;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.BlockType;
+import org.bukkit.damage.DamageSource;
+import org.bukkit.damage.DamageType;
+import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.jspecify.annotations.Nullable;
@@ -32,6 +37,7 @@ public final class GhostVisibility {
     private static final double MAX_REVEAL_DISTANCE = 20;
     private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 3, 0, true, true, false);
     private static final PotionEffect GLOW = new PotionEffect(PotionEffectType.GLOWING, 3, 0, true, true, false);
+    private static final double MIN_LIT_HEALTH = 1.0;
 
     private final Manor2 manor2;
     private final Visibility visibility;
@@ -81,6 +87,7 @@ public final class GhostVisibility {
         boolean changed = flashLight != previous;
 
         final RevealState current = flashLight;
+        final double litProgress = Math.min(1.0, (double) shootTicks() / manor2.getDefinition().getGhostRevealTime());
         if (flashLight == RevealState.HIDDEN) {
             shooterTicks.clear();
         } else if (flashLight == RevealState.EXPOSED && manor2.getDefinition().getGhostRevealTime() <= shootTicks() && manor2.getRoleMap().as(ghost.getUuid(), Ghost.class) instanceof Ghost ghostGhost) {
@@ -109,6 +116,8 @@ public final class GhostVisibility {
                 player.removePotionEffect(PotionEffectType.GLOWING);
             }
 
+            showLitDamage(player, litProgress);
+
             visibility.setVanished(new IsRolePredicate(GhostHunter.class)
                 .and(new IsNearPredicate(player.getLocation(), MAX_REVEAL_DISTANCE).negate())
             );
@@ -124,7 +133,24 @@ public final class GhostVisibility {
         ghost.operatePlayer(player -> {
             player.removePotionEffect(PotionEffectType.INVISIBILITY);
             player.removePotionEffect(PotionEffectType.GLOWING);
+            player.setHealth(maxHealth(player));
         });
+    }
+
+    private static void showLitDamage(Player player, double litProgress) {
+        double maxHealth = maxHealth(player);
+        double target = Math.max(MIN_LIT_HEALTH, maxHealth * (1.0 - litProgress));
+        double health = player.getHealth();
+        if (target < health) {
+            player.damage(health - target, DamageSource.builder(DamageType.MAGIC).build());
+        } else if (target > health) {
+            player.setHealth(target);
+        }
+    }
+
+    private static double maxHealth(Player player) {
+        AttributeInstance instance = player.getAttribute(Attribute.MAX_HEALTH);
+        return instance != null ? instance.getValue() : 20.0;
     }
 
     public void exposeFor(int ticks) {

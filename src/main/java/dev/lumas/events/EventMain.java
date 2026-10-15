@@ -9,6 +9,7 @@ import dev.lumas.events.games.interfaces.Minigame;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.items.LocalCustomItemManager;
 import dev.lumas.events.items.SoulOrbItem;
+import dev.lumas.events.items.StartMinigameItem;
 import dev.lumas.events.items.candy.CottonCandyItem;
 import dev.lumas.events.items.candy.DarkChocolateItem;
 import dev.lumas.events.items.candy.GhostTaffyItem;
@@ -16,12 +17,12 @@ import dev.lumas.events.items.candy.LemonDropItem;
 import dev.lumas.events.items.candy.ResinCaramelItem;
 import dev.lumas.events.items.candy.SugarplumBonbonItem;
 import dev.lumas.events.items.candy.SurpriseEggItem;
-import dev.lumas.events.items.StartMinigameItem;
 import dev.lumas.events.manager.EventPlayerManager;
 import dev.lumas.events.manager.LeaderboardCacheManager;
 import dev.lumas.events.tasks.PlaytimeCounterTask;
 import dev.lumas.events.trickortreat.TrickOrTreat;
 import dev.lumas.events.utility.Externals;
+import dev.lumas.events.utility.wyck.WyckBiomesService;
 import dev.lumas.lumaitems.util.extensions.Executors;
 import lombok.Getter;
 import net.kyori.adventure.audience.Audience;
@@ -39,6 +40,8 @@ public final class EventMain extends JavaPlugin {
     private static Modules moduleManager;
     @Getter
     private static boolean withMcMMO = false;
+    @Getter
+    private static boolean withWyck = false;
 
     public static boolean STOPPING = false;
 
@@ -75,6 +78,13 @@ public final class EventMain extends JavaPlugin {
 
         if (Externals.pluginExists("mcMMO")) {
             withMcMMO = true;
+        }
+
+        if (Externals.pluginExists("Wyck")) {
+            withWyck = true;
+            Executors.globalDelayed(10, t -> {
+                WyckBiomesService.INSTANCE.registerBiomes(this);
+            });
         }
 
         // temp: trick or treat

@@ -26,6 +26,7 @@ repositories {
     maven("https://mvn.lib.co.nz/public/")
     maven("https://repo.glaremasters.me/repository/towny/") // towny
     maven("https://repo.opencollab.dev/main/") // floodgate
+    maven("https://repo.wyck.dev/public/")
 
     // temp: trick or treat
     maven("https://repo.nexomc.com/releases")
@@ -73,6 +74,7 @@ dependencies {
     compileOnly("com.github.LumaLibre:HiddenArmor-Folia:96bcba105e") // TODO: needs to be on repo.jsinco.dev
     compileOnly("org.geysermc.floodgate:api:2.2.5-SNAPSHOT")
     compileOnly("dev.lumas.sleepy:Sleepy:1.1.0")
+    compileOnly("dev.wyck:wyck:3.4.0")
 
     // temp: trick or treat
     compileOnly("com.nexomc:nexo:1.29.1") { isTransitive = false }

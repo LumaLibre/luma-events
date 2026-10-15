@@ -346,7 +346,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             .toList();
 
         this.queueBossbar = CountdownBossBar.builder()
-            .title("<b><gradient:#3F255E:#9f2e51:#611e4e:#331D4D>" + name + " Starting in</b><gray>:</gray> <b>%ss</b></gradient>")
+            .title("<b><gradient:#3F255E:#9f2e51:#611e4e:#331D4D>" + name + " Starting in</b><gray>:</gray> <b><gradient:#3F255E:#9f2e51:#611e4e:#331D4D>%ss")
             .seconds(seconds)
             .color(BossBar.Color.RED)
             .callback(this::start)
