@@ -33,6 +33,8 @@ public class Config {
     @Comment("Token multiplier")
     private double tokenMultiplier = 1.0;
 
+    private Location initialSpawnLocation = null;
+
     @Comment("Location for /event")
     private Location eventSpawnLocation = null;
 

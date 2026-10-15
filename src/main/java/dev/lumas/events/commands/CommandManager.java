@@ -5,6 +5,9 @@ import dev.lumas.core.annotation.CommandMeta;
 import dev.lumas.core.annotation.Register;
 import dev.lumas.core.model.command.AbstractCommandManager;
 import dev.lumas.events.EventMain;
+import dev.lumas.events.configurable.Config;
+import dev.lumas.events.manager.EventPlayerManager;
+import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Executors;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
@@ -32,7 +35,17 @@ public class CommandManager extends AbstractCommandManager<EventMain, CommandMod
             return false;
         }
 
-        Location loc = EventMain.getConfiguration().getEventSpawnLocation();
+        Config config = EventMain.getConfiguration();
+
+        EventPlayer eventPlayer = EventPlayerManager.getByUUIDOrNull(player.getUniqueId());
+
+        if (eventPlayer != null && !eventPlayer.isInitiallySpawned() && config.getInitialSpawnLocation() != null) {
+            Executors.teleportSafely(player, config.getInitialSpawnLocation().toCenterLocation());
+            eventPlayer.setInitiallySpawned(true);
+            return true;
+        }
+
+        Location loc = config.getEventSpawnLocation();
 
         if (loc != null) {
             Executors.teleportSafely(player, loc.toCenterLocation());

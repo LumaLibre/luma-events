@@ -43,6 +43,8 @@ public class EventPlayer implements Serializable, Scorer {
     private long secondsPlayed;
     private boolean townInviteRewardClaimed;
     private boolean minigameDirty;
+    @Setter
+    private boolean initiallySpawned;
 
 
     // Initial creation
@@ -52,16 +54,18 @@ public class EventPlayer implements Serializable, Scorer {
             new HashMap<>(),
             false,
             0L,
+            false,
             false
         );
     }
 
-    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores, boolean claimedCharm, long secondsPlayed, boolean minigameDirty) {
+    public EventPlayer(UUID uuid, Map<MinigameConstant, Integer> scores, boolean claimedCharm, long secondsPlayed, boolean minigameDirty, boolean initiallySpawned) {
         this.uuid = uuid;
         this.scores = scores;
         this.claimedCharm = claimedCharm;
         this.secondsPlayed = secondsPlayed;
         this.minigameDirty = minigameDirty;
+        this.initiallySpawned = initiallySpawned;
     }
 
     public void sendMessage(String m) {
