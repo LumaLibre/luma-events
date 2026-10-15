@@ -54,6 +54,8 @@ public class OutsideBoundsEffect {
             if (outOfBoundsTicks > MAX_OUT_OF_BOUNDS_TICK) {
                 role.die();
                 Util.sendMsg(manor2.getAudience(), Util.getRandom(OUT_OF_BOUNDS_DEATH), Placeholder.component("player", player.displayName()));
+                outOfBounds.remove(player.getUniqueId());
+                new SoundDefinition(Sound.ENTITY_GHASTLING_SPAWN, 1f, 0.1F, null);
                 return;
             }
             if (outOfBoundsTicks % 20 == 19) {
