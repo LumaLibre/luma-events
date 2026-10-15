@@ -7,6 +7,7 @@ import dev.lumas.events.games.logic.manor2.roles.Artifact;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.WorldTiedBoundingBox;
+import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.latency.tracing.ConeTraceResult;
 import dev.lumas.events.utility.latency.tracing.TraceShooter;
@@ -63,6 +64,9 @@ public class ArtifactManager {
         Bukkit.getRegionScheduler().run(EventMain.getInstance(), manor2.getDefinition().getRegion().toWorldTiedBoundingBox().getCenterLocation(), ignored -> {
             this.spawningRegions.addAll(compileRegions(manor2.getDefinition().getRegion().toWorldTiedBoundingBox()));
         });
+        WorldTiedBoundingBox worldTiedBoundingBox = manor2.getDefinition().getRegion().toWorldTiedBoundingBox();
+        worldTiedBoundingBox.areaLoadedFuture()
+            .thenRunAsync(() -> this.spawningRegions.addAll(compileRegions(worldTiedBoundingBox)), Executors.executor(worldTiedBoundingBox.getCenterLocation()));
         this.artifactTypes = manor2.getDefinition().getArtifacts();
         this.playerArtifactTypes = manor2.getDefinition().getPlayerArtifacts();
     }
