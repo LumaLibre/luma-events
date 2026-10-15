@@ -346,7 +346,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             .toList();
 
         this.queueBossbar = CountdownBossBar.builder()
-            .title("<b><gradient:#3F255E:#9f2e51:#611e4e:#331D4D><b>" + name + " Starting in</b><gray>:</gray> <b>%ss</b></gradient>")
+            .title("<b><gradient:#3F255E:#9f2e51:#611e4e:#331D4D>" + name + " Starting in</b><gray>:</gray> <b>%ss</b></gradient>")
             .seconds(seconds)
             .color(BossBar.Color.RED)
             .callback(this::start)
@@ -378,6 +378,12 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         InactivitySettings settings = this.cachedInactivitySettings;
         for (EventPlayer participant : this.participants) {
             UUID uuid = participant.getUuid();
+            MinigameRole roleClass = settings.roleLookup().apply(participant);
+
+            if (roleClass == null || settings.afkRemovableRoles().stream().noneMatch(type -> type.isInstance(roleClass))) {
+                continue;
+            }
+
             if (!this.afkRemovable(participant, settings)) {
                 this.afkWarned.remove(uuid);
                 continue;

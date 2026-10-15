@@ -45,7 +45,6 @@ import org.bukkit.util.Vector;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +73,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     private static final long DURATION = 600000;
     private static final long END_DELAY_SECONDS = 5;
     private static final long CLEANUP_TIMEOUT_SECONDS = 30;
+    private static final int LOBBY_TELEPORT_ATTEMPTS = 3;
     private static final double THROWABLE_KNOCKBACK = 0.3;
     private static final double CLEAR_MARGIN = 16;
     static final PluginContextLogger LOGGER = PluginContextLogger.getPluginLogger();
@@ -281,14 +281,47 @@ public final class SkyWars extends InventoryUnifiedMinigame {
                 } catch (Throwable t) {
                     LOGGER.error("Failed to show the SkyWars game over screen", t);
                 }
-                Collection<CompletableFuture<Boolean>> teleports = Executors.teleportGroupAsync(finishingParticipants, lobby);
-                return CompletableFuture.allOf(teleports.toArray(CompletableFuture[]::new));
+                return sendToLobby(finishingParticipants, LOBBY_TELEPORT_ATTEMPTS);
             })
             .thenComposeAsync(v -> map.removeAsync(), Executors::runAsync)
             .thenCompose(v -> clearArena())
             .exceptionally(throwable -> {
                 LOGGER.error("Failed to clean up the SkyWars arena", throwable);
                 return null;
+            });
+    }
+
+    private CompletableFuture<Void> sendToLobby(List<EventPlayer> eventPlayers, int attemptsLeft) {
+        List<EventPlayer> online = eventPlayers.stream()
+            .filter(participant -> participant.getPlayer() != null)
+            .toList();
+        if (online.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        List<CompletableFuture<Boolean>> teleports = online.stream()
+            .map(participant -> participant.teleportAsync(lobby))
+            .toList();
+        return CompletableFuture.allOf(teleports.toArray(CompletableFuture[]::new))
+            .handle((v, throwable) -> null)
+            .thenCompose(v -> {
+                List<EventPlayer> stranded = new ArrayList<>();
+                for (int i = 0; i < online.size(); i++) {
+                    CompletableFuture<Boolean> teleport = teleports.get(i);
+                    if (teleport.isCompletedExceptionally() || !teleport.join()) {
+                        stranded.add(online.get(i));
+                    }
+                }
+                if (stranded.isEmpty()) {
+                    return CompletableFuture.completedFuture(null);
+                }
+                String names = stranded.stream().map(EventPlayer::getName).collect(Collectors.joining(", "));
+                if (attemptsLeft <= 1) {
+                    LOGGER.error("Could not send " + names + " back to the SkyWars lobby before clearing the arena");
+                    return CompletableFuture.completedFuture(null);
+                }
+                LOGGER.warning("Retrying SkyWars lobby teleport for " + names);
+                return sendToLobby(stranded, attemptsLeft - 1);
             });
     }
 
@@ -330,11 +363,11 @@ public final class SkyWars extends InventoryUnifiedMinigame {
                 .map(SkyWarsRole::getUuid)
                 .collect(Collectors.toUnmodifiableSet());
         }
-        scoreboard.handleGameEnd(this.audience, () -> sendAudienceMessage(winner == null
+        sendAudienceMessage(winner == null
             ? Component.text("No team won this time!")
             : Component.empty()
-              .append(winner.displayName().append(Component.text(" Team")))
-              .append(Component.text(" has won!"))));
+            .append(winner.displayName().append(Component.text(" Team")))
+            .append(Component.text(" has won!")));
     }
 
     private void showSetupProgress(String label, double progress) {
@@ -412,6 +445,9 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     private CompletableFuture<Void> clearArena() {
         WorldTiedBoundingBox arena = border.getFootprint().move(CLEAR_MARGIN, 0, CLEAR_MARGIN);
         World world = arena.getWorld();
+        if (arena.contains(lobby)) {
+            LOGGER.warning("The SkyWars lobby is inside the area cleared after every game, so it gets wiped along with the arena");
+        }
         int minX = (int) Math.floor(arena.getMinX());
         int maxX = (int) Math.floor(arena.getMaxX());
         int minZ = (int) Math.floor(arena.getMinZ());
