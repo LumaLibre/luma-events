@@ -41,6 +41,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.ItemType;
 import org.bukkit.util.Vector;
 import org.jspecify.annotations.Nullable;
 
@@ -125,21 +126,22 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     protected HowToPlayDialogue howToPlay() {
         return HowToPlayDialogue.builder()
             .title("<b><gradient:#331D4D:#611e4e:#9f2e51>SkyWars")
-            .textBody("""
-                <gray><b>Teams</b></gray><br>
-                Each map only has around 12-16 islands,
-                players are grouped into teams and this
-                is a team-based minigame. Every player
-                has a permanent helmet representing their
-                team color that cannot be removed.
-                <br><br>
-                <gray><b>Looting</b></gray><br>
-                Loot rarity is based on the type of
-                copper chest you open. Normal copper
-                contains the most common loot whereas
-                oxidized copper contains the rarest
-                loot in this game.
-                """)
+            .sections(List.of(new HowToPlayDialogue.ItemSection(ItemType.PLAYER_HEAD.createItemStack(), "<gray><b>Teams</b></gray>", """
+                        Each map only has around 12-16 islands,
+                        players are grouped into teams and this
+                        is a team-based minigame. Every player
+                        has a permanent helmet representing their
+                        team color that cannot be removed.
+                        """),
+                    new HowToPlayDialogue.ItemSection(ItemType.GOLD_NUGGET.createItemStack(), "<gray><b>Looting</b></gray>", """
+                        Loot rarity is based on the type of
+                        copper chest you open. Normal copper
+                        contains the most common loot whereas
+                        oxidized copper contains the rarest
+                        loot in this game.
+                        """)
+                )
+            )
             .build();
     }
 
