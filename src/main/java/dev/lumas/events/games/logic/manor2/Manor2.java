@@ -23,6 +23,7 @@ import dev.lumas.events.games.logic.manor2.roles.RoleHitbox;
 import dev.lumas.events.games.logic.manor2.roles.Spectator;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.tokenformula.Manor2TokenFormula;
+import dev.lumas.events.games.tokenformula.ScoreRangeTokenFormula;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Couple;
 import dev.lumas.events.utility.Executors;
@@ -116,7 +117,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private CountdownBossBar timer;
     private Component gameOverSubtitle = Util.color("Game ended by force", Util.TEXT_COLOR);
     private volatile @Nullable ManorTeam winner;
-    private final Manor2TokenFormula tokenFormula = new Manor2TokenFormula();
+    private final ScoreRangeTokenFormula tokenFormula = Manor2TokenFormula.formula(this);
     private final OutsideBoundsEffect outsideBounds = new OutsideBoundsEffect(this);
 
     public Manor2(Manor2Definition definition) {

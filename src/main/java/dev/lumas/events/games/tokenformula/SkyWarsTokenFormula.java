@@ -1,16 +1,15 @@
 package dev.lumas.events.games.tokenformula;
 
-public class SkyWarsTokenFormula extends ScoreRangeTokenFormula {
+public class SkyWarsTokenFormula {
 
     private static final int MIN_SCORE = 0;
     private static final int MAX_SCORE = 60;
 
-    public SkyWarsTokenFormula() {
-        super(MIN_SCORE, MAX_SCORE);
+    private SkyWarsTokenFormula() {
+        throw new UnsupportedOperationException("Utility class");
     }
 
-    @Override
-    protected String scoreDescription() {
-        return "kills and time survived";
+    public static ScoreRangeTokenFormula formula() {
+        return new ScoreRangeTokenFormula(MIN_SCORE, MAX_SCORE, "kills and time survived");
     }
 }

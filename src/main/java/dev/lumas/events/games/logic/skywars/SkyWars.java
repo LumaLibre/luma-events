@@ -13,6 +13,7 @@ import dev.lumas.events.games.logic.skywars.roles.SkyWarsRole;
 import dev.lumas.events.games.logic.skywars.roles.SkyWarsSpectator;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
+import dev.lumas.events.games.tokenformula.ScoreRangeTokenFormula;
 import dev.lumas.events.games.tokenformula.SkyWarsTokenFormula;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.WorldTiedBoundingBox;
@@ -94,7 +95,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     private final AtomicBoolean ended = new AtomicBoolean();
     @Getter
     private final Scoreboard<EventPlayer> scoreboard = new Scoreboard<>();
-    private final SkyWarsTokenFormula tokenFormula = new SkyWarsTokenFormula();
+    private final ScoreRangeTokenFormula tokenFormula = SkyWarsTokenFormula.formula();
     private volatile Set<UUID> winners = Set.of();
 
     public SkyWars(SkyWarsDefinition def) {

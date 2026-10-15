@@ -16,6 +16,7 @@ import dev.lumas.events.games.logic.copycat.roles.TransientSpectator;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.games.models.Scoreboard;
 import dev.lumas.events.games.tokenformula.CopycatTokenFormula;
+import dev.lumas.events.games.tokenformula.ScoreRangeTokenFormula;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Couple;
 import dev.lumas.events.utility.Executors;
@@ -130,7 +131,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
     private final MinigameRoleMap<CopycatRole> roleMap = new MinigameRoleMap<>(CopycatRole::cleanup);
     @Getter
     private final Scoreboard<EventPlayer> scoreboard = new Scoreboard<>();
-    private final CopycatTokenFormula tokenFormula = new CopycatTokenFormula();
+    private final ScoreRangeTokenFormula tokenFormula = CopycatTokenFormula.formula();
     private final Map<UUID, Integer> roundsSurvived = new ConcurrentHashMap<>();
     private final Map<UUID, BuildScore> roundScores = new ConcurrentHashMap<>();
     private final Deque<Showcased> showcase = new ConcurrentLinkedDeque<>();
