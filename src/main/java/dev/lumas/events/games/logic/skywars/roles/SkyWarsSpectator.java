@@ -4,6 +4,8 @@ import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.skywars.SkyWars;
 import dev.lumas.events.games.logic.skywars.SkyWarsTeam;
 import dev.lumas.events.model.EventPlayer;
+import dev.lumas.events.utility.Executors;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.potion.PotionEffect;
@@ -12,13 +14,17 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SkyWarsSpectator extends SkyWarsRole {
 
     private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 140, 0, false, false, true);
 
     private volatile boolean returning = false;
+    private final Set<UUID> hiddenFrom = ConcurrentHashMap.newKeySet();
 
     protected SkyWarsSpectator(SkyWars skyWars, EventPlayer eventPlayer, SkyWarsTeam team) {
         super(skyWars, eventPlayer, team);
@@ -31,6 +37,7 @@ public class SkyWarsSpectator extends SkyWarsRole {
 
         for (EventPlayer other : ctx.getParticipants()) {
             if (!other.getUuid().equals(this.getUuid())) {
+                hiddenFrom.add(other.getUuid());
                 other.operatePlayer(viewer -> viewer.hidePlayer(EventMain.getInstance(), self));
             }
         }
@@ -57,11 +64,13 @@ public class SkyWarsSpectator extends SkyWarsRole {
 
         Player self = this.eventPlayer.getPlayer();
         if (self != null) {
-            for (EventPlayer other : ctx.getParticipants()) {
-                if (!other.getUuid().equals(this.getUuid())) {
-                    cleanups.add(other.operatePlayer(viewer -> viewer.showPlayer(EventMain.getInstance(), self)));
+            for (UUID viewerId : hiddenFrom) {
+                Player viewer = Bukkit.getPlayer(viewerId);
+                if (viewer != null) {
+                    cleanups.add(Executors.runSyncFuture(viewer, () -> viewer.showPlayer(EventMain.getInstance(), self)));
                 }
             }
+            hiddenFrom.clear();
         }
         return CompletableFuture.allOf(cleanups.toArray(CompletableFuture[]::new));
     }

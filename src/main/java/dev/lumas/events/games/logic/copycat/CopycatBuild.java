@@ -59,6 +59,7 @@ public final class CopycatBuild {
     private static final PluginContextLogger LOGGER = PluginContextLogger.getPluginLogger();
     private static final Set<Material> INVISIBLE = Set.of(Material.BARRIER, Material.STRUCTURE_VOID, Material.LIGHT);
     private static final String POTTED_PREFIX = "POTTED_";
+    private static final Set<Material> WATER_PLANTS = Set.of(Material.SEAGRASS, Material.TALL_SEAGRASS, Material.KELP, Material.KELP_PLANT);
     private static final Map<Material, Material> PLANT_HEADS = Map.of(
         Material.WEEPING_VINES_PLANT, Material.WEEPING_VINES,
         Material.TWISTING_VINES_PLANT, Material.TWISTING_VINES,
@@ -272,6 +273,7 @@ public final class CopycatBuild {
     }
 
     public static boolean isWaterlogged(@Nullable BlockData data) {
+        if (data != null && WATER_PLANTS.contains(data.getMaterial())) return true;
         return data instanceof Waterlogged waterlogged && waterlogged.isWaterlogged();
     }
 

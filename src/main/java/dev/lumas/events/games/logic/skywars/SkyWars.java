@@ -2,6 +2,7 @@ package dev.lumas.events.games.logic.skywars;
 
 import com.google.common.base.Preconditions;
 import dev.lumas.core.util.PluginContextLogger;
+import dev.lumas.events.EventMain;
 import dev.lumas.events.configurable.sectors.game.skywars.SkyWarsDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.HowToPlayDialogue;
@@ -283,6 +284,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
                 } catch (Throwable t) {
                     LOGGER.error("Failed to show the SkyWars game over screen", t);
                 }
+                restoreVisibility(finishingParticipants);
                 return sendToLobby(finishingParticipants, LOBBY_TELEPORT_ATTEMPTS);
             })
             .thenComposeAsync(v -> map.removeAsync(), Executors::runAsync)
@@ -291,6 +293,19 @@ public final class SkyWars extends InventoryUnifiedMinigame {
                 LOGGER.error("Failed to clean up the SkyWars arena", throwable);
                 return null;
             });
+    }
+
+    private static void restoreVisibility(List<EventPlayer> eventPlayers) {
+        for (EventPlayer viewer : eventPlayers) {
+            viewer.operatePlayer(player -> {
+                for (EventPlayer other : eventPlayers) {
+                    Player shown = other.getPlayer();
+                    if (shown != null && shown != player) {
+                        player.showPlayer(EventMain.getInstance(), shown);
+                    }
+                }
+            });
+        }
     }
 
     private CompletableFuture<Void> sendToLobby(List<EventPlayer> eventPlayers, int attemptsLeft) {
@@ -380,6 +395,10 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     public void onEntityDamage(EntityDamageEvent event) {
         this.ensureNotIllegal();
         if (ended.get() && roleMap.containsKey(event.getEntity().getUniqueId())) {
+            event.setCancelled(true);
+            return;
+        }
+        if (roleMap.is(event.getEntity().getUniqueId(), SkyWarsSpectator.class)) {
             event.setCancelled(true);
             return;
         }

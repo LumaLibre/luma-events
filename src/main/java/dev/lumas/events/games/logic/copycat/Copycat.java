@@ -701,6 +701,11 @@ public final class Copycat extends InventoryUnifiedMinigame {
         this.returnItems(event.getPlayer(), Placed.of(block));
         builder.onBroken(pos);
         this.removePartner(event.getPlayer(), builder, block, data);
+        if (CopycatBuild.isWaterlogged(data)) {
+            Executors.delayedSync(block.getLocation(), 1, () -> {
+                if (block.getType() == Material.WATER) block.setBlockData(ArenaBlocks.AIR, false);
+            });
+        }
     }
 
     private void removePartner(Player player, Builder builder, Block block, BlockData data) {
