@@ -6,6 +6,7 @@ import lombok.Getter;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,6 +15,10 @@ import java.util.Map;
 
 @Getter
 public final class Plot {
+
+    private static final double VIEW_DISTANCE = 3;
+    private static final double VIEW_ELEVATION = -1;
+    private static final double EYE_HEIGHT = 1.62;
 
     private final int index;
     private final World world;
@@ -44,6 +49,27 @@ public final class Plot {
         double centerZ = interiorMin.z() + interiorSize / 2.0;
         this.spawn = new Location(world, interiorMin.x() + 1.5, interiorMin.y() + 1, interiorMin.z() + 1.5, -45f, 10f);
         this.overview = new Location(world, centerX, wallTop + 4, centerZ, 0f, 80f);
+    }
+
+    public List<Location> viewpoints(int count) {
+        BlockPos min = activeMin;
+        BlockPos size = activeSize;
+        double centerX = min.x() + size.x() / 2.0;
+        double centerY = min.y() + size.y() / 2.0;
+        double centerZ = min.z() + size.z() / 2.0;
+        double maxRadius = (interior.getMaxX() - interior.getMinX()) / 2.0 - 1;
+        double radius = Math.min(maxRadius, Math.hypot(size.x(), size.z()) / 2.0 + VIEW_DISTANCE);
+        double y = min.y() + size.y() + VIEW_ELEVATION;
+        List<Location> viewpoints = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            double angle = 2 * Math.PI * i / count;
+            double x = centerX + radius * Math.cos(angle);
+            double z = centerZ + radius * Math.sin(angle);
+            Location viewpoint = new Location(world, x, y, z);
+            viewpoint.setDirection(new Vector(centerX - x, centerY - (y + EYE_HEIGHT), centerZ - z));
+            viewpoints.add(viewpoint);
+        }
+        return viewpoints;
     }
 
     public BlockPos placementOffset(CopycatBuild build) {

@@ -15,9 +15,7 @@ import org.bukkit.Material;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Bisected;
 import org.bukkit.block.data.BlockData;
-import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.Levelled;
-import org.bukkit.block.data.Orientable;
 import org.bukkit.block.data.Rotatable;
 import org.bukkit.block.data.Waterlogged;
 import org.bukkit.block.data.type.Bed;
@@ -60,6 +58,13 @@ public final class CopycatBuild {
     private static final List<BlockFace> EXPOSURE_FACES = List.of(BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST);
     private static final PluginContextLogger LOGGER = PluginContextLogger.getPluginLogger();
     private static final Set<Material> INVISIBLE = Set.of(Material.BARRIER, Material.STRUCTURE_VOID, Material.LIGHT);
+    private static final String POTTED_PREFIX = "POTTED_";
+    private static final Map<Material, Material> PLANT_HEADS = Map.of(
+        Material.WEEPING_VINES_PLANT, Material.WEEPING_VINES,
+        Material.TWISTING_VINES_PLANT, Material.TWISTING_VINES,
+        Material.CAVE_VINES_PLANT, Material.CAVE_VINES,
+        Material.KELP_PLANT, Material.KELP,
+        Material.BIG_DRIPLEAF_STEM, Material.BIG_DRIPLEAF);
 
     private final String name;
     private final Map<BlockPos, BlockData> blocks;
@@ -205,8 +210,12 @@ public final class CopycatBuild {
         if (isFluid(material) && data instanceof Levelled levelled && levelled.getLevel() != 0) {
             return "flowing " + material.name().toLowerCase() + " cannot be placed";
         }
-        if (!placementItem(data).isItem()) {
+        Material item = placementItem(data);
+        if (!item.isItem()) {
             return material.name().toLowerCase() + " has no item";
+        }
+        if (isPotted(material) && pottedPlant(data) == null) {
+            return material.name().toLowerCase() + " has no plant item";
         }
         if (data instanceof Bed) {
             return material.name().toLowerCase() + " is two blocks wide";
@@ -364,8 +373,35 @@ public final class CopycatBuild {
             case WATER -> Material.WATER_BUCKET;
             case LAVA -> Material.LAVA_BUCKET;
             case WATER_CAULDRON, LAVA_CAULDRON, POWDER_SNOW_CAULDRON -> Material.CAULDRON;
-            default -> data.getPlacementMaterial();
+            default -> {
+                if (isPotted(data.getMaterial())) yield Material.FLOWER_POT;
+                Material head = PLANT_HEADS.get(data.getMaterial());
+                yield head != null ? head.createBlockData().getPlacementMaterial() : data.getPlacementMaterial();
+            }
         };
+    }
+
+    public static boolean isStemPlant(Material material) {
+        return PLANT_HEADS.containsKey(material) || PLANT_HEADS.containsValue(material);
+    }
+
+    public static Material plantHead(Material material) {
+        return PLANT_HEADS.getOrDefault(material, material);
+    }
+
+    public static boolean isPotted(Material material) {
+        return material.name().startsWith(POTTED_PREFIX);
+    }
+
+    @Nullable
+    public static Material pottedPlant(@Nullable BlockData data) {
+        if (data == null || !isPotted(data.getMaterial())) return null;
+        String plant = data.getMaterial().name().substring(POTTED_PREFIX.length());
+        Material material = Material.getMaterial(plant);
+        if ((material == null || !material.isItem()) && plant.endsWith("_BUSH")) {
+            material = Material.getMaterial(plant.substring(0, plant.length() - "_BUSH".length()));
+        }
+        return material != null && material.isItem() ? material : null;
     }
 
     public static boolean isFluid(Material material) {
@@ -387,17 +423,21 @@ public final class CopycatBuild {
     }
 
     public static boolean matches(BlockData target, BlockData actual) {
-        if (target.getMaterial() != actual.getMaterial()) return false;
+        if (plantHead(target.getMaterial()) != plantHead(actual.getMaterial())) return false;
         if (itemCount(target) != itemCount(actual)) return false;
         if (isWaterlogged(target) != isWaterlogged(actual)) return false;
-        if (target instanceof Rotatable rotatable && actual instanceof Rotatable other && rotatable.getRotation() != other.getRotation()) return false;
+        //if (target instanceof Rotatable rotatable && actual instanceof Rotatable other && rotatable.getRotation() != other.getRotation()) return false;
         return switch (target) {
+            /** turns out a lot of blocks have rotations that aren't visible through their texture, plus some schematics have blocks facing air and builders don't really have support blocks
             case
                 Directional directional when actual instanceof Directional other && directional.getFacing() != other.getFacing() ->
                 false;
             case
                 Orientable orientable when actual instanceof Orientable other && orientable.getAxis() != other.getAxis() ->
                 false;
+             **/
+            // an open trapdoor looks the same hinged at the top or the bottom
+            case TrapDoor trapDoor when trapDoor.isOpen() -> true;
             case Bisected bisected when actual instanceof Bisected other && bisected.getHalf() != other.getHalf() ->
                 false;
             default ->

@@ -18,6 +18,9 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -46,6 +49,8 @@ public final class Builder extends CopycatRole {
         meta.addEnchant(Enchantment.VANISHING_CURSE, 1, true);
         meta.getPersistentDataContainer().set(DONE_KEY, PersistentDataType.BOOLEAN, true);
     });
+    private static final AttributeModifier SCALE = new AttributeModifier(
+        new NamespacedKey(EventMain.getInstance(), "copycat_scale"), -0.5, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
 
     @Getter
     private final Plot plot;
@@ -75,6 +80,10 @@ public final class Builder extends CopycatRole {
             player.setFallDistance(0f);
             player.setAllowFlight(true);
             player.setFlying(true);
+            AttributeInstance scale = player.getAttribute(Attribute.SCALE);
+            if (scale != null && scale.getModifier(SCALE.getKey()) == null) {
+                scale.addTransientModifier(SCALE);
+            }
             deployed = true;
         }));
     }
@@ -105,6 +114,10 @@ public final class Builder extends CopycatRole {
         return this.operatePlayer(player -> {
             player.setFlying(false);
             player.setAllowFlight(false);
+            AttributeInstance scale = player.getAttribute(Attribute.SCALE);
+            if (scale != null) {
+                scale.removeModifier(SCALE);
+            }
         });
     }
 
@@ -163,6 +176,10 @@ public final class Builder extends CopycatRole {
             Material bucket = CopycatBuild.extraBucket(data);
             if (bucket != null) {
                 special.add(new ItemStack(bucket));
+            }
+            Material plant = CopycatBuild.pottedPlant(data);
+            if (plant != null) {
+                counts.merge(plant, 1, Integer::sum);
             }
         }
         this.operatePlayer(player -> {

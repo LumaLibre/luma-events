@@ -3,6 +3,8 @@ main: dev.lumas.events.EventMain
 version: '${version}'
 api-version: 1.21
 folia-supported: true
+libraries:
+  - net.kyori:adventure-nbt:4.17.0 # copycat
 depend:
   - LumaCore
   - LumaItems

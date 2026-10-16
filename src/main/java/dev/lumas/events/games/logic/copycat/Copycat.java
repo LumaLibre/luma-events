@@ -1,5 +1,6 @@
 package dev.lumas.events.games.logic.copycat;
 
+import com.destroystokyo.paper.event.block.BlockDestroyEvent;
 import com.google.common.base.Preconditions;
 import dev.lumas.core.util.PluginContextLogger;
 import dev.lumas.events.EventMain;
@@ -22,19 +23,26 @@ import dev.lumas.events.utility.Couple;
 import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.vector.BlockPos;
+import io.papermc.paper.event.player.PlayerFlowerPotManipulateEvent;
+import io.papermc.paper.event.player.PlayerOpenSignEvent;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.Campfire;
+import org.bukkit.block.Sign;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Waterlogged;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockBurnEvent;
 import org.bukkit.event.block.BlockDamageEvent;
@@ -62,6 +70,7 @@ import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ItemType;
 import org.jetbrains.annotations.Nullable;
@@ -73,9 +82,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -116,6 +127,11 @@ public final class Copycat extends InventoryUnifiedMinigame {
     private static final long END_DELAY_SECONDS = 5;
     private static final long SETUP_ALLOWANCE_SECONDS = 45;
     private static final long CLEANUP_TIMEOUT_SECONDS = 30;
+    private static final long BREAK_COOLDOWN_MILLIS = 250;
+    private static final Set<Material> MENU_BLOCKS = EnumSet.of(
+        Material.CRAFTING_TABLE, Material.ENCHANTING_TABLE, Material.STONECUTTER, Material.GRINDSTONE,
+        Material.LOOM, Material.CARTOGRAPHY_TABLE, Material.SMITHING_TABLE, Material.ENDER_CHEST,
+        Material.BEACON, Material.JUKEBOX, Material.DECORATED_POT, Material.LECTERN, Material.CHISELED_BOOKSHELF);
     public static final int CORRECT_POINTS = 10;
     public static final int WRONG_PENALTY = 5;
     public static final int EXTRA_PENALTY = 5;
@@ -138,6 +154,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
     private final Deque<Showcased> showcase = new ConcurrentLinkedDeque<>();
     private final List<Builder> eliminated = new CopyOnWriteArrayList<>();
     private final AtomicBoolean ended = new AtomicBoolean();
+    private final Map<UUID, Long> lastBreak = new ConcurrentHashMap<>();
     @Getter
     private volatile Arena arena;
     private volatile Phase phase = Phase.SETUP;
@@ -221,6 +238,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
     @Override
     public boolean removeParticipant(EventPlayer participant, boolean doTeleport, boolean wasAfk) {
         CopycatRole role = roleMap.remove(participant.getUuid());
+        lastBreak.remove(participant.getUuid());
         if (role != null) {
             role.cleanup();
         }
@@ -536,7 +554,11 @@ public final class Copycat extends InventoryUnifiedMinigame {
         BuildScore score = roundScores.get(next.getUuid());
         String accuracy = score == null ? "?" : percent(accuracy(next, score));
         String points = score == null ? "?" : String.valueOf(score.points());
-        Executors.teleportGroupAsync(participants, next.getPlot().getOverview());
+        List<EventPlayer> viewers = List.copyOf(participants);
+        List<Location> viewpoints = next.getPlot().viewpoints(viewers.size());
+        for (int i = 0; i < viewers.size(); i++) {
+            viewers.get(i).teleportAsync(viewpoints.get(i));
+        }
         if (entry.best()) {
             this.sendAudienceTitle("<green>" + next.getName() + "'s build", "<gold>" + accuracy + " correct</gold> <gray>|</gray> <gold>" + points + " points", SHORT_TITLE);
             this.playAudienceSound(Sound.ENTITY_PLAYER_LEVELUP, 0.8f, 1.2f);
@@ -655,7 +677,10 @@ public final class Copycat extends InventoryUnifiedMinigame {
             event.setCancelled(true);
             return;
         }
-        event.setInstaBreak(true);
+        Long last = lastBreak.get(event.getPlayer().getUniqueId());
+        if (last == null || System.currentTimeMillis() - last >= BREAK_COOLDOWN_MILLIS) {
+            event.setInstaBreak(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
@@ -669,21 +694,36 @@ public final class Copycat extends InventoryUnifiedMinigame {
         }
         event.setDropItems(false);
         event.setExpToDrop(0);
+        lastBreak.put(event.getPlayer().getUniqueId(), System.currentTimeMillis());
         Block block = event.getBlock();
         BlockData data = block.getBlockData();
         BlockPos pos = BlockPos.of(block);
         this.returnItems(event.getPlayer(), Placed.of(block));
         builder.onBroken(pos);
-        if (CopycatBuild.isTallPair(data)) {
-            BlockPos partnerPos = CopycatBuild.partnerOf(pos, data);
-            Block partner = block.getWorld().getBlockAt(partnerPos.x(), partnerPos.y(), partnerPos.z());
-            Material bucket = CopycatBuild.extraBucket(partner.getBlockData());
-            if (bucket != null) {
-                event.getPlayer().getInventory().addItem(new ItemStack(bucket));
-            }
-            partner.setBlockData(ArenaBlocks.AIR, false);
-            builder.onBroken(partnerPos);
+        this.removePartner(event.getPlayer(), builder, block, data);
+    }
+
+    private void removePartner(Player player, Builder builder, Block block, BlockData data) {
+        if (!CopycatBuild.isTallPair(data)) return;
+        BlockPos partnerPos = CopycatBuild.partnerOf(BlockPos.of(block), data);
+        Block partner = block.getWorld().getBlockAt(partnerPos.x(), partnerPos.y(), partnerPos.z());
+        if (partner.getType() != data.getMaterial()) return;
+        Material bucket = CopycatBuild.extraBucket(partner.getBlockData());
+        if (bucket != null) {
+            player.getInventory().addItem(new ItemStack(bucket));
         }
+        partner.setBlockData(ArenaBlocks.AIR, false);
+        builder.onBroken(partnerPos);
+    }
+
+    private void returnReplaced(Player player, Builder builder, BlockState replaced, Block placed) {
+        BlockData before = replaced.getBlockData();
+        BlockData after = placed.getBlockData();
+        // stacking slabs, candles, pickles, eggs or snow layers
+        if (before.getMaterial().isAir() || before.getMaterial() == after.getMaterial()) return;
+        if (before.getMaterial() == Material.WATER && CopycatBuild.isWaterlogged(after)) return;
+        this.returnItems(player, new Placed(before, null));
+        this.removePartner(player, builder, placed, before);
     }
 
     private void returnItems(Player player, Placed placed) {
@@ -692,6 +732,27 @@ public final class Copycat extends InventoryUnifiedMinigame {
         if (bucket != null) {
             player.getInventory().addItem(new ItemStack(bucket));
         }
+        Material plant = CopycatBuild.pottedPlant(placed.data());
+        if (plant != null) {
+            player.getInventory().addItem(new ItemStack(plant));
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onFlowerPotManipulate(PlayerFlowerPotManipulateEvent event) {
+        this.ensureNotIllegal();
+        if (!isParticipant(event.getPlayer())) return;
+        Block pot = event.getFlowerpot();
+        Builder builder = editingBuilder(event.getPlayer(), pot);
+        if (builder == null) {
+            event.setCancelled(true);
+            return;
+        }
+        BlockPos pos = BlockPos.of(pot);
+        Executors.delayedSync(pot.getLocation(), 1, () -> {
+            if (pot.getType() != Material.FLOWER_POT && !CopycatBuild.isPotted(pot.getType())) return;
+            builder.onPlaced(pos, Placed.of(pot));
+        });
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
@@ -718,10 +779,12 @@ public final class Copycat extends InventoryUnifiedMinigame {
                 }
             }
             for (BlockState replaced : multi.getReplacedBlockStates()) {
+                this.returnReplaced(event.getPlayer(), builder, replaced, replaced.getBlock());
                 builder.onPlaced(BlockPos.of(replaced.getBlock()), settle(replaced.getBlock()));
             }
             return;
         }
+        this.returnReplaced(event.getPlayer(), builder, event.getBlockReplacedState(), event.getBlockPlaced());
         builder.onPlaced(BlockPos.of(event.getBlockPlaced()), settle(event.getBlockPlaced()));
     }
 
@@ -822,12 +885,42 @@ public final class Copycat extends InventoryUnifiedMinigame {
             event.setCancelled(true);
             return;
         }
+        Block clicked = event.getClickedBlock();
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && clicked != null && inArena(clicked) && opensMenu(clicked)
+            && !placesAgainst(event.getPlayer())) {
+            event.setUseInteractedBlock(Event.Result.DENY);
+        }
         if (!Builder.isDoneItem(event.getItem())) return;
         event.setCancelled(true);
         Builder builder = roleMap.as(event.getPlayer().getUniqueId(), Builder.class);
         if (builder != null) {
             this.submit(builder);
         }
+    }
+
+    private static boolean placesAgainst(Player player) {
+        return player.isSneaking() && (!player.getInventory().getItemInMainHand().isEmpty() || !player.getInventory().getItemInOffHand().isEmpty());
+    }
+
+    private static boolean opensMenu(Block block) {
+        Material type = block.getType();
+        if (MENU_BLOCKS.contains(type) || Tag.ANVIL.isTagged(type)) return true;
+        BlockState state = block.getState(false);
+        return state instanceof InventoryHolder || state instanceof Sign || state instanceof Campfire;
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onOpenSign(PlayerOpenSignEvent event) {
+        this.ensureNotIllegal();
+        if (isParticipant(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onBlockDestroy(BlockDestroyEvent event) {
+        this.ensureNotIllegal();
+        if (inArena(event.getBlock())) event.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
@@ -900,6 +993,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
         this.ensureNotIllegal();
         if (!inArena(event.getBlock())) return;
         Material type = event.getBlock().getType();
+        if (CopycatBuild.isStemPlant(type)) return;
         if (!type.isSolid() || type.hasGravity()) {
             event.setCancelled(true);
         }
