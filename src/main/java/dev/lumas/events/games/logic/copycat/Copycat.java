@@ -128,6 +128,8 @@ public final class Copycat extends InventoryUnifiedMinigame {
     private static final long SETUP_ALLOWANCE_SECONDS = 45;
     private static final long CLEANUP_TIMEOUT_SECONDS = 30;
     private static final long BREAK_COOLDOWN_MILLIS = 250;
+    private static final long SUBMIT_MIN_GAP_MILLIS = 150;
+    private static final long SUBMIT_MAX_GAP_MILLIS = 750;
     private static final Set<Material> MENU_BLOCKS = EnumSet.of(
         Material.CRAFTING_TABLE, Material.ENCHANTING_TABLE, Material.STONECUTTER, Material.GRINDSTONE,
         Material.LOOM, Material.CARTOGRAPHY_TABLE, Material.SMITHING_TABLE, Material.ENDER_CHEST,
@@ -155,6 +157,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
     private final List<Builder> eliminated = new CopyOnWriteArrayList<>();
     private final AtomicBoolean ended = new AtomicBoolean();
     private final Map<UUID, Long> lastBreak = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> lastSubmitClick = new ConcurrentHashMap<>();
     @Getter
     private volatile Arena arena;
     private volatile Phase phase = Phase.SETUP;
@@ -239,6 +242,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
     public boolean removeParticipant(EventPlayer participant, boolean doTeleport, boolean wasAfk) {
         CopycatRole role = roleMap.remove(participant.getUuid());
         lastBreak.remove(participant.getUuid());
+        lastSubmitClick.remove(participant.getUuid());
         if (role != null) {
             role.cleanup();
         }
@@ -897,10 +901,20 @@ public final class Copycat extends InventoryUnifiedMinigame {
         }
         if (!Builder.isDoneItem(event.getItem())) return;
         event.setCancelled(true);
+        if (event.getAction() != Action.LEFT_CLICK_AIR && event.getAction() != Action.LEFT_CLICK_BLOCK) return;
         Builder builder = roleMap.as(event.getPlayer().getUniqueId(), Builder.class);
-        if (builder != null) {
-            this.submit(builder);
+        if (builder == null) return;
+        long now = System.currentTimeMillis();
+        Long last = lastSubmitClick.get(builder.getUuid());
+        long since = last == null ? Long.MAX_VALUE : now - last;
+        if (since < SUBMIT_MIN_GAP_MILLIS) return;
+        if (since > SUBMIT_MAX_GAP_MILLIS) {
+            lastSubmitClick.put(builder.getUuid(), now);
+            event.getPlayer().sendActionBar(Util.color("<yellow>Click again to submit your build"));
+            return;
         }
+        lastSubmitClick.remove(builder.getUuid());
+        this.submit(builder);
     }
 
     private static boolean placesAgainst(Player player) {

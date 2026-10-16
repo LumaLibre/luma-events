@@ -45,7 +45,7 @@ public final class Builder extends CopycatRole {
     public static final int DONE_SLOT = 8;
     private static final ItemStack DONE_ITEM = Util.createItem(Material.LIME_DYE, meta -> {
         meta.displayName(Util.color("<green><b>I'm done!"));
-        meta.lore(Util.color(List.of("<gray>Right click to submit your build", "<gray>and spectate until the round ends"), NamedTextColor.GRAY));
+        meta.lore(Util.color(List.of("<gray>Double left click to submit your build", "<gray>and spectate until the round ends"), NamedTextColor.GRAY));
         meta.addEnchant(Enchantment.VANISHING_CURSE, 1, true);
         meta.getPersistentDataContainer().set(DONE_KEY, PersistentDataType.BOOLEAN, true);
     });
