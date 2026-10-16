@@ -8,8 +8,8 @@ import java.util.function.Supplier;
 public class ScoreRangeTokenFormula extends TokenFormula<Couple<Integer, Boolean>> {
 
     private static final int MIN_TOKENS = 2;
-    private static final int MAX_TOKENS = 10;
-    private static final int WIN_BONUS = 2;
+    private static final int MAX_TOKENS = 8;
+    private static final int WIN_BONUS = 1;
 
     private final Supplier<ScoreRange> scoreRanges;
     private final String scoreDescription;
