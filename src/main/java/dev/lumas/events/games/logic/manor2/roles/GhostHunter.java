@@ -39,6 +39,9 @@ public class GhostHunter extends Manor2Role {
 
     @Override
     public void die() {
+        if (manor2.isStopping()) {
+            return;
+        }
         if (isDead) {
             return;
         }
