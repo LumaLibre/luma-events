@@ -372,6 +372,15 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     }
 
     @EventHandler
+    public void onHunterAttackHunter(PrePlayerAttackEntityEvent event) {
+        this.ensureNotIllegal();
+        if (!(event.getAttacked() instanceof Player attacked)) return;
+        if (roleMap.is(event.getPlayer().getUniqueId(), GhostHunter.class) && roleMap.is(attacked.getUniqueId(), GhostHunter.class)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
     public void onSwapHands(PlayerSwapHandItemsEvent event) {
         this.ensureNotIllegal();
         if (ghostAttacks.handleSwapHands(event.getPlayer())) {
