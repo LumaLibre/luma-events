@@ -8,7 +8,11 @@ import dev.lumas.events.utility.latency.tracing.ProximityTraceResult;
 import dev.lumas.events.utility.latency.tracing.TraceShooter;
 import dev.lumas.glowapi.model.GlowColorManager;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Color;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemType;
+import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.persistence.PersistentDataType;
 
 import java.util.Collection;
 
@@ -60,7 +64,20 @@ public class GhostHunter extends Manor2Role {
         if (player == null) {
             return;
         }
-        player.getInventory().setItem(0, flashlight.createItem());
+        PlayerInventory playerInventory = player.getInventory();
+        playerInventory.setItem(0, flashlight.createItem());
+        playerInventory.setBoots(ItemType.LEATHER_BOOTS.createItemStack(meta -> {
+            meta.setColor(Color.BLACK);
+            meta.getPersistentDataContainer().set(Manor2.ITEM_TAG, PersistentDataType.STRING, "boots");
+        }));
+        playerInventory.setLeggings(ItemType.LEATHER_LEGGINGS.createItemStack(meta -> {
+            meta.setColor(Color.RED);
+            meta.getPersistentDataContainer().set(Manor2.ITEM_TAG, PersistentDataType.STRING, "leggings");
+        }));
+        playerInventory.setChestplate(ItemType.LEATHER_CHESTPLATE.createItemStack(meta -> {
+            meta.setColor(Color.RED);
+            meta.getPersistentDataContainer().set(Manor2.ITEM_TAG, PersistentDataType.STRING, "chestplate");
+        }));
         player.showTitle(ManorTeam.HUNTERS.assignmentTitle());
         GlowColorManager.getInstance().setTransientColor(player, NamedTextColor.WHITE);
         manor2.getPacketGlow().addTarget(player);

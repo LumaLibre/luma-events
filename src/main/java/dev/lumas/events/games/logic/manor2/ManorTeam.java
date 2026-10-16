@@ -6,6 +6,8 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.title.Title;
 
+import java.time.Duration;
+
 public enum ManorTeam {
     GHOSTS("<white>Ghosts", "<white>Ghost", "<gray>Attack hunters, stay away from light"),
     HUNTERS("<red>Hunters", "<red>Hunter", "<gray>Use flashlight to reveal artifacts and ghosts"),
@@ -35,7 +37,8 @@ public enum ManorTeam {
         return Title.title(
             MiniMessage.miniMessage()
                 .deserialize(ASSIGNMENT_MESSAGE, Placeholder.component("team", singular)),
-            description
+            description,
+            Title.Times.times(Duration.ofSeconds(1), Duration.ofSeconds(15), Duration.ofSeconds(1))
         );
     }
 }
