@@ -169,7 +169,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             Location target = teleportTargets.get(i % teleportTargets.size());
             SoftSleepyAPI.wakeup(player);
             Executors.delayedSync(player, Math.floorDiv(i, TELEPORTS_PER_TICK) + 1, () -> {
-                    if (!isParticipant(player)) {
+                    if (roleMap.get(role.getUuid()) != role || !isParticipant(player)) {
                         return;
                     }
                     Executors.teleportSafely(player, target);
@@ -343,6 +343,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
     private void promoteToGhost(Manor2Role role) {
         EventPlayer eventPlayer = role.getEventPlayer();
+        eventPlayer.operatePlayer(SoftSleepyAPI::wakeup);
         scoreboard.registerTeam(role.getUuid(), ManorTeam.GHOSTS);
         roleMap.swapRoleSafely(role, () -> new Ghost(this, eventPlayer))
             .thenRun(() -> eventPlayer.teleportAsync(Util.getRandom(definition.getGhostStartLocations())))

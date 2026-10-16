@@ -98,11 +98,11 @@ public class MinigameRoleMap<T extends MinigameRole> extends ConcurrentHashMap<U
         T currentRole = this.get(eventPlayer.getUuid());
         CompletableFuture<Void> oldAssignmentDone = retire(currentRole);
         T newRole = newRoleSupplier.get();
+        this.put(newRole.getEventPlayer().getUuid(), newRole);
         operationDoneFuture.put(
             eventPlayer.getUuid(),
-            oldAssignmentDone.thenRunAsync(() -> initiateConsumer.accept(newRole), Executors.executor(eventPlayer))
+            oldAssignmentDone.thenRunAsync(() -> initiateIfCurrent(newRole), Executors.executor(eventPlayer))
         );
-        this.put(newRole.getEventPlayer().getUuid(), newRole);
         return newRole;
     }
 
@@ -121,10 +121,16 @@ public class MinigameRoleMap<T extends MinigameRole> extends ConcurrentHashMap<U
         T currentRole = this.get(eventPlayer.getUuid());
         CompletableFuture<Void> oldAssignmentDone = retire(currentRole);
         T newRole = newRoleSupplier.get();
-        CompletableFuture<Void> done = oldAssignmentDone.thenRunAsync(() -> initiateConsumer.accept(newRole), Executors.executor(eventPlayer));
-        operationDoneFuture.put(eventPlayer.getUuid(), done);
         this.put(newRole.getEventPlayer().getUuid(), newRole);
+        CompletableFuture<Void> done = oldAssignmentDone.thenRunAsync(() -> initiateIfCurrent(newRole), Executors.executor(eventPlayer));
+        operationDoneFuture.put(eventPlayer.getUuid(), done);
         return done.thenApply(ignored -> newRole);
+    }
+
+    private void initiateIfCurrent(T role) {
+        if (this.get(role.getUuid()) == role) {
+            initiateConsumer.accept(role);
+        }
     }
 
     /**

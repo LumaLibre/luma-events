@@ -53,6 +53,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 
 @Getter
 @Setter
@@ -376,6 +377,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
     private void checkInactivity() {
         InactivitySettings settings = this.cachedInactivitySettings;
+        long secondsRunning = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - this.startTime);
         for (EventPlayer participant : this.participants) {
             UUID uuid = participant.getUuid();
             MinigameRole roleClass = settings.roleLookup().apply(participant);
@@ -388,9 +390,9 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
                 this.afkWarned.remove(uuid);
                 continue;
             }
-            if (SoftSleepyAPI.hasBeenAfkForSeconds(uuid, settings.secondsBeforeKick())) {
+            if (secondsRunning >= settings.secondsBeforeKick() && SoftSleepyAPI.hasBeenAfkForSeconds(uuid, settings.secondsBeforeKick())) {
                 this.removeInactiveParticipant(participant);
-            } else if (SoftSleepyAPI.hasBeenAfkForSeconds(uuid, settings.secondsAfk())) {
+            } else if (secondsRunning >= settings.secondsAfk() && SoftSleepyAPI.hasBeenAfkForSeconds(uuid, settings.secondsAfk())) {
                 if (this.afkWarned.add(uuid)) {
                     this.warnInactiveParticipant(participant, settings);
                 }
