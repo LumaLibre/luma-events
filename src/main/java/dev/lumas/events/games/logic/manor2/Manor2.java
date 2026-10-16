@@ -28,6 +28,7 @@ import dev.lumas.events.games.tokenformula.ScoreRangeTokenFormula;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Couple;
 import dev.lumas.events.utility.Executors;
+import dev.lumas.events.utility.SoftSleepyAPI;
 import dev.lumas.events.utility.Util;
 import dev.lumas.events.utility.clientside.LocalizedFakeBlockCache;
 import dev.lumas.events.utility.latency.LatencyHandler;
@@ -166,7 +167,11 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             }
             roleMap.put(role);
             Location target = teleportTargets.get(i % teleportTargets.size());
+            SoftSleepyAPI.wakeup(player);
             Executors.delayedSync(player, Math.floorDiv(i, TELEPORTS_PER_TICK) + 1, () -> {
+                    if (!isParticipant(player)) {
+                        return;
+                    }
                     Executors.teleportSafely(player, target);
                     role.initiatePlay();
                     player.sendActionBar(USES_LIGHT_MESSAGE);
@@ -179,6 +184,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         Executors.repeatingSync(definition.getHunterStartLocations().getFirst(), 1L, task -> {
             if (stopping) {
                 task.cancel();
+                blockCache.shutdown();
                 return;
             }
             blockCache.showSync();
