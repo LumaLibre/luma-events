@@ -1,5 +1,7 @@
 package dev.lumas.events.games.logic.manor2.roles;
 
+import com.google.common.base.Preconditions;
+import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.ManorTeam;
 import dev.lumas.events.games.logic.manor2.light.GhostVisibility;
@@ -8,8 +10,12 @@ import dev.lumas.events.model.EventPlayer;
 import dev.lumas.glowapi.model.GlowColorManager;
 import lombok.Getter;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -23,10 +29,11 @@ public class Ghost extends Manor2Role {
     private static final float WHIRL_VOLUME = 0.6f;
 
     private static final PotionEffect NIGHT_VISION = new PotionEffect(PotionEffectType.NIGHT_VISION, 220, 0, true, false, false);
+    private static final NamespacedKey GHOST_SPEED = Preconditions.checkNotNull(NamespacedKey.fromString("manor2/ghost_speed", EventMain.getInstance()));
 
     @Getter
     private final GhostVisibility visibility;
-    private Manor2 manor2;
+    private final Manor2 manor2;
     private int ticksUntilWhirl = 0;
     private volatile boolean isDead = false;
 
@@ -61,12 +68,24 @@ public class Ghost extends Manor2Role {
         player.showTitle(ManorTeam.GHOSTS.assignmentTitle());
         GlowColorManager.getInstance().setTransientColor(player, NamedTextColor.DARK_GRAY);
         manor2.getPacketGlow().addViewer(player);
+        AttributeInstance instance = player.getAttribute(Attribute.MOVEMENT_SPEED);
+        if (instance != null && instance.getModifier(GHOST_SPEED) == null) {
+            instance.addModifier(new AttributeModifier(GHOST_SPEED, 0.15, AttributeModifier.Operation.MULTIPLY_SCALAR_1));
+        }
     }
 
     @Override
     public void retire(Manor2 manor2) {
         visibility.stop();
         super.retire(manor2);
+        Player player = eventPlayer.getPlayer();
+        if (player == null) {
+            return;
+        }
+        AttributeInstance instance = player.getAttribute(Attribute.MOVEMENT_SPEED);
+        if (instance != null) {
+            instance.removeModifier(GHOST_SPEED);
+        }
     }
 
     @Override

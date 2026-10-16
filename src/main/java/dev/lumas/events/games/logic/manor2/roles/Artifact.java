@@ -111,7 +111,7 @@ public class Artifact extends Manor2Role {
         }
         AttributeInstance scale = player.getAttribute(Attribute.SCALE);
         player.setInvisible(true);
-        if (scale != null) {
+        if (scale != null && scale.getModifier(SCALE_CHANGE) == null) {
             scale.addModifier(new AttributeModifier(
                 SCALE_CHANGE, 1d / player.getHeight() - 1, AttributeModifier.Operation.ADD_NUMBER
             ));
