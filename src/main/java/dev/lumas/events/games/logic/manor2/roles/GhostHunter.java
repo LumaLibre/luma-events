@@ -53,6 +53,9 @@ public class GhostHunter extends Manor2Role {
 
     @Override
     public void initiatePlay() {
+        if (manor2.isStopping()) {
+            return;
+        }
         Player player = eventPlayer.getPlayer();
         if (player == null) {
             return;

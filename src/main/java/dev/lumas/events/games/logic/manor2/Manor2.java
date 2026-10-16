@@ -297,7 +297,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         }
         Manor2Role removed = roleMap.remove(player.getUuid());
         if (removed != null) {
-            Executors.runSync(player, () -> removed.retire(this));
+            roleMap.retire(removed);
         }
         boolean result = super.removeParticipant(player, doTeleport, wasAfk);
         if (removed instanceof Ghost) {
