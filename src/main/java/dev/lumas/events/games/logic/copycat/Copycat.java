@@ -9,6 +9,7 @@ import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.exceptions.MinigameException;
 import dev.lumas.events.games.interfaces.HowToPlayDialogue;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
+import dev.lumas.events.games.interfaces.models.InactivitySettings;
 import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
 import dev.lumas.events.games.logic.copycat.roles.Builder;
 import dev.lumas.events.games.logic.copycat.roles.CopycatRole;
@@ -230,6 +231,11 @@ public final class Copycat extends InventoryUnifiedMinigame {
                     Eliminated players become spectators.
                     """)
             )).build();
+    }
+
+    @Override
+    protected InactivitySettings inactivitySettings() {
+        return InactivitySettings.defaults(eventPlayer -> roleMap.get(eventPlayer.getUuid()), Builder.class);
     }
 
     @Override
