@@ -172,10 +172,15 @@ public final class Manor2 extends InventoryUnifiedMinigame {
                     if (roleMap.get(role.getUuid()) != role || !isParticipant(player)) {
                         return;
                     }
-                    Executors.teleportSafely(player, target);
-                    role.initiatePlay();
-                    player.sendActionBar(USES_LIGHT_MESSAGE);
-                    player.clearActivePotionEffects();
+                    Executors.teleportSafely(player, target)
+                        .thenRunAsync(() -> {
+                            if (roleMap.get(role.getUuid()) != role || !isParticipant(player)) {
+                                return;
+                            }
+                            role.initiatePlay();
+                            player.sendActionBar(USES_LIGHT_MESSAGE);
+                            player.clearActivePotionEffects();
+                        }, Executors.executor(player));
                 }
             );
         }
@@ -410,9 +415,13 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     @EventHandler
     public void onItemConsume(PlayerItemConsumeEvent event) {
         this.ensureNotIllegal();
-        event.setCancelled(true);
         if (roleMap.get(event.getPlayer().getUniqueId()) instanceof Spectator spectator) {
-            spectator.onUseItem(event.getItem());
+            spectator.onConsumeItem(event.getItem());
+            event.setCancelled(true);
+        } else if (roleMap.get(event.getPlayer().getUniqueId()) instanceof Ghost ghost) {
+            event.setCancelled(!ghost.onConsumeItem(event.getItem()));
+        } else {
+            event.setCancelled(true);
         }
     }
 

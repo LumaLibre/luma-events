@@ -38,7 +38,7 @@ public enum ManorTeam {
             MiniMessage.miniMessage()
                 .deserialize(ASSIGNMENT_MESSAGE, Placeholder.component("team", singular)),
             description,
-            Title.Times.times(Duration.ofSeconds(1), Duration.ofSeconds(15), Duration.ofSeconds(1))
+            Title.Times.times(Duration.ofSeconds(1), Duration.ofSeconds(7), Duration.ofSeconds(1))
         );
     }
 }

@@ -157,7 +157,7 @@ public class Spectator extends Manor2Role {
         return Stream.of(itemStack);
     }
 
-    public void onUseItem(ItemStack item) {
+    public void onConsumeItem(ItemStack item) {
         PersistentDataContainerView pdc = item.getPersistentDataContainer();
         if (!PLAYER_SCORE_ITEM.equalsIgnoreCase(pdc.get(Manor2.ITEM_TAG, PersistentDataType.STRING))) {
             return;

@@ -71,7 +71,11 @@ public class Artifact extends Manor2Role {
                         }, Executors.executor(player));
                     operatePlayer(_ -> {
                         player.setWorldBorder(worldBorder);
-                        player.showTitle(Title.title(Util.color(ARTIFACT_MESSAGE_1), Util.color(ARTIFACT_MESSAGE_2)));
+                        player.showTitle(Title.title(
+                            Util.color(ARTIFACT_MESSAGE_1),
+                            Util.color(ARTIFACT_MESSAGE_2),
+                            Title.Times.times(Duration.ofSeconds(1), Duration.ofSeconds(7), Duration.ofSeconds(1))
+                        ));
                     });
                 }, () -> operatePlayer(player1 ->
                     player1.showTitle(Title.title(Component.empty(), Util.color(WAITING_FOR_REGION_MESSAGE), Title.Times.times(Duration.ofSeconds(0), Duration.ofSeconds(1), Duration.ofSeconds(0))))

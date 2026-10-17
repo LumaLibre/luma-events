@@ -10,6 +10,7 @@ import io.papermc.paper.datacomponent.item.DeathProtection;
 import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import io.papermc.paper.entity.LookAnchor;
 import lombok.Getter;
+import org.bukkit.Bukkit;
 import org.bukkit.EntityEffect;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -112,6 +113,7 @@ public final class Grab {
             player.sendHurtAnimation(0);
         });
         victim.die();
+        ghost.rewardCookie(Bukkit.createProfile(victim.getUuid()));
         manor2.getScoreboard().hunterKilled(victim, ghost);
     }
 
