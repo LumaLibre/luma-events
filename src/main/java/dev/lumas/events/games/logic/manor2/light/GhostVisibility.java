@@ -119,7 +119,9 @@ public final class GhostVisibility {
             showLitDamage(player, litProgress);
 
             visibility.setVanished(new IsRolePredicate(GhostHunter.class)
-                .and(new IsNearPredicate(player.getLocation(), MAX_REVEAL_DISTANCE).negate())
+                .and(new IsNearPredicate(player.getLocation(), MAX_REVEAL_DISTANCE).negate()
+                    .or(ignored -> !toUse.isRevealed())
+                )
             );
         });
     }

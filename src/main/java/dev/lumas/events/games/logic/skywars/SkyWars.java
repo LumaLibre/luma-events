@@ -7,6 +7,7 @@ import dev.lumas.events.configurable.sectors.game.skywars.SkyWarsDefinition;
 import dev.lumas.events.games.constants.MinigameConstant;
 import dev.lumas.events.games.interfaces.HowToPlayDialogue;
 import dev.lumas.events.games.interfaces.InventoryUnifiedMinigame;
+import dev.lumas.events.games.interfaces.models.InactivitySettings;
 import dev.lumas.events.games.interfaces.models.MinigameRoleMap;
 import dev.lumas.events.games.interfaces.structures.GenericStructure;
 import dev.lumas.events.games.logic.skywars.SkyWarsTeam.TeamColor;
@@ -121,6 +122,11 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         return !origin.getWorld().equals(location.getWorld())
             || location.getY() < origin.getWorld().getMinHeight()
             || location.distanceSquared(origin) > maxSpectatorDistanceSquared;
+    }
+
+    @Override
+    protected InactivitySettings inactivitySettings() {
+        return InactivitySettings.defaults(eventPlayer -> roleMap.get(eventPlayer.getUuid()), SkyWarsPlayer.class);
     }
 
     @Override
@@ -383,8 +389,8 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         sendAudienceMessage(winner == null
             ? Component.text("No team won this time!")
             : Component.empty()
-            .append(winner.displayName().append(Component.text(" Team")))
-            .append(Component.text(" has won!")));
+              .append(winner.displayName().append(Component.text(" Team")))
+              .append(Component.text(" has won!")));
     }
 
     private void showSetupProgress(String label, double progress) {

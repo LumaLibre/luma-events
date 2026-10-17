@@ -404,7 +404,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
     private boolean afkRemovable(EventPlayer participant, InactivitySettings settings) {
         if (settings.afkRemovableRoles().isEmpty()) {
-            return true;
+            return false;
         }
         MinigameRole role = settings.roleLookup().apply(participant);
         return role != null && settings.afkRemovableRoles().stream().anyMatch(type -> type.isInstance(role));
