@@ -10,6 +10,6 @@ public class SkyWarsTokenFormula {
     }
 
     public static ScoreRangeTokenFormula formula() {
-        return new ScoreRangeTokenFormula(MIN_SCORE, MAX_SCORE, "kills and time survived");
+        return new ScoreRangeTokenFormula(MIN_SCORE, MAX_SCORE, "damage dealt, kills and time survived");
     }
 }

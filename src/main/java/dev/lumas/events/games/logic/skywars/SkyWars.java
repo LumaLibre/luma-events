@@ -40,9 +40,11 @@ import org.bukkit.entity.Snowball;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerPickupArrowEvent;
 import org.bukkit.inventory.ItemType;
 import org.bukkit.util.Vector;
 import org.jspecify.annotations.Nullable;
@@ -421,6 +423,20 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         }
     }
 
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onDamageDealt(EntityDamageEvent event) {
+        this.ensureNotIllegal();
+        if (ended.get() || !(event.getEntity() instanceof Player victim)) return;
+        Entity damager = event.getDamageSource().getCausingEntity();
+        if (damager == null) return;
+
+        SkyWarsPlayer attacker = roleMap.as(damager.getUniqueId(), SkyWarsPlayer.class);
+        SkyWarsPlayer target = roleMap.as(victim.getUniqueId(), SkyWarsPlayer.class);
+        if (attacker == null || target == null || attacker == target || attacker.isTeammate(target)) return;
+
+        attacker.dealDamage(Math.min(event.getFinalDamage(), victim.getHealth() + victim.getAbsorptionAmount()));
+    }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onProjectileHit(ProjectileHitEvent event) {
         this.ensureNotIllegal();
@@ -465,6 +481,22 @@ public final class SkyWars extends InventoryUnifiedMinigame {
         this.ensureNotIllegal();
         SkyWarsRole skyWarsPlayer = roleMap.as(event.getPlayer().getUniqueId(), SkyWarsSpectator.class);
         if (skyWarsPlayer != null) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onPickupItem(EntityPickupItemEvent event) {
+        this.ensureNotIllegal();
+        if (roleMap.is(event.getEntity(), SkyWarsSpectator.class)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onPickupArrow(PlayerPickupArrowEvent event) {
+        this.ensureNotIllegal();
+        if (roleMap.is(event.getPlayer(), SkyWarsSpectator.class)) {
             event.setCancelled(true);
         }
     }

@@ -1,6 +1,7 @@
 package dev.lumas.events.games.models;
 
 import dev.lumas.events.EventMain;
+import dev.lumas.events.utility.Executors;
 import dev.lumas.events.utility.scheduler.AsynchronousRunnable;
 import dev.lumas.events.utility.Util;
 import dev.lumas.lumacore.utility.Logging;
@@ -62,7 +63,7 @@ public class CountdownBossBar extends AsynchronousRunnable {
             return this;
         }
 
-        if (audience != null) bossBar.addViewer(audience);
+        if (audience != null) show(audience);
         applyState();
 
         activeCountdowns.add(this);
@@ -74,8 +75,8 @@ public class CountdownBossBar extends AsynchronousRunnable {
     public void stop(boolean callback) {
         activeCountdowns.remove(this);
 
-        if (audience != null) bossBar.removeViewer(audience);
-        for (Audience a : extraViewers) bossBar.removeViewer(a);
+        if (audience != null) hide(audience);
+        for (Audience a : extraViewers) hide(a);
         extraViewers.clear();
 
         if (!this.isCancelled()) this.cancel();
@@ -84,7 +85,7 @@ public class CountdownBossBar extends AsynchronousRunnable {
 
     public void addViewer(Audience newViewer) {
         if (newViewer == null) return;
-        bossBar.addViewer(newViewer);
+        show(newViewer);
         extraViewers.add(newViewer);
         applyState();
     }
@@ -122,13 +123,33 @@ public class CountdownBossBar extends AsynchronousRunnable {
             secondsRemaining = countUp ? seconds : 0.0f;
             applyState();
 
-            if (audience != null) bossBar.removeViewer(audience);
-            for (Audience a : extraViewers) bossBar.removeViewer(a);
+            if (audience != null) hide(audience);
+            for (Audience a : extraViewers) hide(a);
             extraViewers.clear();
 
             task.cancel();
             if (this.callback != null) this.callback.run();
         }
+    }
+
+    private void show(Audience viewer) {
+        viewer.forEachAudience(member -> {
+            if (member instanceof Player player) {
+                Executors.runSync(player, () -> player.showBossBar(bossBar));
+            } else {
+                member.showBossBar(bossBar);
+            }
+        });
+    }
+
+    private void hide(Audience viewer) {
+        viewer.forEachAudience(member -> {
+            if (member instanceof Player player) {
+                Executors.runSync(player, () -> player.hideBossBar(bossBar));
+            } else {
+                member.hideBossBar(bossBar);
+            }
+        });
     }
 
     private void applyState() {

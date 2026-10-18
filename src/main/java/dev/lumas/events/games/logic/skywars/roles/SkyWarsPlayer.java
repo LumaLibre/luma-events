@@ -1,5 +1,6 @@
 package dev.lumas.events.games.logic.skywars.roles;
 
+import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.skywars.SkyWars;
 import dev.lumas.events.games.logic.skywars.SkyWarsTeam;
 import dev.lumas.events.model.EventPlayer;
@@ -20,12 +21,14 @@ public class SkyWarsPlayer extends SkyWarsRole {
     private static final double BORDER_DAMAGE_BASE = 1.0;
     private static final double BORDER_DAMAGE_PER_BLOCK = 0.5;
     private static final double BORDER_DAMAGE_MAX = 8.0;
-    private static final int KILL_POINTS = 10;
+    private static final int KILL_POINTS = 4; // on top of DAMAGE_PER_POINT
     private static final int SURVIVAL_POINTS = 1;
-    private static final long SURVIVAL_INTERVAL = 10000;
+    private static final long SURVIVAL_INTERVAL = 30000;
+    private static final double DAMAGE_PER_POINT = 2.0; // one point per heart dealt
 
     private long lastBorderDamage = -1;
     private volatile long nextSurvivalPoints = Long.MAX_VALUE;
+    private double pendingDamage = 0;
 
     public SkyWarsPlayer(SkyWars skyWars, EventPlayer eventPlayer, SkyWarsTeam team) {
         super(skyWars, eventPlayer, team);
@@ -48,8 +51,18 @@ public class SkyWarsPlayer extends SkyWarsRole {
                 if (player.getGameMode() != GameMode.SURVIVAL) {
                     player.setGameMode(GameMode.SURVIVAL);
                 }
+                revealOpponents(player);
             });
         });
+    }
+
+    // make sure you can always see your opponents in sky wars
+    private void revealOpponents(Player viewer) {
+        for (SkyWarsPlayer other : ctx.getRoleMap().getMatching(SkyWarsPlayer.class)) {
+            Player shown = other.getEventPlayer().getPlayer();
+            if (shown == null || shown == viewer || shown.hasMetadata("vanished")) continue;
+            viewer.showPlayer(EventMain.getInstance(), shown);
+        }
     }
 
     @Override
@@ -88,6 +101,15 @@ public class SkyWarsPlayer extends SkyWarsRole {
             return false; // don't harm teammates
         }
         return true;
+    }
+
+    public synchronized void dealDamage(double damage) {
+        pendingDamage += damage;
+        int points = (int) (pendingDamage / DAMAGE_PER_POINT);
+        if (points > 0) {
+            pendingDamage -= points * DAMAGE_PER_POINT;
+            ctx.getScoreboard().addScore(this.eventPlayer, points);
+        }
     }
 
     @Override
