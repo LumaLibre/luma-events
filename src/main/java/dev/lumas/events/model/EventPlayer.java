@@ -46,6 +46,7 @@ public class EventPlayer implements Serializable, Scorer {
     @Setter
     private boolean initiallySpawned;
 
+    private transient @Nullable Boolean floodgate = null;
 
     // Initial creation
     public EventPlayer(UUID uuid) {
@@ -183,13 +184,21 @@ public class EventPlayer implements Serializable, Scorer {
         this.secondsPlayed += seconds;
     }
 
-    public boolean isBedrock() {
-        if (!USE_FLOODGATE) return false;
-        return FloodgateApi.getInstance().isFloodgatePlayer(this.uuid);
+    public boolean isFloodgate() {
+        if (floodgate != null) {
+            return floodgate;
+        }
+
+        if (!USE_FLOODGATE) {
+            floodgate = false;
+            return false;
+        }
+        floodgate = FloodgateApi.getInstance().isFloodgatePlayer(this.uuid);
+        return floodgate;
     }
 
     public boolean isDisadvantagedPlatform() {
-        if (!USE_FLOODGATE || !isBedrock()) return false;
+        if (!USE_FLOODGATE || !isFloodgate()) return false;
         FloodgatePlayer floodgatePlayer = FloodgateApi.getInstance().getPlayer(this.uuid);
         if (floodgatePlayer == null) return false;
         DeviceOs os = floodgatePlayer.getDeviceOs();
@@ -201,7 +210,7 @@ public class EventPlayer implements Serializable, Scorer {
     }
 
     public boolean isDisadvantagedInput() {
-        if (!USE_FLOODGATE || !isBedrock()) return false;
+        if (!USE_FLOODGATE || !isFloodgate()) return false;
         FloodgatePlayer fp = FloodgateApi.getInstance().getPlayer(this.uuid);
         if (fp == null) return false;
         InputMode input = fp.getInputMode();

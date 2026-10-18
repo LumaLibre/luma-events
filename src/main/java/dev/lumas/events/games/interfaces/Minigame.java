@@ -347,7 +347,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             .toList();
 
         this.queueBossbar = CountdownBossBar.builder()
-            .title("<b><gradient:#3F255E:#9f2e51:#611e4e:#331D4D>" + name + " Starting in</b><gray>:</gray> <b><gradient:#3F255E:#9f2e51:#611e4e:#331D4D>%ss")
+            .title("<gradient:#3F255E:#9f2e51:#611e4e:#331D4D><b>" + name + " Starting in</b><gray>:</gray> <b>%ss</b>")
             .seconds(seconds)
             .color(BossBar.Color.RED)
             .callback(this::start)
@@ -379,6 +379,10 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         InactivitySettings settings = this.cachedInactivitySettings;
         long secondsRunning = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - this.startTime);
         for (EventPlayer participant : this.participants) {
+            if (settings.ignoreFloodgate() && participant.isFloodgate()) {
+                continue;
+            }
+
             UUID uuid = participant.getUuid();
             MinigameRole roleClass = settings.roleLookup().apply(participant);
 
