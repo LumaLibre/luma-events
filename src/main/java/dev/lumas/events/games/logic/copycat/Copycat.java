@@ -219,7 +219,7 @@ public final class Copycat extends InventoryUnifiedMinigame {
                     short period of time. The timer gets
                     shorter as the game goes on.
                     """),
-                new HowToPlayDialogue.ItemSection(ItemType.CRAFTER.createItemStack(), "gray><b>Memorize</b></gray>", """
+                new HowToPlayDialogue.ItemSection(ItemType.CRAFTER.createItemStack(), "<gray><b>Memorize</b></gray>", """
                     You have <gold>16 seconds</gold> to memorize
                     a given build. After that, random blocks that are exposed to
                     air will be removed from the build and it will be your job to
