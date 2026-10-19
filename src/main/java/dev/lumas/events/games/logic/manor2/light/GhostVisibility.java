@@ -20,7 +20,9 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.jspecify.annotations.Nullable;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -29,7 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public final class GhostVisibility {
 
-    private static final int HIDE_AFTER_UNLIT_TICKS = 15;
+    private static final int HIDE_AFTER_UNLIT_TICKS = 60;
     private static final double EXPOSED_MIN_CENTEREDNESS = 0.6;
     private static final double SILHOUETTE_MIN_CENTEREDNESS = 0.5;
     private static final int SILHOUETTE_MIN_LIGHT_LEVEL = 5;
@@ -49,7 +51,7 @@ public final class GhostVisibility {
     private volatile boolean stopping = false;
 
     private final AtomicInteger forcedExposedTicks = new AtomicInteger();
-    private final Map<UUID, Integer> shooterTicks = new ConcurrentHashMap<>();
+    private final Map<UUID, Double> shooterTicks = new ConcurrentHashMap<>();
 
     public GhostVisibility(Manor2 manor2, EventPlayer ghost) {
         this.manor2 = manor2;
@@ -60,7 +62,7 @@ public final class GhostVisibility {
     public void light(LightHit hit, UUID shooter) {
         if (stopping) return;
         if (stateOf(hit) == RevealState.EXPOSED) {
-            shooterTicks.merge(shooter, 1, Integer::sum);
+            shooterTicks.merge(shooter, 1D, Double::sum);
         }
         pendingLight.accumulateAndGet(hit, (current, next) -> current == null || isStronger(next, current) ? next : current);
     }
@@ -75,7 +77,7 @@ public final class GhostVisibility {
             newState = stateOf(hit);
         }
         if (++unlitTicks < HIDE_AFTER_UNLIT_TICKS) {
-            flashLight = newState == RevealState.EXPOSED ? RevealState.EXPOSED : previous.isRevealed() ? previous : newState;
+            flashLight = previous.moreRevealed(newState) ? previous : newState;
         } else {
             flashLight = RevealState.HIDDEN;
         }
@@ -89,7 +91,7 @@ public final class GhostVisibility {
         final RevealState current = flashLight;
         final double litProgress = Math.min(1.0, (double) shootTicks() / manor2.getDefinition().getGhostRevealTime());
         if (flashLight == RevealState.HIDDEN) {
-            shooterTicks.clear();
+            decreaseShoot();
         } else if (flashLight == RevealState.EXPOSED && manor2.getDefinition().getGhostRevealTime() <= shootTicks() && manor2.getRoleMap().as(ghost.getUuid(), Ghost.class) instanceof Ghost ghostGhost) {
             manor2.getScoreboard().ghostKilled(ghostGhost, shooterTicks);
             ghostGhost.die();
@@ -124,6 +126,20 @@ public final class GhostVisibility {
                 )
             );
         });
+    }
+
+    public void decreaseShoot() {
+        Set<UUID> toRemove = new HashSet<>();
+        double decreement = 1D / shooterTicks.size();
+        for (Map.Entry<UUID, Double> doubleEntry : shooterTicks.entrySet()) {
+            double previous = doubleEntry.getValue();
+            if (previous < decreement) {
+                toRemove.add(doubleEntry.getKey());
+            } else {
+                doubleEntry.setValue(doubleEntry.getValue() - decreement);
+            }
+        }
+        toRemove.forEach(shooterTicks::remove);
     }
 
     public void stop() {
@@ -166,7 +182,7 @@ public final class GhostVisibility {
     }
 
     public int shootTicks() {
-        return shooterTicks.values().stream().reduce(0, Integer::sum);
+        return (int) Math.floor(shooterTicks.values().stream().reduce(0D, Double::sum));
     }
 
     private RevealState staticLight(Location location) {

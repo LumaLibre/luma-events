@@ -55,7 +55,7 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
         this.ctx = ctx;
     }
 
-    public void ghostKilled(Ghost ghost, Map<UUID, Integer> shooterTicks) {
+    public void ghostKilled(Ghost ghost, Map<UUID, Double> shooterTicks) {
         Map<UUID, Double> attribution = new HashMap<>();
         int revealTime = ctx.getDefinition().getGhostRevealTime();
         shooterTicks.forEach((shooter, ticks) -> attribution.put(shooter, 100D * ticks / revealTime));
