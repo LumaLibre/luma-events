@@ -6,8 +6,8 @@ import java.util.function.Supplier;
 
 public class Manor2TokenFormula {
 
-    private static final int MIN_SCORE = 400;
-    private static final int MAX_SCORE = 900;
+    private static final int MIN_SCORE = 100;
+    private static final int MAX_SCORE = 700;
     private static final long EXPECTED_PLAYTIME = 1000 * 60 * 5;
 
     private Manor2TokenFormula() {
