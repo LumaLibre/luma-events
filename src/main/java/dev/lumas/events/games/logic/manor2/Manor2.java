@@ -133,7 +133,8 @@ public final class Manor2 extends InventoryUnifiedMinigame {
 
     @Override
     protected InactivitySettings inactivitySettings() {
-        return InactivitySettings.defaults(participant -> roleMap.get(participant.getUuid()), Ghost.class, GhostHunter.class);
+        return InactivitySettings.withRoleTimeout(new InactivitySettings.Timeout(30, 45),
+            participant -> roleMap.get(participant.getUuid()), Ghost.class, GhostHunter.class);
     }
 
     @Override

@@ -19,6 +19,11 @@ public class SoftSleepyAPI {
         return SleepyAPI.hasBeenAfkFor(uuid, seconds);
     }
 
+    public static long afkSeconds(UUID uuid) {
+        if (!SLEEPY_AVAILABLE) return 0;
+        return SleepyAPI.getAfkTicks(uuid) / 20;
+    }
+
     public static void wakeup(Player player) {
         if (!SLEEPY_AVAILABLE) return;
         SleepyAPI.wakeup(player);

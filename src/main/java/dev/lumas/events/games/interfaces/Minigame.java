@@ -8,7 +8,6 @@ import dev.lumas.events.games.events.MinigamePreventInventoryTampering;
 import dev.lumas.events.games.events.SleepyEventListener;
 import dev.lumas.events.games.exceptions.GameComponentIllegallyActive;
 import dev.lumas.events.games.interfaces.models.InactivitySettings;
-import dev.lumas.events.games.interfaces.models.MinigameRole;
 import dev.lumas.events.games.models.CountdownBossBar;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.model.MinigameBoundingBox;
@@ -48,7 +47,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -70,7 +68,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
     private final Map<UUID, CompletableFuture<Boolean>> joinTeleports = new ConcurrentHashMap<>();
     protected final List<Listener> extraListeners = new ArrayList<>();
     private final InactivitySettings cachedInactivitySettings = this.inactivitySettings();
-    private final Set<UUID> afkWarned = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, AfkWarning> afkWarnings = new ConcurrentHashMap<>();
     private final MinigamePreventInventoryTampering inventoryTampering;
     private final MinigamePreventDamageListener preventDamage;
 
@@ -242,8 +240,8 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
         this.active = false;
         this.open = false; // Should be false by now anyway :P
+        this.afkWarnings.keySet().forEach(this::clearAfkWarning);
         this.participants.clear();
-        this.afkWarned.clear();
         return true;
     }
 
@@ -315,7 +313,7 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
     public boolean removeParticipant(EventPlayer player, boolean doTeleport, boolean wasAfk) {
         this.participants.remove(player);
-        this.afkWarned.remove(player.getUuid());
+        this.clearAfkWarning(player.getUuid());
         player.operatePlayer(bukkitPlayer -> {
             if (bukkitPlayer.getGameMode() != GameMode.SURVIVAL) {
                 bukkitPlayer.setGameMode(GameMode.SURVIVAL);
@@ -377,48 +375,78 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
 
     private void checkInactivity() {
         InactivitySettings settings = this.cachedInactivitySettings;
-        long secondsRunning = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - this.startTime);
+        long now = System.currentTimeMillis();
         for (EventPlayer participant : this.participants) {
-            if (settings.ignoreFloodgate() && participant.isFloodgate()) {
-                continue;
-            }
-
             UUID uuid = participant.getUuid();
-            MinigameRole roleClass = settings.roleLookup().apply(participant);
-
-            if (roleClass == null || settings.afkRemovableRoles().stream().noneMatch(type -> type.isInstance(roleClass))) {
+            if (settings.ignoreFloodgate() && participant.isFloodgate()) {
+                this.clearAfkWarning(uuid);
                 continue;
             }
 
-            if (!this.afkRemovable(participant, settings)) {
-                this.afkWarned.remove(uuid);
-                continue;
-            }
-            if (secondsRunning >= settings.secondsBeforeKick() && SoftSleepyAPI.hasBeenAfkForSeconds(uuid, settings.secondsBeforeKick())) {
+            InactivitySettings.Timeout timeout = settings.timeoutFor(participant);
+            long idleMillis = this.idleMillis(uuid, now);
+            long kickMillis = TimeUnit.SECONDS.toMillis(timeout.secondsBeforeKick());
+            if (idleMillis >= kickMillis) {
                 this.removeInactiveParticipant(participant);
-            } else if (secondsRunning >= settings.secondsAfk() && SoftSleepyAPI.hasBeenAfkForSeconds(uuid, settings.secondsAfk())) {
-                if (this.afkWarned.add(uuid)) {
-                    this.warnInactiveParticipant(participant, settings);
-                }
+            } else if (idleMillis >= TimeUnit.SECONDS.toMillis(timeout.secondsBeforeWarning())) {
+                this.warnInactiveParticipant(participant, timeout, kickMillis - idleMillis);
             } else {
-                this.afkWarned.remove(uuid);
+                this.clearAfkWarning(uuid);
             }
         }
     }
 
-    private boolean afkRemovable(EventPlayer participant, InactivitySettings settings) {
-        if (settings.afkRemovableRoles().isEmpty()) {
-            return false;
-        }
-        MinigameRole role = settings.roleLookup().apply(participant);
-        return role != null && settings.afkRemovableRoles().stream().anyMatch(type -> type.isInstance(role));
+    private long idleMillis(UUID uuid, long now) {
+        long sleepyIdleMillis = TimeUnit.SECONDS.toMillis(SoftSleepyAPI.afkSeconds(uuid));
+        return Math.min(now - this.startTime, sleepyIdleMillis);
     }
 
-    private void warnInactiveParticipant(EventPlayer participant, InactivitySettings settings) {
-        long remaining = Math.max(0, settings.secondsBeforeKick() - settings.secondsAfk());
-        participant.sendTitle("<red>You are AFK!", "<yellow>Move within " + remaining + "s or you will be removed");
-        participant.sendMessage("<red>You are AFK and will be removed from " + this.name + " in " + remaining + " seconds.");
-        participant.operatePlayer(player -> player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 0.5f));
+    private void warnInactiveParticipant(EventPlayer participant, InactivitySettings.Timeout timeout, long remainingMillis) {
+        Player player = participant.getPlayer();
+        if (player == null) {
+            return;
+        }
+        long remainingSeconds = Math.max(1, (remainingMillis + 999) / 1000);
+        float progress = Math.clamp(remainingMillis / (float) TimeUnit.SECONDS.toMillis(timeout.warningWindowSeconds()), 0f, 1f);
+
+        AfkWarning warning = this.afkWarnings.get(participant.getUuid());
+        if (warning == null) {
+            BossBar bossBar = BossBar.bossBar(afkBossBarName(remainingSeconds), progress, BossBar.Color.RED, BossBar.Overlay.PROGRESS);
+            warning = new AfkWarning(bossBar, player, remainingSeconds);
+            this.afkWarnings.put(participant.getUuid(), warning);
+            Executors.runSync(player, () -> player.showBossBar(bossBar));
+            participant.sendTitle("<red>Are you still there?", "<yellow>Move within " + remainingSeconds + "s or you will be removed");
+            participant.sendMessage("<red>You are AFK and will be removed from " + this.name + " in " + remainingSeconds + " seconds. Move to stay in the game!");
+            participant.operatePlayer(p -> p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 0.5f));
+            return;
+        }
+
+        warning.bossBar().progress(progress);
+        if (warning.shownSeconds() == remainingSeconds) {
+            return;
+        }
+        warning.shownSeconds(remainingSeconds);
+        warning.bossBar().name(afkBossBarName(remainingSeconds));
+        if (remainingSeconds <= 10) {
+            float pitch = 0.5f + (10 - remainingSeconds) * 0.15f;
+            participant.operatePlayer(p -> p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1f, pitch));
+        }
+        if (remainingSeconds == 10) {
+            participant.sendTitle("<red>Are you still there?", "<yellow>Move within 10s or you will be removed");
+            participant.operatePlayer(p -> p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 0.5f));
+        }
+    }
+
+    private static Component afkBossBarName(long remainingSeconds) {
+        return Util.color("<red><b>You are AFK!</b></red> <gray>Move within <white><b>" + remainingSeconds + "s</b></white> or you will be removed");
+    }
+
+    private void clearAfkWarning(UUID uuid) {
+        AfkWarning warning = this.afkWarnings.remove(uuid);
+        if (warning != null) {
+            Player player = warning.player();
+            Executors.runSync(player, () -> player.hideBossBar(warning.bossBar()));
+        }
     }
 
     public void removeInactiveParticipant(EventPlayer participant) {
@@ -603,5 +631,33 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
             return "This one is <yellow>casual</yellow> - everyone gets " + tokens + ", regardless of score.";
         }
         return "This one pays out <gold>" + tokenPayout.percentDifference() + "</gold> tokens than usual!";
+    }
+
+    private static final class AfkWarning {
+        private final BossBar bossBar;
+        private final Player player;
+        private long shownSeconds;
+
+        private AfkWarning(BossBar bossBar, Player player, long shownSeconds) {
+            this.bossBar = bossBar;
+            this.player = player;
+            this.shownSeconds = shownSeconds;
+        }
+
+        BossBar bossBar() {
+            return bossBar;
+        }
+
+        Player player() {
+            return player;
+        }
+
+        long shownSeconds() {
+            return shownSeconds;
+        }
+
+        void shownSeconds(long shownSeconds) {
+            this.shownSeconds = shownSeconds;
+        }
     }
 }
