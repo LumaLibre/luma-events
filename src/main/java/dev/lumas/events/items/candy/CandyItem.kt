@@ -3,17 +3,21 @@ package dev.lumas.events.items.candy
 import dev.lumas.events.EventMain
 import dev.lumas.events.items.LocalCustomItemManager
 import dev.lumas.events.items.SoulOrbItem
+import dev.lumas.events.manager.EventPlayerManager
 import dev.lumas.events.utility.Util
 import dev.lumas.lumaitems.model.item.CustomItemFunctions
 import dev.lumas.lumaitems.model.item.ItemFactory
 import dev.lumas.lumaitems.model.item.PaperDataComponent
 import dev.lumas.lumaitems.util.Tier
+import dev.lumas.lumaitems.util.extensions.QuickTasks
 import io.papermc.paper.datacomponent.DataComponentTypes
 import io.papermc.paper.datacomponent.item.Consumable
 import io.papermc.paper.datacomponent.item.FoodProperties
 import io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation
 import org.bukkit.Material
+import org.bukkit.Sound
 import org.bukkit.entity.Player
+import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerItemConsumeEvent
 import org.bukkit.inventory.ItemStack
 import java.util.concurrent.ThreadLocalRandom
@@ -62,6 +66,25 @@ abstract class CandyItem : CustomItemFunctions() {
     }
 
     override fun onConsumeItem(player: Player, event: PlayerItemConsumeEvent) {
+        applyEffect(player)
+    }
+
+    // The consumable component doesn't seem to reliably work on bedrock
+    override fun onRightClick(player: Player, event: PlayerInteractEvent) {
+        if (!EventPlayerManager.getByUUID(player.uniqueId).isFloodgate) return
+        val item = event.item ?: return
+        event.isCancelled = true
+        if (QuickTasks.isOnCooldown(this, player.uniqueId)) return
+        QuickTasks.addCooldown(this, player.uniqueId, (consumeSeconds * 20).toLong().coerceAtLeast(1L))
+
+        item.amount -= 1
+        player.foodLevel = (player.foodLevel + nutrition).coerceAtMost(20)
+        player.saturation = (player.saturation + saturation).coerceAtMost(player.foodLevel.toFloat())
+        player.world.playSound(player.location, Sound.ENTITY_GENERIC_EAT, 1f, 1f)
+        applyEffect(player)
+    }
+
+    private fun applyEffect(player: Player) {
         val effect = roll() ?: return
         effect.action(player)
         Util.sendMsg(player, effect.message)
