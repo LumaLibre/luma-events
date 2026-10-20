@@ -431,15 +431,11 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             ArtifactEntity.fromEntity(entity)
                 .ifPresent(item -> {
                     ArtifactPickupResult result = artifactManager.pickup(entity.getLocation());
-                    if (result != ArtifactPickupResult.NOT_FOUND) {
-                        player.getInventory().addItem(item);
-                        if (result == ArtifactPickupResult.FOUND_PLAYER_ARTIFACT) {
-                            scoreboard.playerArtifactFound(ghostHunter);
-                        } else {
-                            scoreboard.artifactFound(ghostHunter);
-                        }
-                    } else {
-                        entity.getLocation()
+                    switch (result) {
+                        case ArtifactPickupResult.FoundNormalArtifact ignored -> scoreboard.artifactFound(ghostHunter);
+                        case ArtifactPickupResult.FoundPlayerArtifact(Artifact artifact) ->
+                            scoreboard.playerArtifactFound(ghostHunter, artifact);
+                        default -> entity.getLocation()
                             .getNearbyEntities(1, 1, 1)
                             .stream()
                             .filter(ArtifactEntity::isArtifact)

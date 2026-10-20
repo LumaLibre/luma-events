@@ -1,5 +1,6 @@
 package dev.lumas.events.games.logic.manor2;
 
+import dev.lumas.events.games.logic.manor2.roles.Artifact;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
@@ -30,19 +31,14 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
     );
     private static final List<String> HUNTER_KILLED_MESSAGES = List.of(
         "<red><hunter></red> got haunted to death by <white><participants></white>",
-        "<red><hunter></red> forgot how to breath by <white><participants></white>",
         "<red><hunter></red> completed <white><participants></white>'s bucket list (death)"
     );
     private static final List<String> ARTIFACT_FOUND_MESSAGES = List.of(
-        "You found a completely worthless artifact",
-        "You found a dusty relic",
-        "You found something, but can't get yourself to let it go",
-        "You found an artifact, but it might not be that useful"
+        "You found an artifact and earned some points",
+        "You found a dusty relic and earned some points"
     );
     private static final List<String> PLAYER_ARTIFACT_FOUND_MESSAGES = List.of(
-        "<red><participants></red> found an artifact in perfect condition",
-        "<red><participants></red> found a nice looking family heirloom",
-        "<red><participants></red> found a national treasure"
+        "<red><participants></red> found <blue><artifact></blue> bound to an artifact"
     );
     private static final String SCORE_RECORD = "<green><gold>#<position></gold> is <red><scorer></red> with <gold><points> points</gold>! (<team>)";
     private static final int TOP_SCORERS = 5;
@@ -89,12 +85,13 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
         }
     }
 
-    public void playerArtifactFound(GhostHunter eventPlayer) {
+    public void playerArtifactFound(GhostHunter eventPlayer, Artifact artifact) {
         Map<UUID, Double> attribution = Map.of(eventPlayer.getUuid(), 100D);
 
         award(attribution, ctx.getDefinition().getArtifactFoundScore());
         announce(PLAYER_ARTIFACT_FOUND_MESSAGES,
-            Placeholder.component("participants", participantsDisplay(attribution))
+            Placeholder.component("participants", participantsDisplay(attribution)),
+            Placeholder.component("artifact", Util.displayName(artifact.getUuid()))
         );
     }
 

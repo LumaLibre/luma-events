@@ -120,7 +120,7 @@ public class ArtifactManager {
         artifacts.remove(at);
         ArtifactEntity entity = placedArtifacts.remove(at);
         if (entity == null) {
-            return ArtifactPickupResult.NOT_FOUND;
+            return new ArtifactPickupResult.NotFound();
         }
 
         for (ArtifactRegion region : occupiedRegions.keySet()) {
@@ -138,9 +138,9 @@ public class ArtifactManager {
         if (entity.boundRole() != null) {
             entity.boundRole().die();
             playerArtifacts.remove(entity.boundRole().getUuid());
-            return ArtifactPickupResult.FOUND_PLAYER_ARTIFACT;
+            return new ArtifactPickupResult.FoundPlayerArtifact(entity.boundRole());
         }
-        return ArtifactPickupResult.FOUND_NORMAL_ARTIFACT;
+        return new ArtifactPickupResult.FoundNormalArtifact();
     }
 
     public void tryReveal(Player hunter, double coneDegrees, double maxSearch) {
