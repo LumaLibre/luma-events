@@ -8,6 +8,7 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.GameMode;
 import org.bukkit.damage.DamageSource;
 import org.bukkit.damage.DamageType;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.ItemStack;
@@ -121,11 +122,8 @@ public class SkyWarsPlayer extends SkyWarsRole {
         Player player = event.getPlayer();
         event.setCancelled(true);
         player.getWorld().strikeLightningEffect(player.getLocation());
-        for (ItemStack drop : event.getDrops()) {
-            player.getWorld().dropItemNaturally(player.getLocation(), drop);
-        }
+        dropInventory(player);
         event.getDrops().clear();
-        player.getInventory().clear();
         normalize(player);
 
         SkyWarsRole spectator = ctx.getRoleMap().swapRole(this, () -> new SkyWarsSpectator(ctx, this.eventPlayer, this.team));
@@ -134,5 +132,15 @@ public class SkyWarsPlayer extends SkyWarsRole {
         ctx.sendAudienceMessage(deathMessage);
         event.deathMessage(null);
         ctx.finish();
+    }
+
+    // event drops are empty with keepInventory
+    private static void dropInventory(Player player) {
+        player.closeInventory(); // should put cursor and crafting grid items back into the inventory
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item == null || item.isEmpty() || SkyWarsTeam.isTeamHelmet(item) || item.containsEnchantment(Enchantment.VANISHING_CURSE)) continue;
+            player.getWorld().dropItemNaturally(player.getLocation(), item);
+        }
+        player.getInventory().clear();
     }
 }
