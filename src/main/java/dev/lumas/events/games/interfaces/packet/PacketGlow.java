@@ -4,11 +4,15 @@ import dev.lumas.events.utility.Externals;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
+import java.util.function.BiPredicate;
+
 public interface PacketGlow {
 
     void start();
 
     void stop();
+
+    void tick();
 
     void addViewer(Player viewer); // up to delegates to make sure this is thread safe
 
@@ -19,7 +23,11 @@ public interface PacketGlow {
     void removeTarget(Entity target);
 
     static PacketGlow newInstance() {
-        return Externals.pluginExists("ProtocolLib") ? new ProtocolLibPacketGlow() : noop();
+        return newInstance((viewer, target) -> true);
+    }
+
+    static PacketGlow newInstance(BiPredicate<Player, Entity> filter) {
+        return Externals.pluginExists("ProtocolLib") ? new ProtocolLibPacketGlow(filter) : noop();
     }
 
     static PacketGlow noop() {
@@ -30,6 +38,10 @@ public interface PacketGlow {
 
             @Override
             public void stop() {
+            }
+
+            @Override
+            public void tick() {
             }
 
             @Override

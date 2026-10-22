@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiPredicate;
 
 public final class ProtocolLibPacketGlow implements PacketGlow {
 
@@ -29,23 +30,33 @@ public final class ProtocolLibPacketGlow implements PacketGlow {
     private static final byte GLOWING_FLAG = 0x40;
     private static final WrappedDataWatcher.Serializer BYTE_SERIALIZER = WrappedDataWatcher.Registry.get((Type) Byte.class);
 
-    private final Set<UUID> viewers = ConcurrentHashMap.newKeySet();
+    private final BiPredicate<Player, Entity> filter;
+    private final Map<UUID, Set<Integer>> viewers = new ConcurrentHashMap<>(); // viewer -> ids of targets currently glowing for them
     private final Map<Integer, Entity> targetsById = new ConcurrentHashMap<>();
     private final PacketAdapter listener = new PacketAdapter(EventMain.getInstance(), ListenerPriority.NORMAL, PacketType.Play.Server.ENTITY_METADATA) {
         @Override
         public void onPacketSending(PacketEvent event) {
-            if (event.isPlayerTemporary() || !viewers.contains(event.getPlayer().getUniqueId())) {
+            if (event.isPlayerTemporary()) {
+                return;
+            }
+            Set<Integer> glowing = viewers.get(event.getPlayer().getUniqueId());
+            if (glowing == null) {
                 return;
             }
 
             PacketContainer packet = event.getPacket();
-            Entity target = targetsById.get(packet.getIntegers().read(0));
-            if (target != null) {
+            int targetId = packet.getIntegers().read(0);
+            Entity target = targetsById.get(targetId);
+            if (target != null && glowing.contains(targetId)) {
                 event.setPacket(withGlowing(packet, target));
             }
         }
     };
     private volatile boolean started = false;
+
+    public ProtocolLibPacketGlow(BiPredicate<Player, Entity> filter) {
+        this.filter = filter;
+    }
 
     @Override
     public synchronized void start() {
@@ -60,33 +71,70 @@ public final class ProtocolLibPacketGlow implements PacketGlow {
         if (!started) return;
         started = false;
         ProtocolLibrary.getProtocolManager().removePacketListener(listener);
+        viewers.values().forEach(Set::clear);
         refreshAll();
         viewers.clear();
         targetsById.clear();
     }
 
     @Override
+    public void tick() {
+        if (!started) return;
+        viewers.forEach((viewerId, glowing) -> {
+            Player viewer = Bukkit.getPlayer(viewerId);
+            if (viewer == null) return;
+            targetsById.forEach((targetId, target) -> {
+                boolean changed = filter.test(viewer, target) ? glowing.add(targetId) : glowing.remove(targetId);
+                if (changed) {
+                    refresh(viewerId, target);
+                }
+            });
+        });
+    }
+
+    @Override
     public void addViewer(Player viewer) {
-        if (!viewers.add(viewer.getUniqueId()) || !started) return;
-        targetsById.values().forEach(target -> refresh(viewer.getUniqueId(), target));
+        Set<Integer> glowing = ConcurrentHashMap.newKeySet();
+        if (viewers.putIfAbsent(viewer.getUniqueId(), glowing) != null || !started) return;
+        targetsById.forEach((targetId, target) -> {
+            if (filter.test(viewer, target)) {
+                glowing.add(targetId);
+                refresh(viewer.getUniqueId(), target);
+            }
+        });
     }
 
     @Override
     public void removeViewer(Player viewer) {
-        if (!viewers.remove(viewer.getUniqueId()) || !started) return;
-        targetsById.values().forEach(target -> refresh(viewer.getUniqueId(), target));
+        Set<Integer> glowing = viewers.remove(viewer.getUniqueId());
+        if (glowing == null || !started) return;
+        targetsById.forEach((targetId, target) -> {
+            if (glowing.contains(targetId)) {
+                refresh(viewer.getUniqueId(), target);
+            }
+        });
     }
 
     @Override
     public void addTarget(Entity target) {
         if (targetsById.put(target.getEntityId(), target) != null || !started) return;
-        viewers.forEach(viewerId -> refresh(viewerId, target));
+        viewers.forEach((viewerId, glowing) -> {
+            Player viewer = Bukkit.getPlayer(viewerId);
+            if (viewer != null && filter.test(viewer, target)) {
+                glowing.add(target.getEntityId());
+                refresh(viewerId, target);
+            }
+        });
     }
 
     @Override
     public void removeTarget(Entity target) {
         if (targetsById.remove(target.getEntityId()) == null || !started) return;
-        viewers.forEach(viewerId -> refresh(viewerId, target));
+        viewers.forEach((viewerId, glowing) -> {
+            if (glowing.remove(target.getEntityId())) {
+                refresh(viewerId, target);
+            }
+        });
     }
 
     private static PacketContainer withGlowing(PacketContainer packet, Entity target) {
@@ -114,7 +162,7 @@ public final class ProtocolLibPacketGlow implements PacketGlow {
     }
 
     private void refreshAll() {
-        for (UUID viewerId : viewers) {
+        for (UUID viewerId : viewers.keySet()) {
             targetsById.values().forEach(target -> refresh(viewerId, target));
         }
     }

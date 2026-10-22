@@ -35,6 +35,8 @@ public class Manor2Definition {
     private int ghostRevealTime = 50;
     @Comment("The time until a hunter is killed by being consumed by ghost (ticks)")
     private int hunterDeathTime = 25;
+    @Comment("How close a hunter needs to be for ghosts to see their outline (blocks)")
+    private double ghostOutlineDistance = 20;
     @Comment("The score a ghost get when killing a hunter")
     private int ghostKillScore = 100;
     @Comment("The score a hunter get when killing a ghost")

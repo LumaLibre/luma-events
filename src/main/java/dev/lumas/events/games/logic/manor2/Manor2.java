@@ -107,7 +107,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     @Getter
     private final TrailRecorder recorder = new TrailRecorder(TRAIL_HISTORY_TICKS, RoleHitbox.hitboxProvider(roleMap), this::involvedEntities);
     @Getter
-    private final PacketGlow packetGlow = PacketGlow.newInstance();
+    private final PacketGlow packetGlow = PacketGlow.newInstance(this::canSeeOutline);
     @Getter
     private final Tracing tracing;
     @Getter
@@ -215,6 +215,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
         ghostAttacks.tick();
         artifactManager.tick();
         outsideBounds.tick();
+        packetGlow.tick();
         for (Manor2Role role : roleMap) {
             role.tick();
             role.operatePlayer(player -> {
@@ -231,6 +232,16 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             gameOverSubtitle = Util.color("<gold><winner> has won!", Util.TEXT_COLOR, Placeholder.component("winner", winner.plural()));
             this.stop();
         }
+    }
+
+    private boolean canSeeOutline(Player viewer, Entity target) {
+        if (!(roleMap.get(viewer.getUniqueId()) instanceof Ghost)) {
+            return true;
+        }
+        Location viewerLocation = viewer.getLocation();
+        Location targetLocation = target.getLocation();
+        double distance = definition.getGhostOutlineDistance();
+        return viewerLocation.getWorld() == targetLocation.getWorld() && viewerLocation.distanceSquared(targetLocation) <= distance * distance;
     }
 
     @Override
