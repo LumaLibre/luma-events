@@ -453,7 +453,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
 
         Vector from = projectile.getVelocity().multiply(-1);
         Executors.runSync(victim, () -> {
-            if (!victim.isDead() || victim.getNoDamageTicks() > victim.getMaximumNoDamageTicks() / 2) {
+            if (victim.isDead() || victim.getNoDamageTicks() > victim.getMaximumNoDamageTicks() / 2) {
                 return;
             }
 
