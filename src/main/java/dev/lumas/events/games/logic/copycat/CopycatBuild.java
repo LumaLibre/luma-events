@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -66,6 +67,7 @@ public final class CopycatBuild {
         Material.CAVE_VINES_PLANT, Material.CAVE_VINES,
         Material.KELP_PLANT, Material.KELP,
         Material.BIG_DRIPLEAF_STEM, Material.BIG_DRIPLEAF);
+    private static final Map<Material, Material> SLAB_BLOCKS = slabBlocks();
 
     private final String name;
     private final Map<BlockPos, BlockData> blocks;
@@ -410,6 +412,33 @@ public final class CopycatBuild {
         return material == Material.WATER || material == Material.LAVA;
     }
 
+    // a double slab looks the same as its full block
+    private static BlockData unslab(BlockData data) {
+        if (!(data instanceof Slab slab) || slab.getType() != Slab.Type.DOUBLE) return data;
+        Material full = SLAB_BLOCKS.get(data.getMaterial());
+        return full != null ? full.createBlockData() : data;
+    }
+
+    private static Map<Material, Material> slabBlocks() {
+        Map<Material, Material> slabBlocks = new EnumMap<>(Material.class);
+        for (Material material : Material.values()) {
+            String name = material.name();
+            if (name.startsWith("LEGACY_") || !name.endsWith("_SLAB")) continue;
+            String base = name.substring(0, name.length() - "_SLAB".length());
+            // planks first so bamboo slabs pair with bamboo planks rather than the bamboo plant
+            for (String candidate : List.of(base + "_PLANKS", base, base + "S", base + "_BLOCK")) {
+                Material full = Material.getMaterial(candidate);
+                if (full != null && full.isBlock() && !full.isAir()) {
+                    slabBlocks.put(material, full);
+                    break;
+                }
+            }
+        }
+        slabBlocks.put(Material.PETRIFIED_OAK_SLAB, Material.OAK_PLANKS);
+        slabBlocks.remove(Material.SMOOTH_STONE_SLAB);
+        return slabBlocks;
+    }
+
     public static int itemCount(BlockData data) {
         if (isTallPair(data)) return ((Bisected) data).getHalf() == Bisected.Half.BOTTOM ? 1 : 0;
         if (data instanceof Slab slab) return slab.getType() == Slab.Type.DOUBLE ? 2 : 1;
@@ -425,6 +454,13 @@ public final class CopycatBuild {
     }
 
     public static boolean matches(BlockData target, BlockData actual) {
+        if (target.getMaterial() != actual.getMaterial()) {
+            return sameBlock(unslab(target), unslab(actual));
+        }
+        return sameBlock(target, actual);
+    }
+
+    private static boolean sameBlock(BlockData target, BlockData actual) {
         if (plantHead(target.getMaterial()) != plantHead(actual.getMaterial())) return false;
         if (itemCount(target) != itemCount(actual)) return false;
         if (isWaterlogged(target) != isWaterlogged(actual)) return false;
