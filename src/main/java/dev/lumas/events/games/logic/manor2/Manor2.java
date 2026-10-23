@@ -123,7 +123,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
     private final OutsideBoundsEffect outsideBounds = new OutsideBoundsEffect(this);
 
     public Manor2(Manor2Definition definition) {
-        super("Manor 2", Util.getRandom(SPLASH), definition.getDuration(), TICK_INTERVAL, true, true, false, false);
+        super("Manor 2", Util.getRandom(SPLASH), definition.getDuration() + END_DELAY_SECONDS * 1000, TICK_INTERVAL, true, true, false, false);
         this.definition = definition;
         this.artifactManager = new ArtifactManager(this);
         Manor2Definition.LagCompensationSettings lagCompensation = definition.getLagCompensation();
@@ -267,6 +267,7 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             .thenRun(() -> {
                 Executors.teleportGroupAsync(endedParticipants, definition.getLobby());
                 scoreboard.showScores(this.audience);
+                scoreboard.showIndividualScores(endedParticipants);
                 this.sendAudienceMessage("This minigame has concluded.");
             })
             .exceptionally(exception -> {

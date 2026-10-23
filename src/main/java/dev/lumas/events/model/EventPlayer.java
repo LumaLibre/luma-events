@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -69,12 +70,12 @@ public class EventPlayer implements Serializable, Scorer {
         this.initiallySpawned = initiallySpawned;
     }
 
-    public void sendMessage(String m) {
+    public void sendMessage(String m, TagResolver... tagResolvers) {
         Player player = this.getPlayer();
         if (player == null) {
             return;
         }
-        Util.sendMsg(player, m);
+        Util.sendMsg(player, m, tagResolvers);
     }
 
     public void sendNoPrefixedMessage(String m) {

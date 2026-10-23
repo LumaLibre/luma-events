@@ -41,6 +41,7 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
         "<red><participants></red> found <blue><artifact></blue> bound to an artifact"
     );
     private static final String SCORE_RECORD = "<green><gold>#<position></gold> is <red><scorer></red> with <gold><points> points</gold>! (<team>)";
+    private static final String SELF_SCORE_RECORD = "You ended up at <gold>#<position></gold> with <gold><points> points</gold>!";
     private static final int TOP_SCORERS = 5;
     private static final double NAMED_PARTICIPANT_MIN_PERCENTAGE = 15D;
 
@@ -116,6 +117,18 @@ public class ManorScoreboard extends Scoreboard<EventPlayer> {
             ));
         }
         audience.sendMessage(border);
+    }
+
+    public void showIndividualScores(List<EventPlayer> endedParticipants) {
+        int selfPosition = 0;
+        for (Map.Entry<EventPlayer, Integer> participant : sortedScores().entrySet()) {
+            ++selfPosition;
+            if (!endedParticipants.contains(participant.getKey())) {
+                continue;
+            }
+            participant.getKey()
+                .sendMessage(SELF_SCORE_RECORD, Formatter.number("position", selfPosition), Formatter.number("points", participant.getValue()));
+        }
     }
 
     /**
