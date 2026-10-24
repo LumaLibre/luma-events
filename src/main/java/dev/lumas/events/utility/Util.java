@@ -76,6 +76,20 @@ public final class Util {
         Bukkit.broadcast(color(PREFIX).append(message).colorIfAbsent(TEXT_COLOR));
     }
 
+    public static int restoreVisibility(Plugin plugin) {
+        List<Player> online = List.copyOf(Bukkit.getOnlinePlayers());
+        for (Player viewer : online) {
+            Executors.sync(viewer, () -> {
+                for (Player shown : online) {
+                    if (shown != viewer && shown.isOnline() && !shown.hasMetadata("vanished")) {
+                        viewer.showPlayer(plugin, shown);
+                    }
+                }
+            });
+        }
+        return online.size();
+    }
+
     public static Component prefixed(String message) {
         return color(PREFIX + message).colorIfAbsent(TEXT_COLOR);
     }

@@ -242,6 +242,12 @@ public abstract class Minigame extends AsynchronousRunnable implements Listener 
         this.open = false; // Should be false by now anyway :P
         this.afkWarnings.keySet().forEach(this::clearAfkWarning);
         this.participants.clear();
+
+        try {
+            Util.restoreVisibility(EventMain.getInstance());
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+        }
         return true;
     }
 

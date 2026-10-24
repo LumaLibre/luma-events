@@ -6,10 +6,8 @@ import dev.lumas.core.annotation.Register;
 import dev.lumas.events.EventMain;
 import dev.lumas.events.commands.CommandManager;
 import dev.lumas.events.commands.CommandModule;
-import dev.lumas.events.utility.Executors;
-import org.bukkit.Bukkit;
+import dev.lumas.events.utility.Util;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -26,17 +24,8 @@ import java.util.List;
 public class RestoreVisibilityCommand implements CommandModule {
     @Override
     public boolean execute(EventMain plugin, CommandSender sender, String label, String[] args) {
-        List<Player> online = List.copyOf(Bukkit.getOnlinePlayers());
-        for (Player viewer : online) {
-            Executors.sync(viewer, () -> {
-                for (Player shown : online) {
-                    if (shown != viewer && shown.isOnline() && !shown.hasMetadata("vanished")) {
-                        viewer.showPlayer(plugin, shown);
-                    }
-                }
-            });
-        }
-        sender.sendMessage("Restoring visibility for " + online.size() + " players, vanished players stay hidden.");
+        int count = Util.restoreVisibility(plugin);
+        sender.sendMessage("Restoring visibility for " + count + " players, vanished players stay hidden.");
         return true;
     }
 
