@@ -148,7 +148,7 @@ public class Flashlight {
                 );
             }
             manor2.getDefinition().getFlashlightGroundParticles()
-                .forEach(particleDefinition -> particleDefinition.showAt(findGroundSupported(lookAt)));
+                .forEach(particleDefinition -> particleDefinition.showAt(findGroundSupported(lookAt), this::canSee));
         }
     }
 
@@ -233,8 +233,12 @@ public class Flashlight {
                 light.setLevel(lightLevel);
                 light.setWaterlogged(spot.getType() == Material.WATER);
             });
-            manor2.getBlockCache().setBlock(spot.getLocation(), blockData, LIGHT_BLOCK_LIFETIME);
+            manor2.getBlockCache().setBlock(spot.getLocation(), blockData, LIGHT_BLOCK_LIFETIME, player.getUniqueId(), this::canSee);
         });
+    }
+
+    private boolean canSee(Player viewer) {
+        return manor2.canSeeHunter(viewer, player.getUniqueId());
     }
 
     private @Nullable Block findLightSpot(Block block, int lightLevel) {

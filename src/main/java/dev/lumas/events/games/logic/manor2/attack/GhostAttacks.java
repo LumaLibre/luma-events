@@ -78,7 +78,7 @@ public final class GhostAttacks {
         Grab grab = new Grab(ghost, victim, ghostPlayer.getEyeLocation(), victimPlayer.getLocation());
         grabMap.put(ghost.getUuid(), grab);
         grabMap.put(victim.getUuid(), grab);
-        grab.begin(ghostPlayer);
+        grab.begin(ctx, ghostPlayer);
     }
 
     private boolean isAvailable(Manor2Role role) {

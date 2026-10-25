@@ -43,6 +43,8 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.damage.DamageType;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -61,6 +63,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -231,6 +234,19 @@ public final class Manor2 extends InventoryUnifiedMinigame {
             this.winner = winner;
             gameOverSubtitle = Util.color("<gold><winner> has won!", Util.TEXT_COLOR, Placeholder.component("winner", winner.plural()));
             this.stop();
+        }
+    }
+
+    public boolean canSeeHunter(Player viewer, UUID hunter) {
+        return viewer.getUniqueId().equals(hunter) || !roleMap.is(viewer.getUniqueId(), GhostHunter.class);
+    }
+
+    public void playHunterSound(Player hunter, Sound sound, float volume, float pitch) {
+        Location location = hunter.getLocation();
+        for (Player viewer : location.getNearbyPlayers(16 * Math.max(volume, 1f))) {
+            if (canSeeHunter(viewer, hunter.getUniqueId())) {
+                viewer.playSound(location, sound, SoundCategory.MASTER, volume, pitch);
+            }
         }
     }
 

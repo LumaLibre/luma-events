@@ -56,13 +56,13 @@ public final class Grab {
         this.victimLocation = victimLocation;
     }
 
-    public void begin(Player ghostPlayer) {
+    public void begin(Manor2 manor2, Player ghostPlayer) {
         NiceRestraint.apply(ghostPlayer);
         ghost.getVisibility().exposeFor(2);
         victim.operatePlayer(victimPlayer -> {
             if (ended.get()) return;
             NiceRestraint.apply(victimPlayer);
-            playEffects(victimPlayer, ghostPlayer);
+            playEffects(manor2, victimPlayer, ghostPlayer);
         });
     }
 
@@ -91,7 +91,7 @@ public final class Grab {
             player.lookAt(ghostEyes, LookAnchor.EYES);
             player.setFreezeTicks(player.getMaxFreezeTicks() - 1);
             if (heartbeat) {
-                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WARDEN_HEARTBEAT, SoundCategory.MASTER, 10f, 1f);
+                manor2.playHunterSound(player, Sound.ENTITY_WARDEN_HEARTBEAT, 10f, 1f);
             }
         });
     }
@@ -154,7 +154,7 @@ public final class Grab {
         return true;
     }
 
-    private void playEffects(Player victimPlayer, Player ghostPlayer) { // TODO: Looking for a better way to do this?
+    private void playEffects(Manor2 manor2, Player victimPlayer, Player ghostPlayer) { // TODO: Looking for a better way to do this?
         ItemStack face = ItemStack.of(Material.PLAYER_HEAD);
         face.setData(DataComponentTypes.PROFILE, ResolvableProfile.resolvableProfile(ghostPlayer.getPlayerProfile()));
         face.setData(DataComponentTypes.DEATH_PROTECTION, DeathProtection.deathProtection(List.of()));
@@ -166,8 +166,8 @@ public final class Grab {
         Executors.delayedSync(victimPlayer, 1, () -> {
             victimPlayer.playEffect(EntityEffect.PROTECTED_FROM_DEATH);
             victimPlayer.stopAllSounds();
-            victimPlayer.getWorld().playSound(victimPlayer.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, SoundCategory.MASTER, 10f, 0.35f);
-            victimPlayer.getWorld().playSound(victimPlayer.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, SoundCategory.MASTER, 10f, 0.5f);
+            manor2.playHunterSound(victimPlayer, Sound.ENTITY_WARDEN_SONIC_BOOM, 10f, 0.35f);
+            manor2.playHunterSound(victimPlayer, Sound.ENTITY_ELDER_GUARDIAN_CURSE, 10f, 0.5f);
             Executors.delayedSync(victimPlayer, 1, () -> {
                 ItemStack held = victimPlayer.getInventory().getItemInOffHand();
                 String tag = held.getPersistentDataContainer().get(Manor2.ITEM_TAG, PersistentDataType.STRING);

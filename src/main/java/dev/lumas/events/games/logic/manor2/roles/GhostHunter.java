@@ -3,6 +3,8 @@ package dev.lumas.events.games.logic.manor2.roles;
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.ManorTeam;
 import dev.lumas.events.games.logic.manor2.light.Flashlight;
+import dev.lumas.events.games.logic.manor2.light.Visibility;
+import dev.lumas.events.games.logic.manor2.roles.predicate.IsRolePredicate;
 import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.latency.tracing.ProximityTraceResult;
 import dev.lumas.events.utility.latency.tracing.TraceShooter;
@@ -23,6 +25,7 @@ public class GhostHunter extends Manor2Role {
     private static final double HAUNT_RADIUS = 10.0;
 
     private final Flashlight flashlight;
+    private final Visibility visibility;
     private final Manor2 manor2;
     private volatile boolean isDead = false;
 
@@ -30,15 +33,23 @@ public class GhostHunter extends Manor2Role {
         super(eventPlayer);
         this.manor2 = manor2;
         this.flashlight = new Flashlight(manor2, eventPlayer.getPlayer());
+        this.visibility = new Visibility(manor2, eventPlayer);
     }
 
     @Override
     public void tick() {
         eventPlayer.operatePlayer(player -> {
+            visibility.setVanished(new IsRolePredicate(GhostHunter.class));
             double ghostCloseness = hauntCloseness(player);
             flashlight.tick(ghostCloseness);
             freeze(player, ghostCloseness);
         });
+    }
+
+    @Override
+    public void retire(Manor2 manor2) {
+        visibility.stop();
+        super.retire(manor2);
     }
 
     @Override

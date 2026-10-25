@@ -1,6 +1,7 @@
 package dev.lumas.events.games.logic.manor2.attack;
 
 import dev.lumas.events.games.logic.manor2.Manor2;
+import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
 import dev.lumas.events.games.logic.manor2.roles.Manor2Role;
 import dev.lumas.events.games.logic.manor2.roles.Spectator;
 import dev.lumas.events.games.logic.manor2.roles.predicate.IsRolePredicate;
@@ -63,7 +64,7 @@ public class OutsideBoundsEffect {
             }
             manor2.getDefinition()
                 .getOutOfBoundsParticles()
-                .forEach(particleDefinition -> particleDefinition.showAt(player));
+                .forEach(particleDefinition -> particleDefinition.showAt(player.getLocation(), viewer -> !(role instanceof GhostHunter) || manor2.canSeeHunter(viewer, player.getUniqueId())));
             player.showTitle(OUT_OF_BOUNDS);
         });
     }
