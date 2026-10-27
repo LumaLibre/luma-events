@@ -26,6 +26,7 @@ import dev.lumas.events.utility.Util;
 import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.title.Title;
 import org.bukkit.ChunkSnapshot;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -37,18 +38,25 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Snowball;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerPickupArrowEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemType;
 import org.bukkit.util.Vector;
 import org.jspecify.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -58,6 +66,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -77,6 +86,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     };
     private static final long DURATION = 600000;
     private static final long END_DELAY_SECONDS = 5;
+    private static final int START_COUNTDOWN_SECONDS = 10;
     private static final long CLEANUP_TIMEOUT_SECONDS = 30;
     private static final int LOBBY_TELEPORT_ATTEMPTS = 3;
     private static final double THROWABLE_KNOCKBACK = 0.3;
@@ -99,6 +109,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     private final MinigameRoleMap<SkyWarsRole> roleMap = new MinigameRoleMap<>(SkyWarsRole::cleanup);
     private volatile @Nullable Component setupStatus;
     private final AtomicBoolean ended = new AtomicBoolean();
+    private volatile boolean frozen = true;
     @Getter
     private final Scoreboard<EventPlayer> scoreboard = new Scoreboard<>();
     private final ScoreRangeTokenFormula tokenFormula = SkyWarsTokenFormula.formula();
@@ -233,8 +244,34 @@ public final class SkyWars extends InventoryUnifiedMinigame {
                 for (SkyWarsRole skyWarsPlayer : roleMap) {
                     skyWarsPlayer.play();
                 }
-                border.activate();
+                startCountdown();
             });
+    }
+
+    private void startCountdown() {
+        AtomicInteger countdown = new AtomicInteger(START_COUNTDOWN_SECONDS);
+        sendAudienceTitle("<yellow>" + countdown.get(), "");
+        playAudienceSound(Sound.BLOCK_NOTE_BLOCK_CHIME, 1f, 1.5f);
+        Executors.repeatingGlobal(20, 20, task -> {
+            if (!this.active || this.stopping) {
+                task.cancel();
+                return;
+            }
+            if (countdown.decrementAndGet() <= 0) {
+                task.cancel();
+                this.frozen = false;
+                border.activate();
+                sendAudienceTitle("<dark_green>GO!", "", Title.Times.times(Duration.ZERO, Duration.ofMillis(500), Duration.ofMillis(200)));
+                playAudienceSound(Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1.5f);
+                return;
+            }
+            sendAudienceTitle("<yellow>" + countdown.get(), "");
+            playAudienceSound(Sound.BLOCK_NOTE_BLOCK_CHIME, 1f, 1.5f);
+        });
+    }
+
+    private boolean isFrozen(Entity entity) {
+        return this.frozen && roleMap.containsKey(entity.getUniqueId());
     }
 
     @Override
@@ -402,7 +439,7 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageEvent event) {
         this.ensureNotIllegal();
-        if (ended.get() && roleMap.containsKey(event.getEntity().getUniqueId())) {
+        if ((ended.get() || frozen) && roleMap.containsKey(event.getEntity().getUniqueId())) {
             event.setCancelled(true);
             return;
         }
@@ -480,9 +517,61 @@ public final class SkyWars extends InventoryUnifiedMinigame {
     public void onInteract(PlayerInteractEvent event) {
         this.ensureNotIllegal();
         SkyWarsRole skyWarsPlayer = roleMap.as(event.getPlayer().getUniqueId(), SkyWarsSpectator.class);
-        if (skyWarsPlayer != null) {
+        if (skyWarsPlayer != null || isFrozen(event.getPlayer())) {
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onInteractEntity(PlayerInteractEntityEvent event) {
+        this.ensureNotIllegal();
+        if (isFrozen(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onBlockBreak(BlockBreakEvent event) {
+        this.ensureNotIllegal();
+        if (isFrozen(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onBlockPlace(BlockPlaceEvent event) {
+        this.ensureNotIllegal();
+        if (isFrozen(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onDropItem(PlayerDropItemEvent event) {
+        this.ensureNotIllegal();
+        if (isFrozen(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onFrozenMove(PlayerMoveEvent event) {
+        if (event instanceof PlayerTeleportEvent || !isFrozen(event.getPlayer())) {
+            return;
+        }
+
+        Location from = event.getFrom();
+        Location to = event.getTo();
+        if (from.getX() == to.getX() && from.getZ() == to.getZ() && to.getY() <= from.getY()) {
+            return;
+        }
+
+        // allow looking around and falling, but not walking or jumping
+        Location held = from.clone();
+        held.setY(Math.min(from.getY(), to.getY()));
+        held.setYaw(to.getYaw());
+        held.setPitch(to.getPitch());
+        event.setTo(held);
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
