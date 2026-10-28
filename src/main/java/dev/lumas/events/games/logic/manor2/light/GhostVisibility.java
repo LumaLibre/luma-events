@@ -156,12 +156,13 @@ public final class GhostVisibility {
     }
 
     private static void showLitDamage(Player player, double litProgress) {
-        double maxHealth = maxHealth(player);
+        double maxHealth = 20.0;
         double target = Math.max(MIN_LIT_HEALTH, maxHealth * (1.0 - litProgress));
+        double fixedTarget = (double) Math.round(target * 2) / 2;
         double health = player.getHealth();
-        if (target < health) {
-            player.damage(health - target, DamageSource.builder(DamageType.MAGIC).build());
-        } else if (target > health) {
+        if (fixedTarget < health) {
+            player.damage(health - fixedTarget, DamageSource.builder(DamageType.MAGIC).build());
+        } else if (fixedTarget > health) {
             player.setHealth(target);
         }
     }
