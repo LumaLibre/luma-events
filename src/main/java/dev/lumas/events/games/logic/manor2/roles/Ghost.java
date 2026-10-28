@@ -14,6 +14,7 @@ import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.FoodProperties;
 import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import io.papermc.paper.datacomponent.item.UseCooldown;
+import io.papermc.paper.datacomponent.item.UseEffects;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -21,9 +22,6 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
-import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ItemType;
@@ -42,10 +40,7 @@ public class Ghost extends Manor2Role {
     private static final float WHIRL_VOLUME = 0.6f;
 
     private static final int GHOST_SPEED_BUFF_DELAY = 200;
-    private static final PotionEffect NIGHT_VISION = new PotionEffect(PotionEffectType.NIGHT_VISION, 220, 0, true, false, false);
-    private static final PotionEffect GHOST_SPEED_BUFF = new PotionEffect(PotionEffectType.SPEED, 30, 0, true, false, false);
-    private static final NamespacedKey GHOST_SPEED = Preconditions.checkNotNull(NamespacedKey.fromString("manor2/ghost_speed", EventMain.getInstance()));
-    private static final AttributeModifier GHOST_SPEED_MODIFIER = new AttributeModifier(GHOST_SPEED, -0.10, AttributeModifier.Operation.MULTIPLY_SCALAR_1);
+    private static final PotionEffect GHOST_SPEED_BUFF = new PotionEffect(PotionEffectType.SPEED, 60, 0, true, false, false);
     private static final NamespacedKey COOKIE_COOLDOWN = Preconditions.checkNotNull(NamespacedKey.fromString("manor2/cookie_cooldown", EventMain.getInstance()));
     private static final String COOKIE = "cookie";
     private static final Component COOKIE_DISPLAY_NAME = Util.color("<gold>Eat for temporary speed boost");
@@ -92,10 +87,6 @@ public class Ghost extends Manor2Role {
         player.showTitle(ManorTeam.GHOSTS.assignmentTitle());
         GlowColorManager.getInstance().setTransientColor(player, NamedTextColor.DARK_GRAY);
         manor2.getPacketGlow().addViewer(player);
-        AttributeInstance instance = player.getAttribute(Attribute.MOVEMENT_SPEED);
-        if (instance != null && instance.getModifier(GHOST_SPEED) == null) {
-            instance.addModifier(GHOST_SPEED_MODIFIER);
-        }
     }
 
     @Override
@@ -106,17 +97,12 @@ public class Ghost extends Manor2Role {
         if (player == null) {
             return;
         }
-        AttributeInstance instance = player.getAttribute(Attribute.MOVEMENT_SPEED);
-        if (instance != null) {
-            instance.removeModifier(GHOST_SPEED);
-        }
     }
 
     @Override
     public void tick() {
         visibility.tick();
         operatePlayer(player -> {
-            player.addPotionEffect(NIGHT_VISION);
             if (cookieDelay > 0) {
                 cookieDelay--;
             }
@@ -170,6 +156,10 @@ public class Ghost extends Manor2Role {
             .canAlwaysEat(true)
             .build()
         );
+        cookie.setData(DataComponentTypes.USE_EFFECTS, UseEffects.useEffects()
+            .canSprint(true)
+            .speedMultiplier(1F)
+            .build());
         cookie.setData(DataComponentTypes.USE_COOLDOWN, UseCooldown.useCooldown(GHOST_SPEED_BUFF_DELAY / 20F)
             .cooldownGroup(COOKIE_COOLDOWN)
             .build());
