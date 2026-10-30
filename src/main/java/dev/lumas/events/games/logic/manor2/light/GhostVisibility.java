@@ -1,5 +1,7 @@
 package dev.lumas.events.games.logic.manor2.light;
 
+import com.google.common.base.Preconditions;
+import dev.lumas.events.EventMain;
 import dev.lumas.events.games.logic.manor2.Manor2;
 import dev.lumas.events.games.logic.manor2.roles.Ghost;
 import dev.lumas.events.games.logic.manor2.roles.GhostHunter;
@@ -9,9 +11,11 @@ import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Util;
 import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.BlockType;
 import org.bukkit.damage.DamageSource;
 import org.bukkit.damage.DamageType;
@@ -40,6 +44,9 @@ public final class GhostVisibility {
     private static final PotionEffect INVISIBILITY = new PotionEffect(PotionEffectType.INVISIBILITY, 3, 0, true, true, false);
     private static final PotionEffect GLOW = new PotionEffect(PotionEffectType.GLOWING, 3, 0, true, true, false);
     private static final double MIN_LIT_HEALTH = 1.0;
+    private static final NamespacedKey SPEED_BUFF_KEY = Preconditions.checkNotNull(NamespacedKey.fromString("manor2/extra_speed", EventMain.getInstance()));
+    private static final double SPEED_BUFF_EXPOSED = 0.05;
+    private static final double SPEED_BUFF_DAMAGED = 0.10;
 
     private final Manor2 manor2;
     private final Visibility visibility;
@@ -71,10 +78,12 @@ public final class GhostVisibility {
         if (stopping) return;
         LightHit hit = pendingLight.getAndSet(null);
         RevealState previous = flashLight;
-        RevealState newState = RevealState.HIDDEN;
+        final RevealState newState;
         if (hit != null) {
             unlitTicks = 0;
             newState = stateOf(hit);
+        } else {
+            newState = RevealState.HIDDEN;
         }
         if (++unlitTicks < HIDE_AFTER_UNLIT_TICKS) {
             flashLight = previous.moreRevealed(newState) ? previous : newState;
@@ -107,8 +116,14 @@ public final class GhostVisibility {
                     playerLocation.getWorld().spawnParticle(Particle.DUST_PILLAR, playerLocation, 10, BlockType.RED_CONCRETE.createBlockData());
                     Util.getRandom(manor2.getDefinition().getGhostRevealSounds()).playAt(player);
                 }
+                if (newState == RevealState.EXPOSED) {
+                    speedModifier(player, SPEED_BUFF_DAMAGED);
+                } else {
+                    speedModifier(player, SPEED_BUFF_EXPOSED);
+                }
             } else {
                 player.addPotionEffect(INVISIBILITY);
+                speedModifier(player, 0D);
             }
             if (toUse.isRevealed()) {
                 player.addPotionEffect(GLOW);
@@ -126,6 +141,18 @@ public final class GhostVisibility {
                 )
             );
         });
+    }
+
+    public void speedModifier(Player player, double amountAdded) {
+        AttributeInstance instance = player.getAttribute(Attribute.MOVEMENT_SPEED);
+        if (instance == null) {
+            return;
+        }
+        instance.removeModifier(SPEED_BUFF_KEY);
+        if (amountAdded == 0) {
+            return;
+        }
+        instance.addModifier(new AttributeModifier(SPEED_BUFF_KEY, amountAdded, AttributeModifier.Operation.ADD_NUMBER));
     }
 
     public void decreaseShoot() {
@@ -151,6 +178,7 @@ public final class GhostVisibility {
         ghost.operatePlayer(player -> {
             player.removePotionEffect(PotionEffectType.INVISIBILITY);
             player.removePotionEffect(PotionEffectType.GLOWING);
+            speedModifier(player, 0D);
             player.setHealth(maxHealth(player));
         });
     }

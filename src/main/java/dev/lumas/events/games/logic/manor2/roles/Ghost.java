@@ -11,6 +11,7 @@ import dev.lumas.events.model.EventPlayer;
 import dev.lumas.events.utility.Util;
 import dev.lumas.glowapi.model.GlowColorManager;
 import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.Consumable;
 import io.papermc.paper.datacomponent.item.FoodProperties;
 import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import io.papermc.paper.datacomponent.item.UseCooldown;
@@ -40,7 +41,7 @@ public class Ghost extends Manor2Role {
     private static final float WHIRL_VOLUME = 0.6f;
 
     private static final int GHOST_SPEED_BUFF_DELAY = 200;
-    private static final PotionEffect GHOST_SPEED_BUFF = new PotionEffect(PotionEffectType.SPEED, 60, 0, true, false, false);
+    private static final PotionEffect GHOST_SPEED_BUFF = new PotionEffect(PotionEffectType.SPEED, 80, 0, true, false, false);
     private static final NamespacedKey COOKIE_COOLDOWN = Preconditions.checkNotNull(NamespacedKey.fromString("manor2/cookie_cooldown", EventMain.getInstance()));
     private static final String COOKIE = "cookie";
     private static final Component COOKIE_DISPLAY_NAME = Util.color("<gold>Eat for temporary speed boost");
@@ -156,6 +157,9 @@ public class Ghost extends Manor2Role {
             .canAlwaysEat(true)
             .build()
         );
+        cookie.setData(DataComponentTypes.CONSUMABLE, Consumable.consumable()
+            .consumeSeconds(3F / 20F)
+            .build());
         cookie.setData(DataComponentTypes.USE_EFFECTS, UseEffects.useEffects()
             .canSprint(true)
             .speedMultiplier(1F)
